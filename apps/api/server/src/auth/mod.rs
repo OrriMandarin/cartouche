@@ -1,11 +1,13 @@
 //! Provider-agnostic token verification: any issuer that publishes a JWKS and signs
 //! RS256/ES256 JWTs works. The API never calls the identity provider's own API.
 
+mod extract;
 mod keys;
 mod verifier;
 
 use thiserror::Error;
 
+pub use extract::{AdminUser, ApprovedUser, CurrentUser};
 pub use keys::{JwksKeySource, KeySource, KeySourceError, StaticKeySource};
 pub use verifier::{JwtVerifier, TokenVerifier, VerifiedClaims};
 

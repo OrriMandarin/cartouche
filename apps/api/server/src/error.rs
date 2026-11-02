@@ -20,6 +20,16 @@ pub enum ApiError {
     TokenExpired,
     /// The identity provider's keys cannot be fetched.
     AuthUnavailable,
+    /// Signups are closed and this user has no account.
+    SignupClosed,
+    /// The account awaits approval.
+    AccountPending,
+    /// The account was rejected.
+    AccountRejected,
+    /// The account was suspended.
+    AccountSuspended,
+    /// The caller is authenticated but not allowed (e.g. not an administrator).
+    Forbidden,
     /// Unexpected failure: the detail is logged, never sent to the client.
     Internal(String),
 }
@@ -32,6 +42,11 @@ impl ApiError {
             ApiError::TokenInvalid => "token_invalid",
             ApiError::TokenExpired => "token_expired",
             ApiError::AuthUnavailable => "auth_unavailable",
+            ApiError::SignupClosed => "signup_closed",
+            ApiError::AccountPending => "account_pending",
+            ApiError::AccountRejected => "account_rejected",
+            ApiError::AccountSuspended => "account_suspended",
+            ApiError::Forbidden => "forbidden",
             ApiError::Internal(_) => "internal_error",
         }
     }
@@ -42,6 +57,11 @@ impl ApiError {
             ApiError::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             ApiError::TokenInvalid | ApiError::TokenExpired => StatusCode::UNAUTHORIZED,
             ApiError::AuthUnavailable => StatusCode::SERVICE_UNAVAILABLE,
+            ApiError::SignupClosed
+            | ApiError::AccountPending
+            | ApiError::AccountRejected
+            | ApiError::AccountSuspended
+            | ApiError::Forbidden => StatusCode::FORBIDDEN,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -53,6 +73,11 @@ impl ApiError {
             ApiError::TokenInvalid => "The access token is missing or invalid.",
             ApiError::TokenExpired => "The access token has expired.",
             ApiError::AuthUnavailable => "Authentication is temporarily unavailable.",
+            ApiError::SignupClosed => "Signups are closed.",
+            ApiError::AccountPending => "Your account is awaiting approval.",
+            ApiError::AccountRejected => "Your account was rejected.",
+            ApiError::AccountSuspended => "Your account is suspended.",
+            ApiError::Forbidden => "You are not allowed to do this.",
             ApiError::Internal(_) => "An internal error occurred.",
         }
     }
@@ -102,6 +127,21 @@ mod tests {
         let internal = ApiError::Internal("boom".into());
         assert_eq!(internal.code(), "internal_error");
         assert_eq!(internal.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    // spec: ACC-002, ACC-004
+    #[test]
+    fn account_errors_are_403_with_their_own_code() {
+        for (error, code) in [
+            (ApiError::SignupClosed, "signup_closed"),
+            (ApiError::AccountPending, "account_pending"),
+            (ApiError::AccountRejected, "account_rejected"),
+            (ApiError::AccountSuspended, "account_suspended"),
+            (ApiError::Forbidden, "forbidden"),
+        ] {
+            assert_eq!(error.code(), code);
+            assert_eq!(error.status(), StatusCode::FORBIDDEN);
+        }
     }
 
     // spec: ACC-007

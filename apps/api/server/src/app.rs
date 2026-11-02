@@ -14,15 +14,30 @@ use tracing::{Span, field};
 use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
 use crate::routes::health::health;
+use crate::routes::me::me;
 use crate::state::AppState;
 
 pub fn build_router(state: AppState) -> Router {
     let router = Router::new()
         .route("/api/health", get(health))
+        .route("/api/me", get(me));
+    // Probe for `ApprovedUser` until real routes use it; moved to a test-support module later.
+    #[cfg(feature = "test-support")]
+    let router = if crate::startup::test_routes_enabled(&state.config) {
+        router.route("/api/test/approved-check", get(approved_check))
+    } else {
+        router
+    };
+    let router = router
         .method_not_allowed_fallback(method_not_allowed)
         .fallback(not_found)
         .with_state(state);
     with_request_context(router)
+}
+
+#[cfg(feature = "test-support")]
+async fn approved_check(_: crate::auth::ApprovedUser) -> axum::http::StatusCode {
+    axum::http::StatusCode::NO_CONTENT
 }
 
 async fn not_found() -> ApiError {
@@ -60,6 +75,7 @@ pub(crate) fn with_request_context(router: Router) -> Router {
                         request_id = %id,
                         method = %request.method(),
                         path = %request.uri().path(),
+                        user_id = field::Empty,
                         status = field::Empty,
                         latency_ms = field::Empty,
                     )

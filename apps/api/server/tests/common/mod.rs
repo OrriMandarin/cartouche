@@ -33,7 +33,16 @@ pub struct TestResponse {
 
 /// Configuration used by every integration test (`APP_ENV=test`, test issuer).
 pub fn test_config() -> Config {
+    test_config_with(&[])
+}
+
+/// Like `test_config`, with environment variables overridden (e.g. `SIGNUP_MODE`,
+/// `ADMIN_USER_IDS`).
+pub fn test_config_with(overrides: &[(&str, &str)]) -> Config {
     Config::from_vars(|name| {
+        if let Some((_, value)) = overrides.iter().find(|(key, _)| *key == name) {
+            return Some((*value).to_string());
+        }
         let value = match name {
             "APP_ENV" => "test",
             "AUTH_ISSUER" => "cartouche-test-issuer",
@@ -95,10 +104,15 @@ pub fn test_verifier(config: &Config, clock: Arc<ManualClock>) -> Arc<dyn TokenV
 /// Application state on a frozen clock. Tasks that add state fields extend this function
 /// (or add a second constructor) and feed the result to `TestApp::from_state`.
 pub fn test_state(pool: PgPool) -> (AppState, Arc<ManualClock>) {
+    test_state_with(pool, &[])
+}
+
+/// `test_state` with configuration overrides (see `test_config_with`).
+pub fn test_state_with(pool: PgPool, overrides: &[(&str, &str)]) -> (AppState, Arc<ManualClock>) {
     let clock = Arc::new(ManualClock::new(
         Utc.with_ymd_and_hms(2026, 1, 15, 12, 0, 0).unwrap(),
     ));
-    let config = test_config();
+    let config = test_config_with(overrides);
     let state = AppState {
         db: pool,
         verifier: test_verifier(&config, clock.clone()),
@@ -110,6 +124,12 @@ pub fn test_state(pool: PgPool) -> (AppState, Arc<ManualClock>) {
 
 pub async fn test_app(pool: PgPool) -> TestApp {
     let (state, clock) = test_state(pool);
+    TestApp::from_state(state, clock)
+}
+
+/// A test app whose configuration differs from `test_config` by `overrides`.
+pub async fn test_app_with(pool: PgPool, overrides: &[(&str, &str)]) -> TestApp {
+    let (state, clock) = test_state_with(pool, overrides);
     TestApp::from_state(state, clock)
 }
 

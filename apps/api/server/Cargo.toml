@@ -30,5 +30,6 @@ uuid = { version = "1.29.0", features = ["v7"] }
 
 [dev-dependencies]
 base64 = "0.23.1"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http-body-util = "0.1.5"
 tower = { version = "0.5.3", features = ["util"] }
