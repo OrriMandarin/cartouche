@@ -5,7 +5,7 @@ use axum::Router;
 use axum::http::{Request, Response};
 use axum::middleware::from_fn;
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, post};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::request_id::{PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
@@ -13,6 +13,7 @@ use tracing::{Span, field};
 
 use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
+use crate::routes::admin_users::{list_users, set_user_status};
 use crate::routes::health::health;
 use crate::routes::me::me;
 use crate::state::AppState;
@@ -20,7 +21,9 @@ use crate::state::AppState;
 pub fn build_router(state: AppState) -> Router {
     let router = Router::new()
         .route("/api/health", get(health))
-        .route("/api/me", get(me));
+        .route("/api/me", get(me))
+        .route("/api/admin/users", get(list_users))
+        .route("/api/admin/users/{id}/status", post(set_user_status));
     // Probe for `ApprovedUser` until real routes use it; moved to a test-support module later.
     #[cfg(feature = "test-support")]
     let router = if crate::startup::test_routes_enabled(&state.config) {

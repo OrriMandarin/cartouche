@@ -30,6 +30,12 @@ pub enum ApiError {
     AccountSuspended,
     /// The caller is authenticated but not allowed (e.g. not an administrator).
     Forbidden,
+    /// An administrator tried to change the status of an administrator (ADM-004).
+    CannotModerateAdmin,
+    /// The request is malformed: unparsable body, invalid path or query parameter.
+    InvalidRequest,
+    /// The requested status change is not an allowed transition (ADM-003).
+    InvalidTransition,
     /// Unexpected failure: the detail is logged, never sent to the client.
     Internal(String),
 }
@@ -47,6 +53,9 @@ impl ApiError {
             ApiError::AccountRejected => "account_rejected",
             ApiError::AccountSuspended => "account_suspended",
             ApiError::Forbidden => "forbidden",
+            ApiError::CannotModerateAdmin => "cannot_moderate_admin",
+            ApiError::InvalidRequest => "invalid_request",
+            ApiError::InvalidTransition => "invalid_transition",
             ApiError::Internal(_) => "internal_error",
         }
     }
@@ -61,7 +70,10 @@ impl ApiError {
             | ApiError::AccountPending
             | ApiError::AccountRejected
             | ApiError::AccountSuspended
-            | ApiError::Forbidden => StatusCode::FORBIDDEN,
+            | ApiError::Forbidden
+            | ApiError::CannotModerateAdmin => StatusCode::FORBIDDEN,
+            ApiError::InvalidRequest => StatusCode::BAD_REQUEST,
+            ApiError::InvalidTransition => StatusCode::CONFLICT,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -78,6 +90,11 @@ impl ApiError {
             ApiError::AccountRejected => "Your account was rejected.",
             ApiError::AccountSuspended => "Your account is suspended.",
             ApiError::Forbidden => "You are not allowed to do this.",
+            ApiError::CannotModerateAdmin => {
+                "Administrators cannot change an administrator's status."
+            }
+            ApiError::InvalidRequest => "The request is malformed.",
+            ApiError::InvalidTransition => "This status change is not allowed.",
             ApiError::Internal(_) => "An internal error occurred.",
         }
     }
@@ -138,10 +155,20 @@ mod tests {
             (ApiError::AccountRejected, "account_rejected"),
             (ApiError::AccountSuspended, "account_suspended"),
             (ApiError::Forbidden, "forbidden"),
+            (ApiError::CannotModerateAdmin, "cannot_moderate_admin"),
         ] {
             assert_eq!(error.code(), code);
             assert_eq!(error.status(), StatusCode::FORBIDDEN);
         }
+    }
+
+    // spec: ADM-003
+    #[test]
+    fn request_and_transition_errors() {
+        assert_eq!(ApiError::InvalidRequest.code(), "invalid_request");
+        assert_eq!(ApiError::InvalidRequest.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(ApiError::InvalidTransition.code(), "invalid_transition");
+        assert_eq!(ApiError::InvalidTransition.status(), StatusCode::CONFLICT);
     }
 
     // spec: ACC-007

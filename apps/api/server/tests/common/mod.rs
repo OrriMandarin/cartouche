@@ -161,6 +161,30 @@ impl TestApp {
         json: Option<serde_json::Value>,
         headers: &[(&str, &str)],
     ) -> TestResponse {
+        let body = json.map(|value| value.to_string());
+        self.send(method, path, token, body, headers).await
+    }
+
+    /// Sends `body` verbatim with a JSON content type (for malformed-body tests).
+    pub async fn request_with_raw_body(
+        &self,
+        method: &str,
+        path: &str,
+        token: Option<&str>,
+        body: &str,
+    ) -> TestResponse {
+        self.send(method, path, token, Some(body.to_string()), &[])
+            .await
+    }
+
+    async fn send(
+        &self,
+        method: &str,
+        path: &str,
+        token: Option<&str>,
+        body: Option<String>,
+        headers: &[(&str, &str)],
+    ) -> TestResponse {
         let mut builder = Request::builder()
             .method(Method::from_bytes(method.as_bytes()).expect("valid method"))
             .uri(path);
@@ -170,10 +194,10 @@ impl TestApp {
         for (name, value) in headers {
             builder = builder.header(*name, *value);
         }
-        let body = match json {
-            Some(value) => {
+        let body = match body {
+            Some(text) => {
                 builder = builder.header("content-type", "application/json");
-                Body::from(value.to_string())
+                Body::from(text)
             }
             None => Body::empty(),
         };
