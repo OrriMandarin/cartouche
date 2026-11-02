@@ -20,6 +20,7 @@ use crate::state::AppState;
 
 pub fn build_router(state: AppState) -> Router {
     let router = Router::new()
+        .route("/api/openapi.json", get(openapi_json))
         .route("/api/health", get(health))
         .route("/api/me", get(me))
         .route("/api/admin/users", get(list_users))
@@ -36,6 +37,14 @@ pub fn build_router(state: AppState) -> Router {
         .fallback(not_found)
         .with_state(state);
     with_request_context(router)
+}
+
+/// The public contract; also committed as `packages/api-client/openapi.json`.
+async fn openapi_json() -> impl IntoResponse {
+    (
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        crate::openapi::document_json(),
+    )
 }
 
 async fn not_found() -> ApiError {

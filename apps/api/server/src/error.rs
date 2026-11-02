@@ -1,12 +1,29 @@
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use serde_json::json;
+use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::auth::AuthError;
 use crate::request_id;
 
 pub use crate::request_id::RequestId;
+
+/// Body of every error response: `{"error":{"code","message","request_id"}}`.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorBody {
+    pub error: ErrorDetail,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorDetail {
+    /// Stable machine-readable code, snake_case (e.g. `account_pending`).
+    pub code: &'static str,
+    /// Human-readable English explanation; clients should switch on `code`.
+    pub message: &'static str,
+    /// Id of the failed request, also sent in the `x-request-id` response header.
+    pub request_id: String,
+}
 
 /// Every error the API returns. Rendered as
 /// `{"error":{"code","message","request_id"}}`, with the id of the current request.
@@ -131,13 +148,13 @@ impl IntoResponse for ApiError {
             tracing::error!(error = %detail, "internal error");
         }
         let request_id = request_id::current().map(|id| id.0).unwrap_or_default();
-        let body = json!({
-            "error": {
-                "code": self.code(),
-                "message": self.message(),
-                "request_id": request_id,
-            }
-        });
+        let body = ErrorBody {
+            error: ErrorDetail {
+                code: self.code(),
+                message: self.message(),
+                request_id,
+            },
+        };
         (self.status(), Json(body)).into_response()
     }
 }

@@ -6,16 +6,18 @@ use cartouche_domain::{UserStatus, check_transition};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::auth::AdminUser;
 use crate::db::audit::{self, AuditEntry};
 use crate::db::users::{self, User};
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath, ApiQuery};
 use crate::state::AppState;
 
-#[derive(Debug, Serialize)]
+/// An account as seen by an administrator.
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AdminUserView {
     pub id: Uuid,
     pub email: Option<String>,
@@ -42,7 +44,7 @@ impl AdminUserView {
 }
 
 /// Number of accounts per status; all four are always present.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct StatusCounts {
     pub pending: i64,
     pub approved: i64,
@@ -50,18 +52,37 @@ pub struct StatusCounts {
     pub suspended: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AdminUserList {
     pub users: Vec<AdminUserView>,
     pub counts: StatusCounts,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListQuery {
+    /// Only accounts in this status.
     pub status: Option<UserStatus>,
 }
 
 /// Lists accounts, newest first, optionally filtered by status (ADM-002).
+#[utoipa::path(
+    get,
+    path = "/api/admin/users",
+    summary = "List accounts",
+    description = "Lists accounts, newest first, optionally filtered by status, with the number of accounts per status.",
+    tag = "admin",
+    security(("bearer" = [])),
+    params(ListQuery),
+    responses(
+        (status = 200, description = "Accounts and per-status counts.", body = AdminUserList),
+        (status = 400, description = "Unknown `status` filter (`invalid_request`).", body = ErrorBody),
+        (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
+        (status = 403, description = "The caller is not an approved administrator (`forbidden`, `account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
 pub async fn list_users(
     _admin: AdminUser,
     State(state): State<AppState>,
@@ -84,7 +105,8 @@ pub async fn list_users(
     }))
 }
 
-#[derive(Debug, Deserialize)]
+/// The status to move an account to.
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SetStatusBody {
     pub status: UserStatus,
 }
@@ -92,6 +114,26 @@ pub struct SetStatusBody {
 /// Changes an account's status and records it in the audit log, atomically (ADM-003 to
 /// ADM-005). Checks, in order: unknown user (404), administrator target (403), allowed
 /// transition (409). Any early return drops the transaction, which rolls it back.
+#[utoipa::path(
+    post,
+    path = "/api/admin/users/{id}/status",
+    summary = "Change an account's status",
+    description = "Changes an account's status and records it in the audit log. Administrators cannot be moderated, and only allowed transitions succeed.",
+    tag = "admin",
+    security(("bearer" = [])),
+    params(("id" = Uuid, Path, description = "Id of the account to moderate.")),
+    request_body = SetStatusBody,
+    responses(
+        (status = 200, description = "The account with its new status.", body = AdminUserView),
+        (status = 400, description = "Malformed id or body (`invalid_request`).", body = ErrorBody),
+        (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
+        (status = 403, description = "The caller is not an approved administrator, or the target is an administrator (`forbidden`, `cannot_moderate_admin`, `account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
+        (status = 404, description = "No such account (`not_found`).", body = ErrorBody),
+        (status = 409, description = "The status change is not an allowed transition (`invalid_transition`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
 pub async fn set_user_status(
     AdminUser(admin): AdminUser,
     State(state): State<AppState>,
