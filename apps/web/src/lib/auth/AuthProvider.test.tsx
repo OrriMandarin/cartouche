@@ -16,6 +16,8 @@ vi.mock("oidc-client-ts", () => ({
       addUserUnloaded: () => undefined,
       removeUserLoaded: () => undefined,
       removeUserUnloaded: () => undefined,
+      addAccessTokenExpired: () => undefined,
+      removeAccessTokenExpired: () => undefined,
     };
     getUser = async () => null;
     signinRedirect = async () => undefined;

@@ -29,6 +29,25 @@ export function getOidcUserManager(): UserManager {
   return manager;
 }
 
+/**
+ * Renews the session silently (works with a refresh token only: no silent iframe is configured).
+ * When that fails the user is removed, which fires `userUnloaded` and flips the adapter to signed-out.
+ */
+async function renewOrSignOut(um: UserManager): Promise<User | null> {
+  try {
+    const renewed = await um.signinSilent();
+    if (renewed) return renewed;
+  } catch {
+    // Fall through to the sign-out below.
+  }
+  try {
+    await um.removeUser();
+  } catch {
+    // Nothing more to clean up.
+  }
+  return null;
+}
+
 let callbackPromise: Promise<void> | null = null;
 
 /** Completes the redirect on /auth/callback. Idempotent, so React strict mode cannot consume the state twice. */
@@ -59,24 +78,24 @@ export function OidcAuthAdapter({ children }: { children: ReactNode }) {
     const onUnloaded = () => apply(null);
     um.events.addUserLoaded(onLoaded);
     um.events.addUserUnloaded(onUnloaded);
+    const onTokenExpired = () => void renewOrSignOut(um);
+    um.events.addAccessTokenExpired(onTokenExpired);
     um.getUser().then(apply, () => apply(null));
     return () => {
       cancelled = true;
       um.events.removeUserLoaded(onLoaded);
       um.events.removeUserUnloaded(onUnloaded);
+      um.events.removeAccessTokenExpired(onTokenExpired);
     };
   }, []);
 
   const getToken = useCallback(async () => {
     const um = getOidcUserManager();
     const user = await um.getUser();
-    if (user && !user.expired) return user.access_token;
-    try {
-      // Renews with a refresh token when the provider issued one.
-      return (await um.signinSilent())?.access_token ?? null;
-    } catch {
-      return null;
-    }
+    if (!user) return null;
+    if (!user.expired) return user.access_token;
+    // Renews with a refresh token when the provider issued one, otherwise signs the user out.
+    return (await renewOrSignOut(um))?.access_token ?? null;
   }, []);
   const signIn = useCallback(async () => {
     await getOidcUserManager().signinRedirect();
