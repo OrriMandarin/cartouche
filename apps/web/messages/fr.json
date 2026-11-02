@@ -1,0 +1,10 @@
+{
+  "testMode": {
+    "banner": "MODE TEST — données fictives"
+  },
+  "landing": {
+    "title": "Cartouche",
+    "tagline": "Votre carte de visite numérique, simple et ouverte.",
+    "signIn": "Se connecter"
+  }
+}
