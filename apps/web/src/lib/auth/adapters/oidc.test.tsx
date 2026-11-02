@@ -99,6 +99,7 @@ describe("OidcAuthAdapter token expiry", () => {
   test("ACC-014: accessTokenExpired event with failing renew signs out", async () => {
     await setup();
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-in"));
+    fake.user = { expired: true, access_token: "old", profile: { sub: "u1" } }; // as when the event fires
     fake.signinSilent.mockRejectedValue(new Error("login_required"));
 
     await act(async () => {
@@ -112,6 +113,7 @@ describe("OidcAuthAdapter token expiry", () => {
   test("ACC-014: accessTokenExpired event with a successful renew stays signed-in", async () => {
     await setup();
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-in"));
+    fake.user = { expired: true, access_token: "old", profile: { sub: "u1" } }; // as when the event fires
     fake.signinSilent.mockResolvedValue({ expired: false, access_token: "new", profile: { sub: "u1" } });
 
     await act(async () => {
@@ -119,6 +121,43 @@ describe("OidcAuthAdapter token expiry", () => {
     });
 
     expect(screen.getByTestId("status")).toHaveTextContent("signed-in");
+  });
+
+  test("ACC-014: concurrent expired getToken calls and expiry event renew once", async () => {
+    const { auth } = await setup();
+    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-in"));
+    fake.user = { expired: true, access_token: "old", profile: { sub: "u1" } };
+    let finish!: () => void;
+    const renewed = { expired: false, access_token: "new", profile: { sub: "u1" } };
+    fake.signinSilent.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = () => {
+            fake.user = renewed; // the real library stores the renewed user
+            resolve(renewed);
+          };
+        }),
+    );
+
+    let tokens: (string | null)[] = [];
+    const pending = act(async () => {
+      const calls = Promise.all([auth().getToken(), auth().getToken(), auth().getToken()]);
+      fake.handlers.expired.forEach((h) => h());
+      await vi.waitFor(() => expect(fake.signinSilent).toHaveBeenCalled());
+      finish();
+      tokens = await calls;
+    });
+    await pending;
+
+    expect(fake.signinSilent).toHaveBeenCalledTimes(1);
+    expect(tokens).toEqual(["new", "new", "new"]);
+    expect(screen.getByTestId("status")).toHaveTextContent("signed-in");
+
+    // A later expiry starts a fresh renewal: the in-flight promise was cleared.
+    fake.user = { expired: true, access_token: "new", profile: { sub: "u1" } };
+    fake.signinSilent.mockResolvedValue({ expired: false, access_token: "newer", profile: { sub: "u1" } });
+    await expect(auth().getToken()).resolves.toBe("newer");
+    expect(fake.signinSilent).toHaveBeenCalledTimes(2);
   });
 
   test("ACC-014: getToken when signed out returns null without trying to renew", async () => {

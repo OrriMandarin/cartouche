@@ -1,7 +1,7 @@
 "use client";
 
 import { UserManager, WebStorageStateStore, type User } from "oidc-client-ts";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AuthContext } from "../context";
 import type { AuthContextValue, AuthUser } from "../types";
 
@@ -35,6 +35,10 @@ export function getOidcUserManager(): UserManager {
  */
 async function renewOrSignOut(um: UserManager): Promise<User | null> {
   try {
+    // Another renewal may have finished since the caller read the user: do not spend the refresh token twice.
+    const current = await um.getUser();
+    if (current && !current.expired) return current;
+    if (!current) return null;
     const renewed = await um.signinSilent();
     if (renewed) return renewed;
   } catch {
@@ -68,6 +72,15 @@ export function OidcAuthAdapter({ children }: { children: ReactNode }) {
     user: null,
   });
 
+  // Single-flight renewal: with refresh-token rotation a second concurrent grant would fail and sign the user out.
+  const renewing = useRef<Promise<User | null> | null>(null);
+  const renew = useCallback((um: UserManager) => {
+    renewing.current ??= renewOrSignOut(um).finally(() => {
+      renewing.current = null;
+    });
+    return renewing.current;
+  }, []);
+
   useEffect(() => {
     const um = getOidcUserManager();
     let cancelled = false;
@@ -78,7 +91,7 @@ export function OidcAuthAdapter({ children }: { children: ReactNode }) {
     const onUnloaded = () => apply(null);
     um.events.addUserLoaded(onLoaded);
     um.events.addUserUnloaded(onUnloaded);
-    const onTokenExpired = () => void renewOrSignOut(um);
+    const onTokenExpired = () => void renew(um);
     um.events.addAccessTokenExpired(onTokenExpired);
     um.getUser().then(apply, () => apply(null));
     return () => {
@@ -87,7 +100,7 @@ export function OidcAuthAdapter({ children }: { children: ReactNode }) {
       um.events.removeUserUnloaded(onUnloaded);
       um.events.removeAccessTokenExpired(onTokenExpired);
     };
-  }, []);
+  }, [renew]);
 
   const getToken = useCallback(async () => {
     const um = getOidcUserManager();
@@ -95,8 +108,8 @@ export function OidcAuthAdapter({ children }: { children: ReactNode }) {
     if (!user) return null;
     if (!user.expired) return user.access_token;
     // Renews with a refresh token when the provider issued one, otherwise signs the user out.
-    return (await renewOrSignOut(um))?.access_token ?? null;
-  }, []);
+    return (await renew(um))?.access_token ?? null;
+  }, [renew]);
   const signIn = useCallback(async () => {
     await getOidcUserManager().signinRedirect();
   }, []);
