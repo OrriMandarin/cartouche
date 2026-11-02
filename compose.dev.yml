@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: cartouche
+      POSTGRES_PASSWORD: cartouche
+      POSTGRES_DB: cartouche
+    ports:
+      - "54320:5432"
+    volumes:
+      - cartouche-dev-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartouche -d cartouche"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  cartouche-dev-db:
