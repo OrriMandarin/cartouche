@@ -1,0 +1,13 @@
+{
+  "keys": [
+    {
+      "kty": "EC",
+      "crv": "P-256",
+      "alg": "ES256",
+      "use": "sig",
+      "kid": "cartouche-test-1",
+      "x": "v9DIQSciLMnT5aBBOHRJykOgZYrsr7PtB7Gto85Fmjk",
+      "y": "7CYZqEDKY7HeF4iLiMGKIVtkxu6JdyhLFSm74mbm43o"
+    }
+  ]
+}

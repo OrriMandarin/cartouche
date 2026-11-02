@@ -1,12 +1,17 @@
 use std::process::ExitCode;
 use std::sync::Arc;
+use std::time::Duration;
 
 use cartouche_api::app::build_router;
+use cartouche_api::auth::{JwksKeySource, JwtVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::startup::{TEST_SUPPORT_COMPILED, test_routes_enabled, validate};
 use cartouche_api::state::AppState;
 use cartouche_api::{db, telemetry};
 use cartouche_domain::SystemClock;
+
+/// How long fetched signing keys are trusted before the JWKS is fetched again.
+const JWKS_TTL: Duration = Duration::from_secs(3600);
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -48,10 +53,20 @@ async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     db::migrate(&pool).await?;
 
     let bind_addr = config.bind_addr;
+    let clock = Arc::new(SystemClock);
+    let http = reqwest::Client::builder()
+        .user_agent(concat!("cartouche-api/", env!("CARGO_PKG_VERSION")))
+        .connect_timeout(Duration::from_secs(3))
+        .timeout(Duration::from_secs(5))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
+    let keys = JwksKeySource::new(config.auth.jwks_url.clone(), http, JWKS_TTL);
+    let verifier = JwtVerifier::new(&config.auth, keys, clock.clone());
     let state = AppState {
         db: pool,
         config: Arc::new(config),
-        clock: Arc::new(SystemClock),
+        clock,
+        verifier: Arc::new(verifier),
     };
     let listener = tokio::net::TcpListener::bind(bind_addr).await?;
     tracing::info!(addr = %listener.local_addr()?, "listening");

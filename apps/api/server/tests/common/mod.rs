@@ -8,11 +8,13 @@ use axum::Router;
 use axum::body::Body;
 use axum::http::{HeaderMap, Method, Request, StatusCode};
 use cartouche_api::app::build_router;
+use cartouche_api::auth::{JwtVerifier, StaticKeySource, TokenVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::state::AppState;
 use cartouche_domain::ManualClock;
 use chrono::{TimeZone, Utc};
 use http_body_util::BodyExt;
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header};
 use sqlx::PgPool;
 use tower::ServiceExt;
 
@@ -45,15 +47,62 @@ pub fn test_config() -> Config {
     .expect("valid test config")
 }
 
+/// Key id of the test signing key. Always this value, in tokens and in the key source.
+pub const TEST_KID: &str = "cartouche-test-1";
+/// Test only, never trusted in production: see `test-keys/README.md`.
+pub const TEST_PRIVATE_KEY_PEM: &str = include_str!("../../test-keys/es256-private.pem");
+pub const TEST_PUBLIC_KEY_PEM: &str = include_str!("../../test-keys/es256-public.pem");
+/// A key no verifier trusts.
+pub const UNTRUSTED_PRIVATE_KEY_PEM: &str =
+    include_str!("../../test-keys/untrusted-es256-private.pem");
+
+pub fn test_decoding_key() -> DecodingKey {
+    DecodingKey::from_ec_pem(TEST_PUBLIC_KEY_PEM.as_bytes()).expect("valid test public key")
+}
+
+/// A key source that only knows the test key, under `TEST_KID`.
+pub fn test_key_source() -> StaticKeySource {
+    StaticKeySource::new(vec![(TEST_KID.to_string(), test_decoding_key())])
+}
+
+/// Signs `claims` with the ES256 test key and `kid` = `TEST_KID`.
+pub fn sign_test_token(claims: serde_json::Value) -> String {
+    sign_with(
+        Algorithm::ES256,
+        Some(TEST_KID),
+        &EncodingKey::from_ec_pem(TEST_PRIVATE_KEY_PEM.as_bytes()).expect("valid test key"),
+        &claims,
+    )
+}
+
+/// Signs with an arbitrary algorithm, key and `kid` (for negative tests).
+pub fn sign_with(
+    alg: Algorithm,
+    kid: Option<&str>,
+    key: &EncodingKey,
+    claims: &serde_json::Value,
+) -> String {
+    let mut header = Header::new(alg);
+    header.kid = kid.map(str::to_string);
+    jsonwebtoken::encode(&header, claims, key).expect("signable claims")
+}
+
+/// A verifier backed by the static test key, validating against `config.auth` on `clock`.
+pub fn test_verifier(config: &Config, clock: Arc<ManualClock>) -> Arc<dyn TokenVerifier> {
+    Arc::new(JwtVerifier::new(&config.auth, test_key_source(), clock))
+}
+
 /// Application state on a frozen clock. Tasks that add state fields extend this function
 /// (or add a second constructor) and feed the result to `TestApp::from_state`.
 pub fn test_state(pool: PgPool) -> (AppState, Arc<ManualClock>) {
     let clock = Arc::new(ManualClock::new(
         Utc.with_ymd_and_hms(2026, 1, 15, 12, 0, 0).unwrap(),
     ));
+    let config = test_config();
     let state = AppState {
         db: pool,
-        config: Arc::new(test_config()),
+        verifier: test_verifier(&config, clock.clone()),
+        config: Arc::new(config),
         clock: clock.clone(),
     };
     (state, clock)

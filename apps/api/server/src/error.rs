@@ -3,6 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde_json::json;
 
+use crate::auth::AuthError;
 use crate::request_id;
 
 pub use crate::request_id::RequestId;
@@ -13,6 +14,12 @@ pub use crate::request_id::RequestId;
 pub enum ApiError {
     NotFound,
     MethodNotAllowed,
+    /// No token, or a token that is not valid.
+    TokenInvalid,
+    /// An authentic token past its expiry.
+    TokenExpired,
+    /// The identity provider's keys cannot be fetched.
+    AuthUnavailable,
     /// Unexpected failure: the detail is logged, never sent to the client.
     Internal(String),
 }
@@ -22,6 +29,9 @@ impl ApiError {
         match self {
             ApiError::NotFound => "not_found",
             ApiError::MethodNotAllowed => "method_not_allowed",
+            ApiError::TokenInvalid => "token_invalid",
+            ApiError::TokenExpired => "token_expired",
+            ApiError::AuthUnavailable => "auth_unavailable",
             ApiError::Internal(_) => "internal_error",
         }
     }
@@ -30,6 +40,8 @@ impl ApiError {
         match self {
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
+            ApiError::TokenInvalid | ApiError::TokenExpired => StatusCode::UNAUTHORIZED,
+            ApiError::AuthUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -38,6 +50,9 @@ impl ApiError {
         match self {
             ApiError::NotFound => "The requested resource was not found.",
             ApiError::MethodNotAllowed => "This method is not allowed on this resource.",
+            ApiError::TokenInvalid => "The access token is missing or invalid.",
+            ApiError::TokenExpired => "The access token has expired.",
+            ApiError::AuthUnavailable => "Authentication is temporarily unavailable.",
             ApiError::Internal(_) => "An internal error occurred.",
         }
     }
@@ -46,6 +61,16 @@ impl ApiError {
 impl From<sqlx::Error> for ApiError {
     fn from(e: sqlx::Error) -> Self {
         ApiError::Internal(format!("database error: {e}"))
+    }
+}
+
+impl From<AuthError> for ApiError {
+    fn from(e: AuthError) -> Self {
+        match e {
+            AuthError::Missing | AuthError::Invalid => ApiError::TokenInvalid,
+            AuthError::Expired => ApiError::TokenExpired,
+            AuthError::Unavailable => ApiError::AuthUnavailable,
+        }
     }
 }
 
@@ -77,5 +102,36 @@ mod tests {
         let internal = ApiError::Internal("boom".into());
         assert_eq!(internal.code(), "internal_error");
         assert_eq!(internal.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    // spec: ACC-007
+    #[test]
+    fn auth_errors_map_to_distinct_codes_and_statuses() {
+        let cases = [
+            (
+                AuthError::Missing,
+                "token_invalid",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AuthError::Invalid,
+                "token_invalid",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AuthError::Expired,
+                "token_expired",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AuthError::Unavailable,
+                "auth_unavailable",
+                StatusCode::SERVICE_UNAVAILABLE,
+            ),
+        ];
+        for (auth, code, status) in cases {
+            let api = ApiError::from(auth);
+            assert_eq!((api.code(), api.status()), (code, status), "{auth:?}");
+        }
     }
 }
