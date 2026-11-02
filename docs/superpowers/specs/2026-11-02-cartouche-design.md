@@ -259,6 +259,9 @@ C'est une exigence de premier ordre : un agent doit pouvoir implémenter une fon
 - **Une commande** démarre la stack de test complète : Postgres, api, web, authentification de test.
 - **Un outil de données de test** (binaire Rust ou commande de l'API) charge des **scénarios nommés** : plusieurs utilisateurs, des cartes actives et désactivées, des événements passés, en cours (avec et sans code) et futurs, des contacts avec accents, et des événements simultanés à la limite des 3. Il permet de réinitialiser l'état entre deux tests de bout en bout.
 - **Une horloge contrôlable dans l'environnement de test** **(choix Claude)**, pour tester « l'événement commence / se termine » sans attendre.
+- **Deux façons de travailler en local**, au choix, en changeant seulement des variables d'environnement :
+  - **Sans Clerk** (par défaut) : l'authentification de test, qui fonctionne hors ligne, avec les utilisateurs des données de test (dont un administrateur et un compte en attente). C'est le mode des tests de bout en bout et des agents.
+  - **Avec Clerk** : une application Clerk de *développement* (clés `pk_test_` / `sk_test_`, qui autorisent `localhost`), pour vérifier la vraie intégration. On se connecte avec son propre compte Clerk ; on peut charger les données de test sur ce compte, et se déclarer administrateur via `ADMIN_USER_IDS`.
 
 ### 8.3 Comprendre ce qui s'est passé
 - **Les logs du backend sont structurés** (`tracing`, en JSON) et contiennent un `request_id` généré ou propagé depuis le frontend. Le frontend affiche ce `request_id` dans ses messages d'erreur.
