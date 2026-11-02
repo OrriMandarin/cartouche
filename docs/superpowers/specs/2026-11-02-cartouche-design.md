@@ -85,7 +85,11 @@ Il n'y a pas d'équipes ni d'espaces partagés. Un utilisateur ne voit que ses p
 - Format : `https://<domaine>/c/<slug>`. Le slug est choisi par l'utilisateur ; une proposition est faite à partir de son nom.
 - Un slug est unique sur l'instance.
 - **Le lien ne casse jamais.** Si l'utilisateur change le slug, tous les anciens slugs de la carte redirigent de façon permanente vers le nouveau. Un ancien slug reste réservé à cette carte, personne d'autre ne peut le prendre.
-- **Carte désactivée :** le lien affiche une page neutre « Cette carte n'est plus active », et non une erreur 404. Les données sont conservées. Réactiver la carte remet le même lien en service.
+- **Désactiver une carte** : le propriétaire peut désactiver ou réactiver une carte à tout moment depuis le tableau de bord, en un clic.
+  - Une carte désactivée affiche à son lien une page neutre « Cette carte n'est plus active », et non une erreur 404. La vCard et les formulaires d'événement sont inaccessibles, y compris pour un événement encore en cours, et le serveur refuse les envois.
+  - Les données (contenu, événements, contacts collectés) sont conservées, et restent visibles et exportables dans le tableau de bord.
+  - Réactiver la carte remet le même lien en service, sans rien changer d'autre.
+  - **Désactivation par le support** : c'est un état distinct. La carte affiche la même page neutre côté public, mais le propriétaire voit dans son tableau de bord « Désactivée par le support » et **ne peut pas la réactiver lui-même**. Seul un administrateur peut lever ce blocage **(choix Claude)**.
 - **Carte supprimée :** suppression définitive après confirmation. Le lien affiche la même page neutre. Les slugs restent réservés et ne sont jamais réattribués à quelqu'un d'autre **(choix Claude)**, pour éviter qu'une vieille puce NFC pointe vers la carte d'un inconnu. Le même utilisateur peut rattacher l'un de ses slugs réservés à une nouvelle carte.
 - **Compte supprimé :** les slugs de l'utilisateur sont conservés uniquement sous forme d'**empreinte (hash)** dans une table de slugs bloqués, sans lien avec une personne. Ils restent bloqués définitivement, et plus personne, y compris l'ancien utilisateur, ne peut les reprendre **(choix Claude)**. Aucune donnée personnelle n'est conservée, et aucun ancien lien ne peut pointer vers un inconnu.
 - Le tableau de bord propose de **copier le lien** et de **télécharger un QR code** (SVG et PNG) **(choix Claude)**.
@@ -158,7 +162,7 @@ Pensée pour le mobile d'abord. Le visuel final sera conçu avec Claude Design.
   - **valider** ou **refuser** une inscription ;
   - **suspendre** ou **réactiver** un compte. Un compte suspendu ne peut plus se connecter au tableau de bord, et toutes ses cartes affichent la page neutre « Cette carte n'est plus active » ;
   - **tout consulter** pour un utilisateur donné : son profil, ses cartes, ses événements et ses contacts collectés (en lecture seule) ;
-  - **désactiver une carte abusive**.
+  - **désactiver une carte abusive**, puis lever ce blocage (voir 5.1).
 - Les administrateurs ne modifient pas le contenu des utilisateurs : ils peuvent seulement le consulter, désactiver une carte, et valider, refuser ou suspendre un compte **(choix Claude)**.
 - **Journal d'audit** **(choix Claude)** : chaque action et chaque consultation des contacts d'un autre utilisateur par un administrateur est enregistrée (qui, quoi, quand). Ce sont des données personnelles de prospects, il faut pouvoir le justifier.
 - **Notification des nouvelles inscriptions** : hors v1. L'administrateur consulte la page de support.
@@ -318,7 +322,7 @@ deploy/                docker-compose de production, Caddyfile, exemple de .env
 .claude/skills/        Skills du projet
 docs/                  Documentation (installation, auto-hébergement, contribution)
 ```
-Licence MIT (déjà présente). La CI GitHub Actions lance la vérification du format et le lint, les tests du backend et du frontend, et les tests de bout en bout.
+Licence MIT (déjà présente). La CI GitHub Actions lance la vérification du format et le lint, les tests du backend et du frontend, les tests de bout en bout, et la construction des images Docker.
 
 ### 11.2 Production (VPS OVH vps-1, `cartouche.jicorp.fr`)
 - Le VPS fait déjà tourner d'autres services derrière **un Caddy unique**. Cartouche **n'embarque donc pas de reverse proxy** dans son compose de production :
@@ -326,7 +330,9 @@ Licence MIT (déjà présente). La CI GitHub Actions lance la vérification du f
   - api et web écoutent uniquement en local (`127.0.0.1`), sur des ports configurables ;
   - le dépôt fournit le **bloc Caddyfile** à ajouter au Caddy existant pour `cartouche.jicorp.fr`.
 - **Pour les auto-hébergeurs** qui n'ont pas de proxy, un profil Compose optionnel ajoute un Caddy dédié **(choix Claude)**.
-- **Déploiement manuel** : la CI construit les images Docker et les publie sur GitHub Container Registry à chaque tag de version. Le déploiement se fait à la main sur le VPS (`docker compose pull && docker compose up -d`), avec une procédure documentée. Rust n'est jamais compilé sur le VPS **(choix Claude)**.
+- **Déploiement manuel, avec construction des images sur le VPS** : `git pull`, puis `docker compose build`, puis `docker compose up -d`, avec une procédure documentée.
+  - Les Dockerfiles sont multi-étapes. Le backend utilise un cache des dépendances Rust (par exemple `cargo-chef`), pour que les reconstructions ne recompilent que le code de Cartouche.
+  - La CI vérifie seulement que les images se construisent ; elle ne publie rien sur un registre en v1. Publier des images prêtes à l'emploi pour les auto-hébergeurs viendra plus tard.
 - Toute la configuration passe par les variables d'environnement, documentées dans un `.env.example`.
 - Les migrations de base de données s'appliquent au démarrage de l'API.
 - **Sauvegardes** : en v1, un script documenté de sauvegarde locale (Postgres et médias). La copie hors du serveur viendra plus tard.
