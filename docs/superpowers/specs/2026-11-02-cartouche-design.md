@@ -220,7 +220,16 @@ web & api ──► Sentry (optionnel, désactivé si aucun DSN)
 - **Le frontend a un module d'authentification** qui expose `getToken()`, `user`, `signIn()` et `signOut()`, avec trois implémentations choisies par configuration :
   1. **Clerk** (par défaut), avec ses composants d'interface tout faits ;
   2. **OIDC générique** (Authorization Code + PKCE, `oidc-client-ts`) pour Keycloak, Authentik, Zitadel… ;
-  3. **Dev/test** : un faux émetteur local qui signe ses propres JWT, avec un JWKS servi en local. Il permet de se connecter en un appel comme n'importe quel utilisateur des données de test. **Il ne doit jamais pouvoir être activé en production** : le backend refuse de démarrer si l'émetteur de test est configuré avec `APP_ENV=production`.
+  3. **Dev/test** : un faux émetteur local qui signe ses propres JWT, avec un JWKS servi en local. Il permet de se connecter en un appel comme n'importe quel utilisateur des données de test.
+
+#### Garantie : le fournisseur de test ne peut pas exister en production
+Plusieurs barrières indépendantes, pour qu'une seule erreur ne suffise jamais :
+1. **Absent du binaire de production** : tout le code d'authentification de test (backend : émetteur, endpoint de connexion de test, horloge contrôlable) est derrière une **feature Cargo `test-support`**, désactivée par défaut. Le Dockerfile de production compile sans cette feature, donc ce code n'existe tout simplement pas dans le binaire. Côté frontend, l'adaptateur dev/test est choisi au moment du build. Le build de production ne l'inclut pas, et le build échoue si on lui demande l'adaptateur de test.
+2. **La production par défaut** : `APP_ENV` vaut `production` s'il est absent ou invalide. Les modes `development` et `test` doivent être demandés explicitement. Même un binaire compilé avec `test-support` refuse de démarrer si l'authentification de test est configurée en mode `production`.
+3. **Un seul émetteur de confiance** : le backend n'accepte les jetons que d'un seul émetteur (`AUTH_ISSUER` et son JWKS). En production, c'est Clerk : un jeton signé par la clé de test n'est pas vérifiable avec les clés de Clerk, et il est donc rejeté.
+4. **Le service de test n'est que dans les fichiers Compose de développement et de test**, jamais dans celui de production.
+5. **Ça se voit** : au démarrage, l'API écrit dans ses logs le mode, l'émetteur et les features compilées. En mode `development` ou `test`, l'interface affiche un bandeau « MODE TEST » permanent.
+6. **C'est testé en CI** : l'image de production est démarrée avec une configuration d'authentification de test, et la CI vérifie qu'elle refuse de démarrer ou rejette le jeton de test. Une régression sur cette garantie casse donc la CI.
 
 ### 7.4 Frontend
 - **Next.js** (App Router), TypeScript strict, gestionnaire de paquets **pnpm**.
