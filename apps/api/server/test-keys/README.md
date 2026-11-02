@@ -11,6 +11,9 @@ in this repository: anyone can forge a token with them.
 - `untrusted-es256-private.pem`: a second key that no verifier trusts, used to check that
   tokens signed by an unknown key are rejected.
 
+- `rsa-test-private.pem` / `rsa-jwks.json`: RSA-2048 key (`kid` `cartouche-test-rsa-1`) and its
+  JWK Set, to exercise RS256 (what real providers such as Clerk use). Test only as well.
+
 Production verifies tokens against the JWKS published by the configured `AUTH_ISSUER`
 (`AUTH_JWKS_URL`). The API refuses to start with the test issuer when `APP_ENV=production`.
 

@@ -26,6 +26,19 @@ use tokio::net::TcpListener;
 use url::Url;
 
 const TEST_JWKS: &str = include_str!("../test-keys/jwks.json");
+const RSA_PRIVATE_KEY_PEM: &str = include_str!("../test-keys/rsa-test-private.pem");
+const RSA_JWKS: &str = include_str!("../test-keys/rsa-jwks.json");
+const RSA_KID: &str = "cartouche-test-rsa-1";
+
+/// A JWKS holding both the ES256 test key and the RSA test key.
+fn mixed_jwks() -> String {
+    let mut keys = Vec::new();
+    for set in [TEST_JWKS, RSA_JWKS] {
+        let set: Value = serde_json::from_str(set).unwrap();
+        keys.extend(set["keys"].as_array().unwrap().clone());
+    }
+    json!({ "keys": keys }).to_string()
+}
 
 fn auth_config(audience: Option<&str>) -> AuthConfig {
     AuthConfig {
@@ -605,5 +618,67 @@ async fn symmetric_and_unusable_jwks_entries_are_never_trusted() {
     assert_eq!(verifier.verify(&forged).await, Err(AuthError::Invalid));
     // And the token the legitimate key would sign is unknown here.
     let token = sign_test_token(claims(&clock));
+    assert_eq!(verifier.verify(&token).await, Err(AuthError::Invalid));
+}
+
+// spec: ACC-007
+#[tokio::test]
+async fn rs256_token_is_verified_through_a_jwks() {
+    let jwks = mixed_jwks();
+    let (url, _) = serve(move |_| Some(("200 OK", jwks.clone()))).await;
+    let clock = clock();
+    let verifier = jwks_verifier(jwks_source(url), clock.clone());
+    let rsa = EncodingKey::from_rsa_pem(RSA_PRIVATE_KEY_PEM.as_bytes()).unwrap();
+    let token = sign_with(Algorithm::RS256, Some(RSA_KID), &rsa, &claims(&clock));
+    let verified = verifier.verify(&token).await.unwrap();
+    assert_eq!(verified.subject, "u1");
+    assert_eq!(verified.issuer, TEST_ISSUER);
+    // The EC key in the same set still works.
+    assert!(
+        verifier
+            .verify(&sign_test_token(claims(&clock)))
+            .await
+            .is_ok()
+    );
+    // An expired RS256 token is Expired, a tampered one is Invalid.
+    let expired = sign_with(
+        Algorithm::RS256,
+        Some(RSA_KID),
+        &rsa,
+        &with(claims(&clock), "exp", json!(now_ts(&clock) - 3600)),
+    );
+    assert_eq!(verifier.verify(&expired).await, Err(AuthError::Expired));
+    let mut parts: Vec<&str> = token.split('.').collect();
+    let forged = b64(with(claims(&clock), "sub", json!("admin"))
+        .to_string()
+        .as_bytes());
+    parts[1] = &forged;
+    assert_eq!(
+        verifier.verify(&parts.join(".")).await,
+        Err(AuthError::Invalid)
+    );
+}
+
+// spec: ACC-007
+#[tokio::test]
+async fn rs256_header_with_a_kid_of_an_ec_key_is_rejected() {
+    let jwks = mixed_jwks();
+    let (url, _) = serve(move |_| Some(("200 OK", jwks.clone()))).await;
+    let clock = clock();
+    let verifier = jwks_verifier(jwks_source(url), clock.clone());
+    let rsa = EncodingKey::from_rsa_pem(RSA_PRIVATE_KEY_PEM.as_bytes()).unwrap();
+    let token = sign_with(Algorithm::RS256, Some(TEST_KID), &rsa, &claims(&clock));
+    assert_eq!(verifier.verify(&token).await, Err(AuthError::Invalid));
+}
+
+// spec: ACC-007
+#[tokio::test]
+async fn es256_header_with_a_kid_of_an_rsa_key_is_rejected() {
+    let jwks = mixed_jwks();
+    let (url, _) = serve(move |_| Some(("200 OK", jwks.clone()))).await;
+    let clock = clock();
+    let verifier = jwks_verifier(jwks_source(url), clock.clone());
+    let ec = EncodingKey::from_ec_pem(TEST_PRIVATE_KEY_PEM.as_bytes()).unwrap();
+    let token = sign_with(Algorithm::ES256, Some(RSA_KID), &ec, &claims(&clock));
     assert_eq!(verifier.verify(&token).await, Err(AuthError::Invalid));
 }

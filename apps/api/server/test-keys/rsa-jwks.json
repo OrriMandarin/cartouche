@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "alg": "RS256",
+      "use": "sig",
+      "kid": "cartouche-test-rsa-1",
+      "n": "tq4EEkvi_jxSW0IC_vr50mhyIy67BI7KfxuccAIFGfoUpzTTkygLqUkXrlAh_jLMFtCPuHMNLCRWdoTP3SjMAvei4LKv7db1Rk60vRRfZiqXty3XPhTrzYsn1Zi7vgCcrseFTWguefAutZSJYq3n9ZDVH-pfF27Mcc6ylYVCLXEjNLqa00978UDygBeWNgajwClu5WCup44cv9baM0vdSn0Ylh8aWeRo28k8FovZyMGmPN56vnUKQgGu3EKuw6Xc7WQadeX3Dd8MO8a_WJoHJAXCmh14uNQ3cP2hjyZzEx8l_Jbuu7XljhoFbBCcRinVYVu6dXubAr-N5b_bIhygWQ",
+      "e": "AQAB"
+    }
+  ]
+}
