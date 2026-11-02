@@ -55,10 +55,13 @@ async fn run(args: &[String]) -> Result<(), String> {
 }
 
 /// Connects to `DATABASE_URL` and brings the schema up to date, so that it works on a fresh
-/// database. Refuses to run when `APP_ENV` is explicitly `production`: `reset` is destructive.
+/// database. Refuses to run unless `APP_ENV` is `development` or `test`: `reset` is destructive.
 async fn connect() -> Result<sqlx::PgPool, String> {
-    if std::env::var("APP_ENV").is_ok_and(|v| v.trim() == "production") {
-        return Err("refusing to run with APP_ENV=production".to_string());
+    if !seed::seed_allowed(std::env::var("APP_ENV").ok().as_deref()) {
+        return Err(
+            "refusing to run: APP_ENV must be `development` or `test` (absent or invalid means production)"
+                .to_string(),
+        );
     }
     let url = std::env::var("DATABASE_URL").map_err(|_| "DATABASE_URL is not set".to_string())?;
     let pool = db::connect(&url)

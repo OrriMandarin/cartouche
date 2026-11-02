@@ -8,6 +8,7 @@ use cartouche_domain::{UserStatus, normalize};
 use serde::Serialize;
 use sqlx::PgPool;
 
+use crate::config::AppEnv;
 use crate::startup::TEST_ISSUER;
 
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -36,6 +37,12 @@ pub fn scenario(name: &str) -> Option<Scenario> {
         .iter()
         .find(|(candidate, _)| *candidate == name)
         .map(|(_, run)| *run)
+}
+
+/// Whether the seed tool may touch the database: only in `development` or `test`. Uses the
+/// canonical `APP_ENV` parser, so absent, empty or unrecognized values mean production.
+pub fn seed_allowed(app_env: Option<&str>) -> bool {
+    AppEnv::parse(app_env) != AppEnv::Production
 }
 
 /// Empties every table in `RESET_TABLES` and restarts identities.
@@ -124,6 +131,22 @@ async fn base(pool: &PgPool) -> Result<SeedReport, sqlx::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn seed_requires_development_or_test() {
+        assert!(seed_allowed(Some("development")));
+        assert!(seed_allowed(Some("test")));
+        for value in [
+            None,
+            Some(""),
+            Some("prod"),
+            Some("production"),
+            Some("PRODUCTION"),
+            Some("Development"),
+        ] {
+            assert!(!seed_allowed(value), "{value:?}");
+        }
+    }
 
     #[test]
     fn base_is_registered() {
