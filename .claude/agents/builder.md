@@ -19,7 +19,7 @@ Tu implémentes une tâche du plan, avec ses tests, et rien de plus.
 2. Écris le code minimal qui le fait passer. Relance.
 3. Refactore si nécessaire, tests verts.
 4. Lance les vérifications de la tâche (`make lint`, `make test`, et `make e2e` si le plan le demande) et lis leur sortie.
-5. Commit petit et clair (`feat:`, `fix:`, `chore:`, `docs:`…), en français ou en anglais comme l'historique.
+5. Commit petit et clair (`feat:`, `fix:`, `chore:`, `docs:`…), message **en anglais** (comme le code, les commentaires et les identifiants ; seuls les textes d'interface et la spec sont en français).
 
 ## Règles
 - Respecte les règles de qualité de `CLAUDE.md` : pas de logique métier dans les handlers ni les composants, dépendances externes derrière un trait/une interface, requêtes filtrées par propriétaire dans `db/`, aucun texte d'interface en dur (`messages/fr.json`).

@@ -19,7 +19,7 @@ Tu reprends un bug que `debugger` n'a pas su résoudre, ou un bug dont la comple
 3. **Liste plusieurs hypothèses concurrentes**, et pour chacune une observation qui la confirme ou l'écarte. Élimine-les une à une ; n'implémente aucun correctif tant qu'une cause racine n'est pas démontrée.
 4. **Corrige** la cause racine au bon niveau (souvent le domaine ou `db/`, pas le symptôme), changement minimal.
 5. **Vérifie** : test de reproduction, `make test`, `make e2e` ; relance plusieurs fois s'il s'agissait d'un échec intermittent.
-6. Commit : test et correction ensemble.
+6. Commit (message en anglais) : test et correction ensemble.
 
 ## Règles
 - Si la spec est en cause, signale-le plutôt que de la modifier (c'est le travail de `planner`).

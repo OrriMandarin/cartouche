@@ -1,6 +1,6 @@
 # Cartouche — consignes pour les agents
 
-Cartouche est une application open source de carte de visite numérique (backend Rust, frontend Next.js). Ce fichier est lu en premier par tous les agents : il décrit le dépôt, les commandes, le cycle de travail et les règles de qualité. Tout est en français, avec les accents, y compris les textes d'interface et les messages de commit.
+Cartouche est une application open source de carte de visite numérique (backend Rust, frontend Next.js). Ce fichier est lu en premier par tous les agents : il décrit le dépôt, les commandes, le cycle de travail et les règles de qualité. **Langues** : ce fichier, le corps des agents, `spec/` et les textes d'interface sont en français, avec les accents. Le code, les commentaires, les identifiants et les messages de commit sont en **anglais**.
 
 ## Carte du dépôt
 
