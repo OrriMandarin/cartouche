@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { TestModeBanner } from "@/components/TestModeBanner";
+import { AuthProvider } from "@/lib/auth/AuthProvider";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,7 +18,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body className="min-h-screen font-sans antialiased">
         <NextIntlClientProvider>
           <TestModeBanner />
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>

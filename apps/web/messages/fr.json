@@ -6,5 +6,27 @@
     "title": "Cartouche",
     "tagline": "Votre carte de visite numérique, simple et ouverte.",
     "signIn": "Se connecter"
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "signedInAs": "Connecté en tant que {name}",
+      "signOut": "Se déconnecter",
+      "loading": "Chargement…",
+      "redirecting": "Redirection vers le fournisseur d'identité…",
+      "error": "La connexion a échoué. Réessaie dans un instant."
+    },
+    "test": {
+      "heading": "Connexion de test",
+      "description": "Choisis un utilisateur du jeu de données de test.",
+      "freeSubject": "Sujet libre",
+      "freeSubjectPlaceholder": "ex. seed-zoe",
+      "submit": "Se connecter"
+    },
+    "callback": {
+      "pending": "Connexion en cours…",
+      "error": "La connexion a échoué.",
+      "retry": "Réessayer"
+    }
   }
 }
