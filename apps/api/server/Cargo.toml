@@ -1,0 +1,15 @@
+[package]
+name = "cartouche-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# Test-only code (/api/test/* routes, seed binary, HTTP-driven clock). Never in `default`.
+test-support = []
+
+[dependencies]
+cartouche-domain.workspace = true
+thiserror.workspace = true
+url.workspace = true

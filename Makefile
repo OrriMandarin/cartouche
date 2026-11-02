@@ -42,8 +42,7 @@ test-web:
 	pnpm --filter web test && pnpm --filter @cartouche/api-client test
 
 lint:
-	cargo fmt --check
-	cargo clippy --workspace --all-features -- -D warnings
+	cd apps/api && cargo fmt --all --check && cargo clippy --workspace --all-features -- -D warnings
 	pnpm -r lint
 	pnpm -r typecheck
 
