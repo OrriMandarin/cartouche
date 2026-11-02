@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
-import { TestModeBanner } from "@/components/TestModeBanner";
+import { TestModeBanner, isTestModeProfile } from "@/components/TestModeBanner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -15,7 +16,13 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={locale}>
-      <body className="min-h-screen font-sans antialiased">
+      {/* The banner is fixed to the top: reserve its height so it never covers content. */}
+      <body
+        className={cn(
+          "min-h-screen font-sans antialiased",
+          isTestModeProfile(process.env.NEXT_PUBLIC_CARTOUCHE_BUILD_PROFILE) && "pt-6",
+        )}
+      >
         <NextIntlClientProvider>
           <TestModeBanner />
           <AuthProvider>{children}</AuthProvider>

@@ -1,6 +1,11 @@
 import { useTranslations } from "next-intl";
 import type { BuildProfile } from "@/lib/build-profile";
 
+/** True for the profiles in which the test-mode banner is shown. */
+export function isTestModeProfile(profile: BuildProfile | string | undefined): boolean {
+  return profile === "development" || profile === "test";
+}
+
 /**
  * spec: ACC-009. Permanent banner shown in the development and test build profiles.
  * The profile defaults to the value inlined at build time by next.config.ts.
@@ -12,7 +17,7 @@ export function TestModeBanner({
 }) {
   const t = useTranslations();
 
-  if (profile !== "development" && profile !== "test") {
+  if (!isTestModeProfile(profile)) {
     return null;
   }
 

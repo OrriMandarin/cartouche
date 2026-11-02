@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, test } from "vitest";
 import messages from "../../messages/fr.json";
-import { TestModeBanner } from "./TestModeBanner";
+import { TestModeBanner, isTestModeProfile } from "./TestModeBanner";
 
 function renderBanner(profile: "development" | "test" | "production") {
   return render(
@@ -28,5 +28,14 @@ describe("TestModeBanner", () => {
   test("ACC-009: hides banner in production profile", () => {
     renderBanner("production");
     expect(screen.queryByTestId("test-mode-banner")).toBeNull();
+  });
+});
+
+describe("isTestModeProfile", () => {
+  test("ACC-009: only development and test show the banner", () => {
+    expect(isTestModeProfile("development")).toBe(true);
+    expect(isTestModeProfile("test")).toBe(true);
+    expect(isTestModeProfile("production")).toBe(false);
+    expect(isTestModeProfile(undefined)).toBe(false);
   });
 });
