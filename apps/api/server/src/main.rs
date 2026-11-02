@@ -8,7 +8,7 @@ use cartouche_api::config::Config;
 use cartouche_api::startup::{TEST_SUPPORT_COMPILED, test_routes_enabled, validate};
 use cartouche_api::state::AppState;
 use cartouche_api::{db, telemetry};
-use cartouche_domain::SystemClock;
+use cartouche_domain::{Clock, OverridableClock, SystemClock};
 
 /// How long fetched signing keys are trusted before the JWKS is fetched again.
 const JWKS_TTL: Duration = Duration::from_secs(3600);
@@ -49,11 +49,11 @@ async fn main() -> ExitCode {
 }
 
 async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
+    let bind_addr = config.bind_addr;
     let pool = db::connect(&config.database_url).await?;
     db::migrate(&pool).await?;
 
-    let bind_addr = config.bind_addr;
-    let clock = Arc::new(SystemClock);
+    let (clock, _test_clock) = clocks(&config);
     let http = reqwest::Client::builder()
         .user_agent(concat!("cartouche-api/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(3))
@@ -67,6 +67,8 @@ async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
         config: Arc::new(config),
         clock,
         verifier: Arc::new(verifier),
+        #[cfg(feature = "test-support")]
+        test_clock: _test_clock,
     };
     let listener = tokio::net::TcpListener::bind(bind_addr).await?;
     tracing::info!(addr = %listener.local_addr()?, "listening");
@@ -74,6 +76,17 @@ async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())
+}
+
+/// The clock of the application state, plus the same clock as an `OverridableClock` when the
+/// test routes are mounted (`development` and `test` only); otherwise the system clock.
+fn clocks(config: &Config) -> (Arc<dyn Clock>, Option<Arc<OverridableClock>>) {
+    if test_routes_enabled(config) {
+        let clock = Arc::new(OverridableClock::new());
+        (clock.clone(), Some(clock))
+    } else {
+        (Arc::new(SystemClock), None)
+    }
 }
 
 async fn shutdown_signal() {

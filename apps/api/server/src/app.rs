@@ -24,10 +24,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/me", get(me))
         .route("/api/admin/users", get(list_users))
         .route("/api/admin/users/{id}/status", post(set_user_status));
-    // Probe for `ApprovedUser` until real routes use it; moved to a test-support module later.
+    // Every `/api/test/*` route lives in `test_support::routes`; one guard mounts them.
     #[cfg(feature = "test-support")]
     let router = if crate::startup::test_routes_enabled(&state.config) {
-        router.route("/api/test/approved-check", get(approved_check))
+        router.merge(crate::test_support::routes::routes())
     } else {
         router
     };
@@ -36,11 +36,6 @@ pub fn build_router(state: AppState) -> Router {
         .fallback(not_found)
         .with_state(state);
     with_request_context(router)
-}
-
-#[cfg(feature = "test-support")]
-async fn approved_check(_: crate::auth::ApprovedUser) -> axum::http::StatusCode {
-    axum::http::StatusCode::NO_CONTENT
 }
 
 async fn not_found() -> ApiError {

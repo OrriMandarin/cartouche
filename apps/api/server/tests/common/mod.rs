@@ -11,7 +11,7 @@ use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwtVerifier, StaticKeySource, TokenVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::state::AppState;
-use cartouche_domain::ManualClock;
+use cartouche_domain::{Clock, ManualClock};
 use chrono::{TimeZone, Utc};
 use http_body_util::BodyExt;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header};
@@ -97,7 +97,7 @@ pub fn sign_with(
 }
 
 /// A verifier backed by the static test key, validating against `config.auth` on `clock`.
-pub fn test_verifier(config: &Config, clock: Arc<ManualClock>) -> Arc<dyn TokenVerifier> {
+pub fn test_verifier(config: &Config, clock: Arc<dyn Clock>) -> Arc<dyn TokenVerifier> {
     Arc::new(JwtVerifier::new(&config.auth, test_key_source(), clock))
 }
 
@@ -118,6 +118,8 @@ pub fn test_state_with(pool: PgPool, overrides: &[(&str, &str)]) -> (AppState, A
         verifier: test_verifier(&config, clock.clone()),
         config: Arc::new(config),
         clock: clock.clone(),
+        #[cfg(feature = "test-support")]
+        test_clock: None,
     };
     (state, clock)
 }
@@ -140,6 +142,18 @@ impl TestApp {
             router: build_router(state),
             clock,
         }
+    }
+
+    /// Seeds the named scenario through `POST /api/test/seed` (needs the `test-support` feature).
+    #[cfg(feature = "test-support")]
+    pub async fn seed(&self, name: &str) -> TestResponse {
+        self.request(
+            "POST",
+            "/api/test/seed",
+            None,
+            Some(serde_json::json!({ "scenario": name })),
+        )
+        .await
     }
 
     pub async fn request(

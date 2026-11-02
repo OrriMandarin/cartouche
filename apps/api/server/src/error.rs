@@ -36,6 +36,9 @@ pub enum ApiError {
     InvalidRequest,
     /// The requested status change is not an allowed transition (ADM-003).
     InvalidTransition,
+    /// `POST /api/test/seed` named a scenario that does not exist.
+    #[cfg(feature = "test-support")]
+    UnknownScenario,
     /// Unexpected failure: the detail is logged, never sent to the client.
     Internal(String),
 }
@@ -56,6 +59,8 @@ impl ApiError {
             ApiError::CannotModerateAdmin => "cannot_moderate_admin",
             ApiError::InvalidRequest => "invalid_request",
             ApiError::InvalidTransition => "invalid_transition",
+            #[cfg(feature = "test-support")]
+            ApiError::UnknownScenario => "unknown_scenario",
             ApiError::Internal(_) => "internal_error",
         }
     }
@@ -63,6 +68,8 @@ impl ApiError {
     pub fn status(&self) -> StatusCode {
         match self {
             ApiError::NotFound => StatusCode::NOT_FOUND,
+            #[cfg(feature = "test-support")]
+            ApiError::UnknownScenario => StatusCode::NOT_FOUND,
             ApiError::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             ApiError::TokenInvalid | ApiError::TokenExpired => StatusCode::UNAUTHORIZED,
             ApiError::AuthUnavailable => StatusCode::SERVICE_UNAVAILABLE,
@@ -95,6 +102,8 @@ impl ApiError {
             }
             ApiError::InvalidRequest => "The request is malformed.",
             ApiError::InvalidTransition => "This status change is not allowed.",
+            #[cfg(feature = "test-support")]
+            ApiError::UnknownScenario => "This seed scenario does not exist.",
             ApiError::Internal(_) => "An internal error occurred.",
         }
     }
