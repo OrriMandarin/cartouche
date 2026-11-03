@@ -217,6 +217,474 @@
         ]
       }
     },
+    "/api/cards": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "List my cards",
+        "description": "The caller's cards, oldest first. Other users' cards are never listed.",
+        "operationId": "list_cards",
+        "responses": {
+          "200": {
+            "description": "The caller's cards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Create a card",
+        "description": "Creates a card with the default template and theme, and claims its slug.",
+        "operationId": "create_card",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCardBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body (`invalid_request`) or invalid fields (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The slug is not available (`slug_taken`, `slug_reserved`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/cards/{id}": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Get a card",
+        "description": "One of the caller's cards. A card of another user is reported as not found.",
+        "operationId": "get_card",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Update a card",
+        "description": "Replaces the card's slug, template, settings, theme, content and links. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available.",
+        "operationId": "update_card",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCardBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The saved card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The slug is not available (`slug_taken`, `slug_reserved`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Delete a card",
+        "description": "Deletes the card and its media. Its slugs stay reserved to the caller and can be reclaimed by them only.",
+        "operationId": "delete_card",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The card is deleted."
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -280,6 +748,199 @@
           },
           "403": {
             "description": "Signups are closed for a new user (`signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/slugs/availability": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Check a slug",
+        "description": "Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. Never says who holds a taken slug.",
+        "operationId": "slug_availability",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "description": "The slug to check, in any case.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "card_id",
+            "in": "query",
+            "description": "The card being edited, if any.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The slug's normalized form and status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlugAvailability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/slugs/suggestion": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Suggest a slug",
+        "description": "The first free slug among the name's base form, then the base with the suffixes `-2` to `-100`. `null` when the name gives no usable base or all are taken.",
+        "operationId": "suggest_slug",
+        "parameters": [
+          {
+            "name": "first_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "last_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The suggestion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlugSuggestion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -380,6 +1041,282 @@
           }
         }
       },
+      "Background": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "color",
+              "kind"
+            ],
+            "properties": {
+              "color": {
+                "$ref": "#/components/schemas/Color"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "solid"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Linear gradient; `angle` is in degrees, 0 to 360.",
+            "required": [
+              "from",
+              "to",
+              "angle",
+              "kind"
+            ],
+            "properties": {
+              "angle": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              },
+              "from": {
+                "$ref": "#/components/schemas/Color"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "gradient"
+                ]
+              },
+              "to": {
+                "$ref": "#/components/schemas/Color"
+              }
+            }
+          }
+        ]
+      },
+      "ButtonShape": {
+        "type": "string",
+        "enum": [
+          "square",
+          "rounded",
+          "pill"
+        ]
+      },
+      "CardList": {
+        "type": "object",
+        "required": [
+          "cards"
+        ],
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardView"
+            },
+            "description": "The caller's cards, oldest first."
+          }
+        }
+      },
+      "CardStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "disabled",
+          "disabled_by_support"
+        ]
+      },
+      "CardView": {
+        "type": "object",
+        "description": "A card as its owner sees it.",
+        "required": [
+          "id",
+          "slug",
+          "public_url",
+          "status",
+          "template",
+          "settings",
+          "theme",
+          "content",
+          "links",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/ContentView"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkView"
+            }
+          },
+          "public_url": {
+            "type": "string",
+            "description": "Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`."
+          },
+          "settings": {
+            "type": "object",
+            "description": "Template-specific settings, a JSON object."
+          },
+          "slug": {
+            "type": "string",
+            "description": "The current slug."
+          },
+          "status": {
+            "$ref": "#/components/schemas/CardStatus"
+          },
+          "template": {
+            "type": "string",
+            "description": "Identifier of the template; any well-formed identifier is stored."
+          },
+          "theme": {
+            "$ref": "#/components/schemas/Theme"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Color": {
+        "type": "string",
+        "description": "A `#rrggbb` color, stored in lowercase.",
+        "example": "#1a2b3c"
+      },
+      "ContentInput": {
+        "type": "object",
+        "description": "Card content as submitted: free text, not yet normalized.",
+        "properties": {
+          "company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "job_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ContentView": {
+        "type": "object",
+        "properties": {
+          "company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "job_title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "E.164, as stored."
+          },
+          "phone_display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The phone in international format for display, when a phone is set."
+          }
+        }
+      },
+      "CreateCardBody": {
+        "type": "object",
+        "description": "A new card: its slug and, usually, the name to show.",
+        "required": [
+          "slug"
+        ],
+        "properties": {
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
       "ErrorBody": {
         "type": "object",
         "description": "Body of every error response: `{\"error\":{\"code\",\"message\",\"request_id\"}}`.",
@@ -459,6 +1396,61 @@
           }
         }
       },
+      "LinkInput": {
+        "type": "object",
+        "required": [
+          "kind",
+          "url"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LinkKind"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "LinkKind": {
+        "type": "string",
+        "enum": [
+          "website",
+          "linkedin",
+          "instagram",
+          "facebook",
+          "tiktok",
+          "youtube",
+          "x",
+          "custom"
+        ]
+      },
+      "LinkView": {
+        "type": "object",
+        "required": [
+          "kind",
+          "url"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LinkKind"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "MeResponse": {
         "type": "object",
         "description": "The authenticated user's account.",
@@ -505,6 +1497,46 @@
           }
         }
       },
+      "SlugAvailability": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The slug as normalized; `null` when it is invalid."
+          },
+          "status": {
+            "$ref": "#/components/schemas/SlugAvailabilityStatus"
+          }
+        }
+      },
+      "SlugAvailabilityStatus": {
+        "type": "string",
+        "enum": [
+          "free",
+          "current",
+          "reserved",
+          "taken",
+          "invalid"
+        ]
+      },
+      "SlugSuggestion": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A free slug derived from the name, or `null` when the name gives nothing usable."
+          }
+        }
+      },
       "StatusCounts": {
         "type": "object",
         "description": "Number of accounts per status; all four are always present.",
@@ -530,6 +1562,112 @@
           "suspended": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "Theme": {
+        "type": "object",
+        "required": [
+          "preset"
+        ],
+        "properties": {
+          "accent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Color"
+              }
+            ]
+          },
+          "background": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Background"
+              }
+            ]
+          },
+          "button_shape": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ButtonShape"
+              }
+            ]
+          },
+          "font": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Font pair identifier."
+          },
+          "header_gradient": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Intensity of the header gradient, 0 to 100.",
+            "minimum": 0
+          },
+          "preset": {
+            "type": "string",
+            "description": "Preset identifier; an unknown one is accepted and falls back at render time."
+          },
+          "text": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Color"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateCardBody": {
+        "type": "object",
+        "description": "The whole editable content of a card; it replaces what is stored.",
+        "required": [
+          "slug",
+          "template",
+          "settings",
+          "theme",
+          "content",
+          "links"
+        ],
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/ContentInput"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkInput"
+            }
+          },
+          "settings": {
+            "type": "object",
+            "description": "Template-specific settings: a JSON object of at most 8 192 bytes."
+          },
+          "slug": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          },
+          "theme": {
+            "$ref": "#/components/schemas/Theme",
+            "description": "Received as raw JSON so that an invalid theme is a field error (`invalid_theme`)."
           }
         }
       },
@@ -560,6 +1698,10 @@
     {
       "name": "account",
       "description": "The signed-in user's account"
+    },
+    {
+      "name": "cards",
+      "description": "The signed-in user's cards and their links"
     },
     {
       "name": "admin",

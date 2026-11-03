@@ -14,8 +14,10 @@ use tracing::{Span, field};
 use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
 use crate::routes::admin_users::{list_users, set_user_status};
+use crate::routes::cards::{create_card, delete_card, get_card, list_cards, update_card};
 use crate::routes::health::health;
 use crate::routes::me::me;
+use crate::routes::slugs::{slug_availability, suggest_slug};
 use crate::state::AppState;
 
 pub fn build_router(state: AppState) -> Router {
@@ -23,6 +25,13 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/openapi.json", get(openapi_json))
         .route("/api/health", get(health))
         .route("/api/me", get(me))
+        .route("/api/cards", get(list_cards).post(create_card))
+        .route(
+            "/api/cards/{id}",
+            get(get_card).put(update_card).delete(delete_card),
+        )
+        .route("/api/slugs/suggestion", get(suggest_slug))
+        .route("/api/slugs/availability", get(slug_availability))
         .route("/api/admin/users", get(list_users))
         .route("/api/admin/users/{id}/status", post(set_user_status));
     // Every `/api/test/*` route lives in `test_support::routes`; one guard mounts them.

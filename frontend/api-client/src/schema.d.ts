@@ -44,6 +44,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my cards
+         * @description The caller's cards, oldest first. Other users' cards are never listed.
+         */
+        get: operations["list_cards"];
+        put?: never;
+        /**
+         * Create a card
+         * @description Creates a card with the default template and theme, and claims its slug.
+         */
+        post: operations["create_card"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cards/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a card
+         * @description One of the caller's cards. A card of another user is reported as not found.
+         */
+        get: operations["get_card"];
+        /**
+         * Update a card
+         * @description Replaces the card's slug, template, settings, theme, content and links. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available.
+         */
+        put: operations["update_card"];
+        post?: never;
+        /**
+         * Delete a card
+         * @description Deletes the card and its media. Its slugs stay reserved to the caller and can be reclaimed by them only.
+         */
+        delete: operations["delete_card"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -84,6 +136,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/slugs/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check a slug
+         * @description Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. Never says who holds a taken slug.
+         */
+        get: operations["slug_availability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/slugs/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggest a slug
+         * @description The first free slug among the name's base form, then the base with the suffixes `-2` to `-100`. `null` when the name gives no usable base or all are taken.
+         */
+        get: operations["suggest_slug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -104,6 +196,80 @@ export interface components {
             is_admin: boolean;
             status: components["schemas"]["UserStatus"];
             subject: string;
+        };
+        Background: {
+            color: components["schemas"]["Color"];
+            /** @enum {string} */
+            kind: "solid";
+        } | {
+            /** Format: int32 */
+            angle: number;
+            from: components["schemas"]["Color"];
+            /** @enum {string} */
+            kind: "gradient";
+            to: components["schemas"]["Color"];
+        };
+        /** @enum {string} */
+        ButtonShape: "square" | "rounded" | "pill";
+        CardList: {
+            /** @description The caller's cards, oldest first. */
+            cards: components["schemas"]["CardView"][];
+        };
+        /** @enum {string} */
+        CardStatus: "active" | "disabled" | "disabled_by_support";
+        /** @description A card as its owner sees it. */
+        CardView: {
+            content: components["schemas"]["ContentView"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            id: string;
+            links: components["schemas"]["LinkView"][];
+            /** @description Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`. */
+            public_url: string;
+            /** @description Template-specific settings, a JSON object. */
+            settings: Record<string, never>;
+            /** @description The current slug. */
+            slug: string;
+            status: components["schemas"]["CardStatus"];
+            /** @description Identifier of the template; any well-formed identifier is stored. */
+            template: string;
+            theme: components["schemas"]["Theme"];
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /**
+         * @description A `#rrggbb` color, stored in lowercase.
+         * @example #1a2b3c
+         */
+        Color: string;
+        /** @description Card content as submitted: free text, not yet normalized. */
+        ContentInput: {
+            company?: string | null;
+            description?: string | null;
+            email?: string | null;
+            first_name?: string | null;
+            job_title?: string | null;
+            last_name?: string | null;
+            phone?: string | null;
+        };
+        ContentView: {
+            company?: string | null;
+            description?: string | null;
+            email?: string | null;
+            first_name?: string | null;
+            job_title?: string | null;
+            last_name?: string | null;
+            /** @description E.164, as stored. */
+            phone?: string | null;
+            /** @description The phone in international format for display, when a phone is set. */
+            phone_display?: string | null;
+        };
+        /** @description A new card: its slug and, usually, the name to show. */
+        CreateCardBody: {
+            first_name?: string | null;
+            last_name?: string | null;
+            slug: string;
         };
         /** @description Body of every error response: `{"error":{"code","message","request_id"}}`. */
         ErrorBody: {
@@ -139,6 +305,18 @@ export interface components {
              */
             status: string;
         };
+        LinkInput: {
+            kind: components["schemas"]["LinkKind"];
+            label?: string | null;
+            url: string;
+        };
+        /** @enum {string} */
+        LinkKind: "website" | "linkedin" | "instagram" | "facebook" | "tiktok" | "youtube" | "x" | "custom";
+        LinkView: {
+            kind: components["schemas"]["LinkKind"];
+            label?: string | null;
+            url: string;
+        };
         /** @description The authenticated user's account. */
         MeResponse: {
             display_name?: string | null;
@@ -153,6 +331,17 @@ export interface components {
         SetStatusBody: {
             status: components["schemas"]["UserStatus"];
         };
+        SlugAvailability: {
+            /** @description The slug as normalized; `null` when it is invalid. */
+            slug?: string | null;
+            status: components["schemas"]["SlugAvailabilityStatus"];
+        };
+        /** @enum {string} */
+        SlugAvailabilityStatus: "free" | "current" | "reserved" | "taken" | "invalid";
+        SlugSuggestion: {
+            /** @description A free slug derived from the name, or `null` when the name gives nothing usable. */
+            slug?: string | null;
+        };
         /** @description Number of accounts per status; all four are always present. */
         StatusCounts: {
             /** Format: int64 */
@@ -163,6 +352,32 @@ export interface components {
             rejected: number;
             /** Format: int64 */
             suspended: number;
+        };
+        Theme: {
+            accent?: null | components["schemas"]["Color"];
+            background?: null | components["schemas"]["Background"];
+            button_shape?: null | components["schemas"]["ButtonShape"];
+            /** @description Font pair identifier. */
+            font?: string | null;
+            /**
+             * Format: int32
+             * @description Intensity of the header gradient, 0 to 100.
+             */
+            header_gradient?: number | null;
+            /** @description Preset identifier; an unknown one is accepted and falls back at render time. */
+            preset: string;
+            text?: null | components["schemas"]["Color"];
+        };
+        /** @description The whole editable content of a card; it replaces what is stored. */
+        UpdateCardBody: {
+            content: components["schemas"]["ContentInput"];
+            links: components["schemas"]["LinkInput"][];
+            /** @description Template-specific settings: a JSON object of at most 8 192 bytes. */
+            settings: Record<string, never>;
+            slug: string;
+            template: string;
+            /** @description Received as raw JSON so that an invalid theme is a field error (`invalid_theme`). */
+            theme: components["schemas"]["Theme"];
         };
         /** @enum {string} */
         UserStatus: "pending" | "approved" | "rejected" | "suspended";
@@ -333,6 +548,382 @@ export interface operations {
             };
         };
     };
+    list_cards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's cards. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardList"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCardBody"];
+            };
+        };
+        responses: {
+            /** @description The new card. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardView"];
+                };
+            };
+            /** @description Malformed body (`invalid_request`) or invalid fields (`validation_failed`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The slug is not available (`slug_taken`, `slug_reserved`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The card. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardView"];
+                };
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCardBody"];
+            };
+        };
+        responses: {
+            /** @description The saved card. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardView"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The slug is not available (`slug_taken`, `slug_reserved`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The card is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -390,6 +981,144 @@ export interface operations {
                 };
             };
             /** @description Signups are closed for a new user (`signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    slug_availability: {
+        parameters: {
+            query?: {
+                /** @description The slug to check, in any case. */
+                slug?: string;
+                /** @description The card being edited, if any. */
+                card_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The slug's normalized form and status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlugAvailability"];
+                };
+            };
+            /** @description Malformed query (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    suggest_slug: {
+        parameters: {
+            query?: {
+                first_name?: string;
+                last_name?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The suggestion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlugSuggestion"];
+                };
+            };
+            /** @description Malformed query (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
             403: {
                 headers: {
                     [name: string]: unknown;

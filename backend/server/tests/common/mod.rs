@@ -2,6 +2,8 @@
 //! with a frozen clock. Later tasks extend it (key source for tokens, test clock).
 #![allow(dead_code)] // each test binary uses a different subset
 
+pub mod cards;
+
 use std::sync::{Arc, Mutex};
 
 use axum::Router;

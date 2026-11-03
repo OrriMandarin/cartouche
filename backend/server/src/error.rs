@@ -63,6 +63,10 @@ pub enum ApiError {
     UnsupportedMediaType,
     /// The requested status change is not an allowed transition (ADM-003).
     InvalidTransition,
+    /// The slug belongs to someone else (LNK-022).
+    SlugTaken,
+    /// The slug is an old slug of another card of the same owner (LNK-025).
+    SlugReserved,
     /// `POST /api/test/seed` named a scenario that does not exist.
     #[cfg(feature = "test-support")]
     UnknownScenario,
@@ -89,6 +93,8 @@ impl ApiError {
             ApiError::PayloadTooLarge => "payload_too_large",
             ApiError::UnsupportedMediaType => "unsupported_media_type",
             ApiError::InvalidTransition => "invalid_transition",
+            ApiError::SlugTaken => "slug_taken",
+            ApiError::SlugReserved => "slug_reserved",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
             ApiError::Internal(_) => "internal_error",
@@ -112,7 +118,9 @@ impl ApiError {
             ApiError::InvalidRequest | ApiError::Validation(_) => StatusCode::BAD_REQUEST,
             ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            ApiError::InvalidTransition => StatusCode::CONFLICT,
+            ApiError::InvalidTransition | ApiError::SlugTaken | ApiError::SlugReserved => {
+                StatusCode::CONFLICT
+            }
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -137,6 +145,8 @@ impl ApiError {
             ApiError::PayloadTooLarge => "The request body is too large.",
             ApiError::UnsupportedMediaType => "The content type is not supported.",
             ApiError::InvalidTransition => "This status change is not allowed.",
+            ApiError::SlugTaken => "This link is already taken.",
+            ApiError::SlugReserved => "This link was used by another of your cards.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
             ApiError::Internal(_) => "An internal error occurred.",
@@ -263,6 +273,15 @@ mod tests {
             ApiError::UnsupportedMediaType.status(),
             StatusCode::UNSUPPORTED_MEDIA_TYPE
         );
+    }
+
+    // spec: LNK-022, LNK-025
+    #[test]
+    fn slug_errors_are_409() {
+        assert_eq!(ApiError::SlugTaken.code(), "slug_taken");
+        assert_eq!(ApiError::SlugTaken.status(), StatusCode::CONFLICT);
+        assert_eq!(ApiError::SlugReserved.code(), "slug_reserved");
+        assert_eq!(ApiError::SlugReserved.status(), StatusCode::CONFLICT);
     }
 
     // spec: ACC-007

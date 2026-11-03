@@ -7,7 +7,7 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
-use crate::routes::{admin_users, health, me};
+use crate::routes::{admin_users, cards, health, me, slugs};
 
 struct BearerAuth;
 
@@ -39,12 +39,20 @@ impl Modify for BearerAuth {
         me::me,
         admin_users::list_users,
         admin_users::set_user_status,
+        cards::list_cards,
+        cards::create_card,
+        cards::get_card,
+        cards::update_card,
+        cards::delete_card,
+        slugs::suggest_slug,
+        slugs::slug_availability,
     ),
     components(schemas(crate::error::ErrorBody, crate::error::ErrorDetail)),
     modifiers(&BearerAuth),
     tags(
         (name = "health", description = "Service health"),
         (name = "account", description = "The signed-in user's account"),
+        (name = "cards", description = "The signed-in user's cards and their links"),
         (name = "admin", description = "Support tools, administrators only"),
     ),
 )]
