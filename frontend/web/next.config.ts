@@ -17,7 +17,11 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_CARTOUCHE_BUILD_PROFILE: profile,
   },
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${apiInternalUrl}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${apiInternalUrl}/api/:path*` },
+      // Card media, served by the API in `local` storage mode.
+      { source: "/media/:path*", destination: `${apiInternalUrl}/media/:path*` },
+    ];
   },
 };
 

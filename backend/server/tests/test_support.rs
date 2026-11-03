@@ -317,3 +317,116 @@ async fn test_routes_absent_in_production_env(pool: PgPool) {
         assert_eq!(response.json["error"]["code"], "not_found", "{path}");
     }
 }
+
+async fn public_card(app: &TestApp, slug: &str) -> common::TestResponse {
+    app.request("GET", &format!("/api/public/cards/{slug}"), None, None)
+        .await
+}
+
+// spec: ACC-008
+#[sqlx::test]
+async fn cards_scenario_seeds_every_card_state(pool: PgPool) {
+    let app = test_app(pool.clone()).await;
+    assert_eq!(app.seed("base").await.status, StatusCode::OK);
+    let response = app.seed("cards").await;
+    assert_eq!(response.status, StatusCode::OK, "{}", response.json);
+
+    let mut seeded: Vec<(&str, &str)> = response.json["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c["slug"].as_str().unwrap(), c["owner"].as_str().unwrap()))
+        .collect();
+    seeded.sort();
+    assert_eq!(
+        seeded,
+        [
+            ("alice-archive", "seed-alice"),
+            ("alice-durand", "seed-alice"),
+            ("bob-martin", "seed-bob"),
+            ("dan-moreau", "seed-dan"),
+        ]
+    );
+    for card in response.json["cards"].as_array().unwrap() {
+        assert!(card["id"].as_str().is_some(), "every card reports its id");
+    }
+
+    let cards: i64 = sqlx::query_scalar("select count(*) from cards")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(cards, 4);
+    let slugs: i64 = sqlx::query_scalar("select count(*) from card_slugs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(slugs, 6, "four current slugs, one old, one reserved");
+
+    let alice = public_card(&app, "alice-durand").await;
+    assert_eq!(alice.status, StatusCode::OK, "{}", alice.json);
+    assert_eq!(alice.json["state"], "active");
+    let content = &alice.json["card"]["content"];
+    assert_eq!(content["first_name"], "Alice");
+    assert_eq!(content["last_name"], "Durand");
+    assert_eq!(content["job_title"], "Fondatrice");
+    assert_eq!(content["company"], "Atelier Durand & Fils");
+    assert_eq!(content["email"], "alice@example.test");
+    assert_eq!(content["phone"], "+33612345678");
+    assert_eq!(
+        content["description"],
+        "Créatrice de cartes ✨ — l'artisanat d'aujourd'hui"
+    );
+    let links = alice.json["card"]["links"].as_array().unwrap();
+    assert_eq!(links.len(), 2);
+    assert_eq!(links[0]["kind"], "linkedin");
+    assert_eq!(links[0]["url"], "https://www.linkedin.com/in/alice");
+    assert_eq!(links[1]["kind"], "custom");
+    assert_eq!(links[1]["label"], "Portfolio");
+    assert_eq!(links[1]["url"], "https://alice.example.test");
+
+    let old = public_card(&app, "alice").await;
+    assert_eq!(old.status, StatusCode::OK, "{}", old.json);
+    assert_eq!(old.json["state"], "redirect");
+    assert_eq!(old.json["slug"], "alice-durand");
+
+    for inactive in [
+        "alice-archive",
+        "alice-ancienne",
+        "bob-martin",
+        "dan-moreau",
+    ] {
+        let response = public_card(&app, inactive).await;
+        assert_eq!(response.status, StatusCode::OK, "{inactive}");
+        assert_eq!(response.json["state"], "inactive", "{inactive}");
+    }
+}
+
+// spec: ACC-008
+#[sqlx::test]
+async fn cards_scenario_is_replayable(pool: PgPool) {
+    let app = test_app(pool.clone()).await;
+    app.seed("base").await;
+    let first = app.seed("cards").await;
+    assert_eq!(first.status, StatusCode::OK, "{}", first.json);
+    sqlx::query("update cards set first_name = 'x', owner_disabled_at = now()")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let second = app.seed("cards").await;
+    assert_eq!(second.status, StatusCode::OK, "{}", second.json);
+    assert_eq!(first.json["cards"], second.json["cards"]);
+
+    let cards: i64 = sqlx::query_scalar("select count(*) from cards")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(cards, 4);
+    let slugs: i64 = sqlx::query_scalar("select count(*) from card_slugs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(slugs, 6);
+    let alice = public_card(&app, "alice-durand").await;
+    assert_eq!(alice.json["state"], "active");
+    assert_eq!(alice.json["card"]["content"]["first_name"], "Alice");
+}

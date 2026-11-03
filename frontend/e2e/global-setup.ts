@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:18080";
+import { API_URL } from "./env";
 
 const TIMEOUT_MS = 60_000;
 
