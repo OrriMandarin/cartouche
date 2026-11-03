@@ -17,8 +17,8 @@ use super::users::parse_status;
 pub enum Resolution {
     /// The current slug of a card, with the status of the card's owner.
     Current(Card, UserStatus),
-    /// An old slug of a card that now has the slug `current`.
-    Old { current: String },
+    /// An old slug of a card; `card.slug` is its current slug.
+    Old { card: Card, owner: UserStatus },
     /// A slug of a card that no longer exists.
     Deleted,
 }
@@ -106,12 +106,9 @@ pub async fn resolve(pool: &PgPool, slug: &str) -> Result<Option<Resolution>, sq
         return Ok(None);
     };
     let is_current = row.is_current;
-    let old_target = row.current_slug.clone();
     Ok(Some(match row.into_current().transpose()? {
         None => Resolution::Deleted,
-        Some((card, status)) if is_current => Resolution::Current(card, status),
-        Some(_) => Resolution::Old {
-            current: old_target.ok_or(sqlx::Error::RowNotFound)?,
-        },
+        Some((card, owner)) if is_current => Resolution::Current(card, owner),
+        Some((card, owner)) => Resolution::Old { card, owner },
     }))
 }

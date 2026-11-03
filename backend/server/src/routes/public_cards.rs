@@ -42,19 +42,23 @@ enum Lookup {
 }
 
 /// Looks up the slug as typed in the address: stored slugs are lowercase, so a differing
-/// input is only ever a redirect, except for a deleted card's slug, which has nowhere to go.
+/// input or an old slug is a redirect. A card that is not served is neutral from every
+/// address, so that nothing tells why, nor where its current slug is (LNK-027).
 async fn lookup(state: &AppState, input: &str) -> Result<Lookup, ApiError> {
     let lowered = input.to_lowercase();
-    match public_cards::resolve(&state.db, &lowered).await? {
-        None => Err(ApiError::NotFound),
-        Some(Resolution::Deleted) => Ok(Lookup::Inactive),
-        Some(Resolution::Old { current }) => Ok(Lookup::Redirect(current)),
-        Some(Resolution::Current(card, _)) if lowered != input => Ok(Lookup::Redirect(card.slug)),
-        Some(Resolution::Current(card, owner)) if is_served(card.status(), owner) => {
-            Ok(Lookup::Serve(Box::new(card)))
-        }
-        Some(Resolution::Current(..)) => Ok(Lookup::Inactive),
-    }
+    let (card, owner, moved) = match public_cards::resolve(&state.db, &lowered).await? {
+        None => return Err(ApiError::NotFound),
+        Some(Resolution::Deleted) => return Ok(Lookup::Inactive),
+        Some(Resolution::Old { card, owner }) => (card, owner, true),
+        Some(Resolution::Current(card, owner)) => (card, owner, lowered != input),
+    };
+    Ok(if !is_served(card.status(), owner) {
+        Lookup::Inactive
+    } else if moved {
+        Lookup::Redirect(card.slug)
+    } else {
+        Lookup::Serve(Box::new(card))
+    })
 }
 
 /// Resolves a slug to the card to show, a redirect or the neutral state.

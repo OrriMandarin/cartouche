@@ -395,3 +395,60 @@ async fn vcard_of_unserved_card_is_410(pool: PgPool) {
         assert_eq!(error_code(&res), "card_inactive", "{slug}");
     }
 }
+
+/// The three ways a live card stops being served, each on a card whose slug was renamed:
+/// `(owner, old slug, current slug)`.
+async fn renamed_unserved_cards(app: &TestApp, pool: &PgPool) -> Vec<(&'static str, &'static str)> {
+    let mut cases = Vec::new();
+    for (sub, old, current) in [
+        ("owner-off", "owner-off-old", "owner-off"),
+        ("support-off", "support-off-old", "support-off"),
+        ("suspended", "suspended-old", "suspended"),
+    ] {
+        let card = create_card(app, sub, old).await;
+        let saved = put_card(
+            app,
+            sub,
+            card["id"].as_str().unwrap(),
+            json!({ "slug": current }),
+        )
+        .await;
+        assert_eq!(saved.status, StatusCode::OK, "{}", saved.json);
+        match sub {
+            "owner-off" => act(app, sub, card["id"].as_str().unwrap(), "disable").await,
+            "support-off" => support_disable(pool, card["id"].as_str().unwrap()).await,
+            _ => set_owner_status(pool, sub, "suspended").await,
+        }
+        cases.push((old, current));
+    }
+    cases
+}
+
+// spec: LNK-027, LNK-006, LNK-010, ADM-011
+#[sqlx::test(migrations = "./migrations")]
+async fn unserved_card_is_neutral_from_old_and_uppercase_slugs(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    for (old, current) in renamed_unserved_cards(&app, &pool).await {
+        let uppercase = current.to_uppercase();
+        for address in [old, uppercase.as_str(), current] {
+            let res = public(&app, &format!("/api/public/cards/{address}")).await;
+            assert_eq!(res.status, StatusCode::OK, "{address}");
+            assert_eq!(res.body.as_ref(), br#"{"state":"inactive"}"#, "{address}");
+        }
+    }
+}
+
+// spec: LNK-027, LNK-007, LNK-010, ADM-011
+#[sqlx::test(migrations = "./migrations")]
+async fn unserved_card_vcard_is_410_from_old_and_uppercase_slugs(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    for (old, current) in renamed_unserved_cards(&app, &pool).await {
+        let uppercase = current.to_uppercase();
+        for address in [old, uppercase.as_str(), current] {
+            let res = public(&app, &format!("/api/public/cards/{address}/vcard")).await;
+            assert_eq!(res.status, StatusCode::GONE, "{address}");
+            assert_eq!(error_code(&res), "card_inactive", "{address}");
+            assert!(res.headers.get("location").is_none(), "{address}");
+        }
+    }
+}
