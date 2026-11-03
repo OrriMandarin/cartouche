@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche app — recadrage des médias</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..800&amp;family=JetBrains+Mono:wght@400..600&amp;display=swap">
+<style>
+body{margin:0}
+.app{--app-bg:#F5F4F1;--app-surface:#FFFFFF;--app-surface-2:#EFEDE8;--app-border:#DEDAD3;--app-border-strong:#8C877E;--app-text:#1C1B19;--app-muted:#5C5850;--app-primary:#1C1B19;--app-on-primary:#FFFFFF;--app-brand:#9A5B13;--app-ring:#1C1B19;--app-stage:#1C1B19;--app-on-stage:#FFFFFF;--app-stage-dim:rgb(0 0 0 / .6);--app-scrim:rgb(28 27 25 / .5);--app-radius:10px;--app-radius-lg:14px;--app-radius-xl:20px;--app-shadow-sm:0 1px 2px rgb(28 27 25 / .06);--app-shadow-lg:0 32px 80px -20px rgb(28 27 25 / .45);--app-font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--app-font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  box-sizing:border-box;position:relative;overflow:hidden;background:var(--app-bg);color:var(--app-text);font-family:var(--app-font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app *,.app *::before,.app *::after{box-sizing:border-box}
+.app h1,.app h2,.app h3,.app p{margin:0}
+.app svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app :focus-visible,.app .is-focus{outline:2px solid var(--app-ring);outline-offset:2px}
+.a-h2{font-size:20px;line-height:1.3;font-weight:650;letter-spacing:-.01em}
+.a-h3{font-size:15px;line-height:1.35;font-weight:650}
+.a-muted{color:var(--app-muted)}
+.a-small{font-size:13px;line-height:1.4}
+.a-mono{font-family:var(--app-font-mono);font-size:13px}
+.a-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:var(--app-radius);background:transparent;color:var(--app-text);font:inherit;font-size:15px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer}
+.a-btn--primary{background:var(--app-primary);color:var(--app-on-primary)}
+.a-btn--secondary{background:var(--app-surface);border-color:var(--app-border);box-shadow:var(--app-shadow-sm)}
+.a-iconbtn{display:inline-grid;place-items:center;width:44px;height:44px;flex:none;border:0;border-radius:var(--app-radius);background:transparent;color:var(--app-text);cursor:pointer}
+.a-check{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding-top:10px;font-size:14px;line-height:1.4}
+.a-check input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--app-primary)}
+.a-switch{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0;border:0;background:transparent;color:var(--app-text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left}
+.a-switch-track{position:relative;width:40px;height:24px;border-radius:999px;background:var(--app-border-strong);flex:none}
+.a-switch-track::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:999px;background:var(--app-surface);box-shadow:var(--app-shadow-sm)}
+.a-switch[aria-checked="true"] .a-switch-track{background:var(--app-primary)}
+.a-switch[aria-checked="true"] .a-switch-track::after{left:18px}
+.a-slider{position:relative;display:flex;align-items:center;height:44px;flex:1}
+.a-slider-track{position:relative;flex:1;height:6px;border-radius:999px;background:var(--app-surface-2);box-shadow:inset 0 0 0 1px var(--app-border)}
+.a-slider-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--app-primary)}
+.a-slider-thumb{position:absolute;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:999px;background:var(--app-surface);border:2px solid var(--app-primary);box-shadow:var(--app-shadow-sm)}
+.a-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--app-scrim)}
+.a-dialog{display:flex;flex-direction:column;gap:20px;padding:24px;background:var(--app-surface);border-radius:var(--app-radius-xl);box-shadow:var(--app-shadow-lg)}
+.a-dialog-actions{display:flex;justify-content:flex-end;gap:10px}
+/* Recadrage */
+.cr-body{display:grid;grid-template-columns:680px 1fr;gap:24px}
+.stage{position:relative;overflow:hidden;background:var(--app-stage);border-radius:12px;touch-action:none}
+.stage > img.src{position:absolute;display:block;user-select:none}
+.frame{position:absolute;box-shadow:0 0 0 9999px var(--app-stage-dim);outline:2px solid var(--app-on-stage);cursor:move}
+.frame.is-round{border-radius:999px}
+.grid{position:absolute;inset:0;pointer-events:none;background:
+  linear-gradient(to right,transparent calc(33.333% - .5px),rgb(255 255 255 / .5) 0,rgb(255 255 255 / .5) calc(33.333% + .5px),transparent 0,transparent calc(66.666% - .5px),rgb(255 255 255 / .5) 0,rgb(255 255 255 / .5) calc(66.666% + .5px),transparent 0),
+  linear-gradient(to bottom,transparent calc(33.333% - .5px),rgb(255 255 255 / .5) 0,rgb(255 255 255 / .5) calc(33.333% + .5px),transparent 0,transparent calc(66.666% - .5px),rgb(255 255 255 / .5) 0,rgb(255 255 255 / .5) calc(66.666% + .5px),transparent 0)}
+.is-round .grid{border-radius:999px}
+.hd{position:absolute;width:16px;height:16px;border-radius:4px;background:var(--app-on-stage);box-shadow:0 1px 3px rgb(0 0 0 / .45)}
+.hd.tl{left:-8px;top:-8px}.hd.tr{right:-8px;top:-8px}.hd.bl{left:-8px;bottom:-8px}.hd.br{right:-8px;bottom:-8px}
+.hd.r{right:-8px;top:50%;margin-top:-8px}
+.z-fade{position:absolute;left:0;right:0;bottom:0;height:55%;background:linear-gradient(to bottom,transparent,rgb(251 240 228 / .78));border-top:2px dashed rgb(255 255 255 / .9);pointer-events:none}
+.z-av{position:absolute;left:50%;bottom:-17.1%;height:39.9%;aspect-ratio:1;transform:translateX(-50%);border-radius:999px;border:2px dashed var(--app-on-stage);background:rgb(255 255 255 / .2);pointer-events:none}
+.z-pause{position:absolute;top:4.3%;right:3.2%;width:11.7%;aspect-ratio:1;border-radius:999px;border:2px dashed var(--app-on-stage);pointer-events:none}
+.z-tag{position:absolute;padding:2px 8px;border-radius:999px;background:rgb(28 27 25 / .8);color:var(--app-on-stage);font-size:12px;font-weight:600;line-height:1.5;white-space:nowrap;pointer-events:none}
+.panel{display:flex;flex-direction:column;gap:18px;min-width:0}
+.zoom{display:flex;align-items:center;gap:4px}
+.legend{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--app-muted)}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend i{display:inline-block;width:18px;height:12px;border:2px dashed var(--app-border-strong);border-radius:3px}
+.legend i.c{border-radius:999px;width:14px;height:14px}
+.tl{position:relative;height:56px;border-radius:8px;overflow:hidden;background-color:var(--app-stage)}
+.tl-strip{background-image:url(/_blob/1e26aee8c2be853cafe2e300d5dfa43a);background-size:100% 100%}
+.tl-dim{position:absolute;top:0;bottom:0;background:rgb(0 0 0 / .62)}
+.tl-sel{position:absolute;top:0;bottom:0;border:3px solid var(--app-on-stage);border-radius:8px}
+.tl-h{position:absolute;top:0;bottom:0;width:14px;background:var(--app-on-stage);display:grid;place-items:center}
+.tl-h::after{content:"";width:2px;height:18px;border-radius:2px;background:var(--app-text)}
+.tl-head{position:absolute;top:-4px;bottom:-4px;width:2px;background:#FFD54A;box-shadow:0 0 0 1px rgb(0 0 0 / .4)}
+.tl-times{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+/* Aperçu sur la carte (variables de carte) */
+.t-terracotta{--c-bg:#FBF0E4;--c-bg-2:#F4DCCA;--c-text:#3B2117}
+.pv{width:272px;border-radius:16px;overflow:hidden;background:linear-gradient(160deg,var(--c-bg),var(--c-bg-2));box-shadow:0 0 0 1px rgb(28 27 25 / .12)}
+.pv-media{position:relative;height:204px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#000 45%,transparent);mask-image:linear-gradient(to bottom,#000 45%,transparent)}
+.pv-media img{position:absolute;display:block}
+.pv-av{position:relative;width:82px;height:82px;margin:-46px auto 0;border-radius:999px;overflow:hidden;box-shadow:0 0 0 3px var(--c-bg)}
+.pv-av img{width:100%;height:100%;object-fit:cover;display:block}
+.pv-name{padding:8px 0 16px;text-align:center;font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:600;color:var(--c-text)}
+.circ{position:relative;border-radius:999px;overflow:hidden;flex:none;box-shadow:0 0 0 1px rgb(28 27 25 / .12)}
+.circ img{position:absolute;display:block}
+/* Mobile */
+.mtop{display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:0 4px;background:var(--app-stage);color:var(--app-on-stage)}
+.mtop .a-btn{color:var(--app-on-stage)}
+.mtop b{font-size:16px}
+.mpanel{display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--app-surface);flex:1}
+/* Planche */
+.b{width:2038px;min-height:3350px;box-sizing:border-box;padding:64px;background:#E4E2DD;color:#1C1B19;font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;gap:96px}
+.b-row{display:flex;flex-direction:column;gap:20px}
+.b-cap{display:flex;flex-direction:column;gap:4px}
+.b-cap h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.b-cap p{margin:0;font-size:15px;line-height:1.45;color:#4E4C47;max-width:120ch}
+.b-frames{display:flex;gap:80px;align-items:flex-start}
+.f-d{position:relative;width:1440px;height:900px;flex:none;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35)}
+.f-m{position:relative;width:390px;height:844px;flex:none;border-radius:40px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35)}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position: absolute; overflow: hidden" aria-hidden="true">
+<defs>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"></path></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></symbol>
+</defs>
+</svg>
+
+<div class="b">
+
+<!-- ================= 1. EN-TÊTE PHOTO ================= -->
+<section class="b-row">
+  <div class="b-cap"><h2>Recadrer l’en-tête — photo</h2><p>S’ouvre depuis « Recadrer » dans la section Médias, et automatiquement après l’envoi d’un fichier qui n’est pas en 4:3. Cadre 4:3 fixe : on déplace la photo et on zoome. Les zones couvertes par la carte (fondu, photo de profil, bouton pause) sont dessinées en pointillés pour garder le sujet visible. Clavier : flèches pour déplacer, + et − pour zoomer ; poignées de 44 px de zone tactile.</p></div>
+  <div class="b-frames">
+    <div class="f-d"><div class="app" style="height: 100%">
+      <div class="a-overlay">
+        <div class="a-dialog" role="dialog" aria-modal="true" aria-labelledby="c1" style="width: 1080px">
+          <div style="display: flex; align-items: center; justify-content: space-between"><h2 class="a-h2" id="c1">Recadrer l’en-tête</h2><button class="a-iconbtn" type="button" aria-label="Fermer"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg></button></div>
+          <div class="cr-body">
+            <div class="stage" style="width: 680px; height: 500px" role="application" aria-label="Zone de recadrage. Flèches pour déplacer, plus et moins pour zoomer.">
+              <img class="src" src="/_blob/cf06b3980a3fb7e3e24174d2208c9715" alt="Photo d’origine : un couple marche dans un champ" style="left: 0; top: 23px; width: 680px">
+              <div class="frame" tabindex="0" style="left: 40px; top: 23px; width: 605px; height: 454px">
+                <div class="grid"></div><div class="z-fade"></div><div class="z-av"></div><div class="z-pause"></div>
+                <span class="z-tag" style="left: 10px; bottom: 49%">Fondu 55 %</span>
+                <span class="z-tag" style="left: 50%; bottom: 25%; transform: translateX(-50%)">Photo de profil</span>
+                <span class="hd tl"></span><span class="hd tr"></span><span class="hd bl"></span><span class="hd br"></span>
+              </div>
+            </div>
+            <div class="panel">
+              <div style="display: flex; flex-direction: column; gap: 10px"><h3 class="a-h3">Sur ta carte</h3>
+                <div class="pv t-terracotta"><div class="pv-media"><img src="/_blob/cf06b3980a3fb7e3e24174d2208c9715" alt="" style="left: -18px; top: 0; width: 306px"></div><div class="pv-av"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></div><p class="pv-name">Camille Roche</p></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><span class="a-h3">Zoom</span><div class="zoom"><button class="a-iconbtn" type="button" aria-label="Dézoomer"><svg class="i" aria-hidden="true"><use href="#i-minus"></use></svg></button><div class="a-slider" role="slider" aria-label="Zoom" aria-valuenow="100" aria-valuemin="100" aria-valuemax="300" aria-valuetext="100 %" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 0%"></div></div><div class="a-slider-thumb" style="left: 0%"></div></div><button class="a-iconbtn" type="button" aria-label="Zoomer"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg></button></div></div>
+              <button class="a-switch" type="button" role="switch" aria-checked="true"><span class="a-switch-track"></span>Afficher les zones couvertes</button>
+              <div class="legend"><span><i></i>Fondu vers le fond de la carte</span><span><i class="c"></i>Photo de profil et bouton pause</span></div>
+              <button class="a-btn" type="button" style="align-self: flex-start; padding: 0 8px"><svg class="i" aria-hidden="true"><use href="#i-reset"></use></svg>Réinitialiser</button>
+            </div>
+          </div>
+          <div class="a-dialog-actions"><button class="a-btn a-btn--secondary" type="button">Annuler</button><button class="a-btn a-btn--primary" type="button"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Appliquer</button></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="f-m"><div class="app" style="height: 100%; display: flex; flex-direction: column">
+      <div class="mtop"><button class="a-btn" type="button">Annuler</button><b>Recadrer l’en-tête</b><button class="a-btn" type="button" style="font-weight: 700">Appliquer</button></div>
+      <div class="stage" style="width: 390px; height: 470px; border-radius: 0" role="application" aria-label="Zone de recadrage">
+        <img class="src" src="/_blob/cf06b3980a3fb7e3e24174d2208c9715" alt="Photo d’origine : un couple marche dans un champ" style="left: 0; top: 105px; width: 390px">
+        <div class="frame" tabindex="0" style="left: 22px; top: 105px; width: 347px; height: 260px"><div class="grid"></div><div class="z-fade"></div><div class="z-av"></div><div class="z-pause"></div><span class="hd tl"></span><span class="hd tr"></span><span class="hd bl"></span><span class="hd br"></span></div>
+      </div>
+      <div class="mpanel">
+        <p class="a-small a-muted" style="text-align: center">Pince pour zoomer, glisse pour déplacer.</p>
+        <div class="zoom"><button class="a-iconbtn" type="button" aria-label="Dézoomer"><svg class="i" aria-hidden="true"><use href="#i-minus"></use></svg></button><div class="a-slider" role="slider" aria-label="Zoom" aria-valuenow="100" aria-valuemin="100" aria-valuemax="300" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 0%"></div></div><div class="a-slider-thumb" style="left: 0%"></div></div><button class="a-iconbtn" type="button" aria-label="Zoomer"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>
+        <button class="a-switch" type="button" role="switch" aria-checked="true" style="justify-content: space-between; width: 100%">Afficher les zones couvertes<span class="a-switch-track"></span></button>
+        <button class="a-btn" type="button" style="align-self: center"><svg class="i" aria-hidden="true"><use href="#i-reset"></use></svg>Réinitialiser</button>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ================= 2. EN-TÊTE VIDÉO ================= -->
+<section class="b-row">
+  <div class="b-cap"><h2>Recadrer l’en-tête — vidéo</h2><p>Même cadre 4:3, ici dans une vidéo verticale. La frise sert à vérifier le cadrage tout au long de la vidéo (tête de lecture) et à choisir l’extrait qui tourne en boucle. L’image affichée peut devenir l’image d’attente.</p></div>
+  <div class="b-frames">
+    <div class="f-d"><div class="app" style="height: 100%">
+      <div class="a-overlay">
+        <div class="a-dialog" role="dialog" aria-modal="true" aria-labelledby="c2" style="width: 1080px">
+          <div style="display: flex; align-items: center; justify-content: space-between"><h2 class="a-h2" id="c2">Recadrer la vidéo d’en-tête</h2><button class="a-iconbtn" type="button" aria-label="Fermer"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg></button></div>
+          <div class="cr-body">
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div class="stage" style="width: 680px; height: 420px" role="application" aria-label="Zone de recadrage de la vidéo">
+                <img class="src" src="/_blob/02c18eecd6c4b3b64075c3477a1dc95e" alt="Image de la vidéo à 2,9 s : sortie de cérémonie sous les pétales" style="left: 222px; top: 0; height: 420px">
+                <div class="frame" tabindex="0" style="left: 222px; top: 143px; width: 236px; height: 177px">
+                  <div class="grid"></div><div class="z-fade"></div><div class="z-av"></div><div class="z-pause"></div>
+                  <span class="hd tl"></span><span class="hd tr"></span><span class="hd bl"></span><span class="hd br"></span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <button class="a-iconbtn" type="button" aria-label="Lire l’extrait" style="background: var(--app-surface-2)"><svg class="i" aria-hidden="true"><use href="#i-play"></use></svg></button>
+                <div class="tl tl-strip" style="flex: 1" role="group" aria-label="Extrait en boucle">
+                  <div class="tl-dim" style="left: 0; width: 8%"></div><div class="tl-dim" style="right: 0; width: 15%"></div>
+                  <div class="tl-sel" style="left: 8%; right: 15%"></div>
+                  <span class="tl-h" role="slider" tabindex="0" aria-label="Début de l’extrait" aria-valuetext="0,8 s" style="left: 8%"></span>
+                  <span class="tl-h" role="slider" tabindex="0" aria-label="Fin de l’extrait" aria-valuetext="8,3 s" style="left: calc(85% - 14px)"></span>
+                  <span class="tl-head" style="left: 30%"></span>
+                </div>
+              </div>
+              <div class="tl-times"><span class="a-mono">0:00,8</span><span><b>Boucle de 7,5 s</b> · <span class="a-muted">tête de lecture à 0:02,9</span></span><span class="a-mono">0:08,3</span></div>
+            </div>
+            <div class="panel">
+              <div style="display: flex; flex-direction: column; gap: 10px"><h3 class="a-h3">Sur ta carte</h3>
+                <div class="pv t-terracotta"><div class="pv-media"><img src="/_blob/02c18eecd6c4b3b64075c3477a1dc95e" alt="" style="left: 0; top: -165px; width: 272px"></div><div class="pv-av"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></div><p class="pv-name">Camille Roche</p></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><span class="a-h3">Zoom</span><div class="zoom"><button class="a-iconbtn" type="button" aria-label="Dézoomer"><svg class="i" aria-hidden="true"><use href="#i-minus"></use></svg></button><div class="a-slider" role="slider" aria-label="Zoom" aria-valuenow="100" aria-valuemin="100" aria-valuemax="300" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 0%"></div></div><div class="a-slider-thumb" style="left: 0%"></div></div><button class="a-iconbtn" type="button" aria-label="Zoomer"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg></button></div></div>
+              <label class="a-check" style="padding-top: 0"><input type="checkbox" checked="{{true}}" readOnly="{{true}}">Utiliser l’image à 0:02,9 comme image d’attente</label>
+              <button class="a-switch" type="button" role="switch" aria-checked="true"><span class="a-switch-track"></span>Afficher les zones couvertes</button>
+            </div>
+          </div>
+          <div class="a-dialog-actions"><button class="a-btn a-btn--secondary" type="button">Annuler</button><button class="a-btn a-btn--primary" type="button"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Appliquer</button></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="f-m"><div class="app" style="height: 100%; display: flex; flex-direction: column">
+      <div class="mtop"><button class="a-btn" type="button">Annuler</button><b>Recadrer la vidéo</b><button class="a-btn" type="button" style="font-weight: 700">Appliquer</button></div>
+      <div class="stage" style="width: 390px; height: 400px; border-radius: 0" role="application" aria-label="Zone de recadrage de la vidéo">
+        <img class="src" src="/_blob/02c18eecd6c4b3b64075c3477a1dc95e" alt="Image de la vidéo : sortie de cérémonie sous les pétales" style="left: 82px; top: 0; height: 400px">
+        <div class="frame" tabindex="0" style="left: 82px; top: 136px; width: 225px; height: 169px"><div class="grid"></div><div class="z-fade"></div><div class="z-av"></div><div class="z-pause"></div><span class="hd tl"></span><span class="hd tr"></span><span class="hd bl"></span><span class="hd br"></span></div>
+      </div>
+      <div class="mpanel">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <button class="a-iconbtn" type="button" aria-label="Lire l’extrait" style="background: var(--app-surface-2)"><svg class="i" aria-hidden="true"><use href="#i-play"></use></svg></button>
+          <div class="tl tl-strip" style="flex: 1; height: 52px" role="group" aria-label="Extrait en boucle">
+            <div class="tl-dim" style="left: 0; width: 8%"></div><div class="tl-dim" style="right: 0; width: 15%"></div>
+            <div class="tl-sel" style="left: 8%; right: 15%"></div>
+            <span class="tl-h" role="slider" tabindex="0" aria-label="Début de l’extrait" aria-valuetext="0,8 s" style="left: 8%"></span>
+            <span class="tl-h" role="slider" tabindex="0" aria-label="Fin de l’extrait" aria-valuetext="8,3 s" style="left: calc(85% - 14px)"></span>
+            <span class="tl-head" style="left: 30%"></span>
+          </div>
+        </div>
+        <div class="tl-times"><span class="a-mono">0:00,8</span><b>Boucle de 7,5 s</b><span class="a-mono">0:08,3</span></div>
+        <div class="zoom"><button class="a-iconbtn" type="button" aria-label="Dézoomer"><svg class="i" aria-hidden="true"><use href="#i-minus"></use></svg></button><div class="a-slider" role="slider" aria-label="Zoom" aria-valuenow="100" aria-valuemin="100" aria-valuemax="300" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 0%"></div></div><div class="a-slider-thumb" style="left: 0%"></div></div><button class="a-iconbtn" type="button" aria-label="Zoomer"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>
+        <label class="a-check" style="padding-top: 0; align-items: center"><input type="checkbox" checked="{{true}}" readOnly="{{true}}">Cette image comme image d’attente</label>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ================= 3. PHOTO DE PROFIL ================= -->
+<section class="b-row">
+  <div class="b-cap"><h2>Recadrer la photo de profil</h2><p>Masque rond, format carré. Aperçu aux deux tailles réelles : sur la carte (112 px) et dans l’application (36 px), pour vérifier que le visage reste reconnaissable en petit.</p></div>
+  <div class="b-frames">
+    <div class="f-d"><div class="app" style="height: 100%">
+      <div class="a-overlay">
+        <div class="a-dialog" role="dialog" aria-modal="true" aria-labelledby="c3" style="width: 1080px">
+          <div style="display: flex; align-items: center; justify-content: space-between"><h2 class="a-h2" id="c3">Recadrer la photo de profil</h2><button class="a-iconbtn" type="button" aria-label="Fermer"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg></button></div>
+          <div class="cr-body">
+            <div class="stage" style="width: 680px; height: 500px" role="application" aria-label="Zone de recadrage de la photo de profil">
+              <img class="src" src="/_blob/d9b5d74eb56286fa5586ff731b068c4e" alt="Photo d’origine : portrait de Camille tenant un appareil photo" style="left: 173px; top: 0; height: 500px">
+              <div class="frame is-round" tabindex="0" style="left: 245px; top: 134px; width: 220px; height: 220px"><div class="grid"></div><span class="hd r"></span></div>
+            </div>
+            <div class="panel">
+              <div style="display: flex; flex-direction: column; gap: 12px"><h3 class="a-h3">Aperçu</h3>
+                <div style="display: flex; align-items: flex-end; gap: 24px">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div class="circ" style="width: 112px; height: 112px"><img src="/_blob/d9b5d74eb56286fa5586ff731b068c4e" alt="" style="left: -36px; top: -68px; width: 170px"></div><span class="a-small a-muted">Sur la carte · 112 px</span></div>
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div class="circ" style="width: 36px; height: 36px"><img src="/_blob/d9b5d74eb56286fa5586ff731b068c4e" alt="" style="left: -12px; top: -22px; width: 55px"></div><span class="a-small a-muted">Dans l’app · 36 px</span></div>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><span class="a-h3">Zoom</span><div class="zoom"><button class="a-iconbtn" type="button" aria-label="Dézoomer"><svg class="i" aria-hidden="true"><use href="#i-minus"></use></svg></button><div class="a-slider" role="slider" aria-label="Zoom" aria-valuenow="150" aria-valuemin="100" aria-valuemax="300" aria-valuetext="150 %" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 25%"></div></div><div class="a-slider-thumb" style="left: 25%"></div></div><button class="a-iconbtn" type="button" aria-label="Zoomer"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg></button></div></div>
+              <p class="a-small a-muted">Centre le visage et laisse un peu d’air au-dessus de la tête&nbsp;: le cercle est bordé par le fond de la carte.</p>
+              <button class="a-btn" type="button" style="align-self: flex-start; padding: 0 8px"><svg class="i" aria-hidden="true"><use href="#i-reset"></use></svg>Réinitialiser</button>
+            </div>
+          </div>
+          <div class="a-dialog-actions"><button class="a-btn a-btn--secondary" type="button">Annuler</button><button class="a-btn a-btn--primary" type="button"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Appliquer</button></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="f-m"><div class="app" style="height: 100%; display: flex; flex-direction: column">
+      <div class="mtop"><button class="a-btn" type="button">Annuler</button><b>Photo de profil</b><button class="a-btn" type="button" style="font-weight: 700">Appliquer</button></div>
+      <div class="stage" style="width: 390px; height: 470px; border-radius: 0" role="application" aria-label="Zone de recadrage de la photo de profil">
+        <img class="src" src="/_blob/d9b5d74eb56286fa5586ff731b068c4e" alt="Photo d’origine : portrait de Camille" style="left: 38px; top: 0; height: 470px">
+        <div class="frame is-round" tabindex="0" style="left: 109px; top: 130px; width: 200px; height: 200px"><div class="grid"></div><span class="hd r"></span></div>
+      </div>
+      <div class="mpanel">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px"><div class="circ" style="width: 64px; height: 64px"><img src="/_blob/d9b5d74eb56286fa5586ff731b068c4e" alt="" style="left: -21px; top: -39px; width: 97px"></div><div class="circ" style="width: 36px; height: 36px"><img src="/_blob/d9b5d74eb56286fa5586ff731b068c4e" alt="" style="left: -12px; top: -22px; width: 55px"></div></div>
+        <p class="a-small a-muted" style="text-align: center">Pince pour zoomer, glisse pour centrer le visage.</p>
+        <div class="zoom"><button class="a-iconbtn" type="button" aria-label="Dézoomer"><svg class="i" aria-hidden="true"><use href="#i-minus"></use></svg></button><div class="a-slider" role="slider" aria-label="Zoom" aria-valuenow="150" aria-valuemin="100" aria-valuemax="300" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 25%"></div></div><div class="a-slider-thumb" style="left: 25%"></div></div><button class="a-iconbtn" type="button" aria-label="Zoomer"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2038,"height":3350}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
