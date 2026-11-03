@@ -22,6 +22,7 @@ Cette page décrit le comportement de la page publique, quel que soit le templat
 - **PUB-008** — Quand un ou plusieurs événements sont en cours, chacun apparaît comme un bouton très visible et animé, portant le nom de l'événement.
 - **PUB-009** — Les boutons d'événement sont triés par date de début.
 - **PUB-010** — Sans événement en cours, rien ne s'affiche à l'emplacement des boutons d'événement.
+- **PUB-029** — Les boutons d'événement sont les événements en cours (EVT-002) de la carte au moment où la page est rendue, selon l'horloge du serveur (voir EVT-020) : un événement qui commence apparaît, et un événement terminé disparaît, au rendu suivant. À début égal, les boutons sont triés par titre.
 
 ## Informations et liens
 

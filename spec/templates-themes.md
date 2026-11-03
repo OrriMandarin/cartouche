@@ -14,6 +14,7 @@
 - **TPL-008** — La v1 livre le template « Classique » décrit dans public-page.md, et l'architecture rend facile l'ajout d'un deuxième template.
 - **TPL-014** — La page publique et l'aperçu de l'éditeur rendent la carte avec le même composant de template (voir EDI-004).
 - **TPL-015** — Une carte dont le template est inconnu, par exemple parce qu'il a été retiré du dépôt, s'affiche avec le template Classique.
+- **TPL-020** — Le formulaire d'événement, son écran de code et son écran de confirmation ne dépendent pas du template : ils sont rendus par un composant commun, avec le thème de la carte (couleurs et polices, voir TPL-010). Un template ne fournit que le bouton d'événement, qui mène à `urls.eventForm(id)` (voir TPL-002).
 - **TPL-016** — Les réglages propres au template sont lus à travers son schéma au moment du rendu : une valeur absente ou invalide prend la valeur par défaut du schéma, et un réglage invalide ne fait jamais échouer l'affichage.
 
 ## Thèmes

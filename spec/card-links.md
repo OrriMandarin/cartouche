@@ -18,6 +18,7 @@
 - **LNK-003** — Le lien ne casse jamais : quand l'utilisateur change le slug d'une carte, tous les anciens slugs de cette carte redirigent de façon permanente vers le nouveau.
 - **LNK-004** — Un ancien slug reste réservé à cette carte : personne d'autre ne peut le prendre.
 - **LNK-024** — La redirection permanente de LNK-003 est une redirection HTTP 308. Elle vaut pour toutes les adresses publiques de la carte : la page et la vCard.
+- **LNK-030** — Les redirections de LNK-003 et LNK-021 (page, vCard et formulaire d'événement) portent l'en-tête `Cache-Control: no-store` : un ancien slug peut redevenir le slug courant de sa carte (LNK-025) ou être rattaché à une nouvelle carte (LNK-014), une redirection ne doit donc pas rester en cache.
 - **LNK-025** — Une carte peut reprendre l'un de ses propres anciens slugs, qui redevient son slug courant. L'ancien slug d'une carte qui existe toujours ne peut pas être donné à une autre carte, même du même propriétaire (`409 slug_reserved`), car les liens de la première casseraient.
 
 ## Désactivation par le propriétaire

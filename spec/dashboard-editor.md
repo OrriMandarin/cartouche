@@ -25,6 +25,9 @@
 ## Événements et contacts
 
 - **EDI-009** — La page d'une carte liste ses événements en trois groupes (en cours, à venir, passés) et permet de les créer, éditer, clore et supprimer (voir EVT-009).
+- **EDI-018** — La liste des événements d'une carte montre, pour chacun, son titre, son début, sa fin (ou « Sans fin »), son état (EVT-020) et son nombre de contacts. Elle est accessible depuis la liste des cartes et depuis l'éditeur de la carte.
+- **EDI-019** — L'éditeur d'événement règle le titre, la description, le début, la fin, le code d'accès (affiché en clair, voir EVT-010), la limite par appareil, les champs standards (non demandé, facultatif ou obligatoire), les champs personnalisés (ajout, ordre, type, libellé, aide, options, caractère obligatoire) et le texte de consentement (par défaut ou personnalisé). Chaque erreur s'affiche à côté de son champ, sans perte de saisie (voir EDI-015).
+- **EDI-020** — Pour chaque événement, le tableau de bord liste ses contacts, du plus récent au plus ancien, avec la date d'envoi, le nom, l'email, le téléphone et l'étiquette « Spam », et permet de marquer ou démarquer un contact comme spam et de le supprimer (voir ABU-003, ABU-004, ABU-009 et ABU-010). La recherche, la vue détaillée, la vue « toute la carte » et les exports viennent avec EDI-010.
 - **EDI-010** — Le tableau de bord donne accès aux contacts collectés et à leurs exports (voir LEA-001 et LEA-006).
 
 ## Interface

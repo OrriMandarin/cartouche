@@ -24,4 +24,8 @@ Concepts du domaine, tels que la spec les emploie.
 | **Slug réservé** | Un slug d'une carte supprimée : il reste à son ancien propriétaire, qui peut le rattacher à une nouvelle carte (voir LNK-013 et LNK-014). |
 | **Page neutre** | La page « Cette carte n'est plus active », affichée au lien d'une carte qui n'est pas servie (voir LNK-026 et LNK-027). |
 | **Média** | Le fond d'en-tête (image ou vidéo) ou la photo de profil d'une carte, stocké dans le stockage de médias. |
+| **État d'un événement** | « À venir », « en cours » ou « passé », calculé par le serveur (voir EVT-020). |
+| **Fenêtre d'envoi** | La période pendant laquelle le formulaire d'un événement est ouvert : de son début jusqu'à 15 minutes après sa fin (voir EVT-008 et EVT-026). |
+| **Identifiant d'appareil** | Un identifiant aléatoire conservé par le navigateur du prospect, qui sert à la limite d'envois par appareil (voir EVT-028). |
+| **Champ piège** | Un champ du formulaire invisible pour un humain ; un robot qui le remplit est ignoré (voir ABU-002). |
 | **Paire de polices** | Une police de titre et une police de texte, choisies ensemble pour un thème (voir TPL-011). |
