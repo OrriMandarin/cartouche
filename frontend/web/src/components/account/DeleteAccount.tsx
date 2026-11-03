@@ -1,6 +1,5 @@
 "use client";
 
-import { ApiError } from "@cartouche/api-client";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -18,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApi } from "@/lib/api";
-import { isDeletionConfirmed } from "@/lib/account/deletion";
+import { deletionOutcome, isDeletionConfirmed, type DeletionOutcome } from "@/lib/account/deletion";
 
 /**
  * spec: ACC-020, ACC-021, ACC-023. Deletes the signed-in account after a typed confirmation, then leaves for
@@ -31,7 +30,7 @@ export function DeleteAccount({ isAdmin }: { isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const [outcome, setOutcome] = useState<DeletionOutcome | null>(null);
 
   if (isAdmin) {
     return (
@@ -45,26 +44,26 @@ export function DeleteAccount({ isAdmin }: { isAdmin: boolean }) {
     if (busy) return;
     setOpen(next);
     setConfirmation("");
-    setError(null);
+    setOutcome(null);
   }
 
   async function confirm() {
     setBusy(true);
-    setError(null);
+    setOutcome(null);
+    let failure: unknown = null;
     try {
       await api.DELETE("/api/me");
     } catch (e) {
-      // 404: the account is already gone (a double click), which is what was asked for.
-      if (!(e instanceof ApiError && e.status === 404)) {
-        setError(e);
-        setBusy(false);
-        return;
-      }
+      failure = e;
     }
-    router.replace("/account-deleted");
+    const result = deletionOutcome(failure);
+    if (result.kind === "deleted") {
+      router.replace("/account-deleted");
+      return;
+    }
+    setOutcome(result);
+    setBusy(false);
   }
-
-  const refusedAsAdmin = error instanceof ApiError && error.code === "cannot_delete_admin";
 
   return (
     <>
@@ -88,12 +87,12 @@ export function DeleteAccount({ isAdmin }: { isAdmin: boolean }) {
               onChange={(event) => setConfirmation(event.target.value)}
             />
           </div>
-          {refusedAsAdmin ? (
+          {outcome?.kind === "admin" ? (
             <Alert variant="destructive" data-testid="delete-account-admin-refused">
               <AlertDescription>{t("adminRefused")}</AlertDescription>
             </Alert>
-          ) : error !== null ? (
-            <ErrorNotice error={error} />
+          ) : outcome?.kind === "failed" ? (
+            <ErrorNotice error={outcome.error} />
           ) : null}
           <DialogFooter>
             <Button

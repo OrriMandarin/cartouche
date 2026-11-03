@@ -7,6 +7,7 @@ type Handler = (...args: unknown[]) => void;
 const fake = {
   user: null as { expired: boolean; access_token: string; profile: { sub: string } } | null,
   signinSilent: vi.fn(),
+  signoutRedirect: vi.fn(),
   handlers: { loaded: new Set<Handler>(), unloaded: new Set<Handler>(), expired: new Set<Handler>() },
 };
 
@@ -23,6 +24,7 @@ vi.mock("oidc-client-ts", () => ({
     };
     getUser = async () => fake.user;
     signinSilent = (...args: unknown[]) => fake.signinSilent(...args);
+    signoutRedirect = (...args: unknown[]) => fake.signoutRedirect(...args);
     // Like the real library: removing the user fires userUnloaded.
     removeUser = async () => {
       fake.user = null;
@@ -54,6 +56,7 @@ async function setup() {
 beforeEach(() => {
   fake.user = { expired: false, access_token: "at", profile: { sub: "u1" } };
   fake.signinSilent = vi.fn();
+  fake.signoutRedirect = vi.fn();
   fake.handlers.loaded.clear();
   fake.handlers.unloaded.clear();
   fake.handlers.expired.clear();
@@ -166,5 +169,24 @@ describe("OidcAuthAdapter token expiry", () => {
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-out"));
     await expect(auth().getToken()).resolves.toBeNull();
     expect(fake.signinSilent).not.toHaveBeenCalled();
+  });
+});
+
+describe("OidcAuthAdapter signOut", () => {
+  test("ACC-014: signOut without options keeps the provider's default return address", async () => {
+    const { auth } = await setup();
+    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-in"));
+    await auth().signOut();
+    expect(fake.signoutRedirect).toHaveBeenCalledTimes(1);
+    expect(fake.signoutRedirect).toHaveBeenCalledWith();
+  });
+
+  test("ACC-023: signOut with redirectTo returns to that path of the site", async () => {
+    const { auth } = await setup();
+    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-in"));
+    await auth().signOut({ redirectTo: "/account-deleted" });
+    expect(fake.signoutRedirect).toHaveBeenCalledWith({
+      post_logout_redirect_uri: `${window.location.origin}/account-deleted`,
+    });
   });
 });

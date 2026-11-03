@@ -13,14 +13,16 @@ import { useAuth } from "@/lib/auth/context";
  */
 export default function AccountDeletedPage() {
   const t = useTranslations("account.deleted");
-  const { signOut } = useAuth();
+  const { status, signOut } = useAuth();
   const signedOut = useRef(false);
 
+  // Only while signed in: after the identity provider's own logout the browser comes back here signed out.
+  // Coming back to this very page keeps the explanation on screen instead of looping.
   useEffect(() => {
-    if (signedOut.current) return;
+    if (status !== "signed-in" || signedOut.current) return;
     signedOut.current = true;
-    void signOut();
-  }, [signOut]);
+    void signOut({ redirectTo: "/account-deleted" });
+  }, [status, signOut]);
 
   return (
     <main className="mx-auto max-w-xl px-4 py-12">

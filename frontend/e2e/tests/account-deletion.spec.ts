@@ -95,7 +95,16 @@ test("ACC-023 signing in again gives a new pending account", async ({ page, api,
   await loginAs("seed-bob");
   await page.goto("/dashboard");
   await expect(page.getByTestId("account-pending")).toContainText("Ton compte est en attente de validation");
-  await expect(page.getByTestId("dashboard-empty")).toHaveCount(0);
+
+  // The new account is a different one, with no card: Bob's old card did not come back with him.
+  const headers = await api.authHeaders("seed-admin");
+  const listing = await api.get("/api/admin/users?status=pending", { headers });
+  const { users } = (await listing.json()) as { users: { id: string; subject: string }[] };
+  const bob = users.find((user) => user.subject === "seed-bob");
+  expect(bob).toBeDefined();
+  const detail = await api.get(`/api/admin/users/${bob!.id}`, { headers });
+  expect(detail.ok()).toBeTruthy();
+  expect(((await detail.json()) as { cards: unknown[] }).cards).toEqual([]);
 });
 
 test("ACC-021 a pending account can delete itself", async ({ page, api, loginAs }) => {

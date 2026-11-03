@@ -35,6 +35,7 @@ describe("AccountDeletedPage", () => {
     expect(screen.getByTestId("account-deleted")).toHaveTextContent("fournisseur d'identité");
     expect(screen.getByTestId("account-deleted-home")).toHaveAttribute("href", "/");
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
+    expect(signOut).toHaveBeenCalledWith({ redirectTo: "/account-deleted" });
 
     // Signing out changes the auth state: the page re-renders but does not sign out a second time.
     rerender(
@@ -53,6 +54,30 @@ describe("AccountDeletedPage", () => {
       </NextIntlClientProvider>,
     );
     expect(signOut).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("ACC-023 coming back signed out does not sign out again, nor call the API", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const signOut = vi.fn(async () => undefined);
+    render(
+      <NextIntlClientProvider locale="fr" messages={messages}>
+        <AuthContext.Provider
+          value={{
+            status: "signed-out",
+            user: null,
+            getToken: async () => null,
+            signIn: async () => undefined,
+            signOut,
+          }}
+        >
+          <AccountDeletedPage />
+        </AuthContext.Provider>
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByTestId("account-deleted")).toBeInTheDocument();
+    expect(signOut).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
