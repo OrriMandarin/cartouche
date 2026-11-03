@@ -457,8 +457,11 @@ fn events_now() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2027, 3, 15, 10, 0, 0).unwrap()
 }
 
-async fn seed_events_at_t0(app: &TestApp) {
+/// Freezes the clock at T0, seeds `base`, `cards` and `events`, and returns the report of the
+/// `events` scenario.
+async fn seed_events_at_t0(app: &TestApp) -> Value {
     app.clock.set(events_now());
+    let mut report = Value::Null;
     for scenario in ["base", "cards", "events"] {
         let response = app.seed(scenario).await;
         assert_eq!(
@@ -467,7 +470,9 @@ async fn seed_events_at_t0(app: &TestApp) {
             "{scenario}: {}",
             response.json
         );
+        report = response.json;
     }
+    report
 }
 
 async fn public_event(app: &TestApp, slug: &str, event_id: &str) -> common::TestResponse {
@@ -496,13 +501,9 @@ fn event_id(report: &Value, title: &str) -> String {
 #[sqlx::test]
 async fn events_scenario_is_relative_to_the_clock(pool: PgPool) {
     let app = test_app(pool.clone()).await;
-    app.clock.set(events_now());
-    app.seed("base").await;
-    app.seed("cards").await;
-    let report = app.seed("events").await;
-    assert_eq!(report.status, StatusCode::OK, "{}", report.json);
+    let report = seed_events_at_t0(&app).await;
 
-    let mut titles: Vec<&str> = report.json["events"]
+    let mut titles: Vec<&str> = report["events"]
         .as_array()
         .unwrap()
         .iter()
@@ -521,8 +522,8 @@ async fn events_scenario_is_relative_to_the_clock(pool: PgPool) {
     ];
     expected.sort();
     assert_eq!(titles, expected);
-    assert!(report.json["users"].as_array().unwrap().is_empty());
-    assert!(report.json["cards"].as_array().unwrap().is_empty());
+    assert!(report["users"].as_array().unwrap().is_empty());
+    assert!(report["cards"].as_array().unwrap().is_empty());
 
     // Exactly the three events running at T0 are on the public card, by start.
     let card = public_card(&app, "alice-durand").await;
@@ -543,18 +544,18 @@ async fn events_scenario_is_relative_to_the_clock(pool: PgPool) {
     );
 
     // An event ended 10 minutes ago still takes submissions; a future one does not.
-    let discovery = event_id(&report.json, "Atelier découverte");
+    let discovery = event_id(&report, "Atelier découverte");
     let open = public_event(&app, "alice-durand", &discovery).await;
     assert_eq!(open.json["state"], "open", "{}", open.json);
-    let lyon = event_id(&report.json, "Foire de Lyon");
+    let lyon = event_id(&report, "Foire de Lyon");
     let closed = public_event(&app, "alice-durand", &lyon).await;
     assert_eq!(closed.json["state"], "closed", "{}", closed.json);
-    let open_house = event_id(&report.json, "Portes ouvertes de l'Atelier");
+    let open_house = event_id(&report, "Portes ouvertes de l'Atelier");
     let coded = public_event(&app, "alice-durand", &open_house).await;
     assert_eq!(coded.json["state"], "code_required", "{}", coded.json);
 
     // The disabled card of Alice is gone for the public, whatever its events.
-    let archived = event_id(&report.json, "Événement archivé");
+    let archived = event_id(&report, "Événement archivé");
     let gone = public_event(&app, "alice-archive", &archived).await;
     assert_eq!(gone.status, StatusCode::GONE, "{}", gone.json);
 
@@ -609,16 +610,13 @@ async fn events_scenario_is_relative_to_the_clock(pool: PgPool) {
     assert!(leads.contains(&("Jean-Michel".into(), Some("Hébert".into()), false)));
 }
 
-// spec: EDI-020, ABU-003
+// spec: EDI-020, ABU-003, FRM-026, FRM-027
 #[sqlx::test]
 async fn events_scenario_contacts_are_listed_for_their_owner(pool: PgPool) {
     let app = test_app(pool).await;
-    app.clock.set(events_now());
-    app.seed("base").await;
-    app.seed("cards").await;
-    let report = app.seed("events").await;
+    let report = seed_events_at_t0(&app).await;
     let token = token_for(&app, json!({"subject": "seed-alice"})).await;
-    let wedding = event_id(&report.json, "Salon du Mariage Clermont 2027");
+    let wedding = event_id(&report, "Salon du Mariage Clermont 2027");
     let listed = app
         .request(
             "GET",
@@ -639,17 +637,27 @@ async fn events_scenario_contacts_are_listed_for_their_owner(pool: PgPool) {
     assert_eq!(custom.len(), 4);
     assert_eq!(custom[2]["label"], "Formule");
     assert_eq!(custom[2]["value"], "Prestige");
+
+    // The recorded consent is the text a real submission records: the one the owner's view
+    // gives as the default for this card and title.
+    let event = app
+        .request("GET", &format!("/api/events/{wedding}"), Some(&token), None)
+        .await;
+    assert_eq!(event.status, StatusCode::OK, "{}", event.json);
+    assert!(event.json["consent_text"].is_null());
+    let default_text = event.json["default_consent_text"].as_str().unwrap();
+    assert!(default_text.contains("« Salon du Mariage Clermont 2027 »"));
+    assert!(default_text.contains("est responsable de ce traitement"));
+    for lead in leads {
+        assert_eq!(lead["consent_text"], default_text);
+    }
 }
 
-// spec: EVT-004
+// spec: ACC-008
 #[sqlx::test]
 async fn events_scenario_is_replayable(pool: PgPool) {
     let app = test_app(pool.clone()).await;
-    app.clock.set(events_now());
-    app.seed("base").await;
-    app.seed("cards").await;
-    let first = app.seed("events").await;
-    assert_eq!(first.status, StatusCode::OK, "{}", first.json);
+    let first = seed_events_at_t0(&app).await;
     sqlx::query("update events set title = 'x', starts_at = starts_at + interval '1 day', ends_at = null, device_limit = 9")
         .execute(&pool)
         .await
@@ -660,7 +668,7 @@ async fn events_scenario_is_replayable(pool: PgPool) {
         .unwrap();
     let second = app.seed("events").await;
     assert_eq!(second.status, StatusCode::OK, "{}", second.json);
-    assert_eq!(first.json["events"], second.json["events"]);
+    assert_eq!(first["events"], second.json["events"]);
 
     let events: i64 = sqlx::query_scalar("select count(*) from events")
         .fetch_one(&pool)
@@ -681,7 +689,7 @@ async fn events_scenario_is_replayable(pool: PgPool) {
     assert_eq!(card.json["card"]["events"].as_array().unwrap().len(), 3);
 }
 
-// spec: EVT-004
+// spec: ACC-008
 #[sqlx::test]
 async fn cards_scenario_dates_follow_the_clock(pool: PgPool) {
     let app = test_app(pool.clone()).await;

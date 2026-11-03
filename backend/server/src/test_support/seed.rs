@@ -5,8 +5,8 @@ use std::future::Future;
 use std::pin::Pin;
 
 use cartouche_domain::{
-    AnswerSnapshot, CustomField, CustomFieldKind, DEFAULT_TEMPLATE, DEFAULT_THEME_PRESET,
-    FieldMode, StandardFields, UserStatus, normalize,
+    AnswerSnapshot, CardContent, CustomField, CustomFieldKind, DEFAULT_TEMPLATE,
+    DEFAULT_THEME_PRESET, FieldMode, StandardFields, UserStatus, consent_text, normalize,
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::Serialize;
@@ -746,8 +746,9 @@ async fn events(pool: &PgPool, t0: DateTime<Utc>) -> Result<SeedReport, sqlx::Er
         )
         .execute(pool)
         .await?;
+        let card_content = seed_card_content(event.card_slug);
         for lead in event.leads {
-            seed_lead(pool, event, &custom_fields, lead, t0).await?;
+            seed_lead(pool, event, &custom_fields, &card_content, lead, t0).await?;
         }
         report.push(SeededEvent {
             id: event.id,
@@ -762,10 +763,29 @@ async fn events(pool: &PgPool, t0: DateTime<Utc>) -> Result<SeedReport, sqlx::Er
     })
 }
 
+/// The content of the seeded card with this slug, as `cards` stored it.
+fn seed_card_content(slug: &str) -> CardContent {
+    let card = CARDS
+        .iter()
+        .find(|card| card.slug == slug)
+        .expect("every seeded event belongs to a seeded card");
+    let text = |value: Option<&str>| value.map(normalize);
+    CardContent {
+        first_name: Some(normalize(card.first_name)),
+        last_name: Some(normalize(card.last_name)),
+        job_title: text(card.job_title),
+        company: text(card.company),
+        description: text(card.description),
+        email: text(card.email),
+        phone: text(card.phone),
+    }
+}
+
 async fn seed_lead(
     pool: &PgPool,
     event: &SeedEvent,
     custom_fields: &[CustomField],
+    card_content: &CardContent,
     lead: &SeedLead,
     t0: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -781,10 +801,12 @@ async fn seed_lead(
             value: answer.to_json(),
         })
         .collect();
-    let consent_text = event
-        .consent_text
-        .map(normalize)
-        .unwrap_or_else(|| SEED_CONSENT_TEXT.to_string());
+    // The text a real submission records: the owner's custom text, or the default one.
+    let consent_text = consent_text(
+        event.consent_text.map(normalize).as_deref(),
+        card_content,
+        event.title,
+    );
     sqlx::query!(
         "insert into leads (id, event_id, device_id, submitted_at, first_name, last_name, email, \
              phone, custom_answers, consent_at, consent_text, spam_at) \
@@ -817,9 +839,6 @@ async fn seed_lead(
     .await?;
     Ok(())
 }
-
-/// The consent text recorded with the seeded contacts of an event without a custom one.
-const SEED_CONSENT_TEXT: &str = "En cochant cette case, j'accepte que Alice Durand (Atelier Durand & Fils) conserve les informations saisies dans ce formulaire afin de me recontacter à des fins commerciales.";
 
 #[cfg(test)]
 mod tests {
@@ -903,7 +922,6 @@ mod tests {
                 assert_eq!(normalize(text), text);
             }
         }
-        assert_eq!(normalize(SEED_CONSENT_TEXT), SEED_CONSENT_TEXT);
     }
 
     #[test]
