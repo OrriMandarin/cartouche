@@ -8,8 +8,8 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
 use crate::routes::{
-    admin_cards, admin_users, card_media, cards, events, health, lead_exports, leads, me,
-    public_cards, public_events, slugs,
+    admin_cards, admin_leads, admin_users, card_media, cards, events, health, lead_exports, leads,
+    me, public_cards, public_events, slugs,
 };
 
 struct BearerAuth;
@@ -46,6 +46,9 @@ impl Modify for BearerAuth {
         admin_cards::get_card,
         admin_cards::support_disable_card,
         admin_cards::support_enable_card,
+        admin_leads::list_card_events,
+        admin_leads::list_event_leads,
+        admin_leads::list_card_leads,
         cards::list_cards,
         cards::create_card,
         cards::get_card,

@@ -37,25 +37,25 @@ pub struct NewLead<'a> {
 }
 
 /// A `leads` row as the database returns it.
-struct LeadRow {
-    id: Uuid,
-    event_id: Uuid,
-    event_title: String,
-    device_id: Uuid,
-    submitted_at: DateTime<Utc>,
-    first_name: Option<String>,
-    last_name: Option<String>,
-    birth_date: Option<NaiveDate>,
-    email: Option<String>,
-    phone: Option<String>,
-    street: Option<String>,
-    postal_code: Option<String>,
-    city: Option<String>,
-    country: Option<String>,
-    custom_answers: serde_json::Value,
-    consent_at: DateTime<Utc>,
-    consent_text: String,
-    spam_at: Option<DateTime<Utc>>,
+pub(super) struct LeadRow {
+    pub(super) id: Uuid,
+    pub(super) event_id: Uuid,
+    pub(super) event_title: String,
+    pub(super) device_id: Uuid,
+    pub(super) submitted_at: DateTime<Utc>,
+    pub(super) first_name: Option<String>,
+    pub(super) last_name: Option<String>,
+    pub(super) birth_date: Option<NaiveDate>,
+    pub(super) email: Option<String>,
+    pub(super) phone: Option<String>,
+    pub(super) street: Option<String>,
+    pub(super) postal_code: Option<String>,
+    pub(super) city: Option<String>,
+    pub(super) country: Option<String>,
+    pub(super) custom_answers: serde_json::Value,
+    pub(super) consent_at: DateTime<Utc>,
+    pub(super) consent_text: String,
+    pub(super) spam_at: Option<DateTime<Utc>>,
 }
 
 impl TryFrom<LeadRow> for Lead {

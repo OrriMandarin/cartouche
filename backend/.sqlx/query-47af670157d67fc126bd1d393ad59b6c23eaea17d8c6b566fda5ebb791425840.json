@@ -1,0 +1,232 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select l.id, l.event_id, e.title as event_title, l.device_id, l.submitted_at, l.first_name, l.last_name, l.birth_date, l.email, l.phone, l.street, l.postal_code, l.city, l.country, l.custom_answers, l.consent_at, l.consent_text, l.spam_at from leads l join events e on e.id = l.event_id where e.card_id = $1 order by l.submitted_at desc, l.id desc",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "event_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "event_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "event_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "device_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "device_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "submitted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "submitted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "birth_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "birth_date"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "phone"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "street",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "street"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "postal_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "postal_code"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "city",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "city"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "country",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "country"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "custom_answers",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "custom_answers"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "consent_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "consent_at"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "consent_text",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "consent_text"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "spam_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "leads",
+            "name": "spam_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "47af670157d67fc126bd1d393ad59b6c23eaea17d8c6b566fda5ebb791425840"
+}

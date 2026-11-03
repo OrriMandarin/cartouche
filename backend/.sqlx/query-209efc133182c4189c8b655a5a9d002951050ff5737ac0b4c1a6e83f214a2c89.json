@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select owner_id from cards where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "owner_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "209efc133182c4189c8b655a5a9d002951050ff5737ac0b4c1a6e83f214a2c89"
+}

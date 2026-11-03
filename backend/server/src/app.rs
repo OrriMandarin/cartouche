@@ -18,6 +18,10 @@ use crate::routes::admin_cards::{
     get_card as admin_get_card, get_user as admin_get_user, support_disable_card,
     support_enable_card,
 };
+use crate::routes::admin_leads::{
+    list_card_events as support_list_card_events, list_card_leads as support_list_card_leads,
+    list_event_leads as support_list_event_leads,
+};
 use crate::routes::admin_users::{list_users, set_user_status};
 use crate::routes::card_media::{UPLOAD_BODY_LIMIT, upload_media};
 use crate::routes::cards::{
@@ -90,6 +94,15 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/admin/users/{id}", get(admin_get_user))
         .route("/api/admin/users/{id}/status", post(set_user_status))
         .route("/api/admin/cards/{id}", get(admin_get_card))
+        .route(
+            "/api/admin/cards/{id}/events",
+            get(support_list_card_events),
+        )
+        .route("/api/admin/cards/{id}/leads", get(support_list_card_leads))
+        .route(
+            "/api/admin/events/{id}/leads",
+            get(support_list_event_leads),
+        )
         .route(
             "/api/admin/cards/{id}/support-disable",
             post(support_disable_card),
