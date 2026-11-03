@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/lib/api";
-import { leadDisplayName } from "@/lib/events/leads";
+import { leadHeading } from "@/lib/events/leads";
 import { formatEventDate, userTimeZone } from "@/lib/events/time";
 import type { LeadView } from "@/lib/events/types";
 
@@ -34,12 +34,13 @@ function LeadRow({
   onDelete: (lead: LeadView) => void;
 }) {
   const t = useTranslations("leads");
+  const heading = leadHeading(lead);
 
   return (
     <li data-testid={`lead-row-${lead.id}`} className="bg-card space-y-3 rounded-lg border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p data-testid={`lead-name-${lead.id}`} className="min-w-0 text-lg font-semibold break-words">
-          {leadDisplayName(lead) ?? t("unnamed")}
+          {heading.kind === "unnamed" ? t("unnamed") : heading.text}
         </p>
         {lead.spam ? (
           <Badge variant="destructive" data-testid={`lead-spam-badge-${lead.id}`}>
