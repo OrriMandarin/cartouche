@@ -1,0 +1,174 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# One run per ref: a newer push cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Dummy but syntactically valid Clerk publishable key, only used to build the web app.
+  CLERK_DUMMY_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+
+jobs:
+  spec:
+    name: Spec lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Test the spec linter
+        run: node --test scripts/spec-lint.test.mjs
+      - name: Lint the specs
+        run: node scripts/spec-lint.mjs
+
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cartouche
+          POSTGRES_PASSWORD: cartouche
+          POSTGRES_DB: cartouche
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cartouche -d cartouche"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://cartouche:cartouche@localhost:5432/cartouche
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/api
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-features -- -D warnings
+      - name: Tests (includes the OpenAPI drift test)
+        run: cargo test --workspace --all-features
+      - name: Production build without features
+        run: cargo build -p cartouche-api
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Reads the pnpm version from "packageManager" in the root package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r lint
+      - run: pnpm -r typecheck
+      - run: pnpm -r test
+      - name: Production build with the test auth adapter must fail
+        shell: bash
+        env:
+          CARTOUCHE_BUILD_PROFILE: production
+          NEXT_PUBLIC_AUTH_PROVIDER: test
+          API_INTERNAL_URL: http://api:8080
+        run: |
+          # Inverted step: the build succeeding is the failure. The failure must also come
+          # from the build profile guard and not from an unrelated error.
+          if pnpm --filter web build > guard-build.log 2>&1; then
+            cat guard-build.log
+            echo "::error::the production build with the test auth adapter must fail, but it succeeded"
+            exit 1
+          fi
+          cat guard-build.log
+          if ! grep -q "cannot be used with the production build profile" guard-build.log; then
+            echo "::error::the build failed, but not with the build profile guard message"
+            exit 1
+          fi
+          echo "The build failed with the expected guard message."
+      - name: Production build with the clerk auth adapter
+        env:
+          CARTOUCHE_BUILD_PROFILE: production
+          NEXT_PUBLIC_AUTH_PROVIDER: clerk
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ env.CLERK_DUMMY_KEY }}
+          API_INTERNAL_URL: http://api:8080
+        run: pnpm --filter web build
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    needs: [api, web]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start the test stack
+        run: docker compose -f compose.test.yml up -d --build --wait
+      # The projects in e2e/playwright.config.ts use Desktop Chrome (chromium) and iPhone 14 (webkit).
+      - name: Install Playwright browsers
+        run: pnpm --filter e2e exec playwright install --with-deps chromium webkit
+      - name: Run the end-to-end tests
+        env:
+          CI: "true"
+        run: pnpm --filter e2e test
+      - name: Dump the stack logs
+        if: failure()
+        run: docker compose -f compose.test.yml logs --no-color > compose-logs.txt 2>&1 || true
+      - name: Upload the Playwright results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            e2e/test-results
+            e2e/playwright-report
+          if-no-files-found: ignore
+      - name: Upload the stack logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs
+          path: compose-logs.txt
+          if-no-files-found: ignore
+      - name: Stop the test stack
+        if: always()
+        run: docker compose -f compose.test.yml down -v
+
+  prod-guard:
+    name: Production guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that the production API image refuses the test issuer and has no test routes
+        run: bash scripts/check-prod-guard.sh
+      - name: Build the production web image
+        run: >-
+          docker build -f apps/web/Dockerfile
+          --build-arg CARTOUCHE_BUILD_PROFILE=production
+          --build-arg NEXT_PUBLIC_AUTH_PROVIDER=clerk
+          --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ env.CLERK_DUMMY_KEY }}
+          --build-arg API_INTERNAL_URL=http://api:8080
+          -t cartouche-web:prod-guard .
