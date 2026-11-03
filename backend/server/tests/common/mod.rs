@@ -15,6 +15,7 @@ use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwtVerifier, StaticKeySource, TokenVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::media::MediaService;
+use cartouche_api::rate_limit::InMemoryRateLimiter;
 use cartouche_api::state::AppState;
 use cartouche_domain::{Clock, ManualClock};
 use chrono::{TimeZone, Utc};
@@ -189,6 +190,7 @@ pub fn test_state_with(pool: PgPool, overrides: &[(&str, &str)]) -> (AppState, A
         config: Arc::new(config),
         clock: clock.clone(),
         media: test_media(),
+        rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         #[cfg(feature = "test-support")]
         test_clock: None,
     };
@@ -254,6 +256,20 @@ impl TestApp {
     ) -> TestResponse {
         let body = json.map(|value| ("application/json", value.to_string().into_bytes()));
         self.send(method, path, token, body, headers).await
+    }
+
+    /// Like `request`, as seen by a reverse proxy that received it from `ip`
+    /// (`x-forwarded-for: <ip>`).
+    pub async fn request_from(
+        &self,
+        ip: &str,
+        method: &str,
+        path: &str,
+        token: Option<&str>,
+        json: Option<serde_json::Value>,
+    ) -> TestResponse {
+        self.request_with_headers(method, path, token, json, &[("x-forwarded-for", ip)])
+            .await
     }
 
     /// Sends a `multipart/form-data` body made of `parts`.

@@ -80,6 +80,7 @@ async fn token(
 
 async fn reset(State(state): State<AppState>) -> Result<StatusCode, ApiError> {
     seed::reset(&state.db).await?;
+    state.rate_limiter.reset();
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use axum::http::StatusCode;
 use cartouche_api::app::build_router;
+use cartouche_api::rate_limit::{Bucket, InMemoryRateLimiter, RateLimiter};
 use cartouche_api::state::AppState;
 use cartouche_domain::{Clock, ManualClock, OverridableClock};
 use chrono::{Duration, TimeZone, Utc};
@@ -218,6 +219,25 @@ async fn reset_empties_tables(pool: PgPool) {
     assert_eq!(audits, 0);
 }
 
+// spec: ABU-006
+#[sqlx::test]
+async fn reset_clears_the_rate_limiter(pool: PgPool) {
+    let (mut state, clock) = common::test_state(pool);
+    let limiter = Arc::new(InMemoryRateLimiter::default());
+    state.rate_limiter = limiter.clone();
+    let app = TestApp::from_state(state, clock.clone());
+    let visitor = "203.0.113.7".parse().unwrap();
+    let bucket = Bucket::LeadSubmission;
+    for _ in 0..bucket.limit().max {
+        limiter.hit(bucket, visitor, clock.now()).unwrap();
+    }
+    assert!(limiter.check(bucket, visitor, clock.now()).is_err());
+
+    let response = app.request("POST", "/api/test/reset", None, None).await;
+    assert_eq!(response.status, StatusCode::NO_CONTENT);
+    assert_eq!(limiter.check(bucket, visitor, clock.now()), Ok(()));
+}
+
 // spec: ACC-008
 #[sqlx::test]
 async fn unknown_scenario_is_404(pool: PgPool) {
@@ -240,6 +260,7 @@ async fn clock_controls_token_expiry(pool: PgPool) {
         config: Arc::new(config),
         clock: clock.clone(),
         media: common::test_media(),
+        rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         test_clock: Some(clock),
     };
     let app = TestApp {

@@ -13,6 +13,7 @@ pub mod media;
 pub mod media_files;
 pub mod phone;
 pub mod public_access;
+pub mod rate_limit;
 pub mod slug;
 pub mod text;
 pub mod theme;
@@ -55,6 +56,9 @@ pub use media_files::{
 };
 pub use phone::{InvalidPhone, format_international, normalize_phone};
 pub use public_access::{PublicAccess, SlugMatch, public_access};
+pub use rate_limit::{
+    RateLimit, SlidingWindow, failed_access_codes_per_ip, lead_submissions_per_ip, rate_limit_key,
+};
 pub use slug::{
     InvalidSlug, Slug, SlugClaim, SlugClaimError, SlugRecord, decide_claim, suggest_base,
     with_suffix,

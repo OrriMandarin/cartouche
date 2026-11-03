@@ -1,5 +1,5 @@
 use axum::Json;
-use axum::http::StatusCode;
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use cartouche_domain::FieldError;
 use serde::Serialize;
@@ -73,6 +73,10 @@ pub enum ApiError {
     /// The card is not publicly served: disabled, deleted or its owner is suspended
     /// (LNK-007, LNK-026). Says nothing of the reason (LNK-027).
     CardInactive,
+    /// The caller's address used up a rate limit (ABU-006, ABU-007).
+    RateLimited {
+        retry_after_secs: u64,
+    },
     /// `POST /api/test/seed` named a scenario that does not exist.
     #[cfg(feature = "test-support")]
     UnknownScenario,
@@ -103,6 +107,7 @@ impl ApiError {
             ApiError::SlugReserved => "slug_reserved",
             ApiError::CardDisabledBySupport => "card_disabled_by_support",
             ApiError::CardInactive => "card_inactive",
+            ApiError::RateLimited { .. } => "rate_limited",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
             ApiError::Internal(_) => "internal_error",
@@ -131,6 +136,7 @@ impl ApiError {
             | ApiError::SlugReserved
             | ApiError::CardDisabledBySupport => StatusCode::CONFLICT,
             ApiError::CardInactive => StatusCode::GONE,
+            ApiError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -159,6 +165,7 @@ impl ApiError {
             ApiError::SlugReserved => "This link was used by another of your cards.",
             ApiError::CardDisabledBySupport => "This card was disabled by support.",
             ApiError::CardInactive => "This card is no longer active.",
+            ApiError::RateLimited { .. } => "Too many requests. Try again later.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
             ApiError::Internal(_) => "An internal error occurred.",
@@ -198,6 +205,10 @@ impl IntoResponse for ApiError {
         }
         let request_id = request_id::current().map(|id| id.0).unwrap_or_default();
         let (code, message, status) = (self.code(), self.message(), self.status());
+        let retry_after = match &self {
+            ApiError::RateLimited { retry_after_secs } => Some(*retry_after_secs),
+            _ => None,
+        };
         let fields = match self {
             ApiError::Validation(fields) => fields,
             _ => Vec::new(),
@@ -210,7 +221,13 @@ impl IntoResponse for ApiError {
                 fields,
             },
         };
-        (status, Json(body)).into_response()
+        let mut response = (status, Json(body)).into_response();
+        if let Some(seconds) = retry_after {
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from(seconds));
+        }
+        response
     }
 }
 
@@ -259,6 +276,23 @@ mod tests {
             .await
             .unwrap();
         (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    // spec: ABU-006
+    #[tokio::test]
+    async fn rate_limited_is_429_with_retry_after() {
+        let error = ApiError::RateLimited {
+            retry_after_secs: 42,
+        };
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(response.headers()["retry-after"], "42");
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["error"]["code"], "rate_limited");
+        assert!(body["error"].get("fields").is_none());
     }
 
     #[tokio::test]
