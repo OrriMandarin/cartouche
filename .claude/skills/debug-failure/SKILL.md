@@ -3,51 +3,51 @@ name: debug-failure
 description: Use when a Cartouche test (Rust, vitest or Playwright) fails, an API call returns an unexpected error, or a bug is reported and you need to reproduce and diagnose it before fixing.
 ---
 
-# Diagnostiquer un échec
+# Diagnose a failure
 
-Règle de base : **reproduire par un test d'abord, corriger ensuite.** Si le bug révèle une règle manquante ou fausse, passer par `update-spec` avant de coder.
+Basic rule: **reproduce with a test first, fix second.** If the bug reveals a missing or wrong rule, go through `update-spec` before coding.
 
-## 1. Écrire un test qui reproduit
+## 1. Write a reproducing test
 
-Au plus bas niveau qui montre le défaut : domaine (`cartouche-domain`), intégration (`backend/server/tests/`), composant (vitest), puis e2e seulement si le défaut est dans l'enchaînement navigateur + API. Le citer avec sa règle (`// spec: XXX-NNN` ou `XXX-NNN` dans le nom). Le voir échouer **pour la bonne raison**. Commandes : skill `run-tests`.
+At the lowest level that shows the defect: domain (`cartouche-domain`), integration (`backend/server/tests/`), component (vitest), and e2e only if the defect is in the browser + API sequence. Cite it with its rule (`// spec: XXX-NNN` or `XXX-NNN` in the name). See it fail **for the right reason**. Commands: skill `run-tests`.
 
-## 2. Suivre une requête de bout en bout
+## 2. Follow a request end to end
 
-Toute réponse de l'API porte `x-request-id` ; en cas d'erreur il est aussi dans le corps : `{"error":{"code","message","request_id"}}`. Le même identifiant figure dans **chaque ligne de log** de la requête.
+Every API response carries `x-request-id`; on error it is also in the body: `{"error":{"code","message","request_id"}}`. The same identifier appears in **every log line** of the request.
 
 ```bash
-curl -si localhost:8080/api/me -H 'x-request-id: debug-1'      # un identifiant à soi (1 à 64 caractères [A-Za-z0-9-])
-docker compose -f compose.test.yml logs api | grep <request_id>    # stack de test (logs JSON)
+curl -si localhost:8080/api/me -H 'x-request-id: debug-1'      # your own identifier (1 to 64 characters [A-Za-z0-9-])
+docker compose -f compose.test.yml logs api | grep <request_id>    # test stack (JSON logs)
 ```
 
-En dev (`make api`), les logs sont lisibles dans le terminal de l'API : chercher le même identifiant. Dans le navigateur, l'identifiant d'une erreur API est aussi dans l'onglet Réseau (en-tête de réponse) et dans le tag Sentry `request_id`.
-Le `code` d'erreur dit déjà beaucoup : `token_invalid` / `token_expired` (401), `auth_unavailable` (503), `account_pending|rejected|suspended` (403), `internal_error` (500, détail uniquement dans les logs).
+In dev (`make api`), the logs are readable in the API terminal: look for the same identifier. In the browser, the identifier of an API error is also in the Network tab (response header) and in the Sentry tag `request_id`.
+The error `code` already says a lot: `token_invalid` / `token_expired` (401), `auth_unavailable` (503), `account_pending|rejected|suspended` (403), `internal_error` (500, detail only in the logs).
 
-## 3. Échec Playwright
+## 3. Playwright failure
 
-Les artefacts d'un test en échec sont dans `frontend/e2e/test-results/<dossier-du-test>/` : `trace.zip`, capture d'écran, vidéo, `api-logs.txt` (pièce jointe `api-logs` : logs de l'API pendant le test, avec les `request_id`).
+The artifacts of a failed test are in `frontend/e2e/test-results/<test-folder>/`: `trace.zip`, screenshot, video, `api-logs.txt` (attachment `api-logs`: API logs during the test, with the `request_id`s).
 
 ```bash
 ls frontend/e2e/test-results/*/
-pnpm -C frontend --filter e2e exec playwright show-trace test-results/<dossier-du-test>/trace.zip   # chemin relatif à frontend/e2e/ (pnpm exec s'exécute dans ce dossier)
-pnpm -C frontend --filter e2e report                                   # rapport HTML (frontend/e2e/playwright-report)
-cat frontend/e2e/test-results/<dossier-du-test>/api-logs.txt | grep <request_id>
+pnpm -C frontend --filter e2e exec playwright show-trace test-results/<test-folder>/trace.zip   # path relative to frontend/e2e/ (pnpm exec runs in that folder)
+pnpm -C frontend --filter e2e report                                   # HTML report (frontend/e2e/playwright-report)
+cat frontend/e2e/test-results/<test-folder>/api-logs.txt | grep <request_id>
 ```
 
-Lire d'abord `api-logs.txt` (la requête en erreur et son `request_id`), puis la trace (état du DOM, requêtes réseau, console). Si le test ne trouve pas `api-logs.txt` : la stack de test est-elle bien lancée (`docker compose -f compose.test.yml ps`) ?
-Relancer un seul test : `make e2e ARGS="-g <titre ou règle>"`. Si la stack garde un état douteux : `make e2e-down` puis `make e2e`.
+Read `api-logs.txt` first (the failing request and its `request_id`), then the trace (DOM state, network requests, console). If the test cannot find `api-logs.txt`: is the test stack actually running (`docker compose -f compose.test.yml ps`)?
+Rerun a single test: `make e2e ARGS="-g <title or rule>"`. If the stack keeps a doubtful state: `make e2e-down` then `make e2e`.
 
-## 4. Échec Rust / vitest
+## 4. Rust / vitest failure
 
-- Rust : `cd backend && cargo test -p cartouche-api --all-features --test <fichier> <nom> -- --nocapture`, avec `DATABASE_URL` exporté (voir `run-tests`). `RUST_BACKTRACE=1` pour la pile.
-- Vitest : `pnpm -C frontend --filter web test <fichier>` ; ajouter `--reporter=verbose` si besoin.
+- Rust: `cd backend && cargo test -p cartouche-api --all-features --test <file> <name> -- --nocapture`, with `DATABASE_URL` exported (see `run-tests`). `RUST_BACKTRACE=1` for the stack trace.
+- Vitest: `pnpm -C frontend --filter web test <file>`; add `--reporter=verbose` if needed.
 
-## 5. Corriger, puis élargir
+## 5. Fix, then widen
 
-Une cause identifiée (pas un symptôme), le correctif minimal, le test reproducteur passe, puis `make lint test` (et `make e2e` si le parcours navigateur est touché).
+One identified cause (not a symptom), the minimal fix, the reproducing test passes, then `make lint test` (and `make e2e` if the browser journey is touched).
 
-## Escalade
+## Escalation
 
-- Agent `debugger` d'abord (reproduit, diagnostique, corrige).
-- **Si deux tentatives échouent** (le test passe puis casse ailleurs, cause non établie, comportement non déterministe, plusieurs couches en jeu) : passer à `debugger-deep`, en lui donnant le test reproducteur, les `request_id` et ce qui a déjà été essayé.
-- Contradiction avec la spec ou changement de comportement nécessaire : s'arrêter et le signaler au porteur du projet.
+- Agent `debugger` first (reproduces, diagnoses, fixes).
+- **If two attempts fail** (the test passes then breaks elsewhere, cause not established, non-deterministic behavior, several layers involved): move to `debugger-deep`, giving it the reproducing test, the `request_id`s and what has already been tried.
+- Contradiction with the spec or a needed change of behavior: stop and report it to the project maintainer.

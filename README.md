@@ -1,67 +1,70 @@
 # Cartouche
 
-Cartouche est une application open source de carte de visite numérique. Un tag NFC ou un QR code ouvre la page publique d'une carte : photo, coordonnées, liens et bouton « enregistrer le contact ». Lors d'un salon ou d'un événement, la même page propose un formulaire pour laisser ses coordonnées. Le propriétaire gère ses cartes, ses événements et ses contacts depuis un tableau de bord.
+Cartouche is an open-source digital business card application. An NFC tag or a QR code opens a card's public page: photo, contact details, links and a "save contact" button. At a trade show or an event, the same page offers a form where visitors can leave their contact details. The owner manages their cards, events and leads from a dashboard.
 
-## Organisation du dépôt
+The user interface is currently in French; the code, documentation and spec are in English.
 
-Le backend et le frontend vivent chacun dans leur dossier, avec leurs propres outils. La racine ne contient que ce qui concerne tout le projet.
+## Repository layout
+
+The backend and the frontend each live in their own folder, with their own tooling. The root only holds what concerns the whole project.
 
 ```
 cartouche/
-├── backend/            Tout le Rust (workspace Cargo)
-│   ├── domain/         crate cartouche-domain : logique métier pure, sans I/O
-│   ├── server/         crate cartouche-api : API Axum, accès Postgres (SQLx), migrations, tests d'intégration
-│   ├── .sqlx/          cache des requêtes SQL vérifiées à la compilation (généré, commité)
+├── backend/            All the Rust code (Cargo workspace)
+│   ├── domain/         crate cartouche-domain: pure business logic, no I/O
+│   ├── server/         crate cartouche-api: Axum API, Postgres access (SQLx), migrations, integration tests
+│   ├── .sqlx/          cache of SQL queries checked at compile time (generated, committed)
 │   └── Dockerfile
-├── frontend/           Tout le TypeScript (workspace pnpm)
-│   ├── web/            site Next.js : page publique, tableau de bord, support
-│   ├── api-client/     client TypeScript généré depuis l'OpenAPI de l'API
-│   └── e2e/            tests de bout en bout Playwright, sur la stack complète
-├── spec/               spécification produit : la référence, une règle numérotée par comportement
-├── docs/               design initial et plans de réalisation
-├── scripts/            vérificateur de la spec, garde-fou de l'image de production
-├── Makefile            point d'entrée unique pour toutes les commandes
-├── compose.dev.yml     Postgres de développement
-└── compose.test.yml    stack complète (Postgres, API, web) pour les tests e2e
+├── frontend/           All the TypeScript code (pnpm workspace)
+│   ├── web/            Next.js site: public page, dashboard, support
+│   ├── api-client/     TypeScript client generated from the API's OpenAPI document
+│   └── e2e/            Playwright end-to-end tests, on the full stack
+├── spec/               product specification: the reference, one numbered rule per behavior
+├── docs/               initial design and implementation plans (historical, in French)
+├── scripts/            spec linter, production image guard
+├── Makefile            single entry point for every command
+├── compose.dev.yml     development Postgres
+└── compose.test.yml    full stack (Postgres, API, web) for the e2e tests
 ```
 
-Le contrat entre les deux mondes est l'OpenAPI : l'API la publie, `frontend/api-client` en génère les types TypeScript, et la CI échoue si les deux divergent.
+OpenAPI is the contract between the two sides: the API publishes it, `frontend/api-client` generates the TypeScript types from it, and CI fails if the two diverge.
 
-## Prérequis
+## Prerequisites
 
-- Docker (avec Docker Compose)
-- Rust stable, installé via [rustup](https://rustup.rs) (la version est fixée par `backend/rust-toolchain.toml`)
-- Node.js ≥ 24 et pnpm (`corepack enable`, ou une installation directe de pnpm)
+- Docker (with Docker Compose)
+- Stable Rust, installed through [rustup](https://rustup.rs) (the version is pinned by `backend/rust-toolchain.toml`)
+- Node.js ≥ 24 and pnpm (`corepack enable`, or a direct pnpm install)
 
-## Démarrage rapide
+## Quick start
 
 ```bash
-make setup    # dépendances : pnpm (frontend/), cargo fetch, sqlx-cli
-make dev-db   # PostgreSQL local (port 54320)
-make api      # API Rust sur http://localhost:8080
-make web      # site Next.js sur http://localhost:3000
-make seed     # données de démonstration (un administrateur et un utilisateur par statut)
+make setup    # dependencies: pnpm (frontend/), cargo fetch, sqlx-cli
+make dev-db   # local PostgreSQL (port 54320)
+make api      # Rust API on http://localhost:8080
+make web      # Next.js site on http://localhost:3000
+make seed     # demo data (one administrator and one user per status)
 ```
 
-En local, tout fonctionne **sans Clerk** : un fournisseur d'authentification de test, servi par l'API, permet de se connecter en un clic avec les utilisateurs de démonstration. Pour surcharger la configuration, copiez `.env.example` en `.env`.
+Locally, everything works **without Clerk**: a test authentication provider, served by the API, lets you sign in with one click as any of the demo users. To override the configuration, copy `.env.example` to `.env`.
 
-## Commandes utiles
+## Useful commands
 
-| Commande | Effet |
+| Command | Effect |
 |---|---|
-| `make test` | Tests Rust, vérification des requêtes SQL, tests web, vérification de la spec. |
-| `make lint` | `cargo fmt`, `clippy`, lint et typecheck TypeScript. |
-| `make e2e` | Monte la stack de test dans Docker et lance Playwright. |
-| `make openapi` | Régénère le contrat OpenAPI et le client TypeScript. |
-| `make sqlx-prepare` | Régénère le cache `backend/.sqlx/` après un changement de requête ou de migration. |
+| `make test` | Rust tests, SQL query check, web tests, spec check. |
+| `make lint` | `cargo fmt`, `clippy`, TypeScript lint and typecheck. |
+| `make e2e` | Starts the test stack in Docker and runs Playwright. |
+| `make openapi` | Regenerates the OpenAPI contract and the TypeScript client. |
+| `make sqlx-prepare` | Regenerates the `backend/.sqlx/` cache after a query or migration change. |
 
-La liste complète est dans le `Makefile` et dans [`CLAUDE.md`](CLAUDE.md).
+The full list is in the `Makefile` and in [`CLAUDE.md`](CLAUDE.md).
 
 ## Documentation
 
-- Spécification : [`spec/README.md`](spec/README.md)
-- Conventions de contribution et consignes pour les agents : [`CLAUDE.md`](CLAUDE.md)
+- Specification: [`spec/README.md`](spec/README.md)
+- Contribution conventions and instructions for agents: [`CLAUDE.md`](CLAUDE.md)
+- Initial design and implementation plans (historical, in French, no longer updated): [`docs/superpowers/`](docs/superpowers/)
 
-## Licence
+## License
 
-MIT, voir [`LICENSE`](LICENSE).
+MIT, see [`LICENSE`](LICENSE).

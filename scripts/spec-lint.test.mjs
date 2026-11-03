@@ -12,10 +12,10 @@ const SCRIPT = fileURLToPath(new URL('./spec-lint.mjs', import.meta.url));
 
 const README = `# Spec
 
-| Fichier | Préfixe | Sujet |
+| File | Prefix | Topic |
 |---|---|---|
-| \`events.md\` | EVT | Événements |
-| \`event-form.md\` | FRM | Formulaire |
+| \`events.md\` | EVT | Events |
+| \`event-form.md\` | FRM | Form |
 `;
 
 /** Builds a temp tree: { 'spec/README.md': '...', 'code/a.test.ts': '...' } and returns its root. */
@@ -40,14 +40,14 @@ function run(root, extra = {}) {
 
 const validSpec = {
   'spec/README.md': README,
-  'spec/events.md': '# Événements\n\n## Période\n\n- **EVT-001** — Un événement a un début.\n- **EVT-002** — Il se termine (voir EVT-001).\n',
-  'spec/event-form.md': '# Formulaire\n\n- **FRM-001** — Le consentement est obligatoire.\n',
+  'spec/events.md': '# Events\n\n## Period\n\n- **EVT-001** — An event has a start.\n- **EVT-002** — It ends (see EVT-001).\n',
+  'spec/event-form.md': '# Form\n\n- **FRM-001** — Consent is required.\n',
 };
 
 test('rejects a duplicate rule id', () => {
   const root = fixture({
     ...validSpec,
-    'spec/events.md': '- **EVT-001** — Un.\n- **EVT-001** — Deux.\n',
+    'spec/events.md': '- **EVT-001** — One.\n- **EVT-001** — Two.\n',
   });
   const { errors } = run(root);
   assert.ok(errors.some((e) => e.includes('EVT-001') && /duplicate/i.test(e)), errors.join('\n'));
@@ -56,7 +56,7 @@ test('rejects a duplicate rule id', () => {
 test('rejects an id whose prefix does not match its file', () => {
   const root = fixture({
     ...validSpec,
-    'spec/events.md': '- **FRM-001** — Mauvais préfixe.\n',
+    'spec/events.md': '- **FRM-001** — Wrong prefix.\n',
     'spec/event-form.md': '- **FRM-002** — Ok.\n',
   });
   const { errors } = run(root);
@@ -66,7 +66,7 @@ test('rejects an id whose prefix does not match its file', () => {
 test('rejects a prefix missing from the README table', () => {
   const root = fixture({
     ...validSpec,
-    'spec/anti-abuse.md': '- **ABU-001** — Champ piège.\n',
+    'spec/anti-abuse.md': '- **ABU-001** — Honeypot field.\n',
   });
   const { errors } = run(root);
   assert.ok(errors.some((e) => e.includes('anti-abuse.md') && /README/.test(e)), errors.join('\n'));
@@ -100,7 +100,7 @@ test('rejects a malformed rule line', () => {
 test('ignores rule-like lines inside fenced code blocks', () => {
   const root = fixture({
     ...validSpec,
-    'spec/README.md': `${README}\n\`\`\`\n- **XXX-NNN** — exemple (voir ZZZ-123)\n\`\`\`\n`,
+    'spec/README.md': `${README}\n\`\`\`\n- **XXX-NNN** — example (see ZZZ-123)\n\`\`\`\n`,
   });
   assert.deepEqual(run(root).errors, []);
 });
@@ -108,7 +108,7 @@ test('ignores rule-like lines inside fenced code blocks', () => {
 test('rejects a spec cross-reference to an unknown rule', () => {
   const root = fixture({
     ...validSpec,
-    'spec/events.md': '- **EVT-001** — Un (voir FRM-099).\n',
+    'spec/events.md': '- **EVT-001** — One (see FRM-099).\n',
   });
   const { errors } = run(root);
   assert.ok(errors.some((e) => e.includes('FRM-099')), errors.join('\n'));

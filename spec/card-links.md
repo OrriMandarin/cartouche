@@ -1,50 +1,50 @@
-# Lien public d'une carte
+# Public card link
 
-> Statut : implémenté (plan 2) ; LNK-015 et LNK-016 : plan 4
+> Status: implemented (plan 2); LNK-015 and LNK-016: plan 4
 
-## Format et unicité
+## Format and uniqueness
 
-- **LNK-001** — Le lien public d'une carte a la forme `https://<domaine>/c/<slug>`. Le slug est choisi par l'utilisateur ; une proposition lui est faite à partir de son nom.
-- **LNK-002** — Un slug est unique sur toute l'instance.
-- **LNK-018** — Un slug compte de 3 à 64 caractères : lettres minuscules sans accent, chiffres et tirets, sans tiret au début ni à la fin, et sans deux tirets de suite. La saisie est débarrassée de ses espaces de début et de fin et passée en minuscules avant d'être vérifiée ; un slug invalide est refusé (`400`, champ `slug`, code `invalid_slug`).
-- **LNK-019** — La proposition de slug (voir LNK-001) part du prénom et du nom : accents retirés, minuscules, tout autre caractère remplacé par un tiret, puis mise en conformité avec LNK-018 (tirets en trop retirés, 64 caractères au plus). Si ce slug n'est pas libre, on lui ajoute `-2`, `-3`… jusqu'au premier slug libre.
-- **LNK-020** — Avant l'enregistrement, le tableau de bord indique si le slug saisi est libre, déjà pris, réservé ou invalide.
-- **LNK-021** — Un lien saisi avec des majuscules (`/c/Alice-Durand`) redirige de façon permanente vers sa forme en minuscules.
-- **LNK-022** — Réclamer un slug qui appartient à un autre utilisateur (slug courant, ancien slug ou slug réservé) est refusé par `409 slug_taken`, sans dire à qui il appartient. Quand deux demandes réclament le même slug libre au même moment, une seule réussit et l'autre reçoit `409 slug_taken`.
-- **LNK-023** — Un slug jamais attribué affiche une page « Carte introuvable », avec le statut HTTP 404.
+- **LNK-001** — The public link of a card has the form `https://<domain>/c/<slug>`. The slug is chosen by the user; a suggestion is made from their name.
+- **LNK-002** — A slug is unique across the whole instance.
+- **LNK-018** — A slug is 3 to 64 characters long: lowercase letters without accents, digits and hyphens, with no hyphen at the start or end, and no two hyphens in a row. The input is trimmed of leading and trailing spaces and lowercased before being checked; an invalid slug is rejected (`400`, field `slug`, code `invalid_slug`).
+- **LNK-019** — The slug suggestion (see LNK-001) starts from the first and last name: accents removed, lowercased, every other character replaced with a hyphen, then made to conform to LNK-018 (extra hyphens removed, 64 characters at most). If this slug is not available, `-2`, `-3`… is appended until the first available slug.
+- **LNK-020** — Before saving, the dashboard shows whether the entered slug is available, already taken, reserved or invalid.
+- **LNK-021** — A link entered with uppercase letters (`/c/Alice-Durand`) permanently redirects to its lowercase form.
+- **LNK-022** — Claiming a slug that belongs to another user (current slug, former slug or reserved slug) is rejected with `409 slug_taken`, without saying who owns it. When two requests claim the same available slug at the same time, only one succeeds and the other gets `409 slug_taken`.
+- **LNK-023** — A slug that was never assigned shows a "Carte introuvable" ("Card not found") page, with HTTP status 404.
 
-## Changement de slug
+## Slug change
 
-- **LNK-003** — Le lien ne casse jamais : quand l'utilisateur change le slug d'une carte, tous les anciens slugs de cette carte redirigent de façon permanente vers le nouveau.
-- **LNK-004** — Un ancien slug reste réservé à cette carte : personne d'autre ne peut le prendre.
-- **LNK-024** — La redirection permanente de LNK-003 est une redirection HTTP 308. Elle vaut pour toutes les adresses publiques de la carte : la page et la vCard.
-- **LNK-025** — Une carte peut reprendre l'un de ses propres anciens slugs, qui redevient son slug courant. L'ancien slug d'une carte qui existe toujours ne peut pas être donné à une autre carte, même du même propriétaire (`409 slug_reserved`), car les liens de la première casseraient.
+- **LNK-003** — The link never breaks: when the user changes a card's slug, all former slugs of that card permanently redirect to the new one.
+- **LNK-004** — A former slug stays reserved for that card: nobody else can take it.
+- **LNK-024** — The permanent redirect of LNK-003 is an HTTP 308 redirect. It applies to all public addresses of the card: the page and the vCard.
+- **LNK-025** — A card can take back one of its own former slugs, which becomes its current slug again. The former slug of a card that still exists cannot be given to another card, even one of the same owner (`409 slug_reserved`), because the first card's links would break.
 
-## Désactivation par le propriétaire
+## Disabling by the owner
 
-- **LNK-005** — Le propriétaire peut désactiver ou réactiver une carte à tout moment depuis le tableau de bord, en un clic.
-- **LNK-006** — Le lien d'une carte désactivée affiche une page neutre « Cette carte n'est plus active », et non une erreur 404.
-- **LNK-007** — Sur une carte désactivée, la vCard et les formulaires d'événement sont inaccessibles, y compris pour un événement encore en cours, et le serveur refuse les envois.
-- **LNK-008** — Les données d'une carte désactivée (contenu, événements, contacts collectés) sont conservées, et restent visibles et exportables dans le tableau de bord.
-- **LNK-009** — Réactiver une carte remet le même lien en service, sans rien changer d'autre.
-- **LNK-026** — La page publique, la vCard et les formulaires d'une carte ne sont servis que si la carte n'est désactivée ni par son propriétaire ni par le support, et si le compte de son propriétaire est `approved`. Dans tous les autres cas, le lien affiche la page neutre et la vCard répond `410 card_inactive`.
-- **LNK-027** — La page neutre est la même, que la carte soit désactivée par son propriétaire ou par le support, supprimée, ou que le compte de son propriétaire soit suspendu : elle ne révèle pas la raison et n'affiche aucune donnée de la carte, pas même dans les balises OpenGraph. Elle est servie avec le statut HTTP 200 et demande aux moteurs de recherche de ne pas l'indexer.
+- **LNK-005** — The owner can disable or re-enable a card at any time from the dashboard, in one click.
+- **LNK-006** — The link of a disabled card shows a neutral page "Cette carte n'est plus active" ("This card is no longer active"), not a 404 error.
+- **LNK-007** — On a disabled card, the vCard and the event forms are unreachable, including for an event still in progress, and the server rejects submissions.
+- **LNK-008** — The data of a disabled card (content, events, leads) is kept, and remains visible and exportable in the dashboard.
+- **LNK-009** — Re-enabling a card puts the same link back into service, changing nothing else.
+- **LNK-026** — The public page, the vCard and the forms of a card are served only if the card is disabled neither by its owner nor by support, and if its owner's account is `approved`. In all other cases, the link shows the neutral page and the vCard responds `410 card_inactive`.
+- **LNK-027** — The neutral page is the same whether the card is disabled by its owner or by support, deleted, or its owner's account is suspended: it does not reveal the reason and shows no card data, not even in the OpenGraph tags. It is served with HTTP status 200 and asks search engines not to index it.
 
-## Désactivation par le support
+## Disabling by support
 
-- **LNK-010** — La désactivation par le support est un état distinct de la désactivation par le propriétaire. Côté public, la carte affiche la même page neutre (voir LNK-006).
-- **LNK-011** — Pour une carte désactivée par le support, le propriétaire voit « Désactivée par le support » dans son tableau de bord et ne peut pas la réactiver lui-même ; seul un administrateur peut lever ce blocage (voir ADM-009 et ADM-010).
-- **LNK-028** — Les désactivations par le propriétaire et par le support sont indépendantes. Tant que le support bloque une carte, son propriétaire ne peut ni la désactiver ni la réactiver (`409 card_disabled_by_support`) ; quand le support lève le blocage, la carte retrouve l'état que son propriétaire avait choisi.
+- **LNK-010** — Disabling by support is a state distinct from disabling by the owner. On the public side, the card shows the same neutral page (see LNK-006).
+- **LNK-011** — For a card disabled by support, the owner sees "Désactivée par le support" ("Disabled by support") in their dashboard and cannot re-enable it themselves; only an administrator can lift this block (see ADM-009 and ADM-010).
+- **LNK-028** — Disabling by the owner and disabling by support are independent. As long as support blocks a card, its owner can neither disable nor re-enable it (`409 card_disabled_by_support`); when support lifts the block, the card returns to the state its owner had chosen.
 
-## Suppression
+## Deletion
 
-- **LNK-012** — La suppression d'une carte est définitive et demande une confirmation. Le lien d'une carte supprimée affiche la même page neutre (voir LNK-006).
-- **LNK-013** — Les slugs d'une carte supprimée restent réservés et ne sont jamais réattribués à quelqu'un d'autre, pour qu'une ancienne puce NFC ne pointe jamais vers la carte d'un inconnu.
-- **LNK-014** — Le même utilisateur peut rattacher l'un de ses slugs réservés à une nouvelle carte.
-- **LNK-015** — À la suppression d'un compte, les slugs de l'utilisateur ne sont conservés que sous forme d'empreinte (hash) dans une table de slugs bloqués, sans lien avec une personne. Ils restent bloqués définitivement : plus personne, y compris l'ancien utilisateur, ne peut les reprendre.
-- **LNK-016** — Aucune donnée personnelle n'est conservée après la suppression d'un compte (voir ACC-018), et aucun ancien lien ne peut pointer vers un inconnu.
+- **LNK-012** — Deleting a card is permanent and requires confirmation. The link of a deleted card shows the same neutral page (see LNK-006).
+- **LNK-013** — The slugs of a deleted card stay reserved and are never reassigned to anyone else, so that an old NFC chip never points to a stranger's card.
+- **LNK-014** — The same user can attach one of their reserved slugs to a new card.
+- **LNK-015** — When an account is deleted, the user's slugs are kept only as a hash in a blocked-slugs table, with no link to a person. They remain blocked permanently: nobody, including the former user, can take them again.
+- **LNK-016** — No personal data is kept after an account is deleted (see ACC-018), and no former link can point to a stranger.
 
-## Partage
+## Sharing
 
-- **LNK-017** — Le tableau de bord permet de copier le lien d'une carte et de télécharger son QR code en SVG et en PNG.
-- **LNK-029** — Le lien copié et le QR code portent le lien public complet de la carte, avec son slug courant : `PUBLIC_BASE_URL/c/<slug>`.
+- **LNK-017** — The dashboard lets the user copy a card's link and download its QR code as SVG and PNG.
+- **LNK-029** — The copied link and the QR code carry the card's full public link, with its current slug: `PUBLIC_BASE_URL/c/<slug>`.

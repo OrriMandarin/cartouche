@@ -1,33 +1,33 @@
-# Validation des inscriptions et support
+# Sign-up approval and support
 
-> Statut : implémenté : ADM-001 à ADM-006 et ADM-009 à ADM-015 (plans 1 et 2) ; ADM-007 et ADM-008 : plan 4
+> Status: implemented: ADM-001 to ADM-006 and ADM-009 to ADM-015 (plans 1 and 2); ADM-007 and ADM-008: plan 4
 
-## Accès et gestion des comptes
+## Access and account management
 
-- **ADM-001** — La page de support et les routes `/api/admin/*` sont réservées aux administrateurs ; un non-administrateur reçoit `403 forbidden` et l'interface affiche « Accès réservé ».
-- **ADM-002** — La page de support liste les utilisateurs filtrables par statut et affiche bien en évidence le nombre de comptes `pending`.
-- **ADM-003** — Transitions de statut autorisées : `pending → approved | rejected`, `rejected → approved`, `approved → suspended`, `suspended → approved`. Toute autre transition → `409 invalid_transition`.
-- **ADM-004** — Un administrateur ne peut pas changer le statut d'un autre administrateur, ni le sien → `403 cannot_moderate_admin`.
+- **ADM-001** — The support page and the `/api/admin/*` routes are restricted to administrators; a non-administrator receives `403 forbidden` and the interface shows "Accès réservé" ("Access restricted").
+- **ADM-002** — The support page lists users, filterable by status, and prominently displays the number of `pending` accounts.
+- **ADM-003** — Allowed status transitions: `pending → approved | rejected`, `rejected → approved`, `approved → suspended`, `suspended → approved`. Any other transition → `409 invalid_transition`.
+- **ADM-004** — An administrator cannot change the status of another administrator, or their own → `403 cannot_moderate_admin`.
 
-## Journal d'audit
+## Audit log
 
-- **ADM-005** — Chaque action d'un administrateur est inscrite au journal d'audit : acteur, action, type et identifiant de la cible, métadonnées (ancien et nouveau statut), horodatage.
-- **ADM-008** — Chaque consultation par un administrateur des contacts collectés d'un autre utilisateur est inscrite au journal d'audit (qui, quoi, quand). Plan 4.
+- **ADM-005** — Every administrator action is recorded in the audit log: actor, action, type and identifier of the target, metadata (old and new status), timestamp.
+- **ADM-008** — Every time an administrator views the leads of another user, it is recorded in the audit log (who, what, when). Plan 4.
 
-## Consultation (lecture seule)
+## Viewing (read-only)
 
-- **ADM-006** — Un administrateur peut consulter, pour un utilisateur donné, son profil et ses cartes, en lecture seule. Plan 2.
-- **ADM-007** — Un administrateur peut consulter, pour un utilisateur donné, ses événements et ses contacts collectés, en lecture seule. Plan 4.
-- **ADM-013** — La page de support d'un utilisateur liste ses cartes avec leur état et permet d'ouvrir chacune en lecture seule, même désactivée : son contenu s'affiche dans l'aperçu du template (voir TPL-014). Plan 2.
+- **ADM-006** — An administrator can view, for a given user, their profile and their cards, read-only. Plan 2.
+- **ADM-007** — An administrator can view, for a given user, their events and their leads, read-only. Plan 4.
+- **ADM-013** — A user's support page lists their cards with their state and lets the administrator open each one read-only, even if disabled: its content is shown in the template preview (see TPL-014). Plan 2.
 
-## Modération des cartes
+## Card moderation
 
-- **ADM-009** — Un administrateur peut désactiver une carte abusive ; la désactivation par le support est un état distinct de celle du propriétaire (voir LNK-010). Plan 2.
-- **ADM-010** — Seul un administrateur peut lever la désactivation d'une carte par le support (voir LNK-011). Plan 2.
-- **ADM-011** — Quand un compte est suspendu, toutes ses cartes affichent la page neutre « Cette carte n'est plus active » (voir LNK-006). Plan 2.
-- **ADM-014** — La désactivation d'une carte par le support et la levée de ce blocage sont inscrites au journal d'audit (voir ADM-005), avec les actions `card.support_disabled` et `card.support_enabled` et la carte pour cible. Plan 2.
-- **ADM-015** — Désactiver une carte déjà bloquée par le support, ou lever un blocage qui n'existe pas, est refusé par `409 invalid_transition`. Plan 2.
+- **ADM-009** — An administrator can disable an abusive card; disabling by support is a state distinct from the owner's (see LNK-010). Plan 2.
+- **ADM-010** — Only an administrator can lift a card's disabling by support (see LNK-011). Plan 2.
+- **ADM-011** — When an account is suspended, all its cards show the neutral page "Cette carte n'est plus active" ("This card is no longer active") (see LNK-006). Plan 2.
+- **ADM-014** — Disabling a card by support and lifting that block are recorded in the audit log (see ADM-005), with the actions `card.support_disabled` and `card.support_enabled` and the card as target. Plan 2.
+- **ADM-015** — Disabling a card already blocked by support, or lifting a block that does not exist, is refused with `409 invalid_transition`. Plan 2.
 
-## Limites des pouvoirs
+## Limits of powers
 
-- **ADM-012** — Les administrateurs ne modifient pas le contenu des utilisateurs : ils peuvent seulement le consulter, désactiver une carte, et valider, refuser ou suspendre un compte.
+- **ADM-012** — Administrators do not modify users' content: they can only view it, disable a card, and approve, reject or suspend an account.

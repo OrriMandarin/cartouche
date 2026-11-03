@@ -1,44 +1,44 @@
-# Formulaire d'événement
+# Event form
 
-> Statut : spécifié, non implémenté (plan 3)
+> Status: specified, not implemented (plan 3)
 
-## Parcours du prospect
+## Prospect journey
 
-- **FRM-001** — Un clic sur le bouton d'événement ouvre le formulaire en plein écran, avec un bouton de retour vers la carte.
-- **FRM-002** — Si l'événement a un code d'accès, un écran demande le code avant le formulaire (voir EVT-011, EVT-012 et EVT-013).
-- **FRM-003** — Le formulaire affiche le titre et la description de l'événement, puis les champs standards activés, puis les champs personnalisés.
-- **FRM-004** — Après l'envoi, un écran de confirmation propose d'enregistrer la vCard du porteur, puis un retour à la carte.
-- **FRM-005** — Le formulaire est accessible : libellés, navigation au clavier, types de clavier mobile adaptés (`type="email"`, `inputmode="tel"`…).
+- **FRM-001** — A click on the event button opens the form fullscreen, with a back button to the card.
+- **FRM-002** — If the event has an access code, a screen asks for the code before the form (see EVT-011, EVT-012 and EVT-013).
+- **FRM-003** — The form shows the event's title and description, then the enabled standard fields, then the custom fields.
+- **FRM-004** — After submission, a confirmation screen offers to save the owner's vCard, then a return to the card.
+- **FRM-005** — The form is accessible: labels, keyboard navigation, suitable mobile keyboard types (`type="email"`, `inputmode="tel"`…).
 
-## Consentement
+## Consent
 
-- **FRM-006** — Le consentement est obligatoire : une case à cocher accompagne un texte de mentions légales.
-- **FRM-007** — Un texte de mentions légales par défaut, en français et conforme à l'esprit du RGPD, est fourni ; il peut être remplacé par événement.
-- **FRM-008** — À l'envoi, le serveur enregistre l'horodatage du consentement et le texte exact accepté.
-- **FRM-009** — Le responsable des données est le propriétaire de la carte, pas l'opérateur de l'instance : le texte par défaut est rempli automatiquement avec le nom ou l'entreprise et l'email de la carte.
-- **FRM-010** — Le texte par défaut précise la finalité (recontact commercial lié à l'événement) et le droit d'accès et de suppression.
-- **FRM-011** — Le texte par défaut ne s'engage sur aucune durée de conservation chiffrée : il n'y a pas de suppression automatique en v1, la suppression reste manuelle.
+- **FRM-006** — Consent is required: a checkbox accompanies a legal notice text.
+- **FRM-007** — A default legal notice text, in French and in the spirit of the GDPR, is provided; it can be replaced per event.
+- **FRM-008** — On submission, the server records the consent timestamp and the exact text that was accepted.
+- **FRM-009** — The data controller is the card's owner, not the instance operator: the default text is filled in automatically with the card's name or company and email.
+- **FRM-010** — The default text states the purpose (commercial follow-up related to the event) and the right of access and deletion.
+- **FRM-011** — The default text commits to no specific retention period: there is no automatic deletion in v1, deletion remains manual.
 
 ## Validation
 
-- **FRM-012** — L'email saisi doit être valide.
-- **FRM-013** — Le téléphone est validé et normalisé au format international E.164, la France étant le pays par défaut.
-- **FRM-014** — Les dates saisies doivent être valides.
-- **FRM-015** — Les erreurs s'affichent à côté de chaque champ, et la saisie n'est jamais perdue.
-- **FRM-016** — Les chaînes saisies sont normalisées en NFC avant d'être stockées.
+- **FRM-012** — The entered email must be valid.
+- **FRM-013** — The phone number is validated and normalized to the international E.164 format, with France as the default country.
+- **FRM-014** — Entered dates must be valid.
+- **FRM-015** — Errors are shown next to each field, and the input is never lost.
+- **FRM-016** — Entered strings are normalized to NFC before being stored.
 
-## Champs standards
+## Standard fields
 
-- **FRM-017** — Les champs standards que le propriétaire peut cocher sont : prénom, nom, date de naissance, email, téléphone et adresse postale.
-- **FRM-018** — L'adresse postale se décompose en rue, code postal, ville et pays.
-- **FRM-019** — Chaque champ standard coché peut être obligatoire ou facultatif.
+- **FRM-017** — The standard fields the owner can check are: first name, last name, date of birth, email, phone number and postal address.
+- **FRM-018** — The postal address breaks down into street, postal code, city and country.
+- **FRM-019** — Each checked standard field can be required or optional.
 
-## Champs personnalisés
+## Custom fields
 
-- **FRM-020** — Le propriétaire peut ajouter autant de champs personnalisés qu'il veut, et les ordonner. Chaque champ a un libellé, un type, un caractère obligatoire ou non, et un texte d'aide optionnel.
-- **FRM-021** — Les types de champ personnalisé sont : `texte`, `texte long`, `date`, `nombre`, `choix unique` (avec une liste d'options) et `case à cocher`.
+- **FRM-020** — The owner can add as many custom fields as they want, and order them. Each field has a label, a type, a required or optional flag, and an optional help text.
+- **FRM-021** — The custom field types are: `text`, `long text`, `date`, `number`, `single choice` (with a list of options) and `checkbox`.
 
-## Évolution des champs
+## Field evolution
 
-- **FRM-022** — Modifier les champs d'un événement alors que des contacts existent déjà ne casse jamais les contacts existants : chaque contact conserve ses réponses avec le libellé et le type du champ au moment de l'envoi.
-- **FRM-023** — Un champ supprimé reste visible sur les anciens contacts et dans les exports (voir LEA-011).
+- **FRM-022** — Changing an event's fields while leads already exist never breaks the existing leads: each lead keeps its answers with the field's label and type as they were at submission time.
+- **FRM-023** — A deleted field remains visible on old leads and in exports (see LEA-011).

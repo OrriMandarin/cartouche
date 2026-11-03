@@ -1,32 +1,32 @@
-# Médias
+# Media
 
-> Statut : implémenté (plan 2)
+> Status: implemented (plan 2)
 
-## Fonds d'en-tête et photo de profil
+## Header backgrounds and profile photo
 
-- **MED-001** — Une carte a un seul fond d'en-tête, qui est une image ou une vidéo.
-- **MED-002** — La vidéo d'en-tête est au format MP4, limitée à 30 s et 25 Mo.
-- **MED-003** — Au moment de l'envoi d'une vidéo, une image fixe est capturée dans le navigateur (via un canvas) et sert d'image d'attente (voir PUB-006).
-- **MED-004** — Il n'y a pas de transcodage vidéo côté serveur en v1.
-- **MED-005** — Une carte a une seule photo de profil, recadrée en cercle dans l'éditeur.
+- **MED-001** — A card has a single header background, which is an image or a video.
+- **MED-002** — The header video is in MP4 format, limited to 30 s and 25 MB.
+- **MED-003** — When a video is uploaded, a still image is captured in the browser (via a canvas) and serves as the placeholder image (see PUB-006).
+- **MED-004** — There is no server-side video transcoding in v1.
+- **MED-005** — A card has a single profile photo, cropped to a circle in the editor.
 
-## Traitement des images
+## Image processing
 
-- **MED-006** — Les images sont redimensionnées en plusieurs tailles et converties en WebP côté serveur.
-- **MED-007** — Les métadonnées EXIF des images, dont la position GPS, sont supprimées.
-- **MED-008** — Le type d'un fichier est vérifié à partir de son contenu réel, pas seulement de son extension.
-- **MED-012** — Les images acceptées sont au format JPEG, PNG ou WebP, pèsent au plus 10 Mo et comptent au plus 40 millions de pixels ; les dimensions sont vérifiées avant de décoder l'image entière. Un type refusé donne `415 unsupported_media_type`, un fichier trop lourd `413 payload_too_large`, une image trop grande `400` avec le code `image_too_large`.
-- **MED-013** — La durée d'une vidéo est lue dans le fichier par le serveur, sans se fier au navigateur ; au-delà de 30 s, la vidéo est refusée avec le code `video_too_long`. Une vidéo arrive toujours avec son image d'attente (voir MED-003), traitée comme une image d'en-tête ; sans elle, l'envoi est refusé avec le code `poster_required`.
-- **MED-014** — L'orientation EXIF d'une photo est appliquée avant la suppression de ses métadonnées : la photo s'affiche à l'endroit.
-- **MED-015** — Tailles produites, sans jamais agrandir l'image d'origine : pour la photo de profil, des carrés de 128, 256 et 512 pixels en WebP, plus 256 et 512 pixels en JPEG pour la vCard et l'aperçu de lien (voir PUB-025 et PUB-028) ; pour le fond d'en-tête et l'image d'attente d'une vidéo, 640, 1 080 et 1 920 pixels de large en WebP.
+- **MED-006** — Images are resized to several sizes and converted to WebP on the server.
+- **MED-007** — The EXIF metadata of images, including the GPS location, is removed.
+- **MED-008** — A file's type is checked from its actual content, not only from its extension.
+- **MED-012** — Accepted images are JPEG, PNG or WebP, weigh at most 10 MB and have at most 40 million pixels; dimensions are checked before decoding the whole image. A rejected type gives `415 unsupported_media_type`, a file that is too heavy `413 payload_too_large`, an image that is too large `400` with the code `image_too_large`.
+- **MED-013** — A video's duration is read from the file by the server, without trusting the browser; beyond 30 s, the video is rejected with the code `video_too_long`. A video always arrives with its placeholder image (see MED-003), treated as a header image; without it, the upload is rejected with the code `poster_required`.
+- **MED-014** — A photo's EXIF orientation is applied before its metadata is removed: the photo displays the right way up.
+- **MED-015** — Sizes produced, never enlarging the original image: for the profile photo, squares of 128, 256 and 512 pixels in WebP, plus 256 and 512 pixels in JPEG for the vCard and the link preview (see PUB-025 and PUB-028); for the header background and a video's placeholder image, 640, 1,080 and 1,920 pixels wide in WebP.
 
-## Stockage et diffusion
+## Storage and delivery
 
-- **MED-009** — Le stockage des médias est le disque local par défaut, ou un stockage compatible S3 par configuration, sans changement de code.
-- **MED-010** — En mode disque local, l'API sert `/media/*` avec des en-têtes de cache longs et des noms de fichiers versionnés, derrière n'importe quel reverse proxy et sans partager de volume avec lui.
-- **MED-011** — En mode S3, les médias sont servis par l'URL publique du bucket.
-- **MED-016** — Un fichier de média n'est jamais modifié : remplacer un média crée un nouveau fichier, sous un nouveau nom. `/media/*` est servi avec l'en-tête `Cache-Control: public, max-age=31536000, immutable`.
-- **MED-017** — `/media/*` répond aux requêtes partielles (en-tête `Range`, réponse `206`), sans lesquelles iOS ne lit pas les vidéos.
-- **MED-018** — Un média envoyé depuis l'éditeur n'est rattaché à la carte qu'à l'enregistrement (voir EDI-006). Les médias envoyés puis non retenus sont supprimés au prochain enregistrement de la carte, et un média remplacé ou retiré est supprimé du stockage.
-- **MED-019** — La suppression d'une carte supprime ses médias du stockage.
-- **MED-020** — Seul le propriétaire d'une carte peut lui envoyer ou lui retirer des médias (voir ACC-017).
+- **MED-009** — Media storage is the local disk by default, or S3-compatible storage by configuration, with no code change.
+- **MED-010** — In local disk mode, the API serves `/media/*` with long cache headers and versioned file names, behind any reverse proxy and without sharing a volume with it.
+- **MED-011** — In S3 mode, media is served from the bucket's public URL.
+- **MED-016** — A media file is never modified: replacing a media creates a new file, under a new name. `/media/*` is served with the header `Cache-Control: public, max-age=31536000, immutable`.
+- **MED-017** — `/media/*` answers partial requests (`Range` header, `206` response), without which iOS does not play videos.
+- **MED-018** — A media uploaded from the editor is attached to the card only on save (see EDI-006). Media uploaded but not kept is deleted on the card's next save, and a replaced or removed media is deleted from storage.
+- **MED-019** — Deleting a card deletes its media from storage.
+- **MED-020** — Only a card's owner can upload media to it or remove media from it (see ACC-017).
