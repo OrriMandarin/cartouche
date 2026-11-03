@@ -7,7 +7,7 @@ import { AuthContext } from "@/lib/auth/context";
 import type { AuthContextValue } from "@/lib/auth/types";
 
 const get = vi.fn();
-const api = { GET: get };
+const api = { GET: get, DELETE: vi.fn() };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
@@ -115,5 +115,33 @@ describe("AccountGate", () => {
     renderGate();
     await screen.findByTestId("account-pending");
     expect(screen.getByTestId("sign-out")).toBeInTheDocument();
+  });
+
+  test("ACC-019 the header links to Mon compte", async () => {
+    get.mockResolvedValue(me("approved"));
+    renderGate();
+    await screen.findByTestId("child");
+    const link = screen.getByTestId("account-link");
+    expect(link).toHaveTextContent("Mon compte");
+    expect(link).toHaveAttribute("href", "/dashboard/account");
+  });
+
+  test.each(["pending", "rejected", "suspended"])(
+    "ACC-019 ACC-021 a %s account is offered the deletion",
+    async (status) => {
+      get.mockResolvedValue(me(status));
+      renderGate();
+      await screen.findByTestId(`account-${status}`);
+      fireEvent.click(screen.getByTestId("delete-account-open"));
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("delete-account-confirm")).toBeDisabled();
+    },
+  );
+
+  test("ACC-021 the admin explanation is not shown to a non-admin pending account", async () => {
+    get.mockResolvedValue(me("pending"));
+    renderGate();
+    await screen.findByTestId("account-pending");
+    expect(screen.queryByTestId("delete-account-admin")).toBeNull();
   });
 });

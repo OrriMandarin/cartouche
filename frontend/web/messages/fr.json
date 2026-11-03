@@ -57,6 +57,34 @@
       "title": "Une erreur est survenue",
       "message": "Réessaie dans un instant. Si le problème persiste, communique l'identifiant ci-dessous au support.",
       "requestId": "Identifiant de requête :"
+    },
+    "nav": {
+      "account": "Mon compte"
+    },
+    "page": {
+      "title": "Mon compte",
+      "email": "Adresse e-mail",
+      "displayName": "Nom affiché",
+      "noDisplayName": "Non renseigné"
+    },
+    "delete": {
+      "open": "Supprimer mon compte",
+      "title": "Supprimer ton compte ?",
+      "consequences": "Tes cartes, leurs médias, tes événements et tes contacts seront supprimés pour toujours. Les liens de tes cartes resteront bloqués définitivement : personne, toi compris, ne pourra les reprendre.",
+      "identityProvider": "Ton compte chez le fournisseur d'identité ne sera pas supprimé : tu devras le supprimer toi-même chez lui.",
+      "confirmWord": "SUPPRIMER",
+      "inputLabel": "Tape SUPPRIMER pour confirmer",
+      "cancel": "Annuler",
+      "confirm": "Supprimer définitivement",
+      "close": "Fermer",
+      "admin": "Un administrateur ne peut pas supprimer son compte. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS.",
+      "adminRefused": "Ton compte est celui d'un administrateur : il ne peut pas être supprimé. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS."
+    },
+    "deleted": {
+      "title": "Ton compte a été supprimé",
+      "description": "Tes cartes, leurs médias, tes événements et tes contacts ont été supprimés. Les liens de tes cartes restent bloqués.",
+      "identityProvider": "Ton compte chez le fournisseur d'identité existe toujours : si tu veux aussi le supprimer, fais-le chez lui. Te reconnecter avec ce compte créera un nouveau compte Cartouche, vide.",
+      "home": "Retour à l'accueil"
     }
   },
   "dashboard": {
