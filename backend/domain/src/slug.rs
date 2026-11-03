@@ -43,14 +43,13 @@ fn is_valid(candidate: &str) -> bool {
         })
 }
 
-/// Builds the slug proposed for a new card from the owner's names (LNK-019).
-///
-/// Returns `None` when fewer than 3 usable characters remain.
-pub fn suggest_base(first_name: &str, last_name: &str) -> Option<Slug> {
+/// Puts `text` into slug form (LNK-019): accents removed, lowercase, every other run of
+/// characters replaced by one hyphen, ligatures transliterated, then cut to `max_chars` without a
+/// trailing hyphen. `None` when nothing is left.
+pub fn slug_form(text: &str, max_chars: usize) -> Option<String> {
     let mut slug = String::new();
     let mut pending_dash = false;
-    let joined = format!("{first_name} {last_name}").to_lowercase();
-    for c in joined.nfd().filter(|c| !is_combining_mark(*c)) {
+    for c in text.to_lowercase().nfd().filter(|c| !is_combining_mark(*c)) {
         let replacement = match c {
             'ß' => "ss",
             'æ' => "ae",
@@ -74,9 +73,19 @@ pub fn suggest_base(first_name: &str, last_name: &str) -> Option<Slug> {
             pending_dash = true;
         }
     }
-    slug.truncate(MAX_LEN);
+    // The slug is ASCII: a byte is a character.
+    slug.truncate(max_chars);
     let trimmed = slug.trim_end_matches('-');
-    (trimmed.len() >= MIN_LEN).then(|| Slug(trimmed.to_owned()))
+    (!trimmed.is_empty()).then(|| trimmed.to_owned())
+}
+
+/// Builds the slug proposed for a new card from the owner's names (LNK-019).
+///
+/// Returns `None` when fewer than 3 usable characters remain.
+pub fn suggest_base(first_name: &str, last_name: &str) -> Option<Slug> {
+    slug_form(&format!("{first_name} {last_name}"), MAX_LEN)
+        .filter(|slug| slug.len() >= MIN_LEN)
+        .map(Slug)
 }
 
 /// Appends `-n` to `base`, shortening the base so the result fits in 64 characters.
@@ -201,6 +210,26 @@ mod tests {
     fn suggestion_is_none_when_too_short() {
         assert_eq!(suggest_base("", "Li"), None);
         assert_eq!(suggest_base("✨", ""), None);
+    }
+
+    // spec: LNK-019
+    #[test]
+    fn slug_form_matches_the_suggestion() {
+        for (first, last) in [("Éloïse", "D'Aubigné-Müller"), ("Œdipe", "Straße")] {
+            assert_eq!(
+                slug_form(&format!("{first} {last}"), MAX_LEN).as_deref(),
+                suggest_base(first, last).as_ref().map(Slug::as_str)
+            );
+        }
+    }
+
+    // spec: LNK-019
+    #[test]
+    fn slug_form_cuts_and_may_be_empty() {
+        assert_eq!(slug_form("!!! ✨", 40), None);
+        assert_eq!(slug_form("ab", 40).as_deref(), Some("ab"));
+        assert_eq!(slug_form("ab-cd ef", 3).as_deref(), Some("ab"));
+        assert_eq!(slug_form("Æon Łódź", 40).as_deref(), Some("aeon-lodz"));
     }
 
     // spec: LNK-019

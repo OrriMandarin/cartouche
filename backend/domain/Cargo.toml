@@ -9,7 +9,9 @@ publish.workspace = true
 base64.workspace = true
 chrono.workspace = true
 chrono-tz = "0.10"
+csv = "1"
 phonenumber = "0.3"
+rust_xlsxwriter = { version = "0.102", features = ["chrono"] }
 serde.workspace = true
 serde_json = "1"
 thiserror.workspace = true
@@ -20,3 +22,7 @@ uuid = { workspace = true, features = ["serde"] }
 
 [features]
 utoipa = ["dep:utoipa"]
+
+[dev-dependencies]
+calamine = "0.38.0"
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
