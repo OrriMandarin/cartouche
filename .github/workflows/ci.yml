@@ -53,7 +53,7 @@ jobs:
       DATABASE_URL: postgres://cartouche:cartouche@localhost:5432/cartouche
     defaults:
       run:
-        working-directory: apps/api
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -61,10 +61,10 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: apps/api
+          workspaces: backend
       - name: Format
         run: cargo fmt --all --check
-      # The query macros build offline from the committed .sqlx/ cache (apps/api/.cargo/config.toml).
+      # The query macros build offline from the committed .sqlx/ cache (backend/.cargo/config.toml).
       # This step checks that cache, and so every query, against the migrated schema.
       - name: SQL queries match the schema
         env:
@@ -84,14 +84,20 @@ jobs:
     name: Web
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      # Reads the pnpm version from "packageManager" in the root package.json.
+      # Reads the pnpm version from "packageManager" in frontend/package.json.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r lint
       - run: pnpm -r typecheck
@@ -99,7 +105,7 @@ jobs:
       - name: The TypeScript client matches the OpenAPI contract
         run: |
           pnpm --filter @cartouche/api-client generate
-          git diff --exit-code packages/api-client/src/schema.d.ts
+          git diff --exit-code api-client/src/schema.d.ts
       - name: Production build with the test auth adapter must fail
         shell: bash
         env:
@@ -129,8 +135,8 @@ jobs:
         run: |
           pnpm --filter web build
           # The test auth adapter must not have been bundled into the client.
-          test -d apps/web/.next/static
-          if grep -r "cartouche.test.token" apps/web/.next/static; then
+          test -d web/.next/static
+          if grep -r "cartouche.test.token" web/.next/static; then
             echo "::error::the test auth adapter leaked into the production client bundle"
             exit 1
           fi
@@ -143,17 +149,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        working-directory: frontend
       - name: Start the test stack
         run: docker compose -f compose.test.yml up -d --build --wait
-      # The projects in e2e/playwright.config.ts use Desktop Chrome (chromium) and iPhone 14 (webkit).
+      # The projects in frontend/e2e/playwright.config.ts use Desktop Chrome (chromium) and iPhone 14 (webkit).
       - name: Install Playwright browsers
+        working-directory: frontend
         run: pnpm --filter e2e exec playwright install --with-deps chromium webkit
       - name: Run the end-to-end tests
+        working-directory: frontend
         env:
           CI: "true"
         run: pnpm --filter e2e test
@@ -166,8 +178,8 @@ jobs:
         with:
           name: playwright-results
           path: |
-            e2e/test-results
-            e2e/playwright-report
+            frontend/e2e/test-results
+            frontend/e2e/playwright-report
           if-no-files-found: ignore
       - name: Upload the stack logs
         if: failure()
@@ -190,7 +202,7 @@ jobs:
         run: bash scripts/check-prod-guard.sh
       - name: Build the production web image
         run: >-
-          docker build -f apps/web/Dockerfile
+          docker build -f frontend/web/Dockerfile
           --build-arg CARTOUCHE_BUILD_PROFILE=production
           --build-arg NEXT_PUBLIC_AUTH_PROVIDER=clerk
           --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ env.CLERK_DUMMY_KEY }}

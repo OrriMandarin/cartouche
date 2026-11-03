@@ -168,7 +168,7 @@ function parseArgs(argv) {
     else if (a === '--code-dir') (opts.codeDirs ??= []).push(path.resolve(argv[++i]));
     else throw new Error(`unknown argument: ${a}`);
   }
-  opts.codeDirs ??= ['apps', 'e2e', 'packages'].map((d) => path.join(REPO_ROOT, d));
+  opts.codeDirs ??= ['backend', 'frontend'].map((d) => path.join(REPO_ROOT, d));
   return opts;
 }
 

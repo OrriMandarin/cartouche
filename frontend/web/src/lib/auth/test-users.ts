@@ -1,4 +1,4 @@
-/** Users of the `base` seed scenario (apps/api seed tool), usable for one-click test logins. */
+/** Users of the `base` seed scenario (backend seed tool), usable for one-click test logins. */
 export interface TestUser {
   subject: string;
   name: string;

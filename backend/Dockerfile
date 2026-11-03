@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
-# Build context: the repository root (docker build -f apps/api/Dockerfile .).
+# Build context: the repository root (docker build -f backend/Dockerfile .).
 #
-#   docker build -f apps/api/Dockerfile -t cartouche-api .                          # production image
-#   docker build -f apps/api/Dockerfile --build-arg FEATURES=test-support -t ... .  # test image
+#   docker build -f backend/Dockerfile -t cartouche-api .                          # production image
+#   docker build -f backend/Dockerfile --build-arg FEATURES=test-support -t ... .  # test image
 #
 # FEATURES is a space or comma separated list of Cargo features. Without `test-support` the
 # resulting binary contains no /api/test/* routes and the image has no seed binary.
@@ -11,7 +11,7 @@ FROM lukemathwalker/cargo-chef:latest-rust-1-bookworm AS chef
 WORKDIR /app
 
 FROM chef AS planner
-COPY apps/api/ .
+COPY backend/ .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -19,7 +19,7 @@ ARG FEATURES=""
 COPY --from=planner /app/recipe.json recipe.json
 # Dependencies only: this layer is cached until Cargo.toml / Cargo.lock change.
 RUN cargo chef cook --release -p cartouche-api ${FEATURES:+--features "$FEATURES"} --recipe-path recipe.json
-COPY apps/api/ .
+COPY backend/ .
 RUN cargo build --release -p cartouche-api ${FEATURES:+--features "$FEATURES"} \
     && mkdir /out \
     && cp target/release/cartouche-api /out/ \

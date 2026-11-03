@@ -39,7 +39,7 @@ pub fn build_router(state: AppState) -> Router {
     with_request_context(router)
 }
 
-/// The public contract; also committed as `packages/api-client/openapi.json`.
+/// The public contract; also committed as `frontend/api-client/openapi.json`.
 async fn openapi_json() -> impl IntoResponse {
     (
         [(axum::http::header::CONTENT_TYPE, "application/json")],

@@ -26,7 +26,7 @@ fail() {
 
 # 1. No feature: the production build.
 echo "==> Building the API image without features"
-docker build -f apps/api/Dockerfile --build-arg FEATURES="" -t "$IMAGE" .
+docker build -f backend/Dockerfile --build-arg FEATURES="" -t "$IMAGE" .
 
 # 2. The test issuer is refused in production.
 echo "==> Checking that the test issuer is refused in production"

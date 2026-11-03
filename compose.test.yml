@@ -21,7 +21,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: backend/Dockerfile
       args:
         FEATURES: test-support
     depends_on:
@@ -48,7 +48,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: frontend/web/Dockerfile
       args:
         CARTOUCHE_BUILD_PROFILE: test
         NEXT_PUBLIC_AUTH_PROVIDER: test

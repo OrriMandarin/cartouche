@@ -6,7 +6,7 @@ import { test as base, expect, request, type APIRequestContext } from "@playwrig
 const execFileAsync = promisify(execFile);
 
 const API_URL = "http://localhost:18080";
-const COMPOSE_FILE = "../compose.test.yml";
+const COMPOSE_FILE = "../../compose.test.yml";
 
 export interface SeededUser {
   subject: string;

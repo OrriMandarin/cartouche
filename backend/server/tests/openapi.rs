@@ -1,6 +1,6 @@
 //! Contract tests for the public OpenAPI document.
 //!
-//! The committed `packages/api-client/openapi.json` must equal the document the code
+//! The committed `frontend/api-client/openapi.json` must equal the document the code
 //! generates. `UPDATE_OPENAPI=1` rewrites it (this is what `make openapi` does).
 
 mod common;
@@ -13,8 +13,8 @@ use common::test_app;
 use sqlx::PgPool;
 
 fn committed_path() -> PathBuf {
-    // Tests run with the package root (`apps/api/server`) as working directory.
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../packages/api-client/openapi.json")
+    // Tests run with the package root (`backend/server`) as working directory.
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../frontend/api-client/openapi.json")
 }
 
 #[test]

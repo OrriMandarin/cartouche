@@ -9,7 +9,7 @@ Règle de base : **reproduire par un test d'abord, corriger ensuite.** Si le bug
 
 ## 1. Écrire un test qui reproduit
 
-Au plus bas niveau qui montre le défaut : domaine (`cartouche-domain`), intégration (`apps/api/server/tests/`), composant (vitest), puis e2e seulement si le défaut est dans l'enchaînement navigateur + API. Le citer avec sa règle (`// spec: XXX-NNN` ou `XXX-NNN` dans le nom). Le voir échouer **pour la bonne raison**. Commandes : skill `run-tests`.
+Au plus bas niveau qui montre le défaut : domaine (`cartouche-domain`), intégration (`backend/server/tests/`), composant (vitest), puis e2e seulement si le défaut est dans l'enchaînement navigateur + API. Le citer avec sa règle (`// spec: XXX-NNN` ou `XXX-NNN` dans le nom). Le voir échouer **pour la bonne raison**. Commandes : skill `run-tests`.
 
 ## 2. Suivre une requête de bout en bout
 
@@ -25,13 +25,13 @@ Le `code` d'erreur dit déjà beaucoup : `token_invalid` / `token_expired` (401)
 
 ## 3. Échec Playwright
 
-Les artefacts d'un test en échec sont dans `e2e/test-results/<dossier-du-test>/` : `trace.zip`, capture d'écran, vidéo, `api-logs.txt` (pièce jointe `api-logs` : logs de l'API pendant le test, avec les `request_id`).
+Les artefacts d'un test en échec sont dans `frontend/e2e/test-results/<dossier-du-test>/` : `trace.zip`, capture d'écran, vidéo, `api-logs.txt` (pièce jointe `api-logs` : logs de l'API pendant le test, avec les `request_id`).
 
 ```bash
-ls e2e/test-results/*/
-pnpm --filter e2e exec playwright show-trace test-results/<dossier-du-test>/trace.zip   # chemin relatif à e2e/ (pnpm exec s'exécute dans e2e/)
-pnpm --filter e2e report                                   # rapport HTML (e2e/playwright-report)
-cat e2e/test-results/<dossier-du-test>/api-logs.txt | grep <request_id>
+ls frontend/e2e/test-results/*/
+pnpm -C frontend --filter e2e exec playwright show-trace test-results/<dossier-du-test>/trace.zip   # chemin relatif à frontend/e2e/ (pnpm exec s'exécute dans ce dossier)
+pnpm -C frontend --filter e2e report                                   # rapport HTML (frontend/e2e/playwright-report)
+cat frontend/e2e/test-results/<dossier-du-test>/api-logs.txt | grep <request_id>
 ```
 
 Lire d'abord `api-logs.txt` (la requête en erreur et son `request_id`), puis la trace (état du DOM, requêtes réseau, console). Si le test ne trouve pas `api-logs.txt` : la stack de test est-elle bien lancée (`docker compose -f compose.test.yml ps`) ?
@@ -39,8 +39,8 @@ Relancer un seul test : `make e2e ARGS="-g <titre ou règle>"`. Si la stack gard
 
 ## 4. Échec Rust / vitest
 
-- Rust : `cd apps/api && cargo test -p cartouche-api --all-features --test <fichier> <nom> -- --nocapture`, avec `DATABASE_URL` exporté (voir `run-tests`). `RUST_BACKTRACE=1` pour la pile.
-- Vitest : `pnpm --filter web test <fichier>` ; ajouter `--reporter=verbose` si besoin.
+- Rust : `cd backend && cargo test -p cartouche-api --all-features --test <fichier> <nom> -- --nocapture`, avec `DATABASE_URL` exporté (voir `run-tests`). `RUST_BACKTRACE=1` pour la pile.
+- Vitest : `pnpm -C frontend --filter web test <fichier>` ; ajouter `--reporter=verbose` si besoin.
 
 ## 5. Corriger, puis élargir
 

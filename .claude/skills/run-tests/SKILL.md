@@ -22,21 +22,21 @@ Poste local : `export PATH="$HOME/.local/bin:$PATH"` et `source ~/.cargo/env` si
 
 ```bash
 # Rust : fichier tests/<fichier>.rs, filtre sur le nom du test
-cd apps/api && cargo test -p cartouche-api --all-features --test account approved_user
-cd apps/api && cargo test -p cartouche-domain                      # logique métier pure
-cd apps/api && cargo test -p cartouche-api --all-features --lib    # tests en ligne de src/
+cd backend && cargo test -p cartouche-api --all-features --test account approved_user
+cd backend && cargo test -p cartouche-domain                      # logique métier pure
+cd backend && cargo test -p cartouche-api --all-features --lib    # tests en ligne de src/
 
 # Web (vitest) : motif de fichier, ou -t pour filtrer sur le nom du test
-pnpm --filter web test AccountGate
-pnpm --filter web test -t ACC-004
-pnpm --filter @cartouche/api-client test
+pnpm -C frontend --filter web test AccountGate
+pnpm -C frontend --filter web test -t ACC-004
+pnpm -C frontend --filter @cartouche/api-client test
 
 # e2e (Playwright) : ARGS est transmis à `playwright test`
 make e2e ARGS="-g ACC-004"
 make e2e ARGS="tests/account.spec.ts --project=desktop"
 ```
 
-N'écrivez pas `pnpm --filter web test -- <motif>` : le `--` est transmis tel quel à vitest et le filtre est ignoré (toute la suite tourne).
+N'écrivez pas `pnpm -C frontend --filter web test -- <motif>` : le `--` est transmis tel quel à vitest et le filtre est ignoré (toute la suite tourne).
 
 ## Les tests d'une règle
 
@@ -46,7 +46,7 @@ Un test cite sa règle (`// spec: ACC-004` en Rust, `ACC-004` dans le nom en Typ
 grep -rn "ACC-004" apps e2e --include='*.rs' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.next
 ```
 
-Lancer ensuite chaque fichier trouvé (Rust : `--test <fichier sans .rs>` pour `apps/api/server/tests/<fichier>.rs`, ou `--lib` pour `src/` ; web : `pnpm --filter web test <fichier>` ; e2e : `make e2e ARGS="-g ACC-004"`). Une règle sans test apparaît avec `node scripts/spec-lint.mjs --coverage`.
+Lancer ensuite chaque fichier trouvé (Rust : `--test <fichier sans .rs>` pour `backend/server/tests/<fichier>.rs`, ou `--lib` pour `src/` ; web : `pnpm -C frontend --filter web test <fichier>` ; e2e : `make e2e ARGS="-g ACC-004"`). Une règle sans test apparaît avec `node scripts/spec-lint.mjs --coverage`.
 
 ## La suite complète (avant de conclure une tâche)
 

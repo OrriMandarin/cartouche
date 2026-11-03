@@ -5,7 +5,7 @@ description: Use when a Cartouche test or demo needs a new named dataset (seed s
 
 # Ajouter un scénario de données
 
-Les scénarios vivent dans `apps/api/server/src/test_support/seed.rs` (feature `test-support`, jamais en production). Un scénario est une fonction `fn(&PgPool) -> BoxFuture<Result<SeedReport, sqlx::Error>>` enregistrée dans `SCENARIOS`. Le scénario `base` est le modèle à copier.
+Les scénarios vivent dans `backend/server/src/test_support/seed.rs` (feature `test-support`, jamais en production). Un scénario est une fonction `fn(&PgPool) -> BoxFuture<Result<SeedReport, sqlx::Error>>` enregistrée dans `SCENARIOS`. Le scénario `base` est le modèle à copier.
 
 ## Étapes
 
@@ -18,8 +18,8 @@ Les scénarios vivent dans `apps/api/server/src/test_support/seed.rs` (feature `
    ];
    ```
 3. **Tables** : toute nouvelle table touchée par le scénario doit figurer dans `RESET_TABLES` (même fichier), sinon `reset` ne la vide pas.
-4. **Étendre `SeedReport`** si les tests ont besoin d'identifiants créés (il est renvoyé tel quel par `POST /api/test/seed`) ; l'interface `SeededUser` de `e2e/fixtures.ts` suit.
-5. **Test** : un test d'intégration dans `apps/api/server/tests/test_support.rs` (cité par sa règle `// spec: …` s'il y en a une) qui charge le scénario et vérifie son contenu, plus le test en ligne de `seed.rs` si la logique est non triviale.
+4. **Étendre `SeedReport`** si les tests ont besoin d'identifiants créés (il est renvoyé tel quel par `POST /api/test/seed`) ; l'interface `SeededUser` de `frontend/e2e/fixtures.ts` suit.
+5. **Test** : un test d'intégration dans `backend/server/tests/test_support.rs` (cité par sa règle `// spec: …` s'il y en a une) qui charge le scénario et vérifie son contenu, plus le test en ligne de `seed.rs` si la logique est non triviale.
 
 ## Conventions
 
@@ -32,11 +32,11 @@ Les scénarios vivent dans `apps/api/server/src/test_support/seed.rs` (feature `
 
 ```bash
 make dev-db && make seed SCENARIO=<nom>                              # en local
-cd apps/api && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- list   # vérifier qu'il est listé
+cd backend && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- list   # vérifier qu'il est listé
 curl -s -X POST localhost:8080/api/test/seed -H 'content-type: application/json' -d '{"scenario":"<nom>"}'
 ```
 
-Dans Playwright (`e2e/tests/*.spec.ts`), la fixture `freshState` a déjà fait `reset` + `seed('base')` avant chaque test ; pour charger un autre scénario :
+Dans Playwright (`frontend/e2e/tests/*.spec.ts`), la fixture `freshState` a déjà fait `reset` + `seed('base')` avant chaque test ; pour charger un autre scénario :
 
 ```ts
 test("XXX-NNN : …", async ({ api, page, loginAs }) => {

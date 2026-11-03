@@ -12,7 +12,7 @@ Poste local : `export PATH="$HOME/.local/bin:$PATH"` (pnpm) et `source ~/.cargo/
 ## Démarrer (trois terminaux, dans cet ordre)
 
 ```bash
-make setup     # une fois : pnpm install + cargo fetch
+make setup     # une fois : pnpm install (frontend/), cargo fetch, sqlx-cli
 make dev-db    # PostgreSQL de dev, port 54320
 make api       # API sur :8080, feature test-support, migrations appliquées au démarrage
 make web       # site sur :3000
@@ -25,8 +25,8 @@ Vérifier : `curl -s localhost:8080/api/health` doit répondre `{"status":"ok","
 ```bash
 make seed                      # scénario « base » (administrateur + un utilisateur par statut)
 make seed SCENARIO=<nom>       # autre scénario
-cd apps/api && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- list    # liste des scénarios
-cd apps/api && APP_ENV=development DATABASE_URL=postgres://cartouche:cartouche@localhost:54320/cartouche \
+cd backend && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- list    # liste des scénarios
+cd backend && APP_ENV=development DATABASE_URL=postgres://cartouche:cartouche@localhost:54320/cartouche \
   cargo run -p cartouche-api --features test-support --bin cartouche-seed -- reset   # vide les tables (APP_ENV et DATABASE_URL obligatoires hors `make`)
 curl -s -X POST localhost:8080/api/test/reset              # même chose, via l'API qui tourne (sans variables à exporter)
 ```

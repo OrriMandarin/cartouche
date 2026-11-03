@@ -16,43 +16,45 @@ CARTOUCHE_BUILD_PROFILE ?= development
 NEXT_PUBLIC_AUTH_PROVIDER ?= test
 API_INTERNAL_URL ?= http://localhost:8080
 
+# The JS workspace (web, api-client, e2e) lives in frontend/, the Rust workspace in backend/.
+PNPM := pnpm --dir $(CURDIR)/frontend
 SQLX_CLI_VERSION := 0.9.0
-# Run against the migrated dev database; overrides the SQLX_OFFLINE default of apps/api/.cargo/config.toml.
-SQLX_ONLINE := cd apps/api && cargo sqlx migrate run --source server/migrations && SQLX_OFFLINE=false cargo sqlx prepare --workspace
+# Run against the migrated dev database; overrides the SQLX_OFFLINE default of backend/.cargo/config.toml.
+SQLX_ONLINE := cd backend && cargo sqlx migrate run --source server/migrations && SQLX_OFFLINE=false cargo sqlx prepare --workspace
 
 .PHONY: setup dev-db api web seed test test-api test-web lint openapi sqlx-prepare sqlx-check spec-lint spec-lint-test e2e e2e-down
 
 setup:
-	pnpm install && cargo fetch --manifest-path apps/api/Cargo.toml
+	$(PNPM) install && cargo fetch --manifest-path backend/Cargo.toml
 	cargo install sqlx-cli --locked --version $(SQLX_CLI_VERSION) --no-default-features --features postgres,rustls
 
 dev-db:
 	docker compose -f compose.dev.yml up -d --wait
 
 api:
-	cd apps/api && APP_ENV=development cargo run -p cartouche-api --features test-support
+	cd backend && APP_ENV=development cargo run -p cartouche-api --features test-support
 
 web:
-	pnpm --filter web dev
+	$(PNPM) --filter web dev
 
 seed:
-	cd apps/api && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- seed $(or $(SCENARIO),base)
+	cd backend && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- seed $(or $(SCENARIO),base)
 
 test: test-api sqlx-check test-web spec-lint-test spec-lint
 
 test-api:
-	cd apps/api && cargo test --workspace --all-features
+	cd backend && cargo test --workspace --all-features
 
 test-web:
-	pnpm --filter web test && pnpm --filter @cartouche/api-client test
+	$(PNPM) --filter web test && $(PNPM) --filter @cartouche/api-client test
 
 lint:
-	cd apps/api && cargo fmt --all --check && cargo clippy --workspace --all-features -- -D warnings
-	pnpm -r lint
-	pnpm -r typecheck
+	cd backend && cargo fmt --all --check && cargo clippy --workspace --all-features -- -D warnings
+	$(PNPM) -r lint
+	$(PNPM) -r typecheck
 
 openapi:
-	cd apps/api && UPDATE_OPENAPI=1 cargo test -p cartouche-api --test openapi && pnpm --filter @cartouche/api-client generate
+	cd backend && UPDATE_OPENAPI=1 cargo test -p cartouche-api --test openapi && $(PNPM) --filter @cartouche/api-client generate
 
 # After adding or changing a query or a migration: regenerates the committed .sqlx/ cache.
 sqlx-prepare:
@@ -69,7 +71,7 @@ spec-lint-test:
 	node --test scripts/spec-lint.test.mjs
 
 e2e:
-	docker compose -f compose.test.yml up -d --build --wait && pnpm --filter e2e test $(ARGS)
+	docker compose -f compose.test.yml up -d --build --wait && $(PNPM) --filter e2e test $(ARGS)
 
 e2e-down:
 	docker compose -f compose.test.yml down -v

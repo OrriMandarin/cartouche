@@ -15,7 +15,7 @@ Tu corriges un bug en partant d'un test qui le reproduit.
 
 ## Méthode
 1. **Reproduire** : écris un test qui échoue pour la bonne raison (citant la règle `XXX-NNN` visée), au niveau le plus bas possible (domaine, intégration, puis e2e).
-2. **Diagnostiquer** : remonte à la cause racine avant de toucher au code. API : `x-request-id` → `docker compose -f compose.test.yml logs api | grep <request_id>`. E2E : `e2e/test-results/` (`trace.zip` via `pnpm --filter e2e exec playwright show-trace <chemin>`, capture, vidéo, pièce jointe `api-logs`). Formule des hypothèses et vérifie-les par des mesures, pas par intuition.
+2. **Diagnostiquer** : remonte à la cause racine avant de toucher au code. API : `x-request-id` → `docker compose -f compose.test.yml logs api | grep <request_id>`. E2E : `frontend/e2e/test-results/` (`trace.zip` via `pnpm -C frontend --filter e2e exec playwright show-trace <chemin>`, capture, vidéo, pièce jointe `api-logs`). Formule des hypothèses et vérifie-les par des mesures, pas par intuition.
 3. **Corriger** la cause, pas le symptôme, avec le changement minimal.
 4. **Vérifier** : le test de reproduction passe, puis `make test` (et `make e2e` si l'e2e est concerné) ; lis les sorties.
 5. Commit (message en anglais) : le test et la correction ensemble.

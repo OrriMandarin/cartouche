@@ -1,5 +1,5 @@
 //! The public OpenAPI contract, served at `GET /api/openapi.json` and committed as
-//! `packages/api-client/openapi.json` (the source of the generated TypeScript client).
+//! `frontend/api-client/openapi.json` (the source of the generated TypeScript client).
 //!
 //! The document lists routes explicitly, so it is identical whether or not the
 //! `test-support` feature is compiled: `/api/test/*` routes are never part of it.

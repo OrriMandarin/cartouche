@@ -8,10 +8,11 @@ Cartouche est une application open source de carte de visite numérique (backend
 |---|---|
 | `spec/` | **Référence produit** : règles numérotées (`XXX-NNN`), un fichier par sujet. Voir `spec/README.md`. |
 | `docs/superpowers/` | Design initial (figé) et plans de réalisation. |
-| `apps/api/` | Workspace Rust. `domain/` (crate `cartouche-domain`) : logique métier pure. `server/` (crate `cartouche-api`) : Axum, `config`, `auth/`, `db/` (requêtes SQLx), `routes/`, `test_support/` (feature `test-support`), `migrations/`, `tests/` (intégration). |
-| `apps/web/` | Next.js : `src/app/` (pages), `src/components/`, `src/lib/` (logique : auth, `api.ts`, profil de build), `messages/fr.json` (textes d'interface). |
-| `packages/api-client/` | Client TypeScript **généré** depuis l'OpenAPI (`openapi.json`, `schema.d.ts` commités ; ne pas éditer à la main). |
-| `e2e/` | Tests Playwright (`fixtures.ts`, `tests/*.spec.ts`). |
+| `backend/` | **Tout le Rust** : workspace Cargo, `rust-toolchain.toml`, `Dockerfile`, cache SQLx `.sqlx/`. `domain/` (crate `cartouche-domain`) : logique métier pure. `server/` (crate `cartouche-api`) : Axum, `config`, `auth/`, `db/` (requêtes SQLx), `routes/`, `test_support/` (feature `test-support`), `migrations/`, `tests/` (intégration). |
+| `frontend/` | **Tout le TypeScript** : workspace pnpm (`package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`). Les commandes pnpm se lancent depuis ce dossier ou avec `pnpm -C frontend …`. |
+| `frontend/web/` | Next.js : `src/app/` (pages), `src/components/`, `src/lib/` (logique : auth, `api.ts`, profil de build), `messages/fr.json` (textes d'interface). |
+| `frontend/api-client/` | Client TypeScript **généré** depuis l'OpenAPI (`openapi.json`, `schema.d.ts` commités ; ne pas éditer à la main). |
+| `frontend/e2e/` | Tests Playwright de bout en bout, sur la stack complète (`fixtures.ts`, `tests/*.spec.ts`). |
 | `scripts/` | `spec-lint.mjs` (vérificateur de la spec), `check-prod-guard.sh`. |
 | `.claude/agents/` | Agents du projet. `.claude/skills/` : skills du projet. |
 | `compose.dev.yml`, `compose.test.yml` | Base de dev ; stack complète (db, api, web) pour les tests e2e. |
@@ -25,7 +26,7 @@ Cartouche est une application open source de carte de visite numérique (backend
 | `make api` / `make web` | Lance l'API (8080, avec `test-support`) / le site (3000). |
 | `make seed [SCENARIO=base]` | Alimente la base avec un scénario de données. |
 | `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (tests du vérificateur) + `spec-lint`. |
-| `make sqlx-prepare` | Après tout ajout ou changement de requête ou de migration : régénère le cache `apps/api/.sqlx/` (à commiter). `make sqlx-check` vérifie qu'il est à jour (aussi en CI). |
+| `make sqlx-prepare` | Après tout ajout ou changement de requête ou de migration : régénère le cache `backend/.sqlx/` (à commiter). `make sqlx-check` vérifie qu'il est à jour (aussi en CI). |
 | `make lint` | `cargo fmt --check`, `clippy -D warnings`, lint et typecheck pnpm. |
 | `make openapi` | Régénère `openapi.json` puis le client TypeScript. |
 | `make spec-lint [ARGS=--coverage]` | `node scripts/spec-lint.mjs` ; `ARGS=--coverage` liste les règles sans test. |
@@ -47,11 +48,11 @@ Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Nod
 
 ## Règles de qualité
 
-- **Aucune logique métier dans les handlers ni dans les composants** : elle va dans `cartouche-domain` (Rust) ou dans `apps/web/src/lib` (TypeScript). Un handler lit la requête, appelle le domaine et `db/`, formate la réponse.
+- **Aucune logique métier dans les handlers ni dans les composants** : elle va dans `cartouche-domain` (Rust) ou dans `frontend/web/src/lib` (TypeScript). Un handler lit la requête, appelle le domaine et `db/`, formate la réponse.
 - **Toute dépendance externe passe derrière un trait ou une interface** (horloge, vérification de jeton, stockage, e-mail, Clerk…), pour pouvoir la remplacer dans les tests.
 - **Chaque requête utilisateur est filtrée par propriétaire dans `db/`** : aucune fonction de lecture ou d'écriture de données utilisateur sans l'identifiant du propriétaire.
 - **Les tests citent leurs règles** : `// spec: ACC-004` avant un test Rust ; `ACC-004` dans le nom d'un test TypeScript. `node scripts/spec-lint.mjs --coverage` signale les règles sans test.
-- **Aucun texte d'interface en dur** : tout passe par `apps/web/messages/fr.json`.
+- **Aucun texte d'interface en dur** : tout passe par `frontend/web/messages/fr.json`.
 - Le code de test (`test-support`, adaptateur d'authentification `test`) ne doit jamais être présent dans un build de production.
 - Ne jamais éditer à la main les fichiers générés (`openapi.json`, `schema.d.ts`) : `make openapi`.
 - Code lisible, noms explicites, pas de code mort ; ne pas ajouter de fonctionnalité hors de la tâche.
@@ -60,7 +61,7 @@ Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Nod
 
 - Chaque réponse de l'API porte un en-tête `x-request-id`, repris dans le champ `error.request_id` des erreurs JSON (`{"error":{"code","message","request_id"}}`) et dans **chaque ligne de log** de la requête.
 - Les logs de l'API sont en JSON : `docker compose -f compose.test.yml logs api | grep <request_id>`.
-- Un test e2e en échec laisse ses artefacts dans `e2e/test-results/` : `trace.zip` (à ouvrir avec `pnpm --filter e2e exec playwright show-trace <chemin>`), capture d'écran, vidéo et pièce jointe `api-logs` (logs de l'API pendant le test, avec les `request_id`).
+- Un test e2e en échec laisse ses artefacts dans `frontend/e2e/test-results/` : `trace.zip` (à ouvrir avec `pnpm -C frontend --filter e2e exec playwright show-trace <chemin>`), capture d'écran, vidéo et pièce jointe `api-logs` (logs de l'API pendant le test, avec les `request_id`).
 - Reproduire d'abord par un test, ensuite seulement corriger.
 
 ## Agents (`.claude/agents/`)
