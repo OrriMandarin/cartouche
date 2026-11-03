@@ -16,7 +16,7 @@ Poste local : `export PATH="$HOME/.local/bin:$PATH"` et `source ~/.cargo/env` si
   ```
   `make test-api` / `make test` utilisent le `DATABASE_URL` par défaut du `Makefile` ; pour un `cargo test` direct, l'exporter.
 - **Rust : toujours `--all-features`** (certains tests utilisent la sonde `test-support`, p. ex. `/api/test/approved-check`).
-- **e2e** : Docker démarré ; `make e2e` construit et lance la stack de test (ports 15432/18080/13000). Ne pas lancer deux `make e2e` en parallèle (base partagée).
+- **e2e** : Docker démarré ; les tests tournent dans le fuseau `Europe/Paris` et la langue `fr-FR` (`frontend/e2e/playwright.config.ts`), donc les heures affichées et saisies dans les tests d'événements sont des heures de Paris (une assertion de date doit en tenir compte) ; `make e2e` construit et lance la stack de test (ports 15432/18080/13000). Ne pas lancer deux `make e2e` en parallèle (base partagée).
 
 ## Un test ciblé
 
@@ -47,6 +47,20 @@ grep -rn "ACC-004" backend frontend --include='*.rs' --include='*.ts' --include=
 ```
 
 Lancer ensuite chaque fichier trouvé (Rust : `--test <fichier sans .rs>` pour `backend/server/tests/<fichier>.rs`, ou `--lib` pour `src/` ; web : `pnpm -C frontend --filter web test <fichier>` ; e2e : `make e2e ARGS="-g ACC-004"`). Une règle sans test apparaît avec `node scripts/spec-lint.mjs --coverage`.
+
+## Les tests des événements et des contacts
+
+Règles : `EVT-*` (`spec/events.md`), `FRM-*` (`spec/event-form.md`), `ABU-*` (`spec/anti-abuse.md`), `LEA-*` (`spec/leads-exports.md`, contacts).
+
+| Sujet | Rust (`backend/server/tests/`, `--test <fichier>`) | Web (vitest, motif de fichier) | e2e (`make e2e ARGS=…`) |
+|---|---|---|---|
+| Événements du propriétaire (création, durée, simultanés, code) | `events`, `db_events` ; domaine : `cargo test -p cartouche-domain` | `src/lib/events`, `src/components/events` (`EventEditor`, `EventList`) | `tests/events.spec.ts` |
+| Contacts (liste, spam, suppression) | `leads`, `db_events` | `LeadList`, `src/lib/events/leads` | `tests/leads.spec.ts` |
+| Page publique, formulaire, envoi | `public_events`, `public_cards`, `leads_submit` | `src/lib/event-form`, `src/components/event-form` (`LeadForm`, `EventFormPage`), `src/lib/public-event.test.ts` | `tests/event-form.spec.ts`, `tests/public-page.spec.ts` (`-g TPL-003`) |
+| Limite par IP, adresse retenue, champ piège | `client_ip`, `leads_submit`, `public_events` ; fenêtre glissante : `cargo test -p cartouche-domain` | | `tests/event-form.spec.ts` (`-g ABU-`) |
+| Adresses signées de médias (MED-023, MED-024) | `media` ; signature : `cargo test -p cartouche-api --all-features --lib` | | |
+
+Ces tests dépendent de l'horloge : en Rust le harnais (`tests/common/`) fournit une horloge figée (`ManualClock`) et `request_from(ip, …)` pour fixer l'adresse du client ; en e2e, `api.seedEvents()` fige l'horloge à `EVENTS_NOW` (2027-03-15 10:00 UTC) **avant** toute connexion. Un test d'événements qui échoue avec un jeton expiré a oublié cet ordre (voir `add-seed-scenario`). Les tests de concurrence (`join_all`) vivent dans `tests/events.rs` (événements simultanés) et `tests/leads_submit.rs` (double envoi).
 
 ## La suite complète (avant de conclure une tâche)
 

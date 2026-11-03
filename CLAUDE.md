@@ -10,9 +10,9 @@ Cartouche est une application open source de carte de visite numérique (backend
 | `docs/superpowers/` | Design initial (figé) et plans de réalisation. |
 | `backend/` | **Tout le Rust** : workspace Cargo, `rust-toolchain.toml`, `Dockerfile`, cache SQLx `.sqlx/`. `domain/` (crate `cartouche-domain`) : logique métier pure. `server/` (crate `cartouche-api`) : Axum, `config`, `auth/`, `db/` (requêtes SQLx), `routes/`, `test_support/` (feature `test-support`), `migrations/`, `tests/` (intégration). |
 | `frontend/` | **Tout le TypeScript** : workspace pnpm (`package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`). Les commandes pnpm se lancent depuis ce dossier ou avec `pnpm -C frontend …`. |
-| `frontend/web/` | Next.js : `src/app/` (pages), `src/components/`, `src/lib/` (logique : auth, `api.ts`, profil de build), `src/templates/` (templates de carte : contrat, registre, schéma de réglages, un dossier par template), `messages/fr.json` (textes d'interface). |
+| `frontend/web/` | Next.js : `src/app/` (pages, dont la page publique `/c/<slug>` et le formulaire prospect `/c/<slug>/e/<id>`), `src/components/` (dont `events/` : tableau de bord des événements et contacts, et `event-form/` : formulaire prospect commun à tous les templates), `src/lib/` (logique : auth, `api.ts`, profil de build, `events/` : modèle de brouillon, heures, contacts ; `event-form/` : appareil, réponses, brouillon local, issues d'envoi), `src/templates/` (templates de carte : contrat, registre, schéma de réglages, un dossier par template), `messages/fr.json` (textes d'interface). |
 | `frontend/api-client/` | Client TypeScript **généré** depuis l'OpenAPI (`openapi.json`, `schema.d.ts` commités ; ne pas éditer à la main). |
-| `frontend/e2e/` | Tests Playwright de bout en bout, sur la stack complète (`fixtures.ts`, `tests/*.spec.ts`). |
+| `frontend/e2e/` | Tests Playwright de bout en bout, sur la stack complète (`fixtures.ts` avec les aides `api.setClock` et `api.seedEvents()`, `env.ts`, `tests/*.spec.ts`). |
 | `scripts/` | `spec-lint.mjs` (vérificateur de la spec), `check-prod-guard.sh`. |
 | `.claude/agents/` | Agents du projet. `.claude/skills/` : skills du projet. |
 | `compose.dev.yml`, `compose.test.yml` | Base de dev ; stack complète (db, api, web) pour les tests e2e. |
@@ -25,15 +25,15 @@ Cartouche est une application open source de carte de visite numérique (backend
 | `make setup` | Installe les dépendances (pnpm, `cargo fetch`, `sqlx-cli`). |
 | `make dev-db` | Démarre PostgreSQL de dev (port 54320). |
 | `make api` / `make web` | Lance l'API (8080, avec `test-support`) / le site (3000). |
-| `make seed [SCENARIO=base]` | Alimente la base avec un scénario de données. |
+| `make seed [SCENARIO=base]` | Alimente la base avec un scénario de données. `cards` complète `base` et `events` complète `cards` : charger `base`, puis `cards`, puis `events` (voir la skill `dev-env`). |
 | `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (tests du vérificateur) + `spec-lint`. |
 | `make sqlx-prepare` | Après tout ajout ou changement de requête ou de migration : régénère le cache `backend/.sqlx/` (à commiter). `make sqlx-check` vérifie qu'il est à jour (aussi en CI). |
 | `make lint` | `cargo fmt --check`, `clippy -D warnings`, lint et typecheck pnpm. |
-| `make openapi` | Régénère `openapi.json` puis le client TypeScript. |
+| `make openapi` | Régénère `openapi.json` (tests lancés avec `--all-features`) puis le client TypeScript. |
 | `make spec-lint [ARGS=--coverage]` | `node scripts/spec-lint.mjs` ; `ARGS=--coverage` liste les règles sans test. |
 | `make e2e [ARGS="-g ACC-004"]` | Monte la stack de test et lance Playwright. `make e2e-down` l'arrête. |
 
-Sans fichier `.env`, tout fonctionne en local **sans Clerk** (fournisseur d'authentification de test, JWKS servi par l'API). Voir `.env.example`.
+Sans fichier `.env`, tout fonctionne en local **sans Clerk** (fournisseur d'authentification de test, JWKS servi par l'API). Voir `.env.example`, qui documente aussi `MAX_SIMULTANEOUS_EVENTS` (événements simultanés par carte, 3 par défaut) et `TRUSTED_PROXY_HOPS` (reverse proxies de confiance pour la limite par IP, 1 par défaut).
 
 Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Node 25 n'a pas Corepack) et `cargo` s'obtient avec `source ~/.cargo/env`. En cas de « command not found », exporter `PATH="$HOME/.local/bin:$PATH"` et sourcer `~/.cargo/env` avant de lancer `make`.
 
@@ -51,9 +51,9 @@ Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Nod
 
 - **Aucune logique métier dans les handlers ni dans les composants** : elle va dans `cartouche-domain` (Rust) ou dans `frontend/web/src/lib` (TypeScript). Un handler lit la requête, appelle le domaine et `db/`, formate la réponse.
 - **Toute dépendance externe passe derrière un trait ou une interface** (horloge, vérification de jeton, stockage, e-mail, Clerk…), pour pouvoir la remplacer dans les tests.
-- **Chaque requête utilisateur est filtrée par propriétaire dans `db/`** : aucune fonction de lecture ou d'écriture de données utilisateur sans l'identifiant du propriétaire.
+- **Chaque requête utilisateur est filtrée par propriétaire dans `db/`** : aucune fonction de lecture ou d'écriture de données utilisateur sans l'identifiant du propriétaire. Les exceptions (lectures et écritures de la page publique et du formulaire prospect, support) sont listées en tête du fichier `db/` concerné ; voir la skill `change-api`.
 - **Les tests citent leurs règles** : `// spec: ACC-004` avant un test Rust ; `ACC-004` dans le nom d'un test TypeScript. `node scripts/spec-lint.mjs --coverage` signale les règles sans test.
-- **Aucun texte d'interface en dur** : tout passe par `frontend/web/messages/fr.json`.
+- **Aucun texte d'interface en dur** : tout passe par `frontend/web/messages/fr.json`. Seule exception : le texte de consentement par défaut d'un formulaire d'événement, dans `backend/domain/src/consent.rs`, car il est enregistré tel quel avec chaque contact (preuve du texte vu par le prospect).
 - Le code de test (`test-support`, adaptateur d'authentification `test`) ne doit jamais être présent dans un build de production.
 - Ne jamais éditer à la main les fichiers générés (`openapi.json`, `schema.d.ts`) : `make openapi`.
 - Code lisible, noms explicites, pas de code mort ; ne pas ajouter de fonctionnalité hors de la tâche.
