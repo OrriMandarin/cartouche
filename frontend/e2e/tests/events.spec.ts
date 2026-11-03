@@ -121,7 +121,7 @@ test("EVT-004 EVT-018 a fourth simultaneous event is refused", async ({ page, ap
 
 test("EVT-006 EVT-021 PUB-029 end an event now", async ({ page }) => {
   const demo = idOf(DEMO);
-  await expect(await eventButton(page, demo)).toHaveText(DEMO);
+  await expect((await eventButton(page, demo)).getByTestId("card-event-name")).toHaveText(DEMO);
 
   await page.goto(eventsUrl());
   await page.getByTestId(`event-end-now-${demo}`).click();
@@ -130,7 +130,7 @@ test("EVT-006 EVT-021 PUB-029 end an event now", async ({ page }) => {
   await expect(page.getByTestId(`event-end-now-${demo}`)).toHaveCount(0);
 
   await expect(await eventButton(page, demo)).toHaveCount(0);
-  await expect(page.getByTestId(`event-button-${idOf(MARIAGE)}`)).toHaveText(MARIAGE);
+  await expect(page.getByTestId(`event-button-${idOf(MARIAGE)}`).getByTestId("card-event-name")).toHaveText(MARIAGE);
 });
 
 test("EVT-009 EVT-010 EDI-019 edit an event", async ({ page }) => {
@@ -152,7 +152,7 @@ test("EVT-009 EVT-010 EDI-019 edit an event", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(page.getByTestId(`event-title-${portes}`)).toHaveText("Portes ouvertes ✨");
 
-  await expect(await eventButton(page, portes)).toHaveText("Portes ouvertes ✨");
+  await expect((await eventButton(page, portes)).getByTestId("card-event-name")).toHaveText("Portes ouvertes ✨");
 });
 
 test("FRM-029 R-PF6 the default consent text is the server's, and follows the title", async ({ page }) => {

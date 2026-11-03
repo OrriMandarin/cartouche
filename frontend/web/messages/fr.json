@@ -179,10 +179,9 @@
     "classique": {
       "name": "Classique",
       "settings": {
-        "links_layout": "Affichage des liens",
-        "links_layout_list": "Liste",
-        "links_layout_icons": "Icônes seules",
-        "animate_events": "Animer les boutons d'événement"
+        "links_layout": "Disposition des liens",
+        "links_layout_icons": "Icônes",
+        "links_layout_list": "Liste"
       }
     }
   },
@@ -190,6 +189,14 @@
     "saveContact": "Enregistrer le contact",
     "inactive": "Cette carte n'est plus active",
     "notFound": "Carte introuvable",
+    "eventLive": "Événement en cours",
+    "contacts": "Coordonnées",
+    "emailLabel": "E-mail",
+    "phoneLabel": "Téléphone",
+    "linksList": "Liens",
+    "networks": "Réseaux",
+    "pauseVideo": "Mettre la vidéo en pause",
+    "playVideo": "Lire la vidéo",
     "links": {
       "website": "Site web",
       "linkedin": "LinkedIn",

@@ -149,18 +149,19 @@ describe("isDirty", () => {
     const saved = draftFromCard(cardView({ settings: {} }));
     const edited = draftFromCard(cardView({ settings: {} }));
     // The editor stores every setting once one is touched: links_layout toggled and set back to its default.
-    edited.settings = { links_layout: "list", animate_events: true };
+    edited.settings = { links_layout: "icons" };
     expect(isDirty(saved, edited)).toBe(false);
-    edited.settings = { links_layout: "icons", animate_events: true };
+    edited.settings = { links_layout: "list" };
     expect(isDirty(saved, edited)).toBe(true);
   });
 
   test("EDI-016 a stored setting changed to the default counts, an equal one does not", () => {
-    const saved = draftFromCard(fullCard);
-    const same = draftFromCard(fullCard);
-    same.settings = { links_layout: "icons", animate_events: true };
-    expect(isDirty(saved, same)).toBe(false);
+    const stored = cardView({ settings: { links_layout: "list" } as unknown as CardView["settings"] });
+    const saved = draftFromCard(stored);
+    const same = draftFromCard(stored);
     same.settings = { links_layout: "list" };
+    expect(isDirty(saved, same)).toBe(false);
+    same.settings = { links_layout: "icons" };
     expect(isDirty(saved, same)).toBe(true);
   });
 

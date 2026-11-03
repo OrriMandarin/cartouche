@@ -61,7 +61,8 @@ describe("public card page", () => {
     fetchPublicCard.mockResolvedValue({ state: "active", card: { ...sampleCard, events } });
     await renderPage("eloise-daubigne");
     const buttons = screen.getAllByTestId(/^event-button-/);
-    expect(buttons.map((button) => button.textContent)).toEqual(["Salon du Mariage ✨", "Portes ouvertes de l’Atelier"]);
+    const names = screen.getAllByTestId("card-event-name");
+    expect(names.map((name) => name.textContent)).toEqual(["Salon du Mariage ✨", "Portes ouvertes de l’Atelier"]);
     expect(buttons[0]).toHaveAttribute("href", `/c/${sampleCard.slug}/e/event-1`);
   });
 

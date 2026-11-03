@@ -18,7 +18,7 @@ describe("PhonePreview", () => {
     expect(screen.getByTestId("phone-preview").querySelector("article")).toHaveAttribute("data-mode", "preview");
     expect(screen.getByTestId("card-name")).toHaveTextContent("Éloïse");
     expect(screen.getByTestId("card-job-title")).toHaveTextContent("Cheffe de projet");
-    expect(screen.getByTestId("card-link-0")).toHaveTextContent("Site web");
+    expect(screen.getByTestId("card-link-0")).toHaveAccessibleName("Site web — eloise.example");
     expect(screen.getByTestId("save-contact")).toHaveAttribute("href", "/api/public/cards/alice-durand/vcard");
   });
 

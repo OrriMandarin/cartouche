@@ -77,12 +77,14 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(preview.getByTestId("card-link-0")).toHaveTextContent("Mon site");
     fireEvent.click(screen.getByTestId("link-add"));
     type("link-url-1", "https://b.example.test");
-    expect(preview.getByTestId("card-link-1")).toHaveTextContent("Site web");
+    // TPL-027: icons by default, a website is an icon named after its kind and its address.
+    expect(preview.getByTestId("card-link-1").textContent).toBe("");
+    expect(preview.getByTestId("card-link-1")).toHaveAttribute("aria-label", "Site web — b.example.test");
 
     // TPL-004: a setting of the template changes the preview.
-    await chooseOption(screen.getByLabelText("Affichage des liens"), "Icônes seules");
-    expect(preview.getByTestId("card-link-0").textContent).toBe("");
-    expect(preview.getByTestId("card-link-0")).toHaveAttribute("aria-label", "Mon site");
+    await chooseOption(screen.getByLabelText("Disposition des liens"), "Liste");
+    expect(preview.getByTestId("card-link-1")).toHaveTextContent("Site web");
+    expect(preview.getByTestId("card-link-1")).not.toHaveAttribute("aria-label");
 
     fireEvent.change(screen.getByTestId("theme-accent"), { target: { value: "#ff0066" } });
     expect(screen.getByTestId("phone-preview").querySelector("article")!.style.getPropertyValue("--c-accent")).toBe("#ff0066");
@@ -310,12 +312,12 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(confirm).toHaveBeenCalledTimes(1);
   });
 
-  test("EDI-016 reverting a setting leaves the editor clean", () => {
+  test("EDI-016 reverting a setting leaves the editor clean", async () => {
     renderEditor();
-    const toggle = screen.getByRole("switch", { name: "Animer les boutons d'événement" });
-    fireEvent.click(toggle);
+    const layout = screen.getByLabelText("Disposition des liens");
+    await chooseOption(layout, "Liste");
     expect(screen.getByTestId("editor-status")).toHaveTextContent("Modifications non enregistrées");
-    fireEvent.click(toggle);
+    await chooseOption(layout, "Icônes");
     expect(screen.getByTestId("editor-status")).toBeEmptyDOMElement();
     expect(screen.getByTestId("editor-save")).toBeDisabled();
     const event = new Event("beforeunload", { cancelable: true });

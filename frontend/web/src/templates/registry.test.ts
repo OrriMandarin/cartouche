@@ -57,7 +57,7 @@ describe("registry", () => {
       mode: "public",
     });
     const props = element.props as { settings: unknown; theme: { presetId: string } };
-    expect(props.settings).toEqual({ links_layout: "list", animate_events: true });
+    expect(props.settings).toEqual({ links_layout: "icons" });
     expect(props.theme.presetId).toBe("craie");
   });
 });

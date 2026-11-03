@@ -100,7 +100,11 @@ test("PUB-008 PUB-009 PUB-029 running events are buttons sorted by start", async
   };
   await page.goto("/c/alice-durand");
   const buttons = page.getByTestId(/^event-button-/);
-  await expect(buttons).toHaveText([MARIAGE, "Portes ouvertes de l'Atelier", "Démonstration en boutique"]);
+  await expect(page.getByTestId("card-event-name")).toHaveText([
+    MARIAGE,
+    "Portes ouvertes de l'Atelier",
+    "Démonstration en boutique",
+  ]);
   const testIds = await buttons.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-testid")));
   expect(testIds).toEqual([
     `event-button-${idOf(MARIAGE)}`,
@@ -116,6 +120,77 @@ test("PUB-010 no running event, no button", async ({ page }) => {
   await page.goto("/c/alice-durand");
   await expect(page.getByTestId("card-name")).toHaveText("Alice Durand");
   await expect(page.getByTestId(/^event-button-/)).toHaveCount(0);
+});
+
+test("PUB-030 PUB-033 the save button sits right under the identity", async ({ page }) => {
+  await page.goto("/c/alice-durand");
+  const box = async (testId: string) => {
+    const found = await page.getByTestId(testId).boundingBox();
+    if (!found) throw new Error(`${testId} is not visible`);
+    return found;
+  };
+  const description = await box("card-description");
+  const save = await box("save-contact");
+  const email = await box("card-email");
+  expect(save.y).toBeGreaterThan(description.y + description.height);
+  expect(email.y).toBeGreaterThan(save.y + save.height);
+  // Inverted colors: the button's background is the card's text color, its text the card's background.
+  const colors = await page.getByTestId("save-contact").evaluate((element) => {
+    const card = element.closest("article")!;
+    const probe = document.createElement("span");
+    probe.style.color = "var(--c-bg)";
+    card.append(probe);
+    const result = {
+      background: getComputedStyle(element).backgroundColor,
+      color: getComputedStyle(element).color,
+      text: getComputedStyle(card).color,
+      cardBackground: getComputedStyle(probe).color,
+    };
+    probe.remove();
+    return result;
+  });
+  expect(colors.background).toBe(colors.text);
+  expect(colors.color).toBe(colors.cardBackground);
+});
+
+test("PUB-035 PUB-036 links show as icons with labelled free links", async ({ page }) => {
+  await page.goto("/c/alice-durand");
+  const icons = page.getByRole("list", { name: "Réseaux" });
+  const linkedin = icons.getByTestId("card-link-0");
+  await expect(linkedin).toHaveAttribute("aria-label", "LinkedIn — linkedin.com/in/alice");
+  await expect(linkedin).toHaveText("");
+  await expect(linkedin.locator("svg")).toHaveCount(1);
+  const size = await linkedin.boundingBox();
+  expect(size?.width).toBeGreaterThanOrEqual(44);
+  expect(size?.height).toBeGreaterThanOrEqual(44);
+
+  const portfolio = page.getByRole("list", { name: "Liens" }).getByTestId("card-link-1");
+  await expect(portfolio).toContainText("Portfolio");
+  await expect(portfolio).toContainText("alice.example.test");
+});
+
+test("PUB-023 a card without photo shows its initials", async ({ page }) => {
+  await page.goto("/c/alice-durand");
+  await expect(page.getByTestId("card-initials")).toHaveText("AD");
+  await expect(page.getByTestId("card-avatar")).toHaveCount(0);
+});
+
+test("PUB-038 reduced motion stops the event sheen and the pulse", async ({ page, api }) => {
+  const { events } = await api.seedEvents();
+  const mariage = events.find((event) => event.title === MARIAGE);
+  if (!mariage) throw new Error("the events scenario has no wedding fair");
+  const animations = async () =>
+    page.getByTestId(`event-button-${mariage.id}`).evaluate((button) => ({
+      sheen: getComputedStyle(button, "::after").animationName,
+      dot: getComputedStyle(button.querySelector(".cc-dot")!, "::after").animationName,
+    }));
+
+  await page.goto("/c/alice-durand");
+  expect(await animations()).toEqual({ sheen: "cc-sheen", dot: "cc-ping" });
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  expect(await animations()).toEqual({ sheen: "none", dot: "none" });
 });
 
 test.describe("without JavaScript", () => {

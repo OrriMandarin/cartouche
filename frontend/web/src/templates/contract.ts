@@ -34,6 +34,20 @@ export interface PublicEvent {
 /** Fixed texts of a card page, translated by the caller. */
 export interface TemplateLabels {
   saveContact: string;
+  /** Small label of an event button (PUB-008). */
+  eventLive: string;
+  /** Accessible name of the contact details list. */
+  contacts: string;
+  /** Sub-labels of the email and phone rows (PUB-034). */
+  emailLabel: string;
+  phoneLabel: string;
+  /** Accessible name of the list of link rows. */
+  linksList: string;
+  /** Accessible name of the row of link icons. */
+  networks: string;
+  /** Pause and play button of a header video. */
+  pauseVideo: string;
+  playVideo: string;
   /** Name of each kind of link, used when the link has no label of its own. */
   links: Record<LinkKind, string>;
 }
@@ -73,6 +87,12 @@ export const TEMPLATE_TEST_IDS = {
   avatar: "card-avatar",
   headerImage: "card-header-image",
   headerVideo: "card-header-video",
+  /** Header without media: the short accent band (PUB-023). */
+  headerEmpty: "card-header-empty",
+  /** Avatar without photo: the initials (PUB-023). */
+  initials: "card-initials",
+  /** Name of an event inside its button. */
+  eventName: "card-event-name",
   saveContact: "save-contact",
   link: (index: number) => `card-link-${index}`,
   eventButton: (eventId: string) => `event-button-${eventId}`,
@@ -86,5 +106,16 @@ export function buildTemplateLabels(t: Translate): TemplateLabels {
   const links = Object.fromEntries(
     LINK_KINDS.map((kind) => [kind, t(`publicCard.links.${kind}`)]),
   ) as Record<LinkKind, string>;
-  return { saveContact: t("publicCard.saveContact"), links };
+  return {
+    saveContact: t("publicCard.saveContact"),
+    eventLive: t("publicCard.eventLive"),
+    contacts: t("publicCard.contacts"),
+    emailLabel: t("publicCard.emailLabel"),
+    phoneLabel: t("publicCard.phoneLabel"),
+    linksList: t("publicCard.linksList"),
+    networks: t("publicCard.networks"),
+    pauseVideo: t("publicCard.pauseVideo"),
+    playVideo: t("publicCard.playVideo"),
+    links,
+  };
 }

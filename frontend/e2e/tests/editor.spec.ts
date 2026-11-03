@@ -51,7 +51,9 @@ test("EDI-005 EDI-017 simulated event never reaches the public page", async ({ p
   await expect(preview.locator('[data-testid^="event-button-"]')).toHaveCount(0);
 
   await page.getByTestId("simulate-event").click();
-  await expect(preview.getByTestId("event-button-preview")).toHaveText("Événement de démonstration");
+  await expect(preview.getByTestId("event-button-preview").getByTestId("card-event-name")).toHaveText(
+    "Événement de démonstration",
+  );
 
   await page.getByTestId("editor-job_title").fill("Directrice");
   await page.getByTestId("editor-save").click();
@@ -112,13 +114,23 @@ test("LNK-003 changing the slug keeps the old link working", async ({ page }) =>
 
 test("TPL-004 template setting shows in the preview", async ({ page }) => {
   await page.goto(editorUrl());
-  const link = page.getByTestId("phone-preview").getByTestId("card-link-1");
-  await expect(link).toContainText("Portfolio");
+  const link = page.getByTestId("phone-preview").getByTestId("card-link-0");
+  await expect(link).toHaveText("");
+  await expect(link).toHaveAttribute("aria-label", "LinkedIn — linkedin.com/in/alice");
 
   await page.getByTestId("setting-links_layout").click();
-  await page.getByRole("option", { name: "Icônes seules" }).click();
-  await expect(link).toHaveText("");
-  await expect(link).toHaveAttribute("aria-label", "Portfolio");
+  await page.getByRole("option", { name: "Liste" }).click();
+  await expect(link).toContainText("LinkedIn");
+  await expect(link).toContainText("linkedin.com/in/alice");
+  await expect(link).not.toHaveAttribute("aria-label");
+});
+
+test("TPL-027 the editor offers Icônes and Liste, Icônes by default", async ({ page }) => {
+  await page.goto(editorUrl());
+  const layout = page.getByTestId("setting-links_layout");
+  await expect(layout).toHaveText("Icônes");
+  await layout.click();
+  await expect(page.getByRole("option")).toHaveText(["Icônes", "Liste"]);
 });
 
 test("TPL-013 TPL-023 a low contrast warns in the editor and the save is refused", async ({

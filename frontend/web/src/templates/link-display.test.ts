@@ -1,6 +1,6 @@
 import { Globe, Link as LinkIcon } from "lucide-react";
 import { describe, expect, test } from "vitest";
-import type { TemplateLabels } from "./contract";
+import { sampleLabels } from "./fixtures";
 import {
   FacebookIcon,
   InstagramIcon,
@@ -18,19 +18,7 @@ import {
   splitLinksForIcons,
 } from "./link-display";
 
-const labels: TemplateLabels = {
-  saveContact: "Enregistrer le contact",
-  links: {
-    website: "Site web",
-    linkedin: "LinkedIn",
-    instagram: "Instagram",
-    facebook: "Facebook",
-    tiktok: "TikTok",
-    youtube: "YouTube",
-    x: "X",
-    custom: "Lien",
-  },
-};
+const labels = sampleLabels;
 
 describe("link display", () => {
   test("PUB-035 a link's address drops the scheme, www. and the trailing slash", () => {
