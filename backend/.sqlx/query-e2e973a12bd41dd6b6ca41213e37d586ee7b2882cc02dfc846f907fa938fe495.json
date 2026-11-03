@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select c.owner_disabled_at, c.support_disabled_at, u.status as owner_status from cards c join users u on u.id = c.owner_id where c.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner_disabled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "owner_disabled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "support_disabled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "support_disabled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "e2e973a12bd41dd6b6ca41213e37d586ee7b2882cc02dfc846f907fa938fe495"
+}

@@ -64,9 +64,10 @@ pub async fn get_user(
     let owned = admin_cards::list_for_user(&state.db, id).await?;
     let ids: Vec<Uuid> = owned.iter().map(|card| card.id).collect();
     let attached = media::list_attached(&state.db, id, &ids).await?;
+    let now = state.clock.now();
     let cards = owned
         .into_iter()
-        .map(|card| CardView::new(card, &attached, &state.config, &state.media))
+        .map(|card| CardView::new(card, &attached, &state.config, &state.media, now))
         .collect::<Result<_, _>>()?;
     Ok(Json(AdminUserDetail {
         user: AdminUserView::new(user, &state),
@@ -108,7 +109,13 @@ pub async fn get_card(
         .ok_or_else(|| ApiError::Internal(format!("card {id} has no owner")))?;
     let attached = media::list_attached(&state.db, card.owner_id, &[id]).await?;
     Ok(Json(AdminCardDetail {
-        card: CardView::new(card, &attached, &state.config, &state.media)?,
+        card: CardView::new(
+            card,
+            &attached,
+            &state.config,
+            &state.media,
+            state.clock.now(),
+        )?,
         owner: AdminUserView::new(owner, &state),
     }))
 }
@@ -152,6 +159,7 @@ async fn set_support_block(
         &attached,
         &state.config,
         &state.media,
+        state.clock.now(),
     )?))
 }
 

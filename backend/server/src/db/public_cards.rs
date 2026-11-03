@@ -1,8 +1,9 @@
-//! Reading a card by its slug for the public page and the vCard. This is the one place, with
-//! `slugs` and `admin_cards`, where a card is found without its owner: the caller is anyone.
-//! Whether the card may be shown is decided from the owner's status, returned with it.
+//! Reading a card by its slug for the public page and the vCard, and whether a card is served
+//! for its public media files. This is the one place, with `slugs` and `admin_cards`, where a
+//! card is found without its owner: the caller is anyone. Whether the card may be shown is
+//! decided from the owner's status, read with it.
 
-use cartouche_domain::UserStatus;
+use cartouche_domain::{CardStatus, UserStatus, is_served};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -111,4 +112,26 @@ pub async fn resolve(pool: &PgPool, slug: &str) -> Result<Option<Resolution>, sq
         Some((card, owner)) if is_current => Resolution::Current(card, owner),
         Some((card, owner)) => Resolution::Old { card, owner },
     }))
+}
+
+/// Whether the card `card_id` is publicly served (active, owner approved, LNK-026); `None`
+/// when there is no such card. Read on every unsigned `/media/*` request (MED-023).
+pub async fn card_is_served(pool: &PgPool, card_id: Uuid) -> Result<Option<bool>, sqlx::Error> {
+    let Some(row) = sqlx::query!(
+        "select c.owner_disabled_at, c.support_disabled_at, u.status as owner_status \
+         from cards c \
+         join users u on u.id = c.owner_id \
+         where c.id = $1",
+        card_id,
+    )
+    .fetch_optional(pool)
+    .await?
+    else {
+        return Ok(None);
+    };
+    let status = CardStatus::of(
+        row.owner_disabled_at.is_some(),
+        row.support_disabled_at.is_some(),
+    );
+    Ok(Some(is_served(status, parse_status(&row.owner_status)?)))
 }

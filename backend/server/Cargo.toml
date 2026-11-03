@@ -17,7 +17,9 @@ required-features = ["test-support"]
 
 [dependencies]
 async-trait = "0.1.92"
+aws-lc-rs = "1.19"
 axum = { version = "0.8.9", features = ["multipart"] }
+base64.workspace = true
 bytes = "1"
 cartouche-domain = { workspace = true, features = ["utoipa"] }
 chrono.workspace = true
@@ -41,6 +43,5 @@ uuid.workspace = true
 webp = { version = "0.3", default-features = false }
 
 [dev-dependencies]
-base64 = "0.23.1"
 http-body-util = "0.1.5"
 tower = { version = "0.5.3", features = ["util"] }

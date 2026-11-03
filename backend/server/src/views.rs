@@ -102,9 +102,25 @@ pub struct ImageVariantView {
     pub url: String,
 }
 
+/// Who reads the addresses of a card's files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Audience {
+    /// Any visitor of the public page: plain addresses, readable while the card is served.
+    Public,
+    /// The owner's dashboard or the support page, at the given time: signed addresses,
+    /// readable even when the card is not served (MED-023).
+    Dashboard(DateTime<Utc>),
+}
+
 impl MediaView {
-    pub fn new(record: &MediaRecord, media: &MediaService) -> MediaView {
-        let url_of = |name: &str| media.url(&storage_key(record.card_id, record.id, name));
+    pub fn new(record: &MediaRecord, media: &MediaService, audience: Audience) -> MediaView {
+        let url_of = |name: &str| {
+            let key = storage_key(record.card_id, record.id, name);
+            match audience {
+                Audience::Public => media.url(&key),
+                Audience::Dashboard(now) => media.dashboard_url(&key, now),
+            }
+        };
         let mut images: Vec<ImageVariantView> = record
             .variants
             .iter()
@@ -151,9 +167,10 @@ fn attached_view(
     attached: &[MediaRecord],
     id: Option<Uuid>,
     media: &MediaService,
+    audience: Audience,
 ) -> Option<MediaView> {
     let record = attached.iter().find(|m| Some(m.id) == id)?;
-    Some(MediaView::new(record, media))
+    Some(MediaView::new(record, media, audience))
 }
 
 impl From<CardContent> for ContentView {
@@ -182,17 +199,20 @@ impl From<Link> for LinkView {
 }
 
 impl CardView {
-    /// `attached` holds the card's header and avatar records (others are ignored). Fails only
-    /// if the stored theme is no longer valid, which is a bug of ours.
+    /// `attached` holds the card's header and avatar records (others are ignored); the files'
+    /// addresses are signed at `now` (MED-023). Fails only if the stored theme is no longer
+    /// valid, which is a bug of ours.
     pub fn new(
         card: Card,
         attached: &[MediaRecord],
         config: &Config,
         media: &MediaService,
+        now: DateTime<Utc>,
     ) -> Result<CardView, ApiError> {
         let status = card.status();
         let theme = stored_theme(&card)?;
-        let view_of = |id: Option<Uuid>| attached_view(attached, id, media);
+        let view_of =
+            |id: Option<Uuid>| attached_view(attached, id, media, Audience::Dashboard(now));
         Ok(CardView {
             header: view_of(card.header_media_id),
             avatar: view_of(card.avatar_media_id),
@@ -220,7 +240,7 @@ impl PublicCard {
         media: &MediaService,
     ) -> Result<PublicCard, ApiError> {
         let theme = stored_theme(&card)?;
-        let view_of = |id: Option<Uuid>| attached_view(attached, id, media);
+        let view_of = |id: Option<Uuid>| attached_view(attached, id, media, Audience::Public);
         Ok(PublicCard {
             header: view_of(card.header_media_id),
             avatar: view_of(card.avatar_media_id),

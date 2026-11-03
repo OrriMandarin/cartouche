@@ -20,7 +20,7 @@ use crate::extract::{ApiMultipart, ApiPath};
 use crate::media::MediaService;
 use crate::media::process::{EncodedVariant, ProcessError};
 use crate::state::AppState;
-use crate::views::MediaView;
+use crate::views::{Audience, MediaView};
 
 /// Largest request body of the upload route: a video, its waiting image and the framing.
 pub const UPLOAD_BODY_LIMIT: usize = 36 << 20;
@@ -227,7 +227,11 @@ pub async fn upload_media(
     match inserted {
         Ok(Some(record)) => Ok((
             StatusCode::CREATED,
-            Json(MediaView::new(&record, &state.media)),
+            Json(MediaView::new(
+                &record,
+                &state.media,
+                Audience::Dashboard(state.clock.now()),
+            )),
         )),
         // The card was deleted since it was read.
         Ok(None) => {

@@ -52,9 +52,10 @@ pub async fn list_cards(
     let owned = cards::list_for_owner(&state.db, me.user.id).await?;
     let ids: Vec<Uuid> = owned.iter().map(|card| card.id).collect();
     let attached = media::list_attached(&state.db, me.user.id, &ids).await?;
+    let now = state.clock.now();
     let cards = owned
         .into_iter()
-        .map(|card| CardView::new(card, &attached, &state.config, &state.media))
+        .map(|card| CardView::new(card, &attached, &state.config, &state.media, now))
         .collect::<Result<_, _>>()?;
     Ok(Json(CardList { cards }))
 }
@@ -135,7 +136,13 @@ pub async fn create_card(
     tx.commit().await.map_err(slug_race)?;
     Ok((
         StatusCode::CREATED,
-        Json(CardView::new(card, &[], &state.config, &state.media)?),
+        Json(CardView::new(
+            card,
+            &[],
+            &state.config,
+            &state.media,
+            state.clock.now(),
+        )?),
     ))
 }
 
@@ -172,6 +179,7 @@ pub async fn get_card(
         &attached,
         &state.config,
         &state.media,
+        state.clock.now(),
     )?))
 }
 
@@ -284,6 +292,7 @@ pub async fn update_card(
         &attached,
         &state.config,
         &state.media,
+        state.clock.now(),
     )?))
 }
 
@@ -363,6 +372,7 @@ async fn set_disabled(
         &attached,
         &state.config,
         &state.media,
+        state.clock.now(),
     )?))
 }
 
@@ -570,7 +580,13 @@ pub async fn duplicate_card(
     match record_duplicate(tx, owner_id, id, new_id, &slug, claim, &copies).await {
         Ok((card, attached)) => Ok((
             StatusCode::CREATED,
-            Json(CardView::new(card, &attached, &state.config, &state.media)?),
+            Json(CardView::new(
+                card,
+                &attached,
+                &state.config,
+                &state.media,
+                state.clock.now(),
+            )?),
         )),
         Err(error) => {
             remove_copied_files(&state.media, &copies).await;
