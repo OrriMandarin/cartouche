@@ -1,5 +1,5 @@
-//! Owner routes for the contacts collected by an event: list, mark or unmark as spam, delete
-//! (EDI-020, ABU-003, ABU-004, ABU-009, ABU-010, ACC-017).
+//! Owner routes for the contacts collected by the events: list (per event or per card), mark
+//! or unmark as spam, delete (EDI-020, LEA-013, ABU-003, ABU-004, ABU-009, ABU-010, ACC-017).
 
 use axum::Json;
 use axum::extract::State;
@@ -17,7 +17,7 @@ use crate::views::LeadView;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LeadList {
-    /// The contacts of the event, newest first, spam ones included (EDI-020).
+    /// The contacts, newest first, spam ones included (EDI-020, LEA-013).
     pub leads: Vec<LeadView>,
 }
 
@@ -25,6 +25,38 @@ pub struct LeadList {
 pub struct SpamBody {
     /// `true` marks the contact as spam, `false` removes the mark.
     pub spam: bool,
+}
+
+/// Lists the contacts of all the events of one of the caller's cards (LEA-013, LEA-014).
+#[utoipa::path(
+    get,
+    path = "/api/cards/{id}/leads",
+    summary = "List the contacts of a card",
+    description = "The contacts collected by every event of the card, from the most recent to the oldest, spam ones included and flagged, each with the title of its event. Contacts of a disabled card are listed too.",
+    tag = "leads",
+    security(("bearer" = [])),
+    params(("id" = Uuid, Path, description = "Id of the card.")),
+    responses(
+        (status = 200, description = "The card's contacts.", body = LeadList),
+        (status = 400, description = "Malformed id (`invalid_request`).", body = ErrorBody),
+        (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
+        (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
+        (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
+pub async fn list_card_leads(
+    ApprovedUser(me): ApprovedUser,
+    State(state): State<AppState>,
+    ApiPath(card_id): ApiPath<Uuid>,
+) -> Result<Json<LeadList>, ApiError> {
+    let listed = leads::list_for_card(&state.db, me.user.id, card_id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    Ok(Json(LeadList {
+        leads: listed.into_iter().map(LeadView::from).collect(),
+    }))
 }
 
 /// Lists the contacts of one of the caller's events.

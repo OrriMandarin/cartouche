@@ -1763,6 +1763,105 @@
         ]
       }
     },
+    "/api/cards/{id}/leads": {
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "List the contacts of a card",
+        "description": "The contacts collected by every event of the card, from the most recent to the oldest, spam ones included and flagged, each with the title of its event. Contacts of a disabled card are listed too.",
+        "operationId": "list_card_leads",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The card's contacts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/cards/{id}/media": {
       "post": {
         "tags": [
@@ -4244,7 +4343,7 @@
             "items": {
               "$ref": "#/components/schemas/LeadView"
             },
-            "description": "The contacts of the event, newest first, spam ones included (EDI-020)."
+            "description": "The contacts, newest first, spam ones included (EDI-020, LEA-013)."
           }
         }
       },
@@ -4296,6 +4395,7 @@
         "required": [
           "id",
           "event_id",
+          "event_title",
           "submitted_at",
           "spam",
           "answers",
@@ -4327,6 +4427,10 @@
           "event_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "event_title": {
+            "type": "string",
+            "description": "The title the event has now."
           },
           "id": {
             "type": "string",

@@ -62,6 +62,7 @@ impl Modify for BearerAuth {
         events::end_event,
         events::delete_event,
         events::consent_preview,
+        leads::list_card_leads,
         leads::list_event_leads,
         leads::set_lead_spam,
         leads::delete_lead,

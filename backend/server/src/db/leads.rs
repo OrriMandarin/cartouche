@@ -14,6 +14,8 @@ use uuid::Uuid;
 pub struct Lead {
     pub id: Uuid,
     pub event_id: Uuid,
+    /// The event's current title.
+    pub event_title: String,
     pub device_id: Uuid,
     pub submitted_at: DateTime<Utc>,
     pub standard: StandardAnswers,
@@ -38,6 +40,7 @@ pub struct NewLead<'a> {
 struct LeadRow {
     id: Uuid,
     event_id: Uuid,
+    event_title: String,
     device_id: Uuid,
     submitted_at: DateTime<Utc>,
     first_name: Option<String>,
@@ -67,6 +70,7 @@ impl TryFrom<LeadRow> for Lead {
         Ok(Lead {
             id: row.id,
             event_id: row.event_id,
+            event_title: row.event_title,
             device_id: row.device_id,
             submitted_at: row.submitted_at,
             standard: StandardAnswers {
@@ -178,7 +182,7 @@ pub async fn list_for_event(
     }
     let rows = sqlx::query_as!(
         LeadRow,
-        "select l.id, l.event_id, l.device_id, l.submitted_at, l.first_name, l.last_name, \
+        "select l.id, l.event_id, e.title as event_title, l.device_id, l.submitted_at, l.first_name, l.last_name, \
                 l.birth_date, l.email, l.phone, l.street, l.postal_code, l.city, l.country, \
                 l.custom_answers, l.consent_at, l.consent_text, l.spam_at \
          from leads l join events e on e.id = l.event_id join cards c on c.id = e.card_id \
@@ -195,8 +199,45 @@ pub async fn list_for_event(
         .map(Some)
 }
 
-/// Marks (`Some(at)`) or unmarks (`None`) the owner's lead as spam. `None` when the owner has
-/// no such lead.
+/// The leads of every event of the owner's card, newest first. `None` when the owner has no
+/// such card.
+pub async fn list_for_card(
+    pool: &PgPool,
+    owner_id: Uuid,
+    card_id: Uuid,
+) -> Result<Option<Vec<Lead>>, sqlx::Error> {
+    let owns_card = sqlx::query_scalar!(
+        r#"select exists (select 1 from cards where id = $1 and owner_id = $2) as "owns!""#,
+        card_id,
+        owner_id,
+    )
+    .fetch_one(pool)
+    .await?;
+    if !owns_card {
+        return Ok(None);
+    }
+    let rows = sqlx::query_as!(
+        LeadRow,
+        "select l.id, l.event_id, e.title as event_title, l.device_id, l.submitted_at, \
+                l.first_name, l.last_name, l.birth_date, l.email, l.phone, l.street, \
+                l.postal_code, l.city, l.country, l.custom_answers, l.consent_at, \
+                l.consent_text, l.spam_at \
+         from leads l join events e on e.id = l.event_id join cards c on c.id = e.card_id \
+         where c.id = $1 and c.owner_id = $2 \
+         order by l.submitted_at desc, l.id desc",
+        card_id,
+        owner_id,
+    )
+    .fetch_all(pool)
+    .await?;
+    rows.into_iter()
+        .map(Lead::try_from)
+        .collect::<Result<_, _>>()
+        .map(Some)
+}
+
+/// Marks (`Some(at)`) or unmarks (`None`) the owner's lead as spam. Marking a lead that is
+/// already spam keeps its first marking date. `None` when the owner has no such lead.
 pub async fn set_spam(
     pool: &PgPool,
     owner_id: Uuid,
@@ -205,10 +246,11 @@ pub async fn set_spam(
 ) -> Result<Option<Lead>, sqlx::Error> {
     let row = sqlx::query_as!(
         LeadRow,
-        "update leads l set spam_at = $3 \
+        "update leads l \
+         set spam_at = case when $3::timestamptz is null then null else coalesce(l.spam_at, $3) end \
          from events e, cards c \
          where l.id = $1 and e.id = l.event_id and c.id = e.card_id and c.owner_id = $2 \
-         returning l.id, l.event_id, l.device_id, l.submitted_at, l.first_name, l.last_name, \
+         returning l.id, l.event_id, e.title as event_title, l.device_id, l.submitted_at, l.first_name, l.last_name, \
                    l.birth_date, l.email, l.phone, l.street, l.postal_code, l.city, l.country, \
                    l.custom_answers, l.consent_at, l.consent_text, l.spam_at",
         lead_id,

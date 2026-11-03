@@ -280,6 +280,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cards/{id}/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the contacts of a card
+         * @description The contacts collected by every event of the card, from the most recent to the oldest, spam ones included and flagged, each with the title of its event. Contacts of a disabled card are listed too.
+         */
+        get: operations["list_card_leads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cards/{id}/media": {
         parameters: {
             query?: never;
@@ -877,7 +897,7 @@ export interface components {
             width: number;
         };
         LeadList: {
-            /** @description The contacts of the event, newest first, spam ones included (EDI-020). */
+            /** @description The contacts, newest first, spam ones included (EDI-020, LEA-013). */
             leads: components["schemas"]["LeadView"][];
         };
         /** @description What a prospect sends. */
@@ -915,6 +935,8 @@ export interface components {
             custom: components["schemas"]["AnswerSnapshot"][];
             /** Format: uuid */
             event_id: string;
+            /** @description The title the event has now. */
+            event_title: string;
             /** Format: uuid */
             id: string;
             /** @description The phone number as people write it, e.g. `+33 6 12 34 56 78`. */
@@ -2518,6 +2540,83 @@ export interface operations {
             };
             /** @description Too many simultaneous events (`too_many_simultaneous_events`). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_card_leads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The card's contacts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadList"];
+                };
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

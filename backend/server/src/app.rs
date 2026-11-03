@@ -28,7 +28,7 @@ use crate::routes::events::{
     consent_preview, create_event, delete_event, end_event, get_event, list_events, update_event,
 };
 use crate::routes::health::health;
-use crate::routes::leads::{delete_lead, list_event_leads, set_lead_spam};
+use crate::routes::leads::{delete_lead, list_card_leads, list_event_leads, set_lead_spam};
 use crate::routes::me::me;
 use crate::routes::media_files::get_media_file;
 use crate::routes::public_cards::{get_public_card, get_public_vcard};
@@ -58,6 +58,7 @@ pub fn build_router(state: AppState) -> Router {
             get(list_events).post(create_event),
         )
         .route("/api/cards/{id}/consent-preview", post(consent_preview))
+        .route("/api/cards/{id}/leads", get(list_card_leads))
         .route(
             "/api/events/{id}",
             get(get_event).put(update_event).delete(delete_event),

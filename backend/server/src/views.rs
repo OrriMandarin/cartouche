@@ -100,6 +100,8 @@ impl EventView {
 pub struct LeadView {
     pub id: Uuid,
     pub event_id: Uuid,
+    /// The title the event has now.
+    pub event_title: String,
     pub submitted_at: DateTime<Utc>,
     /// Marked as spam by the owner (ABU-003); spam contacts stay listed (ABU-009).
     pub spam: bool,
@@ -123,6 +125,7 @@ impl From<Lead> for LeadView {
             spam: lead.spam_at.is_some(),
             id: lead.id,
             event_id: lead.event_id,
+            event_title: lead.event_title,
             submitted_at: lead.submitted_at,
             answers: lead.standard,
             custom: lead.custom,
