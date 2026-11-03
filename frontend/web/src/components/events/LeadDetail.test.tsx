@@ -94,6 +94,7 @@ describe("LeadDetail", () => {
     expect(screen.getByTestId("lead-detail-answer-f-deleted")).toHaveTextContent("EntrepriseHébert & Fils");
     expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("15 mars 2027 à 09:29");
     expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("Vos coordonnées restent chez l’Atelier Durand & Fils.");
+    expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("Texte de consentement");
   });
 
   test("LEA-019 the detail reads Oui, Non, Non renseigné and French dates", () => {

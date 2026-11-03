@@ -49,6 +49,13 @@ describe("AccountPage", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
+  test("ACC-019 an account without an email shows Non renseigné like a missing display name", async () => {
+    get.mockResolvedValue(me({ email: null, display_name: null }));
+    renderPage();
+    expect(await screen.findByTestId("account-email")).toHaveTextContent("Non renseigné");
+    expect(screen.getByTestId("account-display-name")).toHaveTextContent("Non renseigné");
+  });
+
   test("ACC-021 an administrator is told why there is no deletion", async () => {
     get.mockResolvedValue(me({ is_admin: true }));
     renderPage();

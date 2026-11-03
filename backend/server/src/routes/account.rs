@@ -37,7 +37,9 @@ pub async fn delete_me(
     let user_id = current.user.id;
 
     let mut tx = state.db.begin().await?;
-    // The row lock serializes two simultaneous deletions: the second finds no account.
+    // The row lock serializes two simultaneous deletions. If the second request passed the extractor before the
+    // first committed, it finds no account here (404); if it passed after, the extractor recreated an account
+    // (ACC-001), which this request then deletes (204).
     users::find_for_update(&mut tx, user_id)
         .await?
         .ok_or(ApiError::NotFound)?;

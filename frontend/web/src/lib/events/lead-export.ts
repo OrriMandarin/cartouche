@@ -18,6 +18,9 @@ export function fileNameFromDisposition(header: string | null): string | null {
   return match?.[1] || match?.[2] || null;
 }
 
+/** How long the temporary file URL lives after the click, so that every browser has started the download. */
+const REVOKE_DELAY_MS = 1000;
+
 /** Only used when the server sends no file name: `contacts` plus the extension of the requested format. */
 function fallbackFileName(path: string): string {
   const format = new URLSearchParams(path.split("?")[1] ?? "").get("format");
@@ -45,7 +48,8 @@ export async function downloadExport(getToken: () => Promise<string | null>, pat
     link.click();
   } finally {
     link.remove();
-    URL.revokeObjectURL(url);
+    // Revoked later: some Safari versions cancel the download if the URL is revoked right after the click.
+    setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
   }
   return name;
 }

@@ -152,7 +152,7 @@ test("LEA-003 LEA-018 LEA-019 lead detail", async ({ page, api }) => {
 
   await page.getByTestId(`lead-open-${zoe}`).click();
   await expect(page.getByTestId(`lead-detail-answer-${WEDDING_DATE_FIELD}`)).toContainText("Non renseigné");
-  await expect(page.getByTestId(`lead-detail-answer-${WEDDING_BROCHURE_FIELD}`)).toContainText("Non");
+  await expect(page.getByTestId(`lead-detail-answer-${WEDDING_BROCHURE_FIELD}`)).toHaveText(/Recevoir la brochure\s*Non$/);
 });
 
 test("FRM-023 LEA-018 a deleted field stays in the detail", async ({ page }) => {

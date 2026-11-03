@@ -34,19 +34,43 @@ describe("fileNameFromDisposition", () => {
 
 describe("downloadExport", () => {
   const PATH = "/api/events/ev-1/leads/export?format=csv&include_spam=false&tz=Europe%2FParis";
+  const urlMethods = ["createObjectURL", "revokeObjectURL"] as const;
+  const originals = urlMethods.map((name) => Object.getOwnPropertyDescriptor(URL, name));
   let clicked: { download: string; href: string; connected: boolean }[];
+  let revoke: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     clicked = [];
-    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:export-1"), revokeObjectURL: vi.fn() }));
+    revoke = vi.fn();
+    // jsdom has no object URLs: define them on the real `URL` for one test, restored afterwards.
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, writable: true, value: vi.fn(() => "blob:export-1") });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, writable: true, value: revoke });
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
       clicked.push({ download: this.download, href: this.href, connected: this.isConnected });
     });
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    urlMethods.forEach((name, index) => {
+      const original = originals[index];
+      if (original) Object.defineProperty(URL, name, original);
+      else delete (URL as unknown as Record<string, unknown>)[name];
+    });
+  });
+
+  test("LEA-021 the temporary file URL is revoked after a delay, not right after the click", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("a\r\n", { status: 200 })));
+
+    await downloadExport(async () => "tok", PATH);
+
+    expect(clicked).toHaveLength(1);
+    expect(revoke).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1000);
+    expect(revoke).toHaveBeenCalledExactlyOnceWith("blob:export-1");
   });
 
   test("LEA-021 LEA-022 the export is fetched with the token and saved under the server's file name", async () => {
@@ -67,7 +91,6 @@ describe("downloadExport", () => {
     expect(new Headers(init.headers).get("authorization")).toBe("Bearer tok");
     expect(clicked).toEqual([{ download: "contacts-alice-2027-03-15.csv", href: "blob:export-1", connected: true }]);
     expect(document.querySelector("a[download]")).toBeNull();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:export-1");
   });
 
   test("LEA-022 without a Content-Disposition the file still gets a name with the format's extension", async () => {

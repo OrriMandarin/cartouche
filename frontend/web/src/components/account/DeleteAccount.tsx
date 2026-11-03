@@ -78,7 +78,7 @@ export function DeleteAccount({ isAdmin }: { isAdmin: boolean }) {
           </DialogHeader>
           <p className="text-muted-foreground text-sm">{t("identityProvider")}</p>
           <div className="space-y-2">
-            <Label htmlFor="delete-account-input">{t("inputLabel")}</Label>
+            <Label htmlFor="delete-account-input">{t("inputLabel", { word: t("confirmWord") })}</Label>
             <Input
               id="delete-account-input"
               data-testid="delete-account-input"

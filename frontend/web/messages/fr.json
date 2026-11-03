@@ -65,7 +65,7 @@
       "title": "Mon compte",
       "email": "Adresse e-mail",
       "displayName": "Nom affiché",
-      "noDisplayName": "Non renseigné"
+      "notProvided": "Non renseigné"
     },
     "delete": {
       "open": "Supprimer mon compte",
@@ -73,7 +73,7 @@
       "consequences": "Tes cartes, leurs médias, tes événements et tes contacts seront supprimés pour toujours. Les liens de tes cartes resteront bloqués définitivement : personne, toi compris, ne pourra les reprendre.",
       "identityProvider": "Ton compte chez le fournisseur d'identité ne sera pas supprimé : tu devras le supprimer toi-même chez lui.",
       "confirmWord": "SUPPRIMER",
-      "inputLabel": "Tape SUPPRIMER pour confirmer",
+      "inputLabel": "Tape {word} pour confirmer",
       "cancel": "Annuler",
       "confirm": "Supprimer définitivement",
       "close": "Fermer",

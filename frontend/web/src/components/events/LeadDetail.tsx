@@ -114,6 +114,7 @@ export function LeadDetail({
           <p className="font-medium">
             {t("detail.consentAt")} {formatEventDate(lead.consent_at, zone)}
           </p>
+          <p className="font-medium">{t("detail.consentText")}</p>
           <p className="text-muted-foreground whitespace-pre-line">{lead.consent_text}</p>
         </div>
 
