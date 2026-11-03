@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import messages from "../../../messages/fr.json";
+import messages from "../../../../messages/fr.json";
 import { AuthContext } from "@/lib/auth/context";
 
 const get = vi.fn();

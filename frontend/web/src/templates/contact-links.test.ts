@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { mailtoHref, telHref } from "./contact-links";
+import { isHttpUrl, mailtoHref, telHref } from "./contact-links";
 
 describe("mailtoHref", () => {
   test("PUB-021 a plain address becomes a mailto link", () => {
@@ -34,5 +34,30 @@ describe("telHref", () => {
   test("PUB-021 anything but digits and a leading plus is dropped", () => {
     expect(telHref(" +33 6 12-34.56(78) ")).toBe("tel:+33612345678");
     expect(telHref("0612345678;ext=1")).toBe("tel:06123456781");
+  });
+});
+
+describe("isHttpUrl", () => {
+  test("PUB-022 absolute http and https addresses are accepted", () => {
+    expect(isHttpUrl("https://example.com/a?b=c#d")).toBe(true);
+    expect(isHttpUrl("http://example.com")).toBe(true);
+    expect(isHttpUrl("HTTPS://EXAMPLE.COM")).toBe(true);
+  });
+
+  test("PUB-022 every other form is refused", () => {
+    for (const url of [
+      "javascript:alert(1)",
+      " JavaScript:alert(1)",
+      "java\tscript:alert(1)",
+      "data:text/html,x",
+      "vbscript:x",
+      "mailto:a@example.com",
+      "//example.com",
+      "/relative",
+      "example.com",
+      "",
+    ]) {
+      expect(isHttpUrl(url), url).toBe(false);
+    }
   });
 });

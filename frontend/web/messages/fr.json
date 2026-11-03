@@ -118,6 +118,8 @@
   },
   "publicCard": {
     "saveContact": "Enregistrer le contact",
+    "inactive": "Cette carte n'est plus active",
+    "notFound": "Carte introuvable",
     "links": {
       "website": "Site web",
       "linkedin": "LinkedIn",

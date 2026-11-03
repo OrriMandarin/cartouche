@@ -1,9 +1,10 @@
 import { Download, Globe, Link as LinkIcon, Mail, Phone, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { themeStyle } from "@/lib/theme/resolve";
-import { mailtoHref, telHref } from "../contact-links";
+import { isHttpUrl, mailtoHref, telHref } from "../contact-links";
 import {
   TEMPLATE_TEST_IDS as TEST_IDS,
+  linkLabel,
   type LinkKind,
   type MediaView,
   type PublicEvent,
@@ -88,6 +89,9 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
   const header = headerMedia(card.header);
   const avatarSrc = card.avatar?.jpeg_url ?? (card.avatar ? largestImageUrl(card.avatar) : undefined);
   const sortedEvents = sortedByStart(events);
+  // Defence in depth (PUB-022): the API only stores http(s) links, an unsafe one is not rendered. The original
+  // index stays in the test id.
+  const safeLinks = links.map((link, index) => ({ link, index })).filter(({ link }) => isHttpUrl(link.url));
   const iconsOnly = settings.links_layout === "icons";
 
   return (
@@ -200,15 +204,16 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
             </div>
           )}
 
-          {links.length > 0 && (
+          {safeLinks.length > 0 && (
             <ul
               className={
                 iconsOnly ? "mt-6 flex flex-wrap justify-center gap-3" : "mt-6 flex flex-col gap-3"
               }
             >
-              {links.map((link, index) => {
-                const Icon = LINK_ICONS[link.kind];
-                const label = link.label ?? labels.links[link.kind];
+              {safeLinks.map(({ link, index }) => {
+                // A kind this build does not know (a newer backend) reads as a website (TPL-016).
+                const Icon = Object.hasOwn(LINK_ICONS, link.kind) ? LINK_ICONS[link.kind] : Globe;
+                const label = linkLabel(labels, link);
                 return (
                   <li key={`${index}-${link.url}`}>
                     <a

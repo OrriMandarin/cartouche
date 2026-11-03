@@ -13,3 +13,17 @@ export function telHref(e164: string): string {
   const digits = trimmed.replace(/\D/g, "");
   return `tel:${trimmed.startsWith("+") ? "+" : ""}${digits}`;
 }
+
+/**
+ * Whether the text is an absolute `http`/`https` address. The API refuses any other link (PUB-022); a template
+ * checks again before putting a stored address in an `href`, so a row written by another path (an import, an older
+ * backend) can never run a `javascript:` or `data:` address.
+ */
+export function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}

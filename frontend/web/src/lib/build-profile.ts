@@ -5,11 +5,16 @@ const PROFILES: readonly BuildProfile[] = ["development", "test", "production"];
 const PROVIDERS: readonly AuthProviderName[] = ["clerk", "oidc", "test"];
 
 /** spec: ACC-008. Missing or unknown profile means production. */
+export function parseBuildProfile(value: string | undefined): BuildProfile {
+  return PROFILES.find((p) => p === value) ?? "production";
+}
+
+/** spec: ACC-008. Missing or unknown profile means production. */
 export function resolveBuildConfig(env: { profile?: string; authProvider?: string }): {
   profile: BuildProfile;
   authProvider: AuthProviderName;
 } {
-  const profile = PROFILES.find((p) => p === env.profile) ?? "production";
+  const profile = parseBuildProfile(env.profile);
 
   const rawProvider = env.authProvider === undefined || env.authProvider === "" ? "clerk" : env.authProvider;
   const authProvider = PROVIDERS.find((p) => p === rawProvider);

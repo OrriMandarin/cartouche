@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { resolveTheme } from "@/lib/theme/resolve";
-import { TEMPLATE_TEST_IDS as IDS, type PublicCard, type PublicEvent } from "./contract";
+import { TEMPLATE_TEST_IDS as IDS, type LinkKind, type PublicCard, type PublicEvent } from "./contract";
 import { sampleCard, sampleEvents, sampleLabels, sampleUrls, sampleVideoHeader } from "./fixtures";
 import { listTemplates, renderTemplate, type AnyTemplate } from "./registry";
 
@@ -63,6 +63,35 @@ describe.each(listTemplates())("template $id", (template) => {
     expect(screen.getByTestId(IDS.link(2))).toHaveTextContent("Mon podcast ✨");
     expect(screen.getByTestId(IDS.link(1))).toHaveTextContent("LinkedIn");
     expect(screen.queryByTestId(IDS.link(3))).toBeNull();
+  });
+
+  test("PUB-022 TPL-016 a stored link that is not http(s) renders no anchor", () => {
+    const links = [
+      { kind: "website" as const, url: "javascript:alert(1)" },
+      { kind: "custom" as const, url: "data:text/html,x", label: "Piège" },
+      { kind: "linkedin" as const, url: "https://www.linkedin.com/in/eloise" },
+    ];
+    const { container } = render(element(template, { card: { links } }));
+    const hrefs = [...container.querySelectorAll("a")].map((anchor) => anchor.getAttribute("href") ?? "");
+    expect(hrefs.filter((href) => /^(javascript|data):/i.test(href))).toEqual([]);
+    expect(screen.queryByText("Piège")).toBeNull();
+    expect(screen.getByText("LinkedIn")).toBeInTheDocument();
+  });
+
+  test("PUB-022 TPL-016 a card whose links are all unsafe shows no empty link list", () => {
+    const links = [{ kind: "website" as const, url: "javascript:alert(1)" }];
+    const { container } = render(element(template, { card: { links } }));
+    expect(container.querySelector("ul")).toBeNull();
+  });
+
+  test("TPL-016 an unknown link kind falls back to the website icon and label", () => {
+    const links = [{ kind: "mastodon" as LinkKind, url: "https://social.example/@eloise" }];
+    const { container } = render(element(template, { card: { links } }));
+    const anchor = screen.getByTestId(IDS.link(0));
+    expect(anchor).toHaveAttribute("href", "https://social.example/@eloise");
+    expect(anchor).toHaveTextContent(sampleLabels.links.website);
+    expect(anchor.querySelector("svg")).not.toBeNull();
+    expect(container.querySelectorAll("a[href^='https://social.example']")).toHaveLength(1);
   });
 
   test("PUB-014 save contact points to the vCard url", () => {

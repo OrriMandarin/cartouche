@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { TestModeBanner, isTestModeProfile } from "@/components/TestModeBanner";
-import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import "@/lib/theme/fonts.css";
 import "./globals.css";
@@ -26,7 +25,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       >
         <NextIntlClientProvider>
           <TestModeBanner />
-          <AuthProvider>{children}</AuthProvider>
+          {children}
         </NextIntlClientProvider>
       </body>
     </html>

@@ -1,0 +1,93 @@
+import { render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import messages from "../../../../messages/fr.json";
+import { sampleCard } from "@/templates/fixtures";
+import PublicCardPage, { generateMetadata } from "./page";
+
+const fetchPublicCard = vi.fn();
+
+vi.mock("@/lib/public-card", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/public-card")>()),
+  fetchPublicCard: (slug: string) => fetchPublicCard(slug),
+}));
+
+// The redirect and the 404 are thrown by Next; here they are told apart by their message.
+vi.mock("next/navigation", () => ({
+  permanentRedirect: (url: string) => {
+    throw new Error(`redirect:${url}`);
+  },
+  notFound: () => {
+    throw new Error("not-found");
+  },
+}));
+
+vi.mock("next-intl/server", () => ({
+  getTranslations: async () => (key: string) =>
+    key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], messages),
+}));
+
+const props = (slug: string) => ({ params: Promise.resolve({ slug }) });
+
+async function renderPage(slug: string) {
+  const element = await PublicCardPage(props(slug));
+  return render(<NextIntlClientProvider locale="fr" messages={messages}>{element}</NextIntlClientProvider>);
+}
+
+beforeEach(() => {
+  fetchPublicCard.mockReset();
+});
+
+describe("public card page", () => {
+  test("PUB-002 PUB-011 an active card is rendered with its template", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "active", card: sampleCard });
+    await renderPage("eloise-daubigne");
+    expect(screen.getByTestId("card-name")).toHaveTextContent("Éloïse D'Aubigné-Müller");
+    expect(screen.getByTestId("save-contact")).toHaveAttribute("href", sampleCard.vcard_url);
+    expect(screen.getByTestId("save-contact")).toHaveTextContent("Enregistrer le contact");
+  });
+
+  test("PUB-010 no event is shown before plan 3 supplies them", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "active", card: sampleCard });
+    await renderPage("eloise-daubigne");
+    expect(screen.queryAllByTestId(/^event-button-/)).toHaveLength(0);
+  });
+
+  test("LNK-003 LNK-024 an old slug redirects permanently to the current one", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "redirect", slug: "alice-durand" });
+    await expect(PublicCardPage(props("alice"))).rejects.toThrow("redirect:/c/alice-durand");
+  });
+
+  test("LNK-023 a slug never attributed is a 404", async () => {
+    fetchPublicCard.mockResolvedValue(null);
+    await expect(PublicCardPage(props("personne"))).rejects.toThrow("not-found");
+  });
+
+  test("LNK-006 LNK-027 an inactive card shows the neutral text and nothing of the card", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "inactive" });
+    const { container } = await renderPage("alice-archive");
+    expect(screen.getByText("Cette carte n'est plus active")).toBeInTheDocument();
+    expect(container.querySelector("[data-testid='card-name']")).toBeNull();
+  });
+});
+
+describe("public card metadata", () => {
+  test("PUB-017 an active card gets its link preview", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "active", card: sampleCard });
+    const metadata = await generateMetadata(props("eloise-daubigne"));
+    expect(metadata.openGraph).toMatchObject({ title: "Éloïse D'Aubigné-Müller", url: sampleCard.public_url });
+  });
+
+  test("LNK-027 an inactive card gets no preview and is not indexed", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "inactive" });
+    const metadata = await generateMetadata(props("alice-archive"));
+    expect(metadata.robots).toEqual({ index: false, follow: false });
+    expect(metadata.openGraph).toBeUndefined();
+    expect(metadata.title).toBeUndefined();
+  });
+
+  test("LNK-023 an unknown slug has no card metadata", async () => {
+    fetchPublicCard.mockResolvedValue(null);
+    expect(await generateMetadata(props("personne"))).toEqual({});
+  });
+});
