@@ -167,3 +167,70 @@ pub fn submission(form: &Value, overrides: Value) -> Value {
     merge(&mut body, overrides);
     body
 }
+
+/// The form of a running event without access code, as a prospect gets it from the public card.
+pub async fn public_form(app: &TestApp, slug: &str, event_id: &str) -> Value {
+    let res = app
+        .request(
+            "GET",
+            &format!("/api/public/cards/{slug}/events/{event_id}"),
+            None,
+            None,
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::OK, "public form: {}", res.json);
+    assert_eq!(res.json["state"], "open", "public form: {}", res.json);
+    res.json["event"].clone()
+}
+
+/// Sends a lead through the public API (a valid answer to every field of the form shown now,
+/// `overrides` merged as in `submission`) and returns the submitted body.
+pub async fn send_lead(app: &TestApp, slug: &str, event_id: &str, overrides: Value) -> Value {
+    let form = public_form(app, slug, event_id).await;
+    let body = submission(&form, overrides);
+    let res = app
+        .request(
+            "POST",
+            &format!("/api/public/cards/{slug}/events/{event_id}/leads"),
+            None,
+            Some(body.clone()),
+        )
+        .await;
+    assert_eq!(
+        res.status,
+        StatusCode::NO_CONTENT,
+        "send lead: {}",
+        res.json
+    );
+    body
+}
+
+pub async fn get_leads(app: &TestApp, sub: &str, event_id: &str) -> TestResponse {
+    app.request(
+        "GET",
+        &format!("/api/events/{event_id}/leads"),
+        Some(&token(sub)),
+        None,
+    )
+    .await
+}
+
+pub async fn put_spam(app: &TestApp, sub: &str, lead_id: &str, spam: bool) -> TestResponse {
+    app.request(
+        "PUT",
+        &format!("/api/leads/{lead_id}/spam"),
+        Some(&token(sub)),
+        Some(json!({ "spam": spam })),
+    )
+    .await
+}
+
+pub async fn delete_lead(app: &TestApp, sub: &str, lead_id: &str) -> TestResponse {
+    app.request(
+        "DELETE",
+        &format!("/api/leads/{lead_id}"),
+        Some(&token(sub)),
+        None,
+    )
+    .await
+}

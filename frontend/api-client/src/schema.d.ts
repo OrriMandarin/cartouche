@@ -348,6 +348,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/{id}/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the contacts of an event
+         * @description The contacts collected by the event, from the most recent to the oldest, spam ones included and flagged. Contacts of an event of a disabled card are listed too.
+         */
+        get: operations["list_event_leads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -361,6 +381,46 @@ export interface paths {
          */
         get: operations["health"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a contact
+         * @description Deletes the contact for good.
+         */
+        delete: operations["delete_lead"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leads/{id}/spam": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark or unmark a contact as spam
+         * @description Sets whether the contact is spam. Repeating the same value is accepted. A spam contact stays in the event's list.
+         */
+        put: operations["set_lead_spam"];
         post?: never;
         delete?: never;
         options?: never;
@@ -566,6 +626,21 @@ export interface components {
             is_admin: boolean;
             status: components["schemas"]["UserStatus"];
             subject: string;
+        };
+        /**
+         * @description The answer to one custom field, with the label and type the field had at submission time
+         *     (FRM-022, FRM-038).
+         */
+        AnswerSnapshot: {
+            /** Format: uuid */
+            field_id: string;
+            kind: components["schemas"]["CustomFieldKind"];
+            label: string;
+            /**
+             * @description A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`), a number
+             *     (`number`), a boolean (`checkbox`) or `null` when left empty.
+             */
+            value: unknown;
         };
         /** @description The answers of a prospect, as sent by the form (the `answers` of a submission). */
         AnswersInput: {
@@ -801,6 +876,10 @@ export interface components {
              */
             width: number;
         };
+        LeadList: {
+            /** @description The contacts of the event, newest first, spam ones included (EDI-020). */
+            leads: components["schemas"]["LeadView"][];
+        };
         /** @description What a prospect sends. */
         LeadSubmission: {
             /** @description The code typed to unlock the form, for an event with an access code. */
@@ -817,6 +896,33 @@ export interface components {
             fax?: string | null;
             /** @description The `form_version` of the form the prospect filled in. */
             form_version: string;
+        };
+        /** @description A contact as the owner of its event sees it. The device that sent it is not shown. */
+        LeadView: {
+            /** @description The answers to the standard fields; the phone number is in E.164. */
+            answers: components["schemas"]["StandardAnswers"];
+            /**
+             * Format: date-time
+             * @description When the prospect gave consent (FRM-038).
+             */
+            consent_at: string;
+            /** @description The consent text shown with the form, exactly (FRM-038). */
+            consent_text: string;
+            /**
+             * @description The answers to the custom fields, with the label and type each field had when the
+             *     contact was sent (FRM-022).
+             */
+            custom: components["schemas"]["AnswerSnapshot"][];
+            /** Format: uuid */
+            event_id: string;
+            /** Format: uuid */
+            id: string;
+            /** @description The phone number as people write it, e.g. `+33 6 12 34 56 78`. */
+            phone_display?: string | null;
+            /** @description Marked as spam by the owner (ABU-003); spam contacts stay listed (ABU-009). */
+            spam: boolean;
+            /** Format: date-time */
+            submitted_at: string;
         };
         LinkInput: {
             kind: components["schemas"]["LinkKind"];
@@ -956,6 +1062,24 @@ export interface components {
         SlugSuggestion: {
             /** @description A free slug derived from the name, or `null` when the name gives nothing usable. */
             slug?: string | null;
+        };
+        SpamBody: {
+            /** @description `true` marks the contact as spam, `false` removes the mark. */
+            spam: boolean;
+        };
+        /** @description Validated answers to the standard fields; an empty or disabled field is `None`. */
+        StandardAnswers: {
+            /** Format: date */
+            birth_date?: string | null;
+            city?: string | null;
+            country?: string | null;
+            email?: string | null;
+            first_name?: string | null;
+            last_name?: string | null;
+            /** @description E.164. */
+            phone?: string | null;
+            postal_code?: string | null;
+            street?: string | null;
         };
         /**
          * @description The standard fields an owner can enable (FRM-017).
@@ -2848,6 +2972,83 @@ export interface operations {
             };
         };
     };
+    list_event_leads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the event. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event's contacts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadList"];
+                };
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such event for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -2873,6 +3074,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    delete_lead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The contact is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such contact for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    set_lead_spam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpamBody"];
+            };
+        };
+        responses: {
+            /** @description The contact, with its new mark. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadView"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such contact for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };

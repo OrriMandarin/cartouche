@@ -718,3 +718,25 @@ async fn the_access_code_never_reaches_the_logs(pool: PgPool) {
         assert!(!logged.contains(secret), "{secret} was logged: {logged}");
     }
 }
+
+// spec: EVT-012, Review Focus 3
+#[sqlx::test(migrations = "./migrations")]
+async fn a_rejected_body_never_echoes_its_values_in_the_logs(pool: PgPool) {
+    let (logs, _guard) = capture_logs();
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", SLUG).await;
+    let event = running_event(&app, &card, json!({})).await;
+    let form = form_of(&app, &event).await;
+
+    // A string where the boolean is expected: serde's message would quote it.
+    let body = submission(&form, json!({ "consent": "Château-secret" }));
+    let res = submit(&app, &event, &body).await;
+    assert_refused(&res, StatusCode::BAD_REQUEST, "invalid_request");
+
+    let logged = logs.contents().to_lowercase();
+    assert!(
+        logged.contains("invalid json body"),
+        "the rejection was not logged: {logged}"
+    );
+    assert!(!logged.contains("château"), "a value was logged: {logged}");
+}

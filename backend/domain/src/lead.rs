@@ -384,6 +384,21 @@ pub fn form_version(form: &PublicForm) -> String {
     format!("{hash:016x}")
 }
 
+/// The form shown to the prospect is not the one the event has now (FRM-030).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("form changed")]
+pub struct FormChanged;
+
+/// `shown` is the version of the form as the event has it now, `received` the one the prospect
+/// saw when they filled it in.
+pub fn check_form_version(shown: &str, received: &str) -> Result<(), FormChanged> {
+    if shown == received {
+        Ok(())
+    } else {
+        Err(FormChanged)
+    }
+}
+
 /// Whether the hidden `fax` field was filled in: a robot (ABU-002, ABU-005).
 pub fn honeypot_filled(value: Option<&str>) -> bool {
     value.is_some_and(|v| !v.trim().is_empty())
@@ -993,6 +1008,14 @@ mod tests {
         assert!(!honeypot_filled(None));
         assert!(!honeypot_filled(Some("")));
         assert!(!honeypot_filled(Some(" \t\n\u{a0}")));
+    }
+
+    // spec: FRM-030
+    #[test]
+    fn a_submission_must_carry_the_current_form_version() {
+        assert_eq!(check_form_version("00ab", "00ab"), Ok(()));
+        assert_eq!(check_form_version("00ab", "00ac"), Err(FormChanged));
+        assert_eq!(check_form_version("00ab", ""), Err(FormChanged));
     }
 
     // spec: EVT-014, EVT-029

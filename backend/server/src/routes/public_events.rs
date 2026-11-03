@@ -8,8 +8,9 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use cartouche_domain::{
-    AnswersInput, DeviceLimitReached, PublicFormState, UnlockOutcome, access_code_matches,
-    check_device_limit, honeypot_filled, public_form_state, unlock_outcome, validate_lead,
+    AnswersInput, DeviceLimitReached, FormChanged, PublicFormState, UnlockOutcome,
+    access_code_matches, check_device_limit, check_form_version, honeypot_filled,
+    public_form_state, unlock_outcome, validate_lead,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -230,9 +231,8 @@ pub async fn submit_lead(
         }
     }
     let shown = ShownForm::new(&event, &card.content);
-    if submission.form_version != shown.form_version {
-        return Err(ApiError::FormChanged);
-    }
+    check_form_version(&shown.form_version, &submission.form_version)
+        .map_err(|FormChanged| ApiError::FormChanged)?;
     let lead = validate_lead(
         &event.form,
         submission.answers,

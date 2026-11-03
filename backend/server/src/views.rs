@@ -1,9 +1,9 @@
 //! JSON shapes of the API that are shared by several routes.
 
 use cartouche_domain::{
-    CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind, PublicForm,
-    StandardField, StandardFields, Theme, VariantFormat, consent_text, default_consent_text,
-    form_version, format_international, storage_key,
+    AnswerSnapshot, CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind,
+    PublicForm, StandardAnswers, StandardField, StandardFields, Theme, VariantFormat, consent_text,
+    default_consent_text, form_version, format_international, storage_key,
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -13,6 +13,7 @@ use uuid::Uuid;
 use crate::config::Config;
 use crate::db::cards::Card;
 use crate::db::events::{Event, EventWithCount, PublicCandidate};
+use crate::db::leads::Lead;
 use crate::db::media::MediaRecord;
 use crate::error::ApiError;
 use crate::media::MediaService;
@@ -90,6 +91,43 @@ impl EventView {
             lead_count,
             created_at: event.created_at,
             updated_at: event.updated_at,
+        }
+    }
+}
+
+/// A contact as the owner of its event sees it. The device that sent it is not shown.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct LeadView {
+    pub id: Uuid,
+    pub event_id: Uuid,
+    pub submitted_at: DateTime<Utc>,
+    /// Marked as spam by the owner (ABU-003); spam contacts stay listed (ABU-009).
+    pub spam: bool,
+    /// The answers to the standard fields; the phone number is in E.164.
+    pub answers: StandardAnswers,
+    /// The phone number as people write it, e.g. `+33 6 12 34 56 78`.
+    pub phone_display: Option<String>,
+    /// The answers to the custom fields, with the label and type each field had when the
+    /// contact was sent (FRM-022).
+    pub custom: Vec<AnswerSnapshot>,
+    /// When the prospect gave consent (FRM-038).
+    pub consent_at: DateTime<Utc>,
+    /// The consent text shown with the form, exactly (FRM-038).
+    pub consent_text: String,
+}
+
+impl From<Lead> for LeadView {
+    fn from(lead: Lead) -> LeadView {
+        LeadView {
+            phone_display: lead.standard.phone.as_deref().map(format_international),
+            spam: lead.spam_at.is_some(),
+            id: lead.id,
+            event_id: lead.event_id,
+            submitted_at: lead.submitted_at,
+            answers: lead.standard,
+            custom: lead.custom,
+            consent_at: lead.consent_at,
+            consent_text: lead.consent_text,
         }
     }
 }

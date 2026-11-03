@@ -43,8 +43,9 @@ pub use form::{
     StandardField, StandardFields,
 };
 pub use lead::{
-    AddressInput, AnswerSnapshot, AnswersInput, DeviceLimitReached, PublicForm, StandardAnswers,
-    ValidLead, check_device_limit, form_version, honeypot_filled, validate_lead,
+    AddressInput, AnswerSnapshot, AnswersInput, DeviceLimitReached, FormChanged, PublicForm,
+    StandardAnswers, ValidLead, check_device_limit, check_form_version, form_version,
+    honeypot_filled, validate_lead,
 };
 pub use media::{
     MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, MAX_VIDEO_BYTES, MAX_VIDEO_DURATION, MediaFormat, MediaKind,

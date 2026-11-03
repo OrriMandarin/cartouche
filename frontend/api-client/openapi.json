@@ -2307,6 +2307,105 @@
         ]
       }
     },
+    "/api/events/{id}/leads": {
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "List the contacts of an event",
+        "description": "The contacts collected by the event, from the most recent to the oldest, spam ones included and flagged. Contacts of an event of a disabled card are listed too.",
+        "operationId": "list_event_leads",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The event's contacts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -2337,6 +2436,207 @@
             }
           }
         }
+      }
+    },
+    "/api/leads/{id}": {
+      "delete": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Delete a contact",
+        "description": "Deletes the contact for good.",
+        "operationId": "delete_lead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the contact.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The contact is deleted."
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such contact for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/leads/{id}/spam": {
+      "put": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Mark or unmark a contact as spam",
+        "description": "Sets whether the contact is spam. Repeating the same value is accepted. A spam contact stays in the event's list.",
+        "operationId": "set_lead_spam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the contact.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpamBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The contact, with its new mark.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such contact for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
       }
     },
     "/api/me": {
@@ -3178,6 +3478,31 @@
           }
         }
       },
+      "AnswerSnapshot": {
+        "type": "object",
+        "description": "The answer to one custom field, with the label and type the field had at submission time\n(FRM-022, FRM-038).",
+        "required": [
+          "field_id",
+          "label",
+          "kind",
+          "value"
+        ],
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CustomFieldKind"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "description": "A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`), a number\n(`number`), a boolean (`checkbox`) or `null` when left empty."
+          }
+        }
+      },
       "AnswersInput": {
         "type": "object",
         "description": "The answers of a prospect, as sent by the form (the `answers` of a submission).",
@@ -3908,6 +4233,21 @@
           }
         }
       },
+      "LeadList": {
+        "type": "object",
+        "required": [
+          "leads"
+        ],
+        "properties": {
+          "leads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadView"
+            },
+            "description": "The contacts of the event, newest first, spam ones included (EDI-020)."
+          }
+        }
+      },
       "LeadSubmission": {
         "type": "object",
         "description": "What a prospect sends.",
@@ -3947,6 +4287,65 @@
           "form_version": {
             "type": "string",
             "description": "The `form_version` of the form the prospect filled in."
+          }
+        }
+      },
+      "LeadView": {
+        "type": "object",
+        "description": "A contact as the owner of its event sees it. The device that sent it is not shown.",
+        "required": [
+          "id",
+          "event_id",
+          "submitted_at",
+          "spam",
+          "answers",
+          "custom",
+          "consent_at",
+          "consent_text"
+        ],
+        "properties": {
+          "answers": {
+            "$ref": "#/components/schemas/StandardAnswers",
+            "description": "The answers to the standard fields; the phone number is in E.164."
+          },
+          "consent_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the prospect gave consent (FRM-038)."
+          },
+          "consent_text": {
+            "type": "string",
+            "description": "The consent text shown with the form, exactly (FRM-038)."
+          },
+          "custom": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnswerSnapshot"
+            },
+            "description": "The answers to the custom fields, with the label and type each field had when the\ncontact was sent (FRM-022)."
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phone_display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The phone number as people write it, e.g. `+33 6 12 34 56 78`."
+          },
+          "spam": {
+            "type": "boolean",
+            "description": "Marked as spam by the owner (ABU-003); spam contacts stay listed (ABU-009)."
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -4444,6 +4843,80 @@
           }
         }
       },
+      "SpamBody": {
+        "type": "object",
+        "required": [
+          "spam"
+        ],
+        "properties": {
+          "spam": {
+            "type": "boolean",
+            "description": "`true` marks the contact as spam, `false` removes the mark."
+          }
+        }
+      },
+      "StandardAnswers": {
+        "type": "object",
+        "description": "Validated answers to the standard fields; an empty or disabled field is `None`.",
+        "properties": {
+          "birth_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "E.164."
+          },
+          "postal_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "StandardField": {
         "type": "string",
         "description": "The standard fields an owner can enable (FRM-017).",
@@ -4713,6 +5186,10 @@
     {
       "name": "events",
       "description": "The events of the signed-in user's cards"
+    },
+    {
+      "name": "leads",
+      "description": "The contacts collected by the events of the signed-in user's cards"
     },
     {
       "name": "public",
