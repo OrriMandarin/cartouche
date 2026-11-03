@@ -19,3 +19,9 @@ Concepts du domaine, tels que la spec les emploie.
 | **Prospect** | Visiteur anonyme de la page publique d'une carte, le plus souvent sur mobile. |
 | **Porteur** | Propriétaire d'une carte : l'utilisateur qui la gère. |
 | **Slug** | Partie variable du lien public d'une carte (`/c/<slug>`). |
+| **Slug courant** | Le slug actuel d'une carte, celui de son lien public. |
+| **Ancien slug** | Un slug qu'une carte a porté avant son slug courant ; il redirige vers le slug courant (voir LNK-003). |
+| **Slug réservé** | Un slug d'une carte supprimée : il reste à son ancien propriétaire, qui peut le rattacher à une nouvelle carte (voir LNK-013 et LNK-014). |
+| **Page neutre** | La page « Cette carte n'est plus active », affichée au lien d'une carte qui n'est pas servie (voir LNK-026 et LNK-027). |
+| **Média** | Le fond d'en-tête (image ou vidéo) ou la photo de profil d'une carte, stocké dans le stockage de médias. |
+| **Paire de polices** | Une police de titre et une police de texte, choisies ensemble pour un thème (voir TPL-011). |
