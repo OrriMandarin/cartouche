@@ -14,7 +14,7 @@ use crate::startup::TEST_ISSUER;
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// Tables emptied by `reset`, in one place: later plans add theirs here.
-pub const RESET_TABLES: &[&str] = &["audit_log", "users"];
+pub const RESET_TABLES: &[&str] = &["audit_log", "media", "card_slugs", "cards", "users"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SeededUser {

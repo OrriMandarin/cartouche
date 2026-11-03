@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update card_slugs set card_id = $1, is_current = true where slug = $2 and owner_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "69ed9feeee94afa25e2c8d66529d8ebdb64672b52cf59b061f5418e312142720"
+}

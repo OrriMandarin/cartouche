@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into card_slugs (slug, owner_id, card_id, is_current) values ($1, $2, $3, true)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3e903ac38298a7b1750604677e5910c5daf2ba96f7ef94a0acec7fbcb2cc95cf"
+}
