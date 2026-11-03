@@ -62,7 +62,61 @@
   "dashboard": {
     "title": "Tableau de bord",
     "empty": "Aucune carte pour l'instant",
-    "support": "Support"
+    "support": "Support",
+    "loading": "Chargement…",
+    "newCard": "Nouvelle carte"
+  },
+  "cards": {
+    "title": "Mes cartes",
+    "untitled": "Carte sans nom",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "status": {
+      "active": "Active",
+      "disabled": "Désactivée",
+      "disabledBySupport": "Désactivée par le support"
+    },
+    "actions": {
+      "edit": "Modifier",
+      "disable": "Désactiver",
+      "enable": "Réactiver",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer"
+    },
+    "share": {
+      "copy": "Copier le lien",
+      "copied": "Lien copié",
+      "copyFailed": "Impossible de copier le lien",
+      "qrSvg": "QR code SVG",
+      "qrPng": "QR code PNG",
+      "qrFailed": "Impossible de générer le QR code"
+    },
+    "slug": {
+      "label": "Lien de la carte",
+      "checking": "Vérification…",
+      "free": "Disponible",
+      "current": "C'est le lien actuel de cette carte",
+      "taken": "Déjà pris",
+      "reserved": "Réservé",
+      "invalid": "Invalide"
+    },
+    "duplicate": {
+      "title": "Dupliquer la carte",
+      "description": "Choisis le lien de la copie. Le contenu, les liens et l'apparence de la carte sont repris.",
+      "confirm": "Dupliquer"
+    },
+    "delete": {
+      "title": "Supprimer la carte ?",
+      "description": "La carte « {name} » sera supprimée définitivement, et son lien affichera une page neutre.",
+      "confirm": "Supprimer définitivement"
+    },
+    "new": {
+      "title": "Nouvelle carte",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "submit": "Créer",
+      "back": "Retour au tableau de bord"
+    }
   },
   "support": {
     "title": "Support",
