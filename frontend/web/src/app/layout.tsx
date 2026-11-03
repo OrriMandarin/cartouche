@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { TestModeBanner, isTestModeProfile } from "@/components/TestModeBanner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils";
+import "@/lib/theme/fonts.css";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {

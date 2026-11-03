@@ -91,5 +91,18 @@
       "createdAt": "Créé le",
       "actions": "Actions"
     }
+  },
+  "themes": {
+    "clair": "Clair",
+    "sombre": "Sombre",
+    "sable": "Sable",
+    "ocean": "Océan",
+    "foret": "Forêt",
+    "corail": "Corail"
+  },
+  "fonts": {
+    "moderne": "Moderne",
+    "editorial": "Éditorial",
+    "chaleureux": "Chaleureux"
   }
 }
