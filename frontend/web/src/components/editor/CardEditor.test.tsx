@@ -258,6 +258,19 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(backNavigates()).toBe(true);
   });
 
+  test("EDI-016 reverting a setting leaves the editor clean", () => {
+    renderEditor();
+    const toggle = screen.getByRole("switch", { name: "Animer les boutons d'événement" });
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("editor-status")).toHaveTextContent("Modifications non enregistrées");
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("editor-status")).toBeEmptyDOMElement();
+    expect(screen.getByTestId("editor-save")).toBeDisabled();
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   test("EDI-016 after a save the editor no longer asks", async () => {
     put.mockResolvedValue({ data: card({ content: { first_name: "Alice", job_title: "Directrice" } }) });
     renderEditor();

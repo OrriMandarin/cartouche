@@ -4,13 +4,13 @@ import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { hasContrastWarning } from "@/lib/theme/contrast";
+import { applyPresetChange, switchBackgroundKind } from "@/lib/theme/edit";
 import { FONT_PAIRS, THEME_PRESETS, type ButtonShape, type ThemeSettings } from "@/lib/theme/presets";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { FieldMessage } from "./Field";
 import { OptionSelect } from "./OptionSelect";
 
 const BUTTON_SHAPES: readonly ButtonShape[] = ["square", "rounded", "pill"];
-const DEFAULT_GRADIENT_ANGLE = 135;
 
 function ColorInput({
   id,
@@ -58,35 +58,18 @@ export function ThemeEditor({
   const background = resolved.background;
   const set = (patch: Partial<ThemeSettings>) => onChange({ ...theme, ...patch });
 
-  function setBackgroundKind(kind: string) {
-    if (kind === background.kind) return;
-    if (background.kind === "gradient") {
-      set({ background: { kind: "solid", color: background.from } });
-    } else {
-      set({
-        background: {
-          kind: "gradient",
-          from: background.color,
-          to: resolved.accent,
-          angle: DEFAULT_GRADIENT_ANGLE,
-        },
-      });
-    }
-  }
-
   return (
     <div className="space-y-5">
       <FieldMessage path="theme" message={error} />
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="theme-preset">{t("editor.theme.preset")}</Label>
-          {/* A preset is a starting point: choosing one drops the overrides of the previous look. */}
           <OptionSelect
             id="theme-preset"
             testId="theme-preset"
             value={resolved.presetId}
             options={THEME_PRESETS.map((preset) => ({ value: preset.id, label: t(preset.nameKey) }))}
-            onValueChange={(preset) => onChange({ preset })}
+            onValueChange={(preset) => onChange(applyPresetChange(preset))}
           />
         </div>
         <div className="space-y-2">
@@ -127,7 +110,7 @@ export function ThemeEditor({
               { value: "solid", label: t("editor.theme.backgroundSolid") },
               { value: "gradient", label: t("editor.theme.backgroundGradient") },
             ]}
-            onValueChange={setBackgroundKind}
+            onValueChange={(kind) => onChange(switchBackgroundKind(theme, kind as "solid" | "gradient"))}
           />
         </div>
         {background.kind === "solid" ? (

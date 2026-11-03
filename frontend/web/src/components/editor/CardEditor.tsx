@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useApi } from "@/lib/api";
 import {
+  applyTemplateChange,
   draftFromCard,
   draftToUpdateBody,
   fieldErrors,
@@ -191,7 +192,10 @@ export function CardEditor({ card }: { card: CardView }) {
         <Section title={t("editor.sections.template")}>
           <TemplatePicker
             value={draft.template}
-            onChange={(id) => edit({ template: id, settings: {} }, ["template", "settings"])}
+            onChange={(id) => {
+              const next = applyTemplateChange(draft, id);
+              edit({ template: next.template, settings: next.settings }, ["template", "settings"]);
+            }}
           />
           <FieldMessage path="template" message={messages.template} />
         </Section>

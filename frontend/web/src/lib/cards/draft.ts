@@ -1,6 +1,8 @@
 import { ApiError, type components } from "@cartouche/api-client";
 import type { LinkKind, MediaView, PublicCard } from "@/templates/contract";
 import type { ThemeSettings } from "@/lib/theme/presets";
+import { getTemplate } from "@/templates/registry";
+import { parseSettings } from "@/templates/settings-schema";
 import type { CardView } from "./types";
 
 type UpdateCardBody = components["schemas"]["UpdateCardBody"];
@@ -135,9 +137,26 @@ function sameValue(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
-/** Whether the draft differs from what is saved, as the server would see it (EDI-016). */
+/** The body as the owner would see it: the settings read through the schema, so a default equals an absent value. */
+function effectiveBody(draft: CardDraft): UpdateCardBody {
+  const settings = parseSettings(getTemplate(draft.template).settings, draft.settings);
+  return { ...draftToUpdateBody(draft), settings: asSettings(settings) };
+}
+
+/**
+ * Whether the draft differs from what is saved, as the server would see it (EDI-016). A setting set back to
+ * its default (R-T17d) or an override cleared is no change.
+ */
 export function isDirty(saved: CardDraft, current: CardDraft): boolean {
-  return !sameValue(withoutNulls(draftToUpdateBody(saved)), withoutNulls(draftToUpdateBody(current)));
+  return !sameValue(withoutNulls(effectiveBody(saved)), withoutNulls(effectiveBody(current)));
+}
+
+/**
+ * spec: TPL-005. Another template: settings belong to one template's schema, so the new one starts from its
+ * defaults (R-T17b).
+ */
+export function applyTemplateChange(draft: CardDraft, templateId: string): CardDraft {
+  return { ...draft, template: templateId, settings: {} };
 }
 
 /** Message key of a field error code. */

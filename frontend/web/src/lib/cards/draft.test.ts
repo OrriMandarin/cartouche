@@ -5,6 +5,7 @@ import type { MediaView } from "@/templates/contract";
 import type { CardView } from "./types";
 import {
   PREVIEW_EVENT_ID,
+  applyTemplateChange,
   draftFromCard,
   draftToPublicCard,
   draftToUpdateBody,
@@ -144,12 +145,43 @@ describe("isDirty", () => {
     expect(isDirty(saved, edited)).toBe(false);
   });
 
+  test("EDI-016 reverting a setting leaves the draft clean", () => {
+    const saved = draftFromCard(cardView({ settings: {} }));
+    const edited = draftFromCard(cardView({ settings: {} }));
+    // The editor stores every setting once one is touched: links_layout toggled and set back to its default.
+    edited.settings = { links_layout: "list", animate_events: true };
+    expect(isDirty(saved, edited)).toBe(false);
+    edited.settings = { links_layout: "icons", animate_events: true };
+    expect(isDirty(saved, edited)).toBe(true);
+  });
+
+  test("EDI-016 a stored setting changed to the default counts, an equal one does not", () => {
+    const saved = draftFromCard(fullCard);
+    const same = draftFromCard(fullCard);
+    same.settings = { links_layout: "icons", animate_events: true };
+    expect(isDirty(saved, same)).toBe(false);
+    same.settings = { links_layout: "list" };
+    expect(isDirty(saved, same)).toBe(true);
+  });
+
   test("EDI-016 an unset theme override is the same as an absent one", () => {
     const saved = draftFromCard(cardView({ theme: { preset: "clair" } }));
     const edited = draftFromCard(cardView({ theme: { preset: "clair", accent: null } }));
     expect(isDirty(saved, edited)).toBe(false);
     edited.links = [{ kind: "website", url: "https://a.example", label: "" }];
     expect(isDirty(saved, edited)).toBe(true);
+  });
+});
+
+describe("applyTemplateChange", () => {
+  test("TPL-005 another template starts from its own default settings", () => {
+    const draft = draftFromCard(fullCard);
+    const next = applyTemplateChange(draft, "other");
+    expect(next.template).toBe("other");
+    expect(next.settings).toEqual({});
+    expect(next.content).toEqual(draft.content);
+    expect(next.theme).toEqual(draft.theme);
+    expect(draft.settings).toEqual({ links_layout: "icons" });
   });
 });
 
