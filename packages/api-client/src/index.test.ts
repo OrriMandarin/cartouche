@@ -42,6 +42,23 @@ describe('api client', () => {
     expect(new Set(ids).size).toBe(2);
   });
 
+  test('still sends the request without an id outside a secure context', async () => {
+    // Over plain http on a LAN address (a phone), `crypto.randomUUID` is not available.
+    for (const stub of [undefined, {}]) {
+      vi.stubGlobal('crypto', stub);
+      try {
+        const fetch = mockFetch(() => json(okBody));
+        const { data } = await client(fetch, 't').GET('/api/me');
+        expect(data?.status).toBe('approved');
+        const request = fetch.mock.calls[0]![0];
+        expect(request.headers.get('authorization')).toBe('Bearer t');
+        expect(request.headers.has('x-request-id')).toBe(false);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    }
+  });
+
   test('omits Authorization when no token', async () => {
     const fetch = mockFetch(() => json({ status: 'ok', db: 'ok' }));
     await client(fetch, null).GET('/api/health');

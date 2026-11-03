@@ -61,7 +61,10 @@ export function createApiClient(opts: ApiClientOptions): Client<paths> {
     async onRequest({ request }) {
       const token = await opts.getToken();
       if (token) request.headers.set('authorization', `Bearer ${token}`);
-      request.headers.set(REQUEST_ID_HEADER, crypto.randomUUID());
+      // `crypto.randomUUID` only exists in a secure context (https or localhost): on a phone
+      // reaching the dev server over http, skip the id and let the API generate one.
+      const requestId = globalThis.crypto?.randomUUID?.();
+      if (requestId) request.headers.set(REQUEST_ID_HEADER, requestId);
       return request;
     },
     async onResponse({ response }) {
