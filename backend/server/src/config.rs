@@ -56,8 +56,9 @@ impl Config {
     }
 
     pub fn from_vars(get: impl Fn(&str) -> Option<String>) -> Result<Config, ConfigError> {
-        let required = |name: &str| get(name).ok_or_else(|| ConfigError::Missing(name.to_string()));
         let optional = |name: &str| get(name).filter(|v| !v.trim().is_empty());
+        let required =
+            |name: &str| optional(name).ok_or_else(|| ConfigError::Missing(name.to_string()));
         fn invalid(name: &str, e: impl std::fmt::Display) -> ConfigError {
             ConfigError::Invalid(name.to_string(), e.to_string())
         }
@@ -197,6 +198,25 @@ mod tests {
         ] {
             let err = Config::from_vars(vars_without(name)).unwrap_err();
             assert_eq!(err, ConfigError::Missing(name.to_string()));
+        }
+    }
+
+    #[test]
+    fn blank_required_variable_is_missing() {
+        for name in [
+            "DATABASE_URL",
+            "AUTH_ISSUER",
+            "AUTH_JWKS_URL",
+            "PUBLIC_BASE_URL",
+        ] {
+            for blank in ["", "  "] {
+                let err = Config::from_vars(vars(&[(name, blank)])).unwrap_err();
+                assert_eq!(
+                    err,
+                    ConfigError::Missing(name.to_string()),
+                    "{name}={blank:?}"
+                );
+            }
         }
     }
 

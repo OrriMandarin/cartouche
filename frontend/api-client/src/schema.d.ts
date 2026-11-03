@@ -112,10 +112,19 @@ export interface components {
         ErrorDetail: {
             /** @description Stable machine-readable code, snake_case (e.g. `account_pending`). */
             code: string;
+            /** @description The invalid fields; present only for `validation_failed`. */
+            fields?: components["schemas"]["FieldError"][];
             /** @description Human-readable English explanation; clients should switch on `code`. */
             message: string;
             /** @description Id of the failed request, also sent in the `x-request-id` response header. */
             request_id: string;
+        };
+        /** @description One invalid field of a request, reported with `400 validation_failed`. */
+        FieldError: {
+            /** @description Stable machine-readable code, snake_case (e.g. `invalid_email`). */
+            code: string;
+            /** @description Path of the field in the request, e.g. `content.email` or `links[3].url`. */
+            field: string;
         };
         /** @description Liveness and database reachability. */
         HealthResponse: {

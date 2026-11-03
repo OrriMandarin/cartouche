@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use cartouche_domain::FieldError;
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -23,6 +24,9 @@ pub struct ErrorDetail {
     pub message: &'static str,
     /// Id of the failed request, also sent in the `x-request-id` response header.
     pub request_id: String,
+    /// The invalid fields; present only for `validation_failed`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fields: Vec<FieldError>,
 }
 
 /// Every error the API returns. Rendered as
@@ -51,6 +55,12 @@ pub enum ApiError {
     CannotModerateAdmin,
     /// The request is malformed: unparsable body, invalid path or query parameter.
     InvalidRequest,
+    /// The body is well-formed but some fields are invalid (`400 validation_failed`).
+    Validation(Vec<FieldError>),
+    /// The request body exceeds the size limit.
+    PayloadTooLarge,
+    /// The request body has a content type the route does not accept.
+    UnsupportedMediaType,
     /// The requested status change is not an allowed transition (ADM-003).
     InvalidTransition,
     /// `POST /api/test/seed` named a scenario that does not exist.
@@ -75,6 +85,9 @@ impl ApiError {
             ApiError::Forbidden => "forbidden",
             ApiError::CannotModerateAdmin => "cannot_moderate_admin",
             ApiError::InvalidRequest => "invalid_request",
+            ApiError::Validation(_) => "validation_failed",
+            ApiError::PayloadTooLarge => "payload_too_large",
+            ApiError::UnsupportedMediaType => "unsupported_media_type",
             ApiError::InvalidTransition => "invalid_transition",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
@@ -96,7 +109,9 @@ impl ApiError {
             | ApiError::AccountSuspended
             | ApiError::Forbidden
             | ApiError::CannotModerateAdmin => StatusCode::FORBIDDEN,
-            ApiError::InvalidRequest => StatusCode::BAD_REQUEST,
+            ApiError::InvalidRequest | ApiError::Validation(_) => StatusCode::BAD_REQUEST,
+            ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
+            ApiError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::InvalidTransition => StatusCode::CONFLICT,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -118,6 +133,9 @@ impl ApiError {
                 "Administrators cannot change an administrator's status."
             }
             ApiError::InvalidRequest => "The request is malformed.",
+            ApiError::Validation(_) => "Some fields are invalid.",
+            ApiError::PayloadTooLarge => "The request body is too large.",
+            ApiError::UnsupportedMediaType => "The content type is not supported.",
             ApiError::InvalidTransition => "This status change is not allowed.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
@@ -148,14 +166,20 @@ impl IntoResponse for ApiError {
             tracing::error!(error = %detail, "internal error");
         }
         let request_id = request_id::current().map(|id| id.0).unwrap_or_default();
+        let (code, message, status) = (self.code(), self.message(), self.status());
+        let fields = match self {
+            ApiError::Validation(fields) => fields,
+            _ => Vec::new(),
+        };
         let body = ErrorBody {
             error: ErrorDetail {
-                code: self.code(),
-                message: self.message(),
+                code,
+                message,
                 request_id,
+                fields,
             },
         };
-        (self.status(), Json(body)).into_response()
+        (status, Json(body)).into_response()
     }
 }
 
@@ -195,6 +219,50 @@ mod tests {
         assert_eq!(ApiError::InvalidRequest.status(), StatusCode::BAD_REQUEST);
         assert_eq!(ApiError::InvalidTransition.code(), "invalid_transition");
         assert_eq!(ApiError::InvalidTransition.status(), StatusCode::CONFLICT);
+    }
+
+    async fn body_json(error: ApiError) -> (StatusCode, serde_json::Value) {
+        let response = error.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    #[tokio::test]
+    async fn validation_error_lists_fields() {
+        let error = ApiError::Validation(vec![FieldError::new("content.email", "invalid_email")]);
+        let (status, body) = body_json(error).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"]["code"], "validation_failed");
+        assert_eq!(
+            body["error"]["fields"],
+            serde_json::json!([{"field": "content.email", "code": "invalid_email"}])
+        );
+    }
+
+    #[tokio::test]
+    async fn other_errors_have_no_fields_key() {
+        let (_, body) = body_json(ApiError::NotFound).await;
+        assert!(body["error"].get("fields").is_none());
+    }
+
+    #[test]
+    fn payload_and_media_type_errors() {
+        assert_eq!(ApiError::PayloadTooLarge.code(), "payload_too_large");
+        assert_eq!(
+            ApiError::PayloadTooLarge.status(),
+            StatusCode::PAYLOAD_TOO_LARGE
+        );
+        assert_eq!(
+            ApiError::UnsupportedMediaType.code(),
+            "unsupported_media_type"
+        );
+        assert_eq!(
+            ApiError::UnsupportedMediaType.status(),
+            StatusCode::UNSUPPORTED_MEDIA_TYPE
+        );
     }
 
     // spec: ACC-007
