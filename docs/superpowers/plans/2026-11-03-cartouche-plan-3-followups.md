@@ -109,3 +109,7 @@ Points relevés par la relecture finale ou pendant l'exécution, à trancher par
 - Task 15: minor (deferred): failed post-action reload leaves stale list (deleted row visible); email shown twice for name-less leads (brief-mandated); useEffect void-async wrapper uncommented
 - Task 16: minor (deferred): any TypeError → network outcome; checkCustomText closure param; PublicEventResponse alias location
 - Task 17: minor (deferred): components written before tests (TDD order); reload form_changed→unknown decision in EventFormPage; whole PublicCard passed to client component (only vcard_url used); field error on a path with no on-screen field shows a pointer to nothing; sessionStorage re-read each render; checkbox/consent duplicate Field wiring; /c/ path built by hand in page.tsx; TPL-003 e2e accent check weak
+- Final review: minor (deferred): a correct-code unlock holds a reserved wrong-code slot during its DB read, so ~30 simultaneous correct unlocks from one IP can get a transient 429 with a long Retry-After (R-E9 trade-off)
+- Final review: minor (deferred): test-support `reset` during an in-flight reservation can under-count one entry at a frozen instant (tests only)
+- Final review: minor (deferred): MediaField loads the video twice (duration, then poster), so the worst case before « illisible » is ~30–45 s, not 15 s (MED-021)
+- Final review: minor (deferred): the in-memory limiter keeps no cap on tracked addresses (R-E8)
