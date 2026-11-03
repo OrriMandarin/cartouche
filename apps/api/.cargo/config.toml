@@ -1,0 +1,5 @@
+[env]
+# The sqlx query macros check SQL against the committed `.sqlx/` cache, so building never
+# needs a database. `cargo sqlx prepare --check` (CI, `make sqlx-check`) checks that cache
+# against the migrated schema; `make sqlx-prepare` regenerates it after a query change.
+SQLX_OFFLINE = "true"

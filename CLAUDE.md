@@ -20,11 +20,12 @@ Cartouche est une application open source de carte de visite numérique (backend
 
 | Commande | Effet |
 |---|---|
-| `make setup` | Installe les dépendances (pnpm + `cargo fetch`). |
+| `make setup` | Installe les dépendances (pnpm, `cargo fetch`, `sqlx-cli`). |
 | `make dev-db` | Démarre PostgreSQL de dev (port 54320). |
 | `make api` / `make web` | Lance l'API (8080, avec `test-support`) / le site (3000). |
 | `make seed [SCENARIO=base]` | Alimente la base avec un scénario de données. |
-| `make test` | `test-api` + `test-web` + `spec-lint-test` (tests du vérificateur) + `spec-lint`. |
+| `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (tests du vérificateur) + `spec-lint`. |
+| `make sqlx-prepare` | Après tout ajout ou changement de requête ou de migration : régénère le cache `apps/api/.sqlx/` (à commiter). `make sqlx-check` vérifie qu'il est à jour (aussi en CI). |
 | `make lint` | `cargo fmt --check`, `clippy -D warnings`, lint et typecheck pnpm. |
 | `make openapi` | Régénère `openapi.json` puis le client TypeScript. |
 | `make spec-lint [ARGS=--coverage]` | `node scripts/spec-lint.mjs` ; `ARGS=--coverage` liste les règles sans test. |

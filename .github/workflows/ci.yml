@@ -64,6 +64,15 @@ jobs:
           workspaces: apps/api
       - name: Format
         run: cargo fmt --all --check
+      # The query macros build offline from the committed .sqlx/ cache (apps/api/.cargo/config.toml).
+      # This step checks that cache, and so every query, against the migrated schema.
+      - name: SQL queries match the schema
+        env:
+          SQLX_OFFLINE: "false"
+        run: |
+          cargo install sqlx-cli --locked --version 0.9.0 --no-default-features --features postgres,rustls
+          cargo sqlx migrate run --source server/migrations
+          cargo sqlx prepare --workspace --check -- --all-features --all-targets
       - name: Clippy
         run: cargo clippy --workspace --all-features -- -D warnings
       - name: Tests (includes the OpenAPI drift test)

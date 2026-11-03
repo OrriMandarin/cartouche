@@ -104,7 +104,7 @@ const BASE_USERS: &[(&str, &str, &str, UserStatus)] = &[
 async fn base(pool: &PgPool) -> Result<SeedReport, sqlx::Error> {
     let mut users = Vec::with_capacity(BASE_USERS.len());
     for (subject, name, email, status) in BASE_USERS {
-        sqlx::query(
+        sqlx::query!(
             "insert into users (issuer, subject, email, display_name, status) \
              values ($1, $2, $3, $4, $5) \
              on conflict (issuer, subject) do update set \
@@ -112,12 +112,12 @@ async fn base(pool: &PgPool) -> Result<SeedReport, sqlx::Error> {
                  display_name = excluded.display_name, \
                  status = excluded.status, \
                  updated_at = now()",
+            TEST_ISSUER,
+            subject,
+            normalize(email),
+            normalize(name),
+            status.as_str(),
         )
-        .bind(TEST_ISSUER)
-        .bind(subject)
-        .bind(normalize(email))
-        .bind(normalize(name))
-        .bind(status.as_str())
         .execute(pool)
         .await?;
         users.push(SeededUser {

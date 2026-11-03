@@ -16,10 +16,15 @@ CARTOUCHE_BUILD_PROFILE ?= development
 NEXT_PUBLIC_AUTH_PROVIDER ?= test
 API_INTERNAL_URL ?= http://localhost:8080
 
-.PHONY: setup dev-db api web seed test test-api test-web lint openapi spec-lint spec-lint-test e2e e2e-down
+SQLX_CLI_VERSION := 0.9.0
+# Run against the migrated dev database; overrides the SQLX_OFFLINE default of apps/api/.cargo/config.toml.
+SQLX_ONLINE := cd apps/api && cargo sqlx migrate run --source server/migrations && SQLX_OFFLINE=false cargo sqlx prepare --workspace
+
+.PHONY: setup dev-db api web seed test test-api test-web lint openapi sqlx-prepare sqlx-check spec-lint spec-lint-test e2e e2e-down
 
 setup:
 	pnpm install && cargo fetch --manifest-path apps/api/Cargo.toml
+	cargo install sqlx-cli --locked --version $(SQLX_CLI_VERSION) --no-default-features --features postgres,rustls
 
 dev-db:
 	docker compose -f compose.dev.yml up -d --wait
@@ -33,7 +38,7 @@ web:
 seed:
 	cd apps/api && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- seed $(or $(SCENARIO),base)
 
-test: test-api test-web spec-lint-test spec-lint
+test: test-api sqlx-check test-web spec-lint-test spec-lint
 
 test-api:
 	cd apps/api && cargo test --workspace --all-features
@@ -48,6 +53,14 @@ lint:
 
 openapi:
 	cd apps/api && UPDATE_OPENAPI=1 cargo test -p cartouche-api --test openapi && pnpm --filter @cartouche/api-client generate
+
+# After adding or changing a query or a migration: regenerates the committed .sqlx/ cache.
+sqlx-prepare:
+	$(SQLX_ONLINE) -- --all-features --all-targets
+
+# Fails when .sqlx/ no longer matches the queries or the migrated schema.
+sqlx-check:
+	$(SQLX_ONLINE) --check -- --all-features --all-targets
 
 spec-lint:
 	node scripts/spec-lint.mjs $(ARGS)

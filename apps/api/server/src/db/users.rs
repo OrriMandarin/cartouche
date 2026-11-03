@@ -4,8 +4,7 @@ use std::collections::HashMap;
 
 use cartouche_domain::UserStatus;
 use chrono::{DateTime, Utc};
-use sqlx::postgres::PgRow;
-use sqlx::{FromRow, PgConnection, PgPool, Row};
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::auth::VerifiedClaims;
@@ -21,22 +20,38 @@ pub struct User {
     pub created_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, PgRow> for User {
-    fn from_row(row: &PgRow) -> Result<Self, sqlx::Error> {
-        let status: String = row.try_get("status")?;
+/// A `users` row as the database returns it; `status` is parsed into `User`.
+struct UserRow {
+    id: Uuid,
+    issuer: String,
+    subject: String,
+    email: Option<String>,
+    display_name: Option<String>,
+    status: String,
+    created_at: DateTime<Utc>,
+}
+
+impl TryFrom<UserRow> for User {
+    type Error = sqlx::Error;
+
+    fn try_from(row: UserRow) -> Result<Self, sqlx::Error> {
         Ok(User {
-            id: row.try_get("id")?,
-            issuer: row.try_get("issuer")?,
-            subject: row.try_get("subject")?,
-            email: row.try_get("email")?,
-            display_name: row.try_get("display_name")?,
-            status: status.parse().map_err(|e| sqlx::Error::ColumnDecode {
-                index: "status".into(),
-                source: Box::new(e),
-            })?,
-            created_at: row.try_get("created_at")?,
+            id: row.id,
+            issuer: row.issuer,
+            subject: row.subject,
+            email: row.email,
+            display_name: row.display_name,
+            status: parse_status(&row.status)?,
+            created_at: row.created_at,
         })
     }
+}
+
+fn parse_status(status: &str) -> Result<UserStatus, sqlx::Error> {
+    status.parse().map_err(|e| sqlx::Error::ColumnDecode {
+        index: "status".into(),
+        source: Box::new(e),
+    })
 }
 
 /// Creates the account on first sight, otherwise refreshes email and display name from the
@@ -50,47 +65,55 @@ pub async fn upsert_on_login(
     claims: &VerifiedClaims,
     status_if_new: UserStatus,
 ) -> Result<User, sqlx::Error> {
-    sqlx::query_as(
+    sqlx::query_as!(
+        UserRow,
         "insert into users (issuer, subject, email, display_name, status) \
          values ($1, $2, $3, $4, $5) \
          on conflict (issuer, subject) do update set \
              email = coalesce(excluded.email, users.email), \
              display_name = coalesce(excluded.display_name, users.display_name), \
              updated_at = now() \
-         returning *",
+         returning id, issuer, subject, email, display_name, status, created_at",
+        claims.issuer,
+        claims.subject,
+        claims.email,
+        claims.name,
+        status_if_new.as_str(),
     )
-    .bind(&claims.issuer)
-    .bind(&claims.subject)
-    .bind(&claims.email)
-    .bind(&claims.name)
-    .bind(status_if_new.as_str())
+    .fetch_one(pool)
+    .await?
+    .try_into()
+}
+
+pub async fn exists(pool: &PgPool, issuer: &str, subject: &str) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"select exists (select 1 from users where issuer = $1 and subject = $2) as "exists!""#,
+        issuer,
+        subject,
+    )
     .fetch_one(pool)
     .await
 }
 
-pub async fn exists(pool: &PgPool, issuer: &str, subject: &str) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar("select exists (select 1 from users where issuer = $1 and subject = $2)")
-        .bind(issuer)
-        .bind(subject)
-        .fetch_one(pool)
-        .await
-}
-
 pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx::Error> {
-    sqlx::query_as("select * from users where id = $1")
-        .bind(id)
+    sqlx::query_as!(UserRow, "select id, issuer, subject, email, display_name, status, created_at from users where id = $1", id)
         .fetch_optional(pool)
-        .await
+        .await?
+        .map(User::try_from)
+        .transpose()
 }
 
 /// Sets the status to `approved` (administrators are always approved, ACC-003).
 pub async fn approve(pool: &PgPool, id: Uuid) -> Result<User, sqlx::Error> {
-    sqlx::query_as(
-        "update users set status = 'approved', updated_at = now() where id = $1 returning *",
+    sqlx::query_as!(
+        UserRow,
+        "update users set status = 'approved', updated_at = now() where id = $1 \
+         returning id, issuer, subject, email, display_name, status, created_at",
+        id,
     )
-    .bind(id)
     .fetch_one(pool)
-    .await
+    .await?
+    .try_into()
 }
 
 /// All users, newest first, optionally restricted to one status.
@@ -98,39 +121,38 @@ pub async fn list_by_status(
     pool: &PgPool,
     status: Option<UserStatus>,
 ) -> Result<Vec<User>, sqlx::Error> {
-    sqlx::query_as(
-        "select * from users where ($1::text is null or status = $1) \
+    sqlx::query_as!(
+        UserRow,
+        "select id, issuer, subject, email, display_name, status, created_at from users \
+         where ($1::text is null or status = $1) \
          order by created_at desc, id desc",
+        status.map(UserStatus::as_str),
     )
-    .bind(status.map(UserStatus::as_str))
     .fetch_all(pool)
-    .await
+    .await?
+    .into_iter()
+    .map(User::try_from)
+    .collect()
 }
 
 /// Number of users per status. Statuses without any user are absent from the map.
 pub async fn count_by_status(pool: &PgPool) -> Result<HashMap<UserStatus, i64>, sqlx::Error> {
-    let rows: Vec<(String, i64)> =
-        sqlx::query_as("select status, count(*) from users group by status")
-            .fetch_all(pool)
-            .await?;
-    rows.into_iter()
-        .map(|(status, count)| {
-            let status = status.parse().map_err(|e| sqlx::Error::ColumnDecode {
-                index: "status".into(),
-                source: Box::new(e),
-            })?;
-            Ok((status, count))
-        })
+    sqlx::query!(r#"select status, count(*) as "count!" from users group by status"#)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| Ok((parse_status(&row.status)?, row.count)))
         .collect()
 }
 
 /// Loads a user and locks the row until the end of the transaction, so concurrent status
 /// changes on the same user are serialized and each one validates against fresh state.
 pub async fn find_for_update(tx: &mut PgConnection, id: Uuid) -> Result<Option<User>, sqlx::Error> {
-    sqlx::query_as("select * from users where id = $1 for update")
-        .bind(id)
+    sqlx::query_as!(UserRow, "select id, issuer, subject, email, display_name, status, created_at from users where id = $1 for update", id)
         .fetch_optional(tx)
-        .await
+        .await?
+        .map(User::try_from)
+        .transpose()
 }
 
 /// Sets the status of a user. The caller validates the transition (`check_transition`)
@@ -140,9 +162,14 @@ pub async fn set_status(
     id: Uuid,
     status: UserStatus,
 ) -> Result<User, sqlx::Error> {
-    sqlx::query_as("update users set status = $2, updated_at = now() where id = $1 returning *")
-        .bind(id)
-        .bind(status.as_str())
-        .fetch_one(tx)
-        .await
+    sqlx::query_as!(
+        UserRow,
+        "update users set status = $2, updated_at = now() where id = $1 \
+         returning id, issuer, subject, email, display_name, status, created_at",
+        id,
+        status.as_str(),
+    )
+    .fetch_one(tx)
+    .await?
+    .try_into()
 }
