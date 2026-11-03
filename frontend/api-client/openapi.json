@@ -1101,6 +1101,115 @@
         ]
       }
     },
+    "/api/cards/{id}/consent-preview": {
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Preview the default consent text",
+        "description": "The default consent text of the card for an event with this title: the text a prospect accepts when the event has no custom consent text.",
+        "operationId": "consent_preview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentPreviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The default consent text.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/cards/{id}/disable": {
       "post": {
         "tags": [
@@ -1438,6 +1547,222 @@
         ]
       }
     },
+    "/api/cards/{id}/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "List the events of a card",
+        "description": "The events of the card by start, each with its state (`upcoming`, `running` or `past`, from the server clock), its access code in clear and its number of contacts. Events of a disabled card are listed too.",
+        "operationId": "list_events",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The card's events.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Create an event",
+        "description": "Creates an event on the card. All invalid fields are reported at once. Refused with `too_many_simultaneous_events` when it would make more events of the card run together than the instance allows; concurrent creations cannot exceed the limit together.",
+        "operationId": "create_event",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new event.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Too many simultaneous events (`too_many_simultaneous_events`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/cards/{id}/media": {
       "post": {
         "tags": [
@@ -1531,6 +1856,421 @@
           },
           "415": {
             "description": "The content is not a supported image or video (`unsupported_media_type`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/events/{id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Get an event",
+        "description": "One of the caller's events. An event of another user is reported as not found.",
+        "operationId": "get_event",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The event.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Update an event",
+        "description": "Replaces the event's title, description, dates, access code, device limit, fields and consent text. All invalid fields are reported at once. Refused with `too_many_simultaneous_events` when the new period would make more events of the card run together than the instance allows; the event being edited does not count against itself. Nothing is saved on a refusal.",
+        "operationId": "update_event",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The saved event.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Too many simultaneous events (`too_many_simultaneous_events`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Delete an event",
+        "description": "Deletes the event and every contact collected with it.",
+        "operationId": "delete_event",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The event is deleted."
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/events/{id}/end": {
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "summary": "End an event now",
+        "description": "Sets the end of a running event to the server's current instant. Refused with `event_not_running` for an event that has not started or is already over.",
+        "operationId": "end_event",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The event, now ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The event is not running (`event_not_running`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2257,6 +2997,30 @@
         "description": "A `#rrggbb` color, stored in lowercase.",
         "example": "#1a2b3c"
       },
+      "ConsentPreview": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The default consent text for this card and title (FRM-029)."
+          }
+        }
+      },
+      "ConsentPreviewBody": {
+        "type": "object",
+        "description": "The title to compose the default consent text for.",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "ContentInput": {
         "type": "object",
         "description": "Card content as submitted: free text, not yet normalized.",
@@ -2384,6 +3148,56 @@
           }
         }
       },
+      "CustomField": {
+        "type": "object",
+        "description": "A field added by the owner, with a stable identifier (FRM-020, FRM-032).",
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "required"
+        ],
+        "properties": {
+          "help": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CustomFieldKind"
+          },
+          "label": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Only for `single_choice`; empty for every other kind, and may then be left out."
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CustomFieldKind": {
+        "type": "string",
+        "description": "The types of custom field (FRM-021).",
+        "enum": [
+          "text",
+          "long_text",
+          "date",
+          "number",
+          "single_choice",
+          "checkbox"
+        ]
+      },
       "DuplicateCardBody": {
         "type": "object",
         "description": "The slug of a duplicate.",
@@ -2437,6 +3251,190 @@
           }
         }
       },
+      "EventInput": {
+        "type": "object",
+        "description": "Everything an owner submits for an event; also the body of the event routes.",
+        "required": [
+          "title",
+          "device_limit",
+          "standard_fields",
+          "custom_fields"
+        ],
+        "properties": {
+          "access_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consent_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "custom_fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomField"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "device_limit": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Signed and wide so that any out-of-range number is a field error, not a malformed body."
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "standard_fields": {
+            "$ref": "#/components/schemas/StandardFields"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Required; kept optional so that a missing start is reported as a field error."
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "EventList": {
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventView"
+            },
+            "description": "The card's events, by start (EVT-009)."
+          }
+        }
+      },
+      "EventPhase": {
+        "type": "string",
+        "description": "Where an event stands relative to the server clock (EVT-020).",
+        "enum": [
+          "upcoming",
+          "running",
+          "past"
+        ]
+      },
+      "EventView": {
+        "type": "object",
+        "description": "An event as its owner sees it: the access code is shown in clear (EVT-010).",
+        "required": [
+          "id",
+          "card_id",
+          "title",
+          "starts_at",
+          "phase",
+          "device_limit",
+          "standard_fields",
+          "custom_fields",
+          "default_consent_text",
+          "lead_count",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "access_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "card_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "consent_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The owner's own consent text; absent when the default one applies."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "custom_fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomField"
+            }
+          },
+          "default_consent_text": {
+            "type": "string",
+            "description": "The consent text used when there is no custom one, for this card and title (FRM-029)."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "device_limit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Submissions allowed per device, 1 to 100 (EVT-014).",
+            "minimum": 0
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Absent: the event lasts until it is ended (EVT-003)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lead_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Every contact of the event, spam ones included."
+          },
+          "phase": {
+            "$ref": "#/components/schemas/EventPhase",
+            "description": "Computed with the server clock (EVT-020)."
+          },
+          "standard_fields": {
+            "$ref": "#/components/schemas/StandardFields"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "FieldError": {
         "type": "object",
         "description": "One invalid field of a request, reported with `400 validation_failed`.",
@@ -2454,6 +3452,15 @@
             "description": "Path of the field in the request, e.g. `content.email` or `links[3].url`."
           }
         }
+      },
+      "FieldMode": {
+        "type": "string",
+        "description": "Whether a standard field is absent from the form, optional or required (FRM-019).",
+        "enum": [
+          "off",
+          "optional",
+          "required"
+        ]
       },
       "HealthResponse": {
         "type": "object",
@@ -2814,6 +3821,39 @@
           }
         }
       },
+      "StandardFields": {
+        "type": "object",
+        "description": "The mode of each standard field.",
+        "required": [
+          "first_name",
+          "last_name",
+          "birth_date",
+          "email",
+          "phone",
+          "address"
+        ],
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/FieldMode"
+          },
+          "birth_date": {
+            "$ref": "#/components/schemas/FieldMode"
+          },
+          "email": {
+            "$ref": "#/components/schemas/FieldMode"
+          },
+          "first_name": {
+            "$ref": "#/components/schemas/FieldMode"
+          },
+          "last_name": {
+            "$ref": "#/components/schemas/FieldMode"
+          },
+          "phone": {
+            "$ref": "#/components/schemas/FieldMode"
+          }
+        },
+        "additionalProperties": false
+      },
       "StatusCounts": {
         "type": "object",
         "description": "Number of accounts per status; all four are always present.",
@@ -3022,6 +4062,10 @@
     {
       "name": "cards",
       "description": "The signed-in user's cards and their links"
+    },
+    {
+      "name": "events",
+      "description": "The events of the signed-in user's cards"
     },
     {
       "name": "public",

@@ -73,6 +73,10 @@ pub enum ApiError {
     /// The card is not publicly served: disabled, deleted or its owner is suspended
     /// (LNK-007, LNK-026). Says nothing of the reason (LNK-027).
     CardInactive,
+    /// A creation or modification would put too many events of a card together (EVT-018).
+    TooManySimultaneousEvents,
+    /// `end now` was asked on an event that is not running (EVT-021).
+    EventNotRunning,
     /// The caller's address used up a rate limit (ABU-006, ABU-007).
     RateLimited {
         retry_after_secs: u64,
@@ -107,6 +111,8 @@ impl ApiError {
             ApiError::SlugReserved => "slug_reserved",
             ApiError::CardDisabledBySupport => "card_disabled_by_support",
             ApiError::CardInactive => "card_inactive",
+            ApiError::TooManySimultaneousEvents => "too_many_simultaneous_events",
+            ApiError::EventNotRunning => "event_not_running",
             ApiError::RateLimited { .. } => "rate_limited",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
@@ -134,7 +140,9 @@ impl ApiError {
             ApiError::InvalidTransition
             | ApiError::SlugTaken
             | ApiError::SlugReserved
-            | ApiError::CardDisabledBySupport => StatusCode::CONFLICT,
+            | ApiError::CardDisabledBySupport
+            | ApiError::TooManySimultaneousEvents
+            | ApiError::EventNotRunning => StatusCode::CONFLICT,
             ApiError::CardInactive => StatusCode::GONE,
             ApiError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -165,6 +173,10 @@ impl ApiError {
             ApiError::SlugReserved => "This link was used by another of your cards.",
             ApiError::CardDisabledBySupport => "This card was disabled by support.",
             ApiError::CardInactive => "This card is no longer active.",
+            ApiError::TooManySimultaneousEvents => {
+                "Too many events of this card would run at the same time."
+            }
+            ApiError::EventNotRunning => "This event is not running.",
             ApiError::RateLimited { .. } => "Too many requests. Try again later.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",

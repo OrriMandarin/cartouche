@@ -6,6 +6,9 @@ use cartouche_domain::SignupMode;
 use thiserror::Error;
 use url::Url;
 
+/// `MAX_SIMULTANEOUS_EVENTS` when the variable is absent (EVT-019).
+const DEFAULT_MAX_SIMULTANEOUS_EVENTS: usize = 3;
+
 /// Upper bound of `TRUSTED_PROXY_HOPS`.
 const MAX_TRUSTED_PROXY_HOPS: usize = 10;
 
@@ -86,6 +89,8 @@ pub struct Config {
     pub media: MediaStorageConfig,
     /// Reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted (ABU-008).
     pub trusted_proxy_hops: usize,
+    /// Most events of one card that may run at the same instant (EVT-004, EVT-019).
+    pub max_simultaneous_events: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -151,6 +156,21 @@ impl Config {
                 })?,
         };
 
+        let max_simultaneous_events = match optional("MAX_SIMULTANEOUS_EVENTS") {
+            None => DEFAULT_MAX_SIMULTANEOUS_EVENTS,
+            Some(v) => v
+                .trim()
+                .parse::<usize>()
+                .ok()
+                .filter(|limit| *limit >= 1)
+                .ok_or_else(|| {
+                    invalid(
+                        "MAX_SIMULTANEOUS_EVENTS",
+                        "expected an integer of at least 1",
+                    )
+                })?,
+        };
+
         let media = match optional("MEDIA_STORAGE").as_deref().map(str::trim) {
             None | Some("local") => MediaStorageConfig::Local {
                 dir: optional("MEDIA_LOCAL_DIR")
@@ -194,6 +214,7 @@ impl Config {
             sentry_dsn: optional("SENTRY_DSN"),
             media,
             trusted_proxy_hops,
+            max_simultaneous_events,
         })
     }
 }
@@ -369,6 +390,28 @@ mod tests {
             let err = hops(bad).unwrap_err();
             assert!(
                 matches!(err, ConfigError::Invalid(ref n, _) if n == "TRUSTED_PROXY_HOPS"),
+                "{bad}: {err:?}"
+            );
+        }
+    }
+
+    // spec: EVT-019
+    #[test]
+    fn max_simultaneous_events_configuration() {
+        let limit = |value: &str| Config::from_vars(vars(&[("MAX_SIMULTANEOUS_EVENTS", value)]));
+        assert_eq!(
+            Config::from_vars(vars(&[]))
+                .unwrap()
+                .max_simultaneous_events,
+            3
+        );
+        assert_eq!(limit("").unwrap().max_simultaneous_events, 3);
+        assert_eq!(limit(" 1 ").unwrap().max_simultaneous_events, 1);
+        assert_eq!(limit("10").unwrap().max_simultaneous_events, 10);
+        for bad in ["0", "x", "-1", "1.5"] {
+            let err = limit(bad).unwrap_err();
+            assert!(
+                matches!(err, ConfigError::Invalid(ref n, _) if n == "MAX_SIMULTANEOUS_EVENTS"),
                 "{bad}: {err:?}"
             );
         }

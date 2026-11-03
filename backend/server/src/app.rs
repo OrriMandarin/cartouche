@@ -24,6 +24,9 @@ use crate::routes::cards::{
     create_card, delete_card, disable_card, duplicate_card, enable_card, get_card, list_cards,
     update_card,
 };
+use crate::routes::events::{
+    consent_preview, create_event, delete_event, end_event, get_event, list_events, update_event,
+};
 use crate::routes::health::health;
 use crate::routes::me::me;
 use crate::routes::media_files::get_media_file;
@@ -48,6 +51,16 @@ pub fn build_router(state: AppState) -> Router {
             "/api/cards/{id}/media",
             post(upload_media).layer(DefaultBodyLimit::max(UPLOAD_BODY_LIMIT)),
         )
+        .route(
+            "/api/cards/{id}/events",
+            get(list_events).post(create_event),
+        )
+        .route("/api/cards/{id}/consent-preview", post(consent_preview))
+        .route(
+            "/api/events/{id}",
+            get(get_event).put(update_event).delete(delete_event),
+        )
+        .route("/api/events/{id}/end", post(end_event))
         .route("/api/slugs/suggestion", get(suggest_slug))
         .route("/api/slugs/availability", get(slug_availability))
         .route("/api/public/cards/{slug}", get(get_public_card))

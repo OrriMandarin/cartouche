@@ -141,7 +141,8 @@ pub struct EventInput {
     pub starts_at: Option<DateTime<Utc>>,
     pub ends_at: Option<DateTime<Utc>>,
     pub access_code: Option<String>,
-    pub device_limit: u32,
+    /// Signed and wide so that any out-of-range number is a field error, not a malformed body.
+    pub device_limit: i64,
     pub standard_fields: StandardFields,
     pub custom_fields: Vec<CustomField>,
     pub consent_text: Option<String>,
@@ -202,7 +203,10 @@ pub fn validate_event(input: EventInput) -> Result<ValidEvent, Vec<FieldError>> 
         }
     }
 
-    if !(MIN_DEVICE_LIMIT..=MAX_DEVICE_LIMIT).contains(&input.device_limit) {
+    let device_limit = u32::try_from(input.device_limit)
+        .ok()
+        .filter(|limit| (MIN_DEVICE_LIMIT..=MAX_DEVICE_LIMIT).contains(limit));
+    if device_limit.is_none() {
         errors.push(FieldError::new("device_limit", "out_of_range"));
     }
 
@@ -211,8 +215,8 @@ pub fn validate_event(input: EventInput) -> Result<ValidEvent, Vec<FieldError>> 
     }
     let custom = validate_custom_fields(input.custom_fields, &mut errors);
 
-    match input.starts_at {
-        Some(starts_at) if errors.is_empty() => Ok(ValidEvent {
+    match (input.starts_at, device_limit) {
+        (Some(starts_at), Some(device_limit)) if errors.is_empty() => Ok(ValidEvent {
             title,
             description,
             period: Period {
@@ -220,7 +224,7 @@ pub fn validate_event(input: EventInput) -> Result<ValidEvent, Vec<FieldError>> 
                 ends_at: input.ends_at,
             },
             access_code,
-            device_limit: input.device_limit,
+            device_limit,
             form: FormDefinition {
                 standard: input.standard_fields,
                 custom,
@@ -566,7 +570,7 @@ mod tests {
             ..valid_input()
         });
         assert_eq!(e, vec![("ends_at".to_string(), "end_before_start")]);
-        for limit in [0, 101] {
+        for limit in [0, 101, -1, 5_000_000_000] {
             let e = errors_of(EventInput {
                 device_limit: limit,
                 ..valid_input()

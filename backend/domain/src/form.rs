@@ -86,7 +86,8 @@ pub struct CustomField {
     pub kind: CustomFieldKind,
     pub required: bool,
     pub help: Option<String>,
-    /// Only for `single_choice`; empty for every other kind.
+    /// Only for `single_choice`; empty for every other kind, and may then be left out.
+    #[serde(default)]
     pub options: Vec<String>,
 }
 
@@ -129,5 +130,16 @@ mod tests {
             "email": "off", "phone": "off", "address": "off", "company": "off"
         });
         assert!(serde_json::from_value::<StandardFields>(json).is_err());
+    }
+
+    // spec: FRM-021, FRM-032
+    #[test]
+    fn options_may_be_left_out_of_a_non_choice_field() {
+        let json = serde_json::json!({
+            "id": "0190c9a0-0000-7000-8000-000000000001",
+            "label": "Société", "kind": "text", "required": false, "help": null
+        });
+        let field: CustomField = serde_json::from_value(json).unwrap();
+        assert!(field.options.is_empty());
     }
 }

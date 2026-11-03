@@ -269,7 +269,7 @@ pub async fn insert(
     if inserted.rows_affected() == 0 {
         return Ok(None);
     }
-    find_written(tx, owner_id, id).await
+    find_in_tx(tx, owner_id, id).await
 }
 
 /// Overwrites the owner's event. `None` when the owner has no such event.
@@ -303,7 +303,7 @@ pub async fn update(
     if updated.rows_affected() == 0 {
         return Ok(None);
     }
-    find_written(tx, owner_id, event_id).await
+    find_in_tx(tx, owner_id, event_id).await
 }
 
 /// Sets the end of the owner's event (EVT-006). `None` when the owner has no such event.
@@ -326,10 +326,11 @@ pub async fn set_end(
     if updated.rows_affected() == 0 {
         return Ok(None);
     }
-    find_written(tx, owner_id, event_id).await
+    find_in_tx(tx, owner_id, event_id).await
 }
 
-async fn find_written(
+/// Reads the owner's event on the transaction's own connection, which sees its writes.
+pub async fn find_in_tx(
     tx: &mut PgConnection,
     owner_id: Uuid,
     event_id: Uuid,

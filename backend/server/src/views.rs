@@ -1,8 +1,8 @@
 //! JSON shapes of the API that are shared by several routes.
 
 use cartouche_domain::{
-    CardContent, CardStatus, Link, LinkKind, MediaKind, Theme, VariantFormat, format_international,
-    storage_key,
+    CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind, StandardFields,
+    Theme, VariantFormat, default_consent_text, format_international, storage_key,
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::db::cards::Card;
+use crate::db::events::EventWithCount;
 use crate::db::media::MediaRecord;
 use crate::error::ApiError;
 use crate::media::MediaService;
@@ -38,6 +39,58 @@ pub struct CardView {
     pub avatar: Option<MediaView>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// An event as its owner sees it: the access code is shown in clear (EVT-010).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EventView {
+    pub id: Uuid,
+    pub card_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub starts_at: DateTime<Utc>,
+    /// Absent: the event lasts until it is ended (EVT-003).
+    pub ends_at: Option<DateTime<Utc>>,
+    /// Computed with the server clock (EVT-020).
+    pub phase: EventPhase,
+    pub access_code: Option<String>,
+    /// Submissions allowed per device, 1 to 100 (EVT-014).
+    pub device_limit: u32,
+    pub standard_fields: StandardFields,
+    pub custom_fields: Vec<CustomField>,
+    /// The owner's own consent text; absent when the default one applies.
+    pub consent_text: Option<String>,
+    /// The consent text used when there is no custom one, for this card and title (FRM-029).
+    pub default_consent_text: String,
+    /// Every contact of the event, spam ones included.
+    pub lead_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl EventView {
+    /// `card` is the content of the event's card; the phase is computed at `now`.
+    pub fn new(counted: EventWithCount, card: &CardContent, now: DateTime<Utc>) -> EventView {
+        let EventWithCount { event, lead_count } = counted;
+        EventView {
+            phase: event.period.phase(now),
+            default_consent_text: default_consent_text(card, &event.title),
+            id: event.id,
+            card_id: event.card_id,
+            description: event.description,
+            starts_at: event.period.starts_at,
+            ends_at: event.period.ends_at,
+            access_code: event.access_code,
+            device_limit: event.device_limit,
+            standard_fields: event.form.standard,
+            custom_fields: event.form.custom,
+            consent_text: event.consent_text,
+            title: event.title,
+            lead_count,
+            created_at: event.created_at,
+            updated_at: event.updated_at,
+        }
+    }
 }
 
 /// A served card as any visitor sees it: no internal id and no date. The files' addresses

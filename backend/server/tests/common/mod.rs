@@ -3,6 +3,7 @@
 #![allow(dead_code)] // each test binary uses a different subset
 
 pub mod cards;
+pub mod events;
 pub mod media_fixtures;
 
 use std::sync::{Arc, Mutex};
