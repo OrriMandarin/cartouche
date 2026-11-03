@@ -30,6 +30,40 @@ Décisions prises en écrivant la spec et le plan 3 (sans intervention du porteu
 - Ruling R-S24: a `number` answer is accepted as a JSON number or a string with a dot or a comma, and stored as a JSON number (FRM-036) — French keyboards type a comma; accepting both server-side keeps a direct API caller and the browser consistent — cost if wrong: one parser.
 - Ruling R-S25: the device-limit bounds (1–100) became their own rule EVT-030, found missing while writing EVT-016 — EVT-014 says "réglable" without bounds — cost if wrong: one constant.
 
+## Décisions prises pendant l'exécution (rulings)
+
+Pré-vol du plan (R-PF, avant la tâche 1) puis exécution (R-E). Chaque ligne : décision — raison — coût si c'est faux.
+
+- Ruling R-PF1 (T3): add backend/domain/Cargo.toml to T3 files: uuid feature serde, utoipa features chrono+uuid — plan command cannot compile otherwise — cost if wrong: none.
+- Ruling R-PF2 (T4): default consent text uses plain spaces inside « » exactly as FRM-026 is written (no U+00A0) — spec "mot pour mot" binds over plan detail — cost if wrong: one string.
+- Ruling R-PF3 (T2): T2 may adapt tests/media.rs MED-010/016/017 tests: fetch the unsigned public path for immutable caching, assert private max-age=86400 on the signed URL — signed URLs change the response by design (MED-023) — cost if wrong: none.
+- Ruling R-PF4 (T5): add tests/test_support.rs (hand-built AppState) to T5 files — cost if wrong: none.
+- Ruling R-PF5 (T2): move base64 to cartouche-api [dependencies] (workspace version) for UrlSigner — cost if wrong: none.
+- Ruling R-PF6 (T7/T14): T7 adds owner route POST /api/cards/{id}/consent-preview {title} -> {text} (owner-scoped, 404 otherwise), T14 uses it for create and edit; no TS copy of consent.rs — avoids duplicating domain logic and hard-coded French (R-S11) — cost if wrong: one small route.
+- Ruling R-PF7 (T5): SlidingWindow drops entries with at <= now - window — matches its own tests — cost if wrong: one comparison.
+- Ruling R-PF8 (T5/T11): POST /api/test/reset also clears the in-memory rate limiter (test-support only), with a test — frozen 2027 clock never expires entries in a reused container — cost if wrong: none.
+- Ruling R-PF9 (T7/T8/T9): decisions go to small domain functions: public_form_state (open/code/closed), honeypot_filled, check_device_limit, check_simultaneous_limit, PublicAccess::serves_api — CLAUDE.md no logic in handlers — cost if wrong: a few functions.
+- Ruling R-PF10 (T6/T8): running events for the public card are filtered in Rust with the domain Period::is_running (db returns the card's candidate events), no EVT-002 duplicate in SQL — single source of truth — cost if wrong: loads a few more rows.
+- Ruling R-PF11 (T5/T9): RateLimiter exposes an atomic hit() (check+record under one lock) used for the submission bucket; wrong-code bucket may use check then record-on-failure — 120 must not be exceeded by a burst — cost if wrong: none.
+- Ruling R-PF12 (T6/T7): list of a card's events returns Option (None when the card is not the owner's) and the route answers 404; test asserts Bob gets 404 — ACC-017 — cost if wrong: none.
+- Ruling R-PF13 (T6): advisory lock key hashtextextended($1::uuid::text || ':' || $2::uuid::text, 0) — sqlx typing — cost if wrong: none.
+- Ruling R-PF14 (T2): run integration tests with --test media (and the other named test files) rather than a name filter — cost if wrong: none.
+- Ruling R-PF15 (T12): reuse/extend editor.media.errors (add editor.media.errors.video_unreadable only if the existing "unreadable" message does not fit) — fr.json has no top-level media — cost if wrong: a key name.
+- Ruling R-PF16 (T5): IPv4-mapped IPv6 addresses are converted with to_ipv4_mapped() before /64 grouping, with a test — otherwise every IPv4 client shares one bucket (ABU-001) — cost if wrong: none.
+- Ruling R-PF17 (T5): .env.example comments without accents ("derriere") — file convention — cost if wrong: none.
+- Ruling R-PF18 (T3/T13): starts_at is Option in the request body; absence gives field error starts_at: required (EDI-019/EDI-015) — cost if wrong: none.
+- Ruling R-PF19 (T15): leadDisplayName returns null when no name; component renders leads.unnamed from fr.json — no hard-coded UI text — cost if wrong: none.
+- Ruling R-PF20 (T17): the submit e2e uses a name not in the seed and asserts the event lead count goes 3 -> 4, plus submitted_at and consent_text — the seed already holds Éloïse — cost if wrong: none.
+- Ruling R-E1: make openapi target lacks --all-features (tests/common needs test-support); the first task that changes routes (Task 7, or earlier if needed) fixes the Makefile target — pre-existing tooling defect found in Task 2 — cost if wrong: none.
+- Ruling R-E2 (carry to Task 7): EventInput.device_limit becomes i64 in the domain and out-of-range values (-1, 5000000000, 0, 101) give field error device_limit: out_of_range, with test — EVT-030 requires a field error, a u32 makes it a 400 invalid_request — cost if wrong: one type.
+- Ruling R-E3 (carry to Task 7): CustomField.options gets #[serde(default)] — non-choice fields need not send options: [] — cost if wrong: none.
+- Ruling R-E4: unused import Datelike in backend/domain/src/lead.rs:412 (Task 4 test module) is removed by the Task 6 implementer — test output must be pristine — cost if wrong: none.
+- Ruling R-E5: the event editor gets no unsaved-changes guard in plan 3 — EDI-016 is in the card-editor section and no rule asks for it; listed as an owner follow-up (widen EDI-016 or new rule) — cost if wrong: a long event form can be lost on a stray click.
+- Ruling R-E6: Task 19 (status lines + two doc wording fixes + gate run) gets no separate task review; the final feature review covers its diff and re-runs the gate — mechanical diff, same reviewer would otherwise duplicate the feature review — cost if wrong: none (feature review reads it).
+- Ruling R-E7: the final fix wave also covers the capturePoster seek timeout (MED-021 intent) and makes the client birth-date check use the same UTC date as the server — both cheap and user-visible — cost if wrong: a few lines.
+- Ruling R-E8: the in-memory limiter keeps no cap on tracked addresses in v1 (purge every 1024 calls) — accepted under R-S7, noted for the owner — cost if wrong: memory growth under a many-/64 attack until purge.
+- Ruling R-E9: the final-review fix wave replaced `RateLimiter::{check, record}` by an atomic reservation (`hit`, `release`, `reset`): a wrong-code slot is reserved before the event is read and released on a correct code, in the unlock route and in the submit re-check — a parallel burst bypassed the 30 wrong codes per 10 minutes (ABU-007) — cost if wrong: while 30 wrong codes from one address are in flight, a correct code from it gets 429.
+
 ## Point ouvert du plan 2 tranché
 
 **Les fichiers `/media/*` d'une carte non servie ne sont plus servis en mode disque local ; ils restent lisibles en mode S3 (limite connue).** Règles MED-023 et MED-024, tâche 2 du plan 3.
@@ -40,4 +74,38 @@ Décisions prises en écrivant la spec et le plan 3 (sans intervention du porteu
 
 ## Constats reportés
 
+Points relevés par la relecture finale ou pendant l'exécution, à trancher par le porteur du projet ou un plan suivant :
+
+- L'éditeur d'événement n'a pas de garde « modifications non enregistrées » : EDI-016 ne vise que l'éditeur de carte (R-E5). Élargir EDI-016 ou ajouter une règle si on le veut.
+- Le limiteur en mémoire ne borne pas le nombre d'adresses suivies (purge tous les 1 024 appels) ; une instance d'API unique en v1 (R-S7, R-E8).
+- En mode S3, les médias d'une carte non servie restent lisibles à leur adresse du bucket (MED-024).
+- Tests instables observés une fois sous charge pendant le plan, verts ensuite : `migrations::card_foreign_keys_are_indexed`, `public_cards::vcard_photo_is_the_256_jpeg` (une 500), `CardEditor.test.tsx` « EDI-016 after a save… ». À surveiller.
+- Plusieurs composants du formulaire prospect (tâche 17) ont été écrits avant leurs tests (ordre TDD non respecté ; les tests vérifient bien le comportement).
+
 ## Constats mineurs reportés (relectures de tâches)
+
+- Task 1: minor (deferred): run_limited maps a cancelled JoinError to Panicked and logs no panic payload (service.rs:249/225)
+- Task 1: minor (deferred): no end-to-end test of decoder panic -> 415 through process_image
+- Task 1: minor (deferred): ftyp with 64-bit size (1) or size 0 rejected (media.rs:206) — consistent with spec
+- Task 2: minor (deferred): malformed/duplicated exp query -> 400 invalid_request before handler (media_files.rs:23)
+- Task 2: minor (deferred): signed-URL expiry rule lives in MediaService, not a pure domain fn (service.rs:175)
+- Task 2: minor (deferred): support-view test checks jpeg_url rather than images[0].url (tests/media.rs:896)
+- Task 2: minor (deferred): signing key per process — restart breaks open dashboards' images until reload; replicas would each have own key (by design R-S18)
+- Task 3: minor (deferred): end_now exactly at starts_at gives zero-length event (ends_at == starts_at) — instant-precise edge, unreachable in practice
+- Task 3: minor (deferred): end + submission_grace() could overflow DateTime (unreachable from RFC 3339 input)
+- Task 3: minor (deferred): event.rs mixed import paths, redundant FieldError import in tests; event.rs 814 lines; big custom_fields_are_validated test
+- Task 4: minor (deferred): usize::MAX sentinel for no max_chars; unreachable Checkbox arm in text_value without comment; form_version test lacks pinned hash and help/kind variation; lead.rs ~1000 lines
+- Task 5: minor (deferred): TRUSTED_PROXY_HOPS accepts "+1"; purge walks whole map under mutex every 1024 calls; defensive unreachable .max(1) in ceil_seconds
+- Task 6: minor (deferred): select_events copies 13 fields by hand into EventRow; candidates_public reads all past events on the hot path; insert/update/set_end docs don't state the card-lock precondition; small test gaps (lock_device other pair, list_for_card lead_count)
+- Task 7: minor (deferred): CustomField.options optional in generated TS (serde default); put_event_raw placement; update race test doesn't check DB; consent-preview accepts blank title; list_events double query
+- Task 8: minor (deferred): deleted card case not in the public events unserved test; form GET responses carry no Cache-Control (not in spec)
+- Task 9: minor (deferred): global DEBUG capture subscriber formats every debug event in test binaries
+- Task 10: minor (deferred): re-marking spam overwrites spam_at (use coalesce); ApiPath/ApiQuery/multipart rejections still log messages (no secrets today); no test for non-boolean spam body / malformed lead id
+- Task 11: minor (deferred): MINUTE const comment; redundant owner join in a test query; make seed SCENARIO=events needs base+cards first — check docs in Task 18
+- Task 11: minor (deferred): seed_lead passes raw event.title to consent_text; custom-consent seed branch untested
+- Task 12: minor (deferred): MediaField test mocks a plain Error not VideoLoadTimeout
+- Task 13: minor (deferred): newEventDraft may propose a start before now in the repeated autumn hour; fromLocalInput accepts impossible dates (unreachable via datetime-local); zoneLabel replaces underscores only
+- Task 14: minor (deferred): "Sans fin" switch dead click with empty start; CardScope/EventLoader duplicate EditorLoader state machine; event-conflict testid naming; "30" hard-coded in fr.json next to MAX_CUSTOM_FIELDS; RED not captured for consent/errors tests
+- Task 15: minor (deferred): failed post-action reload leaves stale list (deleted row visible); email shown twice for name-less leads (brief-mandated); useEffect void-async wrapper uncommented
+- Task 16: minor (deferred): any TypeError → network outcome; checkCustomText closure param; PublicEventResponse alias location
+- Task 17: minor (deferred): components written before tests (TDD order); reload form_changed→unknown decision in EventFormPage; whole PublicCard passed to client component (only vcard_url used); field error on a path with no on-screen field shows a pointer to nothing; sessionStorage re-read each render; checkbox/consent duplicate Field wiring; /c/ path built by hand in page.tsx; TPL-003 e2e accent check weak
