@@ -60,11 +60,11 @@ fn mp4_duration_is_read_from_mvhd() {
 fn variants_never_upscale() {
     assert_eq!(
         names(Slot::Header, 800, 600, VariantFormat::Webp),
-        ["w640.webp", "w800.webp"]
+        ["w750.webp", "w800.webp"]
     );
     assert_eq!(
         names(Slot::Header, 3000, 2000, VariantFormat::Webp),
-        ["w640.webp", "w1080.webp", "w1920.webp"]
+        ["w750.webp", "w1125.webp", "w1440.webp"]
     );
     assert_eq!(
         names(Slot::Avatar, 300, 500, VariantFormat::Webp),
@@ -120,9 +120,9 @@ fn header_variants_are_webp_scaled_to_width() {
     assert_eq!(
         sizes,
         [
-            ("w640.webp".to_string(), (640, 320)),
-            ("w1080.webp".to_string(), (1080, 540)),
-            ("w1920.webp".to_string(), (1920, 960)),
+            ("w750.webp".to_string(), (750, 375)),
+            ("w1125.webp".to_string(), (1125, 562)),
+            ("w1440.webp".to_string(), (1440, 720)),
         ]
     );
 }
@@ -145,9 +145,9 @@ fn orientation_applied_and_exif_removed() {
     assert!(upload.windows(4).any(|w| w == b"Exif"));
 
     let variants = process_image(&upload, Slot::Header).unwrap();
-    let w640 = variants.iter().find(|v| v.name == "w640.webp").unwrap();
+    let w750 = variants.iter().find(|v| v.name == "w750.webp").unwrap();
     // Rotated a quarter turn: the landscape upload is shown as a portrait.
-    assert_eq!(dimensions(&w640.bytes), (640, 960));
+    assert_eq!(dimensions(&w750.bytes), (750, 1125));
     for variant in &variants {
         assert!(!variant.bytes.windows(4).any(|w| w == b"Exif"));
         assert!(!variant.bytes.windows(3).any(|w| w == b"GPS"));

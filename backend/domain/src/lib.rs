@@ -8,6 +8,7 @@ pub mod consent;
 pub mod email;
 pub mod event;
 pub mod form;
+pub mod framing;
 pub mod lead;
 pub mod media;
 pub mod media_files;
@@ -42,6 +43,10 @@ pub use form::{
     MAX_FIELD_HELP_CHARS, MAX_FIELD_LABEL_CHARS, MAX_OPTION_CHARS, MIN_CHOICE_OPTIONS,
     StandardField, StandardFields,
 };
+pub use framing::{
+    CropRect, Framing, PixelRect, VideoLoop, check_crop, check_loop, check_poster_time,
+    crop_pixels, default_crop, default_loop,
+};
 pub use lead::{
     AddressInput, AnswerSnapshot, AnswersInput, DeviceLimitReached, FormChanged, PublicForm,
     StandardAnswers, ValidLead, check_device_limit, check_form_version, form_version,
@@ -49,8 +54,9 @@ pub use lead::{
 };
 pub use media::{
     MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, MAX_VIDEO_BYTES, MAX_VIDEO_DURATION, MediaFormat, MediaKind,
-    Mp4Error, ParseMediaError, PlannedVariant, Slot, UploadRejection, VariantFormat,
-    classify_upload, invalid_media_refs, is_mp4_ftyp, mp4_duration, plan_image_variants, sniff,
+    Mp4Error, ParseMediaError, PlannedVariant, SOURCE_MAX_SIDE, Slot, UploadRejection,
+    VariantFormat, classify_upload, invalid_media_refs, is_mp4_ftyp, mp4_duration,
+    plan_image_variants, sniff, source_size,
 };
 pub use media_files::{
     ByteRange, MediaCache, RangeNotSatisfiable, card_of_key, media_access, parse_range,

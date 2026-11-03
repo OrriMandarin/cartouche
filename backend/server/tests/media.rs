@@ -291,7 +291,7 @@ async fn video_rules(pool: PgPool) {
     assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
     assert_eq!(res.json["kind"], "video");
     // The poster is the waiting image, never larger than itself.
-    assert_eq!(widths(&res.json), [640, 1080, 1280]);
+    assert_eq!(widths(&res.json), [750, 1125, 1280]);
     let video_url = unsigned(res.json["video_url"].as_str().unwrap());
     assert!(video_url.ends_with("/video.mp4"), "{video_url}");
     let key = video_url.strip_prefix(&format!("{BASE}/media/")).unwrap();
