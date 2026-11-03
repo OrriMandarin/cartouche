@@ -7,7 +7,7 @@ import { sampleCard, sampleEvents, sampleLabels, sampleUrls } from "./fixtures";
 
 // Defaults the backend applies to a new card (DEFAULT_TEMPLATE, DEFAULT_THEME_PRESET).
 const BACKEND_DEFAULT_TEMPLATE = "classique";
-const BACKEND_DEFAULT_THEME_PRESET = "clair";
+const BACKEND_DEFAULT_THEME_PRESET = "craie";
 
 function hasMessage(key: string): boolean {
   const value = key
@@ -58,6 +58,6 @@ describe("registry", () => {
     });
     const props = element.props as { settings: unknown; theme: { presetId: string } };
     expect(props.settings).toEqual({ links_layout: "list", animate_events: true });
-    expect(props.theme.presetId).toBe("clair");
+    expect(props.theme.presetId).toBe("craie");
   });
 });

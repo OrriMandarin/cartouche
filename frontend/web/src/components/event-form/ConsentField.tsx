@@ -19,7 +19,7 @@ export function ConsentField({ text, checked, error, onChange }: ConsentFieldPro
           type="checkbox"
           data-testid="consent-checkbox"
           className="mt-1 h-5 w-5 shrink-0"
-          style={{ accentColor: "var(--card-accent)" }}
+          style={{ accentColor: "var(--c-accent)" }}
           aria-labelledby="consent-text"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "lead-consent-error" : undefined}

@@ -160,17 +160,20 @@
     }
   },
   "themes": {
-    "clair": "Clair",
-    "sombre": "Sombre",
-    "sable": "Sable",
-    "ocean": "Océan",
-    "foret": "Forêt",
-    "corail": "Corail"
+    "craie": "Craie",
+    "ivoire": "Ivoire",
+    "terracotta": "Terracotta",
+    "sauge": "Sauge",
+    "bonbon": "Bonbon",
+    "lagon": "Lagon",
+    "encre": "Encre",
+    "minuit": "Minuit"
   },
   "fonts": {
-    "moderne": "Moderne",
-    "editorial": "Éditorial",
-    "chaleureux": "Chaleureux"
+    "inter": "Sobre",
+    "playfair": "Éditoriale",
+    "fraunces": "Douce",
+    "bricolage": "Graphique"
   },
   "templates": {
     "classique": {
@@ -308,7 +311,7 @@
         "rounded": "Arrondie",
         "pill": "Pilule"
       },
-      "contrastWarning": "Le texte est difficile à lire sur ce fond. Choisis des couleurs plus contrastées ; tu peux quand même enregistrer."
+      "lowContrast": "Ces couleurs ne sont pas assez lisibles."
     },
     "media": {
       "header": "En-tête",
@@ -494,6 +497,7 @@
   },
   "fieldErrors": {
     "required": "Ce champ est obligatoire.",
+    "low_contrast": "Ces couleurs ne sont pas assez lisibles\u00a0: corrige-les pour enregistrer la carte.",
     "too_long": "Ce texte est trop long.",
     "invalid_slug": "Le lien ne peut contenir que des lettres minuscules, des chiffres et des tirets, entre 3 et 64 caractères.",
     "slug_taken": "Ce lien est déjà pris.",

@@ -13,7 +13,7 @@ function element(
   return renderTemplate({
     template: template.id,
     settings: {},
-    theme: overrides.theme ?? { preset: "clair" },
+    theme: overrides.theme ?? { preset: "craie" },
     card: { ...sampleCard, ...overrides.card },
     events: overrides.events ?? [],
     urls: sampleUrls,
@@ -131,10 +131,10 @@ describe.each(listTemplates())("template $id", (template) => {
   });
 
   test("PUB-007 avatar sits on the header gradient", () => {
-    const { container } = render(element(template, { theme: { preset: "clair", header_gradient: 70 } }));
+    const { container } = render(element(template, { theme: { preset: "craie", header_gradient: 70 } }));
     expect(screen.getByTestId(IDS.avatar)).toBeInTheDocument();
     const root = container.firstElementChild as HTMLElement;
-    expect(root.style.getPropertyValue("--card-header-gradient")).toBe("0.7");
+    expect(root.style.getPropertyValue("--fade")).toBe("70");
   });
 
   test("PUB-008 PUB-009 event buttons are sorted by start", () => {
@@ -184,10 +184,10 @@ describe.each(listTemplates())("template $id", (template) => {
   });
 
   test("TPL-019 the theme reaches the template as CSS variables only", () => {
-    const { container } = render(element(template, { theme: { preset: "sombre" } }));
+    const { container } = render(element(template, { theme: { preset: "encre" } }));
     const root = container.firstElementChild as HTMLElement;
-    const theme = resolveTheme({ preset: "sombre" });
-    expect(root.style.getPropertyValue("--card-accent")).toBe(theme.accent);
-    expect(root.style.getPropertyValue("--card-text")).toBe(theme.text);
+    const theme = resolveTheme({ preset: "encre" });
+    expect(root.style.getPropertyValue("--c-accent")).toBe(theme.accent);
+    expect(root.style.getPropertyValue("--c-text")).toBe(theme.text);
   });
 });

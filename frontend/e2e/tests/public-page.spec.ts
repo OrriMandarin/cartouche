@@ -66,7 +66,7 @@ for (const template of TEMPLATE_IDS) {
       await page.goto("/c/alice-durand");
       await page.getByTestId(`event-button-${mariage.id}`).click();
       await expect(page).toHaveURL(new RegExp(`/c/alice-durand/e/${mariage.id}$`));
-      await expect(page.getByTestId("event-form-page")).toHaveAttribute("style", /--card-accent:/);
+      await expect(page.getByTestId("event-form-page")).toHaveAttribute("style", /--c-accent:/);
       await expect(page.getByTestId("consent-text")).toContainText("Alice Durand (Atelier Durand & Fils)");
       await page.getByTestId("field-answers.first_name").fill("Maëlle");
       await page.getByTestId("field-answers.last_name").fill("N’Guessan-Lefèvre ✨");

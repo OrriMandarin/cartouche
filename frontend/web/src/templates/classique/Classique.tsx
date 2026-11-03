@@ -1,6 +1,6 @@
 import { Download, Globe, Link as LinkIcon, Mail, Phone, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
-import { themeStyle } from "@/lib/theme/resolve";
+import { themeToCssVars } from "@/lib/theme/css-vars";
 import { isHttpUrl, mailtoHref, telHref } from "../contact-links";
 import {
   TEMPLATE_TEST_IDS as TEST_IDS,
@@ -25,15 +25,15 @@ const LINK_ICONS: Record<LinkKind, LucideIcon> = {
 };
 
 const BUTTON_STYLE: CSSProperties = {
-  borderRadius: "var(--card-radius)",
-  border: "2px solid var(--card-accent)",
-  background: "color-mix(in srgb, var(--card-accent) 14%, transparent)",
+  borderRadius: "var(--radius-btn)",
+  border: "2px solid var(--c-accent)",
+  background: "color-mix(in srgb, var(--c-accent) 14%, transparent)",
 };
 
 // Fades the header into the page background; the intensity is the theme's header gradient (PUB-007).
 const GRADIENT_STYLE: CSSProperties = {
-  background: "var(--card-bg)",
-  opacity: "var(--card-header-gradient)",
+  background: "linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2))",
+  opacity: "calc(var(--fade) / 100)",
   maskImage: "linear-gradient(to bottom, transparent, black)",
   WebkitMaskImage: "linear-gradient(to bottom, transparent, black)",
 };
@@ -99,10 +99,10 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
       data-mode={mode}
       className="min-h-screen"
       style={{
-        ...themeStyle(theme),
-        background: "var(--card-bg)",
-        color: "var(--card-text)",
-        fontFamily: "var(--card-font-body)",
+        ...themeToCssVars(theme),
+        background: "linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2))",
+        color: "var(--c-text)",
+        fontFamily: "var(--font-body)",
       }}
     >
       <div className="mx-auto max-w-md pb-10">
@@ -125,7 +125,7 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
               <img
                 data-testid={TEST_IDS.avatar}
                 className="h-32 w-32 rounded-full border-4 object-cover"
-                style={{ borderColor: "var(--card-accent)" }}
+                style={{ borderColor: "var(--c-accent)" }}
                 src={avatarSrc}
                 srcSet={srcSet(card.avatar)}
                 sizes="128px"
@@ -157,7 +157,7 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
               <h1
                 data-testid={TEST_IDS.name}
                 className="text-2xl font-bold"
-                style={{ fontFamily: "var(--card-font-heading)" }}
+                style={{ fontFamily: "var(--font-title)" }}
               >
                 {name}
               </h1>

@@ -28,7 +28,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const EVENT_ID = "0198d000-0000-7000-8000-000000000001";
-const card = { ...sampleCard, theme: { preset: "clair", accent: "#c0392b" } };
+const card = { ...sampleCard, theme: { preset: "craie", accent: "#c0392b" } };
 const props = (slug = card.slug, eventId = EVENT_ID) => ({ params: Promise.resolve({ slug, eventId }) });
 
 async function html(slug?: string, eventId?: string): Promise<string> {
@@ -59,7 +59,7 @@ describe("event form page", () => {
 
   test("TPL-020 FRM-025 the form carries the card theme", async () => {
     fetchPublicEvent.mockResolvedValue({ state: "open", event: publicEventForm() });
-    expect(await html()).toMatch(/data-testid="event-form-page"[^>]*style="[^"]*--card-accent:#c0392b/);
+    expect(await html()).toMatch(/data-testid="event-form-page"[^>]*style="[^"]*--c-accent:#c0392b/);
   });
 
   test("FRM-002 EVT-027 an event with a code renders its title and the code screen only", async () => {

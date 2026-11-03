@@ -9,7 +9,7 @@ export function cardView(overrides: Partial<CardView> = {}): CardView {
     status: "active",
     template: "classique",
     settings: {},
-    theme: { preset: "clair" },
+    theme: { preset: "craie" },
     content: { first_name: "Éloïse", last_name: "D'Aubigné-Müller" },
     links: [],
     created_at: "2026-03-05T12:00:00Z",

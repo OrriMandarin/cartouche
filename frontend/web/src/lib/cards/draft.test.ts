@@ -27,7 +27,7 @@ const fullCard = cardView({
   public_url: "http://localhost:13000/c/eloise-daubigne",
   template: "classique",
   settings: { links_layout: "icons" } as unknown as CardView["settings"],
-  theme: { preset: "sable", accent: "#9a5b2e" },
+  theme: { preset: "ivoire", accent: "#9a5b2e" },
   content: {
     first_name: "Éloïse",
     last_name: "D'Aubigné-Müller",
@@ -52,7 +52,7 @@ describe("draftToUpdateBody", () => {
       slug: "eloise-daubigne",
       template: "classique",
       settings: { links_layout: "icons" },
-      theme: { preset: "sable", accent: "#9a5b2e" },
+      theme: { preset: "ivoire", accent: "#9a5b2e" },
       content: {
         first_name: "Éloïse",
         last_name: "D'Aubigné-Müller",
@@ -91,7 +91,7 @@ describe("draftToPublicCard", () => {
     expect(card.public_url).toBe("http://localhost:13000/c/eloise-d");
     expect(card.vcard_url).toBe("/api/public/cards/eloise-d/vcard");
     expect(card.template).toBe("classique");
-    expect(card.theme).toEqual({ preset: "sable", accent: "#9a5b2e" });
+    expect(card.theme).toEqual({ preset: "ivoire", accent: "#9a5b2e" });
     expect(card.settings).toEqual({ links_layout: "icons" });
     expect(card.content).toMatchObject({
       first_name: "Éloïse",
@@ -165,8 +165,8 @@ describe("isDirty", () => {
   });
 
   test("EDI-016 an unset theme override is the same as an absent one", () => {
-    const saved = draftFromCard(cardView({ theme: { preset: "clair" } }));
-    const edited = draftFromCard(cardView({ theme: { preset: "clair", accent: null } }));
+    const saved = draftFromCard(cardView({ theme: { preset: "craie" } }));
+    const edited = draftFromCard(cardView({ theme: { preset: "craie", accent: null } }));
     expect(isDirty(saved, edited)).toBe(false);
     edited.links = [{ kind: "website", url: "https://a.example", label: "" }];
     expect(isDirty(saved, edited)).toBe(true);

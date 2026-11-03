@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { hasContrastWarning } from "@/lib/theme/contrast";
+import { failedChecks } from "@/lib/theme/contrast";
 import { applyPresetChange, switchBackgroundKind } from "@/lib/theme/edit";
 import { FONT_PAIRS, THEME_PRESETS, type ButtonShape, type ThemeSettings } from "@/lib/theme/presets";
 import { resolveTheme } from "@/lib/theme/resolve";
@@ -41,7 +41,7 @@ function ColorInput({
 /**
  * spec: TPL-009, TPL-010, TPL-011, TPL-013, TPL-018. A theme preset as the starting point, then the owner's
  * overrides: accent, background, text, header gradient, button shape and font. A low contrast between the
- * text and the background shows a warning, it never blocks saving.
+ * text and the background shows a warning, until the contrast panel replaces this message.
  */
 export function ThemeEditor({
   theme,
@@ -187,13 +187,13 @@ export function ThemeEditor({
         />
       </div>
 
-      {hasContrastWarning(resolved) ? (
+      {failedChecks(resolved).length > 0 ? (
         <p
           data-testid="contrast-warning"
           role="status"
           className="rounded-md border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
         >
-          {t("editor.theme.contrastWarning")}
+          {t("editor.theme.lowContrast")}
         </p>
       ) : null}
     </div>

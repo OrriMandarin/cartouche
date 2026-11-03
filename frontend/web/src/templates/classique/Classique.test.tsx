@@ -8,7 +8,7 @@ function classique(settings: unknown, events = sampleEvents, card = sampleCard) 
   return renderTemplate({
     template: "classique",
     settings,
-    theme: { preset: "clair", header_gradient: 55 },
+    theme: { preset: "craie", header_gradient: 55 },
     card,
     events,
     urls: sampleUrls,
@@ -45,7 +45,7 @@ describe("Classique", () => {
 
   test("PUB-007 the gradient opacity follows the theme intensity", () => {
     render(classique({}));
-    expect(screen.getByTestId("card-header-gradient").style.opacity).toBe("var(--card-header-gradient)");
+    expect(screen.getByTestId("card-header-gradient").style.opacity).toBe("calc(var(--fade) / 100)");
   });
 
   test("PUB-023 no media means no gradient and the theme background", () => {

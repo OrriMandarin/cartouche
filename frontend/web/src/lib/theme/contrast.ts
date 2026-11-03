@@ -1,5 +1,4 @@
 import { contrastRatio, mixOklab, over, parseHex, relativeLuminance, toHex, type Rgb } from "./color";
-import type { ResolvedTheme } from "./resolve";
 
 export type ContrastCheck = "text" | "mutedOnHover" | "onAccent" | "accentVsBg";
 
@@ -88,14 +87,4 @@ export function readableFix(
 /** One decimal, decimal comma, rounded down so a failing ratio never reads as passing (TPL-013). */
 export function formatRatio(ratio: number): string {
   return (Math.floor(ratio * 10) / 10).toFixed(1).replace(".", ",");
-}
-
-/** True when the text is hard to read on the background; a gradient counts by its worst stop. */
-export function hasContrastWarning(theme: ResolvedTheme): boolean {
-  const text = parseHex(theme.text);
-  const stops =
-    theme.background.kind === "solid"
-      ? [theme.background.color]
-      : [theme.background.from, theme.background.to];
-  return Math.min(...stops.map((stop) => contrastRatio(text, parseHex(stop)))) < MIN_CONTRAST.text;
 }

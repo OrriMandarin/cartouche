@@ -85,7 +85,7 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(preview.getByTestId("card-link-0")).toHaveAttribute("aria-label", "Mon site");
 
     fireEvent.change(screen.getByTestId("theme-accent"), { target: { value: "#ff0066" } });
-    expect(screen.getByTestId("phone-preview").querySelector("article")!.style.getPropertyValue("--card-accent")).toBe("#ff0066");
+    expect(screen.getByTestId("phone-preview").querySelector("article")!.style.getPropertyValue("--c-accent")).toBe("#ff0066");
   });
 
   test("EDI-005 EDI-017 simulated event only in preview, never in the saved body", async () => {

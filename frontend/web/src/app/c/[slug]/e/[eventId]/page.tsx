@@ -6,7 +6,8 @@ import { InactiveCard } from "@/components/public/InactiveCard";
 import { eventFormPath } from "@/lib/card-urls";
 import { fetchPublicCard } from "@/lib/public-card";
 import { fetchPublicEvent } from "@/lib/public-event";
-import { resolveTheme, themeStyle } from "@/lib/theme/resolve";
+import { themeToCssVars } from "@/lib/theme/css-vars";
+import { resolveTheme } from "@/lib/theme/resolve";
 
 type PageProps = { params: Promise<{ slug: string; eventId: string }> };
 
@@ -33,10 +34,10 @@ export default async function EventFormRoute({ params }: PageProps) {
       data-testid="event-form-page"
       className="min-h-screen"
       style={{
-        ...themeStyle(resolveTheme(card.theme)),
-        background: "var(--card-bg)",
-        color: "var(--card-text)",
-        fontFamily: "var(--card-font-body)",
+        ...themeToCssVars(resolveTheme(card.theme)),
+        background: "linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2))",
+        color: "var(--c-text)",
+        fontFamily: "var(--font-body)",
       }}
     >
       {event.state === "closed" ? (

@@ -1,10 +1,11 @@
-import type { CSSProperties } from "react";
+import { isDarkTheme, onAccentFor } from "./contrast";
 import {
   DEFAULT_FONT_ID,
   DEFAULT_PRESET_ID,
   FONT_PAIRS,
   THEME_PRESETS,
   type ButtonShape,
+  type FontPair,
   type ThemeBackground,
 } from "./presets";
 
@@ -18,12 +19,15 @@ export interface ResolvedTheme {
   /** Header gradient intensity, 0 to 100. */
   headerGradient: number;
   buttonShape: ButtonShape;
-  fonts: { heading: string; body: string };
+  fontPair: FontPair;
+  /** Text colour put on the accent (TPL-021). */
+  onAccent: string;
+  /** Native scheme of the card: dark when its text is lighter than its background (TPL-022). */
+  colorScheme: "light" | "dark";
 }
 
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 const BUTTON_SHAPES: readonly ButtonShape[] = ["square", "rounded", "pill"];
-const RADIUS: Record<ButtonShape, string> = { square: "0", rounded: "0.75rem", pill: "9999px" };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -64,37 +68,27 @@ export function resolveTheme(raw: unknown): ResolvedTheme {
     THEME_PRESETS.find((candidate) => candidate.id === input.preset) ??
     THEME_PRESETS.find((candidate) => candidate.id === DEFAULT_PRESET_ID) ??
     THEME_PRESETS[0]!;
-  const fonts =
+  const fontPair =
     FONT_PAIRS.find((pair) => pair.id === input.font) ??
     FONT_PAIRS.find((pair) => pair.id === preset.font) ??
     FONT_PAIRS.find((pair) => pair.id === DEFAULT_FONT_ID) ??
     FONT_PAIRS[0]!;
   const shape = BUTTON_SHAPES.find((candidate) => candidate === input.button_shape);
 
+  const accent = color(input.accent) ?? preset.accent;
+  const text = color(input.text) ?? preset.text;
+  const resolvedBackground = background(input.background) ?? preset.background;
+
   return {
     presetId: preset.id,
-    fontId: fonts.id,
-    accent: color(input.accent) ?? preset.accent,
-    text: color(input.text) ?? preset.text,
-    background: background(input.background) ?? preset.background,
+    fontId: fontPair.id,
+    accent,
+    text,
+    background: resolvedBackground,
     headerGradient: integerInRange(input.header_gradient, 100) ?? preset.headerGradient,
     buttonShape: shape ?? preset.buttonShape,
-    fonts: { heading: fonts.heading, body: fonts.body },
+    fontPair,
+    onAccent: onAccentFor(accent),
+    colorScheme: isDarkTheme({ accent, text, background: resolvedBackground }) ? "dark" : "light",
   };
-}
-
-/** CSS custom properties a template reads to paint the card. */
-export function themeStyle(theme: ResolvedTheme): CSSProperties {
-  const bg = theme.background;
-  const style: Record<string, string> = {
-    "--card-accent": theme.accent,
-    "--card-text": theme.text,
-    "--card-bg":
-      bg.kind === "solid" ? bg.color : `linear-gradient(${bg.angle}deg, ${bg.from}, ${bg.to})`,
-    "--card-header-gradient": String(theme.headerGradient / 100),
-    "--card-radius": RADIUS[theme.buttonShape],
-    "--card-font-heading": theme.fonts.heading,
-    "--card-font-body": theme.fonts.body,
-  };
-  return style as CSSProperties;
 }

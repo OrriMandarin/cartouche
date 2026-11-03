@@ -148,7 +148,7 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
               type="checkbox"
               data-testid={`field-${path}`}
               className="mt-1 h-5 w-5 shrink-0"
-              style={{ accentColor: "var(--card-accent)" }}
+              style={{ accentColor: "var(--c-accent)" }}
               aria-invalid={error ? true : undefined}
               aria-describedby={describedBy(helpId, errorId)}
               checked={value === true}
