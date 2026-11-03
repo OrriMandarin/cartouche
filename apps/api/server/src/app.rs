@@ -65,10 +65,12 @@ fn panic_to_response(panic: Box<dyn Any + Send + 'static>) -> Response<axum::bod
 }
 
 /// Wraps a router with the request-id layers, the request span and panic-to-JSON conversion.
-/// Layers run top to bottom on the way in.
+/// Layers added last are outermost: id handling, then the trace span, then panic catching,
+/// so a panic is reported and answered inside the request span (request_id on its log line).
 pub(crate) fn with_request_context(router: Router) -> Router {
     router
-        // Innermost first: layers added last are outermost.
+        // Innermost: turns a panic into a JSON 500 while still inside the request span.
+        .layer(CatchPanicLayer::custom(panic_to_response))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
@@ -100,7 +102,6 @@ pub(crate) fn with_request_context(router: Router) -> Router {
                     }
                 }),
         )
-        .layer(CatchPanicLayer::custom(panic_to_response))
         .layer(from_fn(request_id::expose))
         .layer(PropagateRequestIdLayer::new(
             REQUEST_ID_HEADER.parse().expect("static header name"),
@@ -118,7 +119,40 @@ mod tests {
     use axum::body::Body;
     use axum::http::StatusCode;
     use http_body_util::BodyExt;
+    use std::sync::{Arc, Mutex};
     use tower::ServiceExt;
+    use tracing_subscriber::fmt::MakeWriter;
+
+    /// Collects everything the subscriber writes, one JSON object per line.
+    #[derive(Clone, Default)]
+    struct LogBuffer(Arc<Mutex<Vec<u8>>>);
+
+    impl std::io::Write for LogBuffer {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl<'a> MakeWriter<'a> for LogBuffer {
+        type Writer = LogBuffer;
+        fn make_writer(&'a self) -> Self::Writer {
+            self.clone()
+        }
+    }
+
+    impl LogBuffer {
+        fn lines(&self) -> Vec<serde_json::Value> {
+            String::from_utf8(self.0.lock().unwrap().clone())
+                .unwrap()
+                .lines()
+                .map(|line| serde_json::from_str(line).unwrap())
+                .collect()
+        }
+    }
 
     // Silence the default panic hook output for the deliberate panic below.
     #[tokio::test]
@@ -126,6 +160,15 @@ mod tests {
         async fn boom() -> &'static str {
             panic!("kaboom")
         }
+        let logs = LogBuffer::default();
+        let subscriber = tracing_subscriber::fmt()
+            .json()
+            .with_current_span(true)
+            .with_span_list(false)
+            .with_writer(logs.clone())
+            .finish();
+        // A current-thread runtime: the default subscriber covers the whole request.
+        let _guard = tracing::subscriber::set_default(subscriber);
         let router = with_request_context(Router::new().route("/boom", get(boom)));
         let response = router
             .oneshot(
@@ -144,5 +187,21 @@ mod tests {
         assert_eq!(json["error"]["code"], "internal_error");
         assert_eq!(json["error"]["request_id"], "req-1");
         assert!(!json.to_string().contains("kaboom"));
+
+        // Every log line of the request, the panic report included, carries its request_id.
+        let lines = logs.lines();
+        let error_line = lines
+            .iter()
+            .find(|line| line["level"] == "ERROR")
+            .expect("the panic is logged at error level");
+        assert_eq!(error_line["span"]["request_id"], "req-1");
+        assert!(
+            lines
+                .iter()
+                .any(|line| line["fields"]["message"] == "request completed"
+                    && line["span"]["request_id"] == "req-1"
+                    && line["span"]["status"] == 500),
+            "the request-completed line is emitted for a panicking request: {lines:?}"
+        );
     }
 }

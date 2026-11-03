@@ -49,7 +49,10 @@ impl FromRequestParts<AppState> for CurrentUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let token = bearer_token(parts).ok_or(ApiError::TokenInvalid)?;
+        let token = bearer_token(parts).ok_or_else(|| {
+            tracing::debug!("request rejected: missing or malformed Authorization header");
+            ApiError::TokenInvalid
+        })?;
         let claims = state.verifier.verify(token).await?;
         let claims = VerifiedClaims {
             email: normalized(claims.email),

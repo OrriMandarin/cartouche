@@ -2,7 +2,7 @@
 //! with a frozen clock. Later tasks extend it (key source for tokens, test clock).
 #![allow(dead_code)] // each test binary uses a different subset
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use axum::Router;
 use axum::body::Body;
@@ -234,4 +234,43 @@ impl TestApp {
             json,
         }
     }
+}
+
+/// Collects what the subscriber writes, as text, so a test can assert on log output.
+#[derive(Clone, Default)]
+pub struct LogBuffer(Arc<Mutex<Vec<u8>>>);
+
+impl std::io::Write for LogBuffer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(buf);
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for LogBuffer {
+    type Writer = LogBuffer;
+    fn make_writer(&'a self) -> Self::Writer {
+        self.clone()
+    }
+}
+
+impl LogBuffer {
+    pub fn contents(&self) -> String {
+        String::from_utf8(self.0.lock().unwrap().clone()).unwrap()
+    }
+}
+
+/// Captures every event (down to `debug`) on the current thread until the guard is dropped.
+/// Use from a current-thread runtime (the default of `#[tokio::test]`).
+pub fn capture_logs() -> (LogBuffer, tracing::subscriber::DefaultGuard) {
+    let logs = LogBuffer::default();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_ansi(false)
+        .with_writer(logs.clone())
+        .finish();
+    (logs, tracing::subscriber::set_default(subscriber))
 }

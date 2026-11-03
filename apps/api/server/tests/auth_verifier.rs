@@ -16,7 +16,7 @@ use cartouche_api::startup::TEST_ISSUER;
 use cartouche_domain::{Clock, ManualClock};
 use chrono::{TimeZone, Utc};
 use common::{
-    TEST_KID, TEST_PRIVATE_KEY_PEM, TEST_PUBLIC_KEY_PEM, UNTRUSTED_PRIVATE_KEY_PEM,
+    TEST_KID, TEST_PRIVATE_KEY_PEM, TEST_PUBLIC_KEY_PEM, UNTRUSTED_PRIVATE_KEY_PEM, capture_logs,
     sign_test_token, sign_with, test_key_source,
 };
 use jsonwebtoken::{Algorithm, EncodingKey};
@@ -168,6 +168,64 @@ async fn wrong_issuer_is_rejected() {
     }
     let token = sign_test_token(without(claims(&clock), "iss"));
     assert_eq!(verifier.verify(&token).await, Err(AuthError::Invalid));
+}
+
+// spec: ACC-007
+#[tokio::test]
+async fn a_rejection_logs_its_reason_but_never_the_token() {
+    let (logs, _guard) = capture_logs();
+    let (verifier, clock) = verifier(None);
+    let token = sign_test_token(with(
+        claims(&clock),
+        "iss",
+        json!("https://evil.example.com"),
+    ));
+    assert_eq!(verifier.verify(&token).await, Err(AuthError::Invalid));
+    let output = logs.contents();
+    assert!(output.contains("issuer mismatch"), "{output}");
+    assert!(output.contains(TEST_ISSUER), "expected issuer: {output}");
+    assert!(output.contains("https://evil.example.com"), "{output}");
+    assert!(!output.contains(&token), "the token must not be logged");
+}
+
+// spec: ACC-007
+#[tokio::test]
+async fn other_rejections_log_their_reason() {
+    let (logs, _guard) = capture_logs();
+    let (verifier, clock) = verifier(Some("cartouche-api"));
+    let wrong_aud = sign_test_token(with(claims(&clock), "aud", json!("someone-else")));
+    assert_eq!(verifier.verify(&wrong_aud).await, Err(AuthError::Invalid));
+    assert!(logs.contents().contains("audience mismatch"));
+
+    let expired = sign_test_token(with(
+        with(claims(&clock), "aud", json!("cartouche-api")),
+        "exp",
+        json!(now_ts(&clock) - 3600),
+    ));
+    assert_eq!(verifier.verify(&expired).await, Err(AuthError::Expired));
+    assert!(logs.contents().contains("token expired"));
+
+    let unknown_kid = sign_with(
+        Algorithm::ES256,
+        Some("no-such-kid"),
+        &EncodingKey::from_ec_pem(TEST_PRIVATE_KEY_PEM.as_bytes()).unwrap(),
+        &claims(&clock),
+    );
+    assert_eq!(verifier.verify(&unknown_kid).await, Err(AuthError::Invalid));
+    assert!(logs.contents().contains("unknown kid"));
+    assert!(logs.contents().contains("no-such-kid"));
+
+    let bad_signature = sign_with(
+        Algorithm::ES256,
+        Some(TEST_KID),
+        &EncodingKey::from_ec_pem(UNTRUSTED_PRIVATE_KEY_PEM.as_bytes()).unwrap(),
+        &claims(&clock),
+    );
+    assert_eq!(
+        verifier.verify(&bad_signature).await,
+        Err(AuthError::Invalid)
+    );
+    assert!(logs.contents().contains("signature"));
 }
 
 // spec: ACC-007

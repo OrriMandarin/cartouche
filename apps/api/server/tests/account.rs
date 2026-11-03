@@ -230,6 +230,8 @@ async fn concurrent_first_requests_create_one_account(pool: PgPool) {
 }
 
 // spec: ACC-004
+// Needs the `/api/test/approved-check` probe, mounted only with `test-support`.
+#[cfg(feature = "test-support")]
 #[sqlx::test(migrations = "./migrations")]
 async fn pending_user_is_blocked_from_approved_routes(pool: PgPool) {
     let app = test_app(pool.clone()).await;
@@ -244,6 +246,8 @@ async fn pending_user_is_blocked_from_approved_routes(pool: PgPool) {
 }
 
 // spec: ACC-004
+// Needs the `/api/test/approved-check` probe, mounted only with `test-support`.
+#[cfg(feature = "test-support")]
 #[sqlx::test(migrations = "./migrations")]
 async fn rejected_and_suspended_users_are_blocked_with_their_own_code(pool: PgPool) {
     let app = test_app(pool.clone()).await;
@@ -271,6 +275,8 @@ async fn rejected_and_suspended_users_are_blocked_with_their_own_code(pool: PgPo
 }
 
 // spec: ACC-004
+// Needs the `/api/test/approved-check` probe, mounted only with `test-support`.
+#[cfg(feature = "test-support")]
 #[sqlx::test(migrations = "./migrations")]
 async fn approved_user_passes_the_approved_check(pool: PgPool) {
     let app = test_app_with(pool.clone(), &[("SIGNUP_MODE", "open")]).await;
@@ -281,6 +287,8 @@ async fn approved_user_passes_the_approved_check(pool: PgPool) {
 }
 
 // spec: ACC-005 (Review Focus 5)
+// Needs the `/api/test/approved-check` probe, mounted only with `test-support`.
+#[cfg(feature = "test-support")]
 #[sqlx::test(migrations = "./migrations")]
 async fn suspension_applies_on_next_request(pool: PgPool) {
     let app = test_app_with(pool.clone(), &[("SIGNUP_MODE", "open")]).await;

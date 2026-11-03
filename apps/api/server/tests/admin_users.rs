@@ -207,6 +207,8 @@ async fn counts_include_every_status_even_when_zero(pool: PgPool) {
 }
 
 // spec: ADM-003
+// Needs the `/api/test/approved-check` probe, mounted only with `test-support`.
+#[cfg(feature = "test-support")]
 #[sqlx::test(migrations = "./migrations")]
 async fn admin_approves_pending_user(pool: PgPool) {
     let app = app(&pool).await;
