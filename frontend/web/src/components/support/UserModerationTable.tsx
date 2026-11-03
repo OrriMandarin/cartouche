@@ -2,6 +2,7 @@
 
 import type { components } from "@cartouche/api-client";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useState } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ export type ModerationUser = components["schemas"]["AdminUserView"];
 
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" });
 
-const STATUS_VARIANT = {
+export const STATUS_VARIANT = {
   pending: "outline",
   approved: "default",
   rejected: "destructive",
@@ -84,9 +85,15 @@ export function UserModerationTable({
             {users.map((user) => (
               <TableRow key={user.id} data-testid={`user-row-${user.subject}`}>
                 <TableCell>
-                  <span data-testid={`user-name-${user.subject}`} className="font-medium">
-                    {user.display_name || user.email || user.subject}
-                  </span>
+                  <Link
+                    href={`/support/users/${user.id}`}
+                    data-testid={`user-link-${user.subject}`}
+                    className="font-medium underline"
+                  >
+                    <span data-testid={`user-name-${user.subject}`}>
+                      {user.display_name || user.email || user.subject}
+                    </span>
+                  </Link>
                   {user.is_admin ? (
                     <Badge variant="secondary" className="ml-2" data-testid={`admin-badge-${user.subject}`}>
                       {t("admin")}

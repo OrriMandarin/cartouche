@@ -12,6 +12,7 @@ AUTH_JWKS_URL ?= http://localhost:8080/api/test/jwks.json
 PUBLIC_BASE_URL ?= http://localhost:3000
 ADMIN_USER_IDS ?= seed-admin
 BIND_ADDR ?= 127.0.0.1:8080
+MEDIA_LOCAL_DIR ?= $(CURDIR)/.data/media
 CARTOUCHE_BUILD_PROFILE ?= development
 NEXT_PUBLIC_AUTH_PROVIDER ?= test
 API_INTERNAL_URL ?= http://localhost:8080

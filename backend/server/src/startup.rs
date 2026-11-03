@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 use cartouche_domain::SignupMode;
 
-use crate::config::{AppEnv, Config};
+use crate::config::{AppEnv, Config, MediaStorageConfig};
 
 /// Issuer used by the test auth provider. Must never be accepted in production.
 pub const TEST_ISSUER: &str = "cartouche-test-issuer";
@@ -39,6 +39,8 @@ pub struct StartupSummary {
     pub test_support_compiled: bool,
     pub test_routes_enabled: bool,
     pub bind_addr: SocketAddr,
+    /// Where media are stored: the local directory, or the bucket (never its credentials).
+    pub media_storage: String,
 }
 
 pub fn startup_summary(config: &Config) -> StartupSummary {
@@ -49,6 +51,14 @@ pub fn startup_summary(config: &Config) -> StartupSummary {
         test_support_compiled: TEST_SUPPORT_COMPILED,
         test_routes_enabled: test_routes_enabled(config),
         bind_addr: config.bind_addr,
+        media_storage: describe_media_storage(&config.media),
+    }
+}
+
+fn describe_media_storage(media: &MediaStorageConfig) -> String {
+    match media {
+        MediaStorageConfig::Local { dir } => format!("local:{}", dir.display()),
+        MediaStorageConfig::S3 { bucket, region, .. } => format!("s3:{bucket}@{region}"),
     }
 }
 
@@ -110,6 +120,7 @@ mod tests {
         assert_eq!(summary.test_support_compiled, TEST_SUPPORT_COMPILED);
         assert_eq!(summary.test_routes_enabled, test_routes_enabled(&c));
         assert_eq!(summary.bind_addr, c.bind_addr);
+        assert_eq!(summary.media_storage, "local:./data/media");
     }
 
     // spec: ACC-008

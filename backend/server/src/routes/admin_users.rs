@@ -1,4 +1,5 @@
-//! Support routes: list accounts and change their status (ADM-001 to ADM-005).
+//! Support routes: list accounts, change their status (ADM-001 to ADM-005) and read one
+//! account with its cards (ADM-006, ADM-013).
 
 use axum::Json;
 use axum::extract::State;
@@ -30,7 +31,7 @@ pub struct AdminUserView {
 }
 
 impl AdminUserView {
-    fn new(user: User, state: &AppState) -> Self {
+    pub(crate) fn new(user: User, state: &AppState) -> Self {
         AdminUserView {
             is_admin: state.config.admin_user_ids.contains(&user.subject),
             id: user.id,

@@ -1,0 +1,280 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select s.is_current, cur.slug as current_slug, c.id, c.owner_id, c.template, c.settings, c.theme, c.first_name, c.last_name, c.job_title, c.company, c.description, c.email, c.phone, c.links, c.header_media_id, c.avatar_media_id, c.owner_disabled_at, c.support_disabled_at, c.created_at, c.updated_at, u.status as owner_status from card_slugs s left join cards c on c.id = s.card_id left join card_slugs cur on cur.card_id = c.id and cur.is_current left join users u on u.id = c.owner_id where s.slug = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_current",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "card_slugs",
+            "name": "is_current"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "current_slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "card_slugs",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "owner_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "owner_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "template",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "template"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "settings",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "settings"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "theme",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "theme"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "job_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "job_title"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "company",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "company"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "phone"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "links",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "links"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "header_media_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "header_media_id"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "avatar_media_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "avatar_media_id"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "owner_disabled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "owner_disabled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "support_disabled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "support_disabled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "owner_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a89709e59d9e80bc5f016ce7eedf9616dff03eee4565a70d18f1b53af3031d0a"
+}

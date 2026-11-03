@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update cards set owner_disabled_at = $3, updated_at = now() where id = $1 and owner_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "79b941e062d30f93785983af66ac393d46383825d2d1af43f41518a562fa4395"
+}

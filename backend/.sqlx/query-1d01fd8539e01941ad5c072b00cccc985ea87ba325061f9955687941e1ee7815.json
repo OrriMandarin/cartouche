@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select owner_id, card_id, is_current from card_slugs where slug = $1 for update",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "card_slugs",
+            "name": "owner_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "card_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "card_slugs",
+            "name": "card_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "is_current",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "card_slugs",
+            "name": "is_current"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "1d01fd8539e01941ad5c072b00cccc985ea87ba325061f9955687941e1ee7815"
+}

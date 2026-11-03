@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into cards (id, owner_id, template, settings, theme, first_name, last_name, job_title, company, description, email, phone, links, owner_disabled_at, support_disabled_at) values ($1, $2, $3, '{}', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) on conflict (id) do update set owner_id = excluded.owner_id, template = excluded.template, settings = excluded.settings, theme = excluded.theme, first_name = excluded.first_name, last_name = excluded.last_name, job_title = excluded.job_title, company = excluded.company, description = excluded.description, email = excluded.email, phone = excluded.phone, links = excluded.links, owner_disabled_at = excluded.owner_disabled_at, support_disabled_at = excluded.support_disabled_at, updated_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "208609daedd2f5c5c5d6c54b70c79c103943a8e53ee1c126d50077385632c6d4"
+}

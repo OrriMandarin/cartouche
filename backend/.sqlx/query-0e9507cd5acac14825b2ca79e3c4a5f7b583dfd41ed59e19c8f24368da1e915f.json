@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into card_slugs (slug, owner_id, card_id, is_current) values ($1, $2, $3, $4) on conflict (slug) do update set owner_id = excluded.owner_id, card_id = excluded.card_id, is_current = excluded.is_current",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0e9507cd5acac14825b2ca79e3c4a5f7b583dfd41ed59e19c8f24368da1e915f"
+}

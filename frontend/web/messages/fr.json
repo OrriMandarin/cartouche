@@ -62,7 +62,61 @@
   "dashboard": {
     "title": "Tableau de bord",
     "empty": "Aucune carte pour l'instant",
-    "support": "Support"
+    "support": "Support",
+    "loading": "Chargement…",
+    "newCard": "Nouvelle carte"
+  },
+  "cards": {
+    "title": "Mes cartes",
+    "untitled": "Carte sans nom",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "status": {
+      "active": "Active",
+      "disabled": "Désactivée",
+      "disabledBySupport": "Désactivée par le support"
+    },
+    "actions": {
+      "edit": "Modifier",
+      "disable": "Désactiver",
+      "enable": "Réactiver",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer"
+    },
+    "share": {
+      "copy": "Copier le lien",
+      "copied": "Lien copié",
+      "copyFailed": "Impossible de copier le lien",
+      "qrSvg": "QR code SVG",
+      "qrPng": "QR code PNG",
+      "qrFailed": "Impossible de générer le QR code"
+    },
+    "slug": {
+      "label": "Lien de la carte",
+      "checking": "Vérification…",
+      "free": "Disponible",
+      "current": "C'est le lien actuel de cette carte",
+      "taken": "Déjà pris",
+      "reserved": "Réservé",
+      "invalid": "Invalide"
+    },
+    "duplicate": {
+      "title": "Dupliquer la carte",
+      "description": "Choisis le lien de la copie. Le contenu, les liens et l'apparence de la carte sont repris.",
+      "confirm": "Dupliquer"
+    },
+    "delete": {
+      "title": "Supprimer la carte ?",
+      "description": "La carte « {name} » sera supprimée définitivement, et son lien affichera une page neutre.",
+      "confirm": "Supprimer définitivement"
+    },
+    "new": {
+      "title": "Nouvelle carte",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "submit": "Créer",
+      "back": "Retour au tableau de bord"
+    }
   },
   "support": {
     "title": "Support",
@@ -90,6 +144,184 @@
       "status": "Statut",
       "createdAt": "Créé le",
       "actions": "Actions"
+    },
+    "cards": {
+      "title": "Cartes",
+      "empty": "Cet utilisateur n'a aucune carte.",
+      "untitled": "Carte sans nom",
+      "view": "Voir",
+      "owner": "Propriétaire :",
+      "disable": "Désactiver (support)",
+      "enable": "Lever le blocage",
+      "backToSupport": "Retour au support",
+      "userNotFound": "Utilisateur introuvable",
+      "cardNotFound": "Carte introuvable"
     }
+  },
+  "themes": {
+    "clair": "Clair",
+    "sombre": "Sombre",
+    "sable": "Sable",
+    "ocean": "Océan",
+    "foret": "Forêt",
+    "corail": "Corail"
+  },
+  "fonts": {
+    "moderne": "Moderne",
+    "editorial": "Éditorial",
+    "chaleureux": "Chaleureux"
+  },
+  "templates": {
+    "classique": {
+      "name": "Classique",
+      "settings": {
+        "links_layout": "Affichage des liens",
+        "links_layout_list": "Liste",
+        "links_layout_icons": "Icônes seules",
+        "animate_events": "Animer les boutons d'événement"
+      }
+    }
+  },
+  "publicCard": {
+    "saveContact": "Enregistrer le contact",
+    "inactive": "Cette carte n'est plus active",
+    "notFound": "Carte introuvable",
+    "links": {
+      "website": "Site web",
+      "linkedin": "LinkedIn",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "tiktok": "TikTok",
+      "youtube": "YouTube",
+      "x": "X",
+      "custom": "Lien"
+    }
+  },
+  "editor": {
+    "title": "Modifier la carte",
+    "loading": "Chargement de la carte…",
+    "back": "Retour",
+    "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
+    "formLabel": "Formulaire de la carte",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Modifications enregistrées",
+    "unsaved": "Modifications non enregistrées",
+    "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+    "sections": {
+      "identity": "Identité",
+      "links": "Liens",
+      "template": "Template",
+      "settings": "Réglages du template",
+      "theme": "Apparence",
+      "media": "Photo et en-tête"
+    },
+    "content": {
+      "first_name": "Prénom",
+      "last_name": "Nom",
+      "job_title": "Poste",
+      "company": "Entreprise",
+      "description": "Description",
+      "email": "E-mail",
+      "phone": "Téléphone"
+    },
+    "links": {
+      "empty": "Aucun lien pour l'instant.",
+      "add": "Ajouter un lien",
+      "max": "Une carte a au plus 20 liens.",
+      "item": "Lien {index}",
+      "kind": "Type",
+      "url": "Adresse",
+      "label": "Intitulé",
+      "remove": "Supprimer le lien {index}",
+      "moveUp": "Monter le lien {index}",
+      "moveDown": "Descendre le lien {index}"
+    },
+    "template": {
+      "beta": "bêta"
+    },
+    "settings": {
+      "none": "Ce template n'a pas de réglages."
+    },
+    "theme": {
+      "preset": "Thème",
+      "font": "Police",
+      "accent": "Couleur d'accent",
+      "text": "Couleur du texte",
+      "background": "Fond",
+      "backgroundSolid": "Couleur unie",
+      "backgroundGradient": "Dégradé",
+      "backgroundColor": "Couleur du fond",
+      "gradientFrom": "Début du dégradé",
+      "gradientTo": "Fin du dégradé",
+      "gradientAngle": "Angle du dégradé",
+      "headerGradient": "Intensité du dégradé de l'en-tête",
+      "buttonShape": "Forme des boutons",
+      "shapes": {
+        "square": "Carrée",
+        "rounded": "Arrondie",
+        "pill": "Pilule"
+      },
+      "contrastWarning": "Le texte est difficile à lire sur ce fond. Choisis des couleurs plus contrastées ; tu peux quand même enregistrer."
+    },
+    "media": {
+      "header": "En-tête",
+      "avatar": "Photo de profil",
+      "headerHintImage": "Image JPEG, PNG ou WebP, 10 Mo au plus.",
+      "headerHintVideo": "Image JPEG, PNG ou WebP (10 Mo au plus) ou vidéo MP4 (30 secondes et 25 Mo au plus).",
+      "avatarHint": "Image JPEG, PNG ou WebP, 10 Mo au plus. Elle sera recadrée en carré.",
+      "choose": "Choisir un fichier",
+      "replace": "Remplacer",
+      "remove": "Retirer",
+      "uploading": "Envoi en cours…",
+      "current": "Fichier actuel : {kind}",
+      "kinds": {
+        "image": "image",
+        "video": "vidéo"
+      },
+      "thumbnail": "Aperçu du fichier actuel",
+      "cropper": {
+        "title": "Recadrer la photo",
+        "description": "Déplace et zoome la photo : la partie dans le cercle sera gardée.",
+        "zoom": "Zoom",
+        "confirm": "Valider",
+        "cancel": "Annuler"
+      },
+      "errors": {
+        "unsupported": "Ce format n'est pas accepté",
+        "too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
+        "unreadable": "Ce fichier ne peut pas être lu par le navigateur",
+        "video_too_long": "La vidéo dépasse 30 secondes",
+        "image_too_large": "Cette image est trop grande (40 millions de pixels au plus)",
+        "poster_required": "L'image d'attente de la vidéo est manquante : réessaie",
+        "payload_too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
+        "unsupported_media_type": "Ce fichier n'est pas une image JPEG, PNG ou WebP ni une vidéo MP4, ou il est abîmé",
+        "generic": "L'envoi a échoué : réessaie dans un instant"
+      }
+    },
+    "preview": {
+      "title": "Aperçu de la carte",
+      "frame": "Aperçu dans un téléphone",
+      "simulateEvent": "Simuler un événement en cours",
+      "event": "Événement de démonstration"
+    }
+  },
+  "fieldErrors": {
+    "required": "Ce champ est obligatoire.",
+    "too_long": "Ce texte est trop long.",
+    "invalid_slug": "Le lien ne peut contenir que des lettres minuscules, des chiffres et des tirets, entre 3 et 64 caractères.",
+    "slug_taken": "Ce lien est déjà pris.",
+    "slug_reserved": "Ce lien est réservé.",
+    "invalid_email": "Cette adresse e-mail n'est pas valide.",
+    "invalid_phone": "Ce numéro de téléphone n'est pas valide.",
+    "invalid_url": "Cette adresse n'est pas valide : elle doit commencer par https:// ou http://.",
+    "too_many_links": "Une carte a au plus 20 liens.",
+    "invalid_template": "Ce template n'existe pas.",
+    "invalid_theme": "Cette apparence n'est pas valide.",
+    "invalid_settings": "Ces réglages ne sont pas valides.",
+    "invalid_media": "Ce fichier n'est pas utilisable ici.",
+    "image_too_large": "Cette image est trop grande.",
+    "video_too_long": "Cette vidéo est trop longue.",
+    "poster_required": "Une image d'attente est nécessaire pour la vidéo."
   }
 }

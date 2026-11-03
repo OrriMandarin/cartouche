@@ -1,0 +1,264 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into cards (id, owner_id, template, settings, theme, first_name, last_name,\n                              job_title, company, description, email, phone, links)\n           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n           returning id, owner_id, $14::text as \"slug!\", template, settings, theme, first_name,\n                     last_name, job_title, company, description, email, phone, links,\n                     header_media_id, avatar_media_id, owner_disabled_at, support_disabled_at,\n                     created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "owner_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "slug!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "template",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "template"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "settings",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "settings"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "theme",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "theme"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "job_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "job_title"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "company",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "company"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "phone"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "links",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "links"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "header_media_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "header_media_id"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "avatar_media_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "avatar_media_id"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "owner_disabled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "owner_disabled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "support_disabled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "support_disabled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "d60ab01a525a30447fd069541fb599a3df89ff2cfb6ab5bbec6e27016940bf7e"
+}

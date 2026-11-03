@@ -1,11 +1,14 @@
 # Tableau de bord et éditeur de carte
 
-> Statut : spécifié, non implémenté (plan 2) ; la liste des événements : plan 3 ; l'accès aux contacts et aux exports : plan 4
+> Statut : implémenté (plan 2) ; EDI-009 : plan 3 ; EDI-010 : plan 4
 
 ## Cartes
 
 - **EDI-001** — Le tableau de bord permet de lister, créer, éditer, dupliquer, désactiver, réactiver et supprimer des cartes.
 - **EDI-002** — Supprimer une carte demande une confirmation (voir LNK-012).
+- **EDI-012** — La liste des cartes affiche, pour chacune, le nom, le lien public et l'état : « Active », « Désactivée » ou « Désactivée par le support » (voir LNK-011).
+- **EDI-013** — Pour créer une carte, l'utilisateur saisit un prénom et un nom, puis accepte ou modifie le slug proposé (voir LNK-019). La carte est créée active, avec le template Classique et le thème par défaut, et s'ouvre dans l'éditeur.
+- **EDI-014** — Dupliquer une carte copie son contenu, ses liens, son template, son thème, ses réglages et ses médias, sous un nouveau slug choisi par l'utilisateur. Ni les anciens slugs, ni les événements, ni les contacts collectés ne sont copiés, et la copie est active. Une carte désactivée par le support ne peut pas être dupliquée (`409 card_disabled_by_support`).
 
 ## Éditeur de carte
 
@@ -15,6 +18,9 @@
 - **EDI-006** — Les changements ne sont publiés qu'à l'enregistrement.
 - **EDI-007** — Le formulaire de l'éditeur est généré à partir du schéma de réglages du template choisi (voir TPL-004).
 - **EDI-008** — Les chaînes saisies dans l'éditeur sont normalisées en NFC avant d'être stockées.
+- **EDI-015** — L'enregistrement est tout ou rien : si une partie est refusée (slug pris, champ invalide), rien n'est modifié. Chaque erreur s'affiche à côté de son champ, et aucune saisie n'est perdue.
+- **EDI-016** — Quitter l'éditeur avec des modifications non enregistrées demande une confirmation.
+- **EDI-017** — L'événement simulé de EDI-005 n'existe que dans l'aperçu : il n'est jamais enregistré ni visible sur la page publique.
 
 ## Événements et contacts
 

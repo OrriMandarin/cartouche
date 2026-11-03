@@ -69,6 +69,12 @@ describe("UserModerationTable", () => {
     expect(row).toHaveTextContent("5 mars 2026");
   });
 
+  test("ADM-006: the name links to the account's page", () => {
+    renderTable([user({ id: "id-carol", subject: "seed-carol" })]);
+    expect(screen.getByTestId("user-link-seed-carol")).toHaveAttribute("href", "/support/users/id-carol");
+    expect(screen.getByTestId("user-link-seed-carol")).toHaveTextContent("Carol");
+  });
+
   test("falls back to email then subject when there is no display name", () => {
     renderTable([
       user({ subject: "s1", display_name: null, email: "x@example.test" }),

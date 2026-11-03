@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use cartouche_domain::SignupMode;
 use thiserror::Error;
@@ -30,6 +31,45 @@ pub struct AuthConfig {
     pub audience: Option<String>,
 }
 
+/// A value that must never be printed: `Debug` shows `***`.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Secret(String);
+
+impl Secret {
+    pub fn new(value: impl Into<String>) -> Secret {
+        Secret(value.into())
+    }
+
+    pub fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for Secret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("\"***\"")
+    }
+}
+
+/// Where media files are stored (MED-009).
+// Built once at startup: boxing the S3 variant would only complicate the type.
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MediaStorageConfig {
+    /// A directory on the API host, served by the API under `/media/*`.
+    Local { dir: PathBuf },
+    /// An S3-compatible bucket, served from `public_base_url` (MED-011).
+    S3 {
+        bucket: String,
+        region: String,
+        /// Custom endpoint for S3-compatible services (MinIO, R2...); AWS when absent.
+        endpoint: Option<Url>,
+        access_key_id: String,
+        secret_access_key: Secret,
+        public_base_url: Url,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     pub app_env: AppEnv,
@@ -40,6 +80,7 @@ pub struct Config {
     pub admin_user_ids: HashSet<String>,
     pub signup_mode: SignupMode,
     pub sentry_dsn: Option<String>,
+    pub media: MediaStorageConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -56,8 +97,9 @@ impl Config {
     }
 
     pub fn from_vars(get: impl Fn(&str) -> Option<String>) -> Result<Config, ConfigError> {
-        let required = |name: &str| get(name).ok_or_else(|| ConfigError::Missing(name.to_string()));
         let optional = |name: &str| get(name).filter(|v| !v.trim().is_empty());
+        let required =
+            |name: &str| optional(name).ok_or_else(|| ConfigError::Missing(name.to_string()));
         fn invalid(name: &str, e: impl std::fmt::Display) -> ConfigError {
             ConfigError::Invalid(name.to_string(), e.to_string())
         }
@@ -89,6 +131,34 @@ impl Config {
             .map(str::to_string)
             .collect();
 
+        let media = match optional("MEDIA_STORAGE").as_deref().map(str::trim) {
+            None | Some("local") => MediaStorageConfig::Local {
+                dir: optional("MEDIA_LOCAL_DIR")
+                    .map_or_else(|| PathBuf::from("./data/media"), PathBuf::from),
+            },
+            Some("s3") => MediaStorageConfig::S3 {
+                bucket: required("MEDIA_S3_BUCKET")?,
+                region: required("MEDIA_S3_REGION")?,
+                endpoint: optional("MEDIA_S3_ENDPOINT")
+                    .map(|v| {
+                        v.parse::<Url>()
+                            .map_err(|e| invalid("MEDIA_S3_ENDPOINT", e))
+                    })
+                    .transpose()?,
+                access_key_id: required("MEDIA_S3_ACCESS_KEY_ID")?,
+                secret_access_key: Secret::new(required("MEDIA_S3_SECRET_ACCESS_KEY")?),
+                public_base_url: required("MEDIA_PUBLIC_BASE_URL")?
+                    .parse::<Url>()
+                    .map_err(|e| invalid("MEDIA_PUBLIC_BASE_URL", e))?,
+            },
+            Some(other) => {
+                return Err(invalid(
+                    "MEDIA_STORAGE",
+                    format!("expected `local` or `s3`, got `{other}`"),
+                ));
+            }
+        };
+
         Ok(Config {
             app_env,
             database_url,
@@ -102,6 +172,7 @@ impl Config {
             admin_user_ids,
             signup_mode,
             sentry_dsn: optional("SENTRY_DSN"),
+            media,
         })
     }
 }
@@ -201,6 +272,25 @@ mod tests {
     }
 
     #[test]
+    fn blank_required_variable_is_missing() {
+        for name in [
+            "DATABASE_URL",
+            "AUTH_ISSUER",
+            "AUTH_JWKS_URL",
+            "PUBLIC_BASE_URL",
+        ] {
+            for blank in ["", "  "] {
+                let err = Config::from_vars(vars(&[(name, blank)])).unwrap_err();
+                assert_eq!(
+                    err,
+                    ConfigError::Missing(name.to_string()),
+                    "{name}={blank:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn missing_database_url_is_an_error() {
         assert_eq!(
             Config::from_vars(vars_without("DATABASE_URL")).unwrap_err(),
@@ -243,5 +333,112 @@ mod tests {
         assert_eq!(c.auth.audience.as_deref(), Some("cartouche"));
         assert_eq!(c.signup_mode, SignupMode::Closed);
         assert_eq!(c.bind_addr.port(), 9000);
+    }
+
+    // spec: MED-009, MED-011
+    #[test]
+    fn media_config_local_by_default_and_s3_on_demand() {
+        let c = Config::from_vars(vars(&[])).unwrap();
+        assert_eq!(
+            c.media,
+            MediaStorageConfig::Local {
+                dir: PathBuf::from("./data/media")
+            }
+        );
+        let c = Config::from_vars(vars(&[("MEDIA_LOCAL_DIR", "/var/lib/cartouche")])).unwrap();
+        assert_eq!(
+            c.media,
+            MediaStorageConfig::Local {
+                dir: PathBuf::from("/var/lib/cartouche")
+            }
+        );
+        let c = Config::from_vars(vars(&[("MEDIA_STORAGE", "local")])).unwrap();
+        assert!(matches!(c.media, MediaStorageConfig::Local { .. }));
+
+        let s3 = [
+            ("MEDIA_STORAGE", "s3"),
+            ("MEDIA_S3_BUCKET", "cards"),
+            ("MEDIA_S3_REGION", "eu-west-3"),
+            ("MEDIA_S3_ACCESS_KEY_ID", "AKIAEXAMPLE"),
+            ("MEDIA_S3_SECRET_ACCESS_KEY", "s3cr3t-value"),
+            ("MEDIA_PUBLIC_BASE_URL", "https://cdn.example"),
+        ];
+        let c = Config::from_vars(vars(&s3)).unwrap();
+        let MediaStorageConfig::S3 {
+            bucket,
+            region,
+            endpoint,
+            public_base_url,
+            ..
+        } = &c.media
+        else {
+            panic!("expected S3, got {:?}", c.media);
+        };
+        assert_eq!((bucket.as_str(), region.as_str()), ("cards", "eu-west-3"));
+        assert_eq!(*endpoint, None);
+        assert_eq!(public_base_url.as_str(), "https://cdn.example/");
+
+        let mut with_endpoint = s3.to_vec();
+        with_endpoint.push(("MEDIA_S3_ENDPOINT", "http://localhost:9000"));
+        let c = Config::from_vars(vars(&with_endpoint)).unwrap();
+        assert!(matches!(
+            c.media,
+            MediaStorageConfig::S3 { endpoint: Some(ref e), .. } if e.as_str() == "http://localhost:9000/"
+        ));
+
+        // The secret never shows up when the configuration is printed.
+        let printed = format!("{c:?}");
+        assert!(!printed.contains("s3cr3t-value"), "{printed}");
+        assert!(printed.contains("***"));
+    }
+
+    // spec: MED-009, MED-011
+    #[test]
+    fn s3_requires_its_variables() {
+        let full = [
+            ("MEDIA_STORAGE", "s3"),
+            ("MEDIA_S3_BUCKET", "cards"),
+            ("MEDIA_S3_REGION", "eu-west-3"),
+            ("MEDIA_S3_ACCESS_KEY_ID", "AKIAEXAMPLE"),
+            ("MEDIA_S3_SECRET_ACCESS_KEY", "s3cr3t-value"),
+            ("MEDIA_PUBLIC_BASE_URL", "https://cdn.example"),
+        ];
+        for (missing, _) in &full[1..] {
+            let given: Vec<_> = full.iter().filter(|(n, _)| n != missing).copied().collect();
+            assert_eq!(
+                Config::from_vars(vars(&given)).unwrap_err(),
+                ConfigError::Missing((*missing).to_string()),
+                "without {missing}"
+            );
+        }
+        // Blank counts as absent.
+        let mut blank = full.to_vec();
+        blank.push(("MEDIA_PUBLIC_BASE_URL", "  "));
+        assert_eq!(
+            Config::from_vars(vars(&blank)).unwrap_err(),
+            ConfigError::Missing("MEDIA_PUBLIC_BASE_URL".into())
+        );
+    }
+
+    // spec: MED-009
+    #[test]
+    fn invalid_media_values_are_errors() {
+        for (name, value) in [("MEDIA_STORAGE", "ftp"), ("MEDIA_STORAGE", "S3 ")] {
+            let err = Config::from_vars(vars(&[(name, value)])).unwrap_err();
+            assert!(
+                matches!(err, ConfigError::Invalid(ref n, _) if n == name),
+                "{value}: {err:?}"
+            );
+        }
+        let err = Config::from_vars(vars(&[
+            ("MEDIA_STORAGE", "s3"),
+            ("MEDIA_S3_BUCKET", "cards"),
+            ("MEDIA_S3_REGION", "eu-west-3"),
+            ("MEDIA_S3_ACCESS_KEY_ID", "k"),
+            ("MEDIA_S3_SECRET_ACCESS_KEY", "s"),
+            ("MEDIA_PUBLIC_BASE_URL", "not a url"),
+        ]))
+        .unwrap_err();
+        assert!(matches!(err, ConfigError::Invalid(ref n, _) if n == "MEDIA_PUBLIC_BASE_URL"));
     }
 }

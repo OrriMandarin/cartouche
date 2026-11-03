@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update cards set header_media_id = $3, avatar_media_id = $4, updated_at = now() where id = $1 and owner_id = $2 and ($3::uuid is null or exists ( select 1 from media where id = $3 and card_id = $1 and slot = 'header')) and ($4::uuid is null or exists ( select 1 from media where id = $4 and card_id = $1 and slot = 'avatar'))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ab62995e1f83727852e278207c1b284a3c9c0d86c5c879b32663f47869615823"
+}

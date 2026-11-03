@@ -47,7 +47,7 @@ impl TryFrom<UserRow> for User {
     }
 }
 
-fn parse_status(status: &str) -> Result<UserStatus, sqlx::Error> {
+pub(crate) fn parse_status(status: &str) -> Result<UserStatus, sqlx::Error> {
     status.parse().map_err(|e| sqlx::Error::ColumnDecode {
         index: "status".into(),
         source: Box::new(e),

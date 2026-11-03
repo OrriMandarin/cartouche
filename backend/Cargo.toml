@@ -9,9 +9,11 @@ license = "MIT"
 publish = false
 
 [workspace.dependencies]
+base64 = "0.23.1"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 unicode-normalization = "0.1"
 url = "2"
+uuid = { version = "1.29.0", features = ["v7"] }
 cartouche-domain = { path = "domain" }

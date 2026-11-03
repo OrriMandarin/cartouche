@@ -5,7 +5,7 @@ description: Use when a Cartouche test or demo needs a new named dataset (seed s
 
 # Ajouter un scénario de données
 
-Les scénarios vivent dans `backend/server/src/test_support/seed.rs` (feature `test-support`, jamais en production). Un scénario est une fonction `fn(&PgPool) -> BoxFuture<Result<SeedReport, sqlx::Error>>` enregistrée dans `SCENARIOS`. Le scénario `base` est le modèle à copier.
+Les scénarios vivent dans `backend/server/src/test_support/seed.rs` (feature `test-support`, jamais en production). Un scénario est une fonction `fn(&PgPool) -> BoxFuture<Result<SeedReport, sqlx::Error>>` enregistrée dans `SCENARIOS`. Le scénario `base` est le modèle à copier ; `cards` (cartes d'Alice, Bob et Dan dans différents états, sans média) montre comment remplir `cards`.
 
 ## Étapes
 
@@ -18,7 +18,7 @@ Les scénarios vivent dans `backend/server/src/test_support/seed.rs` (feature `t
    ];
    ```
 3. **Tables** : toute nouvelle table touchée par le scénario doit figurer dans `RESET_TABLES` (même fichier), sinon `reset` ne la vide pas.
-4. **Étendre `SeedReport`** si les tests ont besoin d'identifiants créés (il est renvoyé tel quel par `POST /api/test/seed`) ; l'interface `SeededUser` de `frontend/e2e/fixtures.ts` suit.
+4. **Étendre `SeedReport`** si les tests ont besoin d'identifiants créés. Il vaut `SeedReport { users, cards }` (`base` renvoie `cards` vide) et est renvoyé tel quel par `POST /api/test/seed` ; dans Playwright, `api.seed("<nom>")` le renvoie (`const { cards } = await api.seed("cards")`), et les interfaces `SeededUser`/`SeededCard` de `frontend/e2e/fixtures.ts` suivent.
 5. **Test** : un test d'intégration dans `backend/server/tests/test_support.rs` (cité par sa règle `// spec: …` s'il y en a une) qui charge le scénario et vérifie son contenu, plus le test en ligne de `seed.rs` si la logique est non triviale.
 
 ## Conventions

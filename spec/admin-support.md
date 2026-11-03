@@ -1,6 +1,6 @@
 # Validation des inscriptions et support
 
-> Statut : partiellement implémenté : ADM-001 à ADM-005 (plan 1) ; ADM-006 et suivantes : spécifié (plans 2 et 4, indiqués règle par règle)
+> Statut : implémenté : ADM-001 à ADM-006 et ADM-009 à ADM-015 (plans 1 et 2) ; ADM-007 et ADM-008 : plan 4
 
 ## Accès et gestion des comptes
 
@@ -18,12 +18,15 @@
 
 - **ADM-006** — Un administrateur peut consulter, pour un utilisateur donné, son profil et ses cartes, en lecture seule. Plan 2.
 - **ADM-007** — Un administrateur peut consulter, pour un utilisateur donné, ses événements et ses contacts collectés, en lecture seule. Plan 4.
+- **ADM-013** — La page de support d'un utilisateur liste ses cartes avec leur état et permet d'ouvrir chacune en lecture seule, même désactivée : son contenu s'affiche dans l'aperçu du template (voir TPL-014). Plan 2.
 
 ## Modération des cartes
 
 - **ADM-009** — Un administrateur peut désactiver une carte abusive ; la désactivation par le support est un état distinct de celle du propriétaire (voir LNK-010). Plan 2.
 - **ADM-010** — Seul un administrateur peut lever la désactivation d'une carte par le support (voir LNK-011). Plan 2.
 - **ADM-011** — Quand un compte est suspendu, toutes ses cartes affichent la page neutre « Cette carte n'est plus active » (voir LNK-006). Plan 2.
+- **ADM-014** — La désactivation d'une carte par le support et la levée de ce blocage sont inscrites au journal d'audit (voir ADM-005), avec les actions `card.support_disabled` et `card.support_enabled` et la carte pour cible. Plan 2.
+- **ADM-015** — Désactiver une carte déjà bloquée par le support, ou lever un blocage qui n'existe pas, est refusé par `409 invalid_transition`. Plan 2.
 
 ## Limites des pouvoirs
 

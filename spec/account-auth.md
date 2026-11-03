@@ -1,6 +1,6 @@
 # Compte et authentification
 
-> Statut : implémenté (plan 1) : ACC-001 à ACC-016 ; ACC-017 : plan 2 (dès les premières ressources utilisateur : cartes) ; ACC-018 : plan 4
+> Statut : implémenté (plans 1 et 2) : ACC-001 à ACC-017 ; ACC-018 : plan 4
 
 ## Création du compte et statut
 

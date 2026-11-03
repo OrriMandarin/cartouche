@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select support_disabled_at is not null as \"support_disabled!\"\n           from cards where id = $1 and owner_id = $2 for update",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "support_disabled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ef6e4528976ff7d148d4a6461a0c49fbf220bd3754ace0468a9246e51031b700"
+}

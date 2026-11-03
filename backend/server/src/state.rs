@@ -7,6 +7,7 @@ use sqlx::PgPool;
 
 use crate::auth::TokenVerifier;
 use crate::config::Config;
+use crate::media::MediaService;
 
 /// Shared, cheaply clonable application state.
 #[derive(Clone)]
@@ -15,6 +16,7 @@ pub struct AppState {
     pub config: Arc<Config>,
     pub clock: Arc<dyn Clock>,
     pub verifier: Arc<dyn TokenVerifier>,
+    pub media: MediaService,
     /// The same clock as `clock`, when it can be driven over HTTP (`POST /api/test/clock`).
     /// `None` when the state runs on another clock.
     #[cfg(feature = "test-support")]

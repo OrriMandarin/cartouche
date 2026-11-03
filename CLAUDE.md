@@ -10,12 +10,13 @@ Cartouche est une application open source de carte de visite numérique (backend
 | `docs/superpowers/` | Design initial (figé) et plans de réalisation. |
 | `backend/` | **Tout le Rust** : workspace Cargo, `rust-toolchain.toml`, `Dockerfile`, cache SQLx `.sqlx/`. `domain/` (crate `cartouche-domain`) : logique métier pure. `server/` (crate `cartouche-api`) : Axum, `config`, `auth/`, `db/` (requêtes SQLx), `routes/`, `test_support/` (feature `test-support`), `migrations/`, `tests/` (intégration). |
 | `frontend/` | **Tout le TypeScript** : workspace pnpm (`package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`). Les commandes pnpm se lancent depuis ce dossier ou avec `pnpm -C frontend …`. |
-| `frontend/web/` | Next.js : `src/app/` (pages), `src/components/`, `src/lib/` (logique : auth, `api.ts`, profil de build), `messages/fr.json` (textes d'interface). |
+| `frontend/web/` | Next.js : `src/app/` (pages), `src/components/`, `src/lib/` (logique : auth, `api.ts`, profil de build), `src/templates/` (templates de carte : contrat, registre, schéma de réglages, un dossier par template), `messages/fr.json` (textes d'interface). |
 | `frontend/api-client/` | Client TypeScript **généré** depuis l'OpenAPI (`openapi.json`, `schema.d.ts` commités ; ne pas éditer à la main). |
 | `frontend/e2e/` | Tests Playwright de bout en bout, sur la stack complète (`fixtures.ts`, `tests/*.spec.ts`). |
 | `scripts/` | `spec-lint.mjs` (vérificateur de la spec), `check-prod-guard.sh`. |
 | `.claude/agents/` | Agents du projet. `.claude/skills/` : skills du projet. |
 | `compose.dev.yml`, `compose.test.yml` | Base de dev ; stack complète (db, api, web) pour les tests e2e. |
+| `.data/media/` | Médias des cartes en local (`MEDIA_STORAGE=local`, `MEDIA_LOCAL_DIR`), ignoré par git ; en production, stockage compatible S3. |
 
 ## Commandes (`make`)
 
@@ -86,5 +87,4 @@ Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Nod
 | `update-spec` | Ajouter ou modifier une règle de `spec/` sans contradiction, avant de coder. |
 | `change-api` | Modifier l'API : migration, `db/`, domaine, route et OpenAPI, tests, client généré, frontend. |
 | `add-seed-scenario` | Ajouter un scénario de données pour `make seed` et Playwright. |
-
-La skill « ajouter un template de carte » viendra avec le plan 2, en même temps que le contrat des templates.
+| `add-card-template` | Ajouter un template de carte (page publique) : dossier, schéma de réglages, registre, traductions, contrat et e2e. |

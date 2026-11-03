@@ -26,5 +26,10 @@ pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
         Err(_) => Err(sqlx::Error::PoolTimedOut),
     }
 }
+pub mod admin_cards;
 pub mod audit;
+pub mod cards;
+pub mod media;
+pub mod public_cards;
+pub mod slugs;
 pub mod users;

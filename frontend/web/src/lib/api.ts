@@ -2,8 +2,9 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { ApiError, createApiClient } from "@cartouche/api-client";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useAuth } from "./auth/context";
+import { uploadMedia, type UploadMedia } from "./media/upload";
 
 type ApiClient = ReturnType<typeof createApiClient>;
 
@@ -39,4 +40,20 @@ export function withErrorReporting(client: ApiClient): ApiClient {
 export function useApi(): ApiClient {
   const { getToken } = useAuth();
   return useMemo(() => withErrorReporting(createApiClient({ baseUrl: "", getToken })), [getToken]);
+}
+
+/** Uploads a media of a card as the current session; a failure is reported like those of `useApi`. */
+export function useUploadMedia(cardId: string): UploadMedia {
+  const { getToken } = useAuth();
+  return useCallback(
+    async (slot, file, poster) => {
+      try {
+        return await uploadMedia(getToken, cardId, slot, file, poster);
+      } catch (error) {
+        report(error);
+        throw error;
+      }
+    },
+    [getToken, cardId],
+  );
 }

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { WEB_URL } from "./env";
 
 const isCI = Boolean(process.env.CI);
 
@@ -14,7 +15,7 @@ export default defineConfig({
   forbidOnly: isCI,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:13000",
+    baseURL: WEB_URL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

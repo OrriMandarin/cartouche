@@ -86,6 +86,42 @@ describe('api client', () => {
     expect(apiError.message).toBe('Your account is awaiting approval.');
   });
 
+  test('EDI-015 carries the field errors of a validation_failed response', async () => {
+    const fields = [
+      { field: 'links[0].url', code: 'invalid_url' },
+      { field: 'content.email', code: 'invalid_email' },
+    ];
+    const fetch = mockFetch(() =>
+      json({ error: { code: 'validation_failed', message: 'Invalid fields.', request_id: 'r2', fields } }, 400),
+    );
+    const error = (await client(fetch, 't')
+      .GET('/api/me')
+      .catch((e: unknown) => e)) as ApiError;
+    expect(error.code).toBe('validation_failed');
+    expect(error.fields).toEqual(fields);
+  });
+
+  test('EDI-015 fields ignores what is not a field error', async () => {
+    const cases: [unknown, { field: string; code: string }[]][] = [
+      [undefined, []],
+      ['nope', []],
+      [[{ field: 1 }, null, { field: 'slug', code: 'required' }], [{ field: 'slug', code: 'required' }]],
+    ];
+    for (const [fields, expected] of cases) {
+      const fetch = mockFetch(() =>
+        json({ error: { code: 'validation_failed', message: 'x', request_id: 'r3', fields } }, 400),
+      );
+      const error = (await client(fetch, 't')
+        .GET('/api/me')
+        .catch((e: unknown) => e)) as ApiError;
+      expect(error.fields).toEqual(expected);
+    }
+    const plain = (await client(mockFetch(() => new Response('oops', { status: 500 })), null)
+      .GET('/api/health')
+      .catch((e: unknown) => e)) as ApiError;
+    expect(plain.fields).toEqual([]);
+  });
+
   test('falls back to header request id on non-JSON error', async () => {
     const fetch = mockFetch(
       () => new Response('Bad Gateway', { status: 502, headers: { 'x-request-id': 'h1' } }),
