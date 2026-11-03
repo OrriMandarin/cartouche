@@ -62,7 +62,7 @@ fn target_ratio(slot: Slot) -> f64 {
 }
 
 /// The largest centered rectangle of the shape of `slot` in a `width` × `height` source
-/// (MED-026, MED-033).
+/// (MED-026, MED-033). The source dimensions must be non-zero.
 pub fn default_crop(slot: Slot, width: u32, height: u32) -> CropRect {
     let (width_px, height_px) = (f64::from(width), f64::from(height));
     let ratio = target_ratio(slot);
@@ -112,15 +112,25 @@ pub fn check_crop(
 }
 
 /// The crop in whole pixels, always inside the source; exactly square for an avatar (MED-026).
-pub fn crop_pixels(crop: &CropRect, width: u32, height: u32) -> PixelRect {
+/// The source dimensions must be non-zero.
+pub fn crop_pixels(crop: &CropRect, slot: Slot, width: u32, height: u32) -> PixelRect {
     let scaled = |proportion: f64, size: u32| (proportion * f64::from(size)).round() as u32;
     let x = scaled(crop.x, width).min(width - 1);
     let y = scaled(crop.y, height).min(height - 1);
+    let crop_width = scaled(crop.width, width).clamp(1, width - x);
+    let crop_height = scaled(crop.height, height).clamp(1, height - y);
+    let (crop_width, crop_height) = match slot {
+        Slot::Header => (crop_width, crop_height),
+        Slot::Avatar => {
+            let side = crop_width.min(crop_height);
+            (side, side)
+        }
+    };
     PixelRect {
         x,
         y,
-        width: scaled(crop.width, width).clamp(1, width - x),
-        height: scaled(crop.height, height).clamp(1, height - y),
+        width: crop_width,
+        height: crop_height,
     }
 }
 
@@ -222,7 +232,7 @@ mod tests {
     #[test]
     fn pixel_crop_rounds_and_stays_inside() {
         assert_eq!(
-            crop_pixels(&crop(0.0, 0.0, 0.5, 0.5), 1600, 1200),
+            crop_pixels(&crop(0.0, 0.0, 0.5, 0.5), Slot::Header, 1600, 1200),
             PixelRect {
                 x: 0,
                 y: 0,
@@ -230,16 +240,18 @@ mod tests {
                 height: 600
             }
         );
-        let edge = crop_pixels(&crop(0.3333, 0.0, 0.6667, 1.0), 1001, 751);
+        let edge = crop_pixels(&crop(0.3333, 0.0, 0.6667, 1.0), Slot::Header, 1001, 751);
         assert!(edge.x + edge.width <= 1001);
         assert!(edge.y + edge.height <= 751);
         assert!(edge.width >= 1 && edge.height >= 1);
         // Rounding up past the edge is pulled back.
-        let touching = crop_pixels(&crop(0.5004, 0.0, 0.4996, 1.0), 1000, 100);
+        let touching = crop_pixels(&crop(0.5004, 0.0, 0.4996, 1.0), Slot::Header, 1000, 100);
         assert_eq!(touching.x + touching.width, 1000);
-        // An avatar is exactly square.
-        let square = crop_pixels(&crop(0.0, 0.0, 0.5003, 0.5), 999, 1000);
-        assert_eq!(square.width, square.height);
+        // An avatar is exactly square, even when the rounded sides differ.
+        let square = crop_pixels(&crop(0.0, 0.0, 0.505, 0.5), Slot::Avatar, 1000, 1000);
+        assert_eq!((square.width, square.height), (500, 500));
+        let header = crop_pixels(&crop(0.0, 0.0, 0.505, 0.5), Slot::Header, 1000, 1000);
+        assert_eq!((header.width, header.height), (505, 500));
     }
 
     // spec: MED-028
