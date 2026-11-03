@@ -230,6 +230,7 @@ test("EVT-024 delete an event and its leads", async ({ page, api }) => {
   await page.getByTestId(`event-delete-${paris}`).click();
   await expect(page.getByRole("dialog")).toContainText("1 contact");
   await page.getByTestId("event-delete-cancel").click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByTestId(`event-row-${paris}`)).toBeVisible();
 
   await page.getByTestId(`event-delete-${paris}`).click();
