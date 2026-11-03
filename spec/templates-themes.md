@@ -1,6 +1,6 @@
 # Templates and themes
 
-> Status: implemented (plans 2 and 3)
+> Status: implemented (plans 2 and 3); TPL-009, TPL-011, TPL-012, TPL-013 and TPL-018 amended, TPL-021 to TPL-027: plan 6 (phase A)
 
 ## Templates
 
@@ -16,16 +16,23 @@
 - **TPL-015** — A card whose template is unknown, for example because it was removed from the repository, is displayed with the Classique template.
 - **TPL-020** — The event form, its code screen and its confirmation screen do not depend on the template: they are rendered by a shared component, with the card's theme (colors and fonts, see TPL-010). A template only provides the event button, which leads to `urls.eventForm(id)` (see TPL-002).
 - **TPL-016** — The template's own settings are read through its schema at render time: a missing or invalid value takes the schema's default value, and an invalid setting never makes rendering fail.
+- **TPL-027** — The Classique template has a single setting, "Disposition des liens" ("Links layout", key `links_layout`): "Icônes" ("Icons", value `icons`, the default) or "Liste" ("List", value `list`), see PUB-035. A former `animate_events` setting stored on a card is ignored (TPL-016): the event buttons are always animated, except when the visitor prefers reduced motion (PUB-038).
 
 ## Themes
 
 A theme is a set of data (colors, font, styles) applied within a template that supports it.
 
-- **TPL-009** — Ready-made themes (6 to 8) serve as a starting point.
+- **TPL-009** — v1 ships eight ready-made themes, which serve as a starting point: `craie` "Craie" (the default theme), `ivoire` "Ivoire", `terracotta` "Terracotta", `sauge` "Sauge", `bonbon` "Bonbon", `lagon` "Lagon", `encre` "Encre" and `minuit` "Minuit". Each one sets every setting of TPL-010 and a font pair (TPL-011), with the values of the design file `frontend/design/tokens/themes.json`.
 - **TPL-010** — On top of a theme, the user adjusts: the accent color, the background (solid color or gradient), the text color, the header gradient intensity and the button shape.
-- **TPL-011** — The font is chosen from a short list of title/text pairs, all with good accent support.
-- **TPL-012** — Fonts are self-hosted: no call to Google Fonts.
-- **TPL-013** — A contrast warning is shown when the text becomes unreadable on the background.
+- **TPL-011** — The font is chosen from four title/text pairs, all with good accent support: `inter` "Sobre" (Inter 700 for titles, Inter for text), `playfair` "Éditoriale" (Playfair Display 600, Source Sans 3), `fraunces` "Douce" (Fraunces 600, Nunito Sans) and `bricolage` "Graphique" (Bricolage Grotesque 700, Instrument Sans). Each pair also sets the letter spacing of titles given by `themes.json`.
+- **TPL-012** — Fonts are self-hosted from the `@fontsource-variable` packages (`latin` and `latin-ext` subsets): no call to Google Fonts or to any other external server at runtime. The public page downloads only the font files of its card's pair.
+- **TPL-013** — The editor checks the contrast of the theme as the user adjusts it (TPL-018). When a check fails, a message under the setting concerned gives the measured and the required ratio, for example "Texte illisible sur ce fond. Contraste 2,0:1, il faut au moins 4,5:1." ("Text unreadable on this background. Contrast 2.0:1, at least 4.5:1 is needed."), with the button of TPL-024, and the card cannot be saved while a check fails.
 - **TPL-017** — Allowed values for the settings of TPL-010: colors in `#RRGGBB` format; solid background (one color) or linear gradient (two colors and an angle from 0 to 360°); header gradient intensity from 0 to 100%; button shape square, rounded or pill. The server rejects any other value (`400`, field `theme`, code `invalid_theme`).
-- **TPL-018** — The contrast warning appears when the WCAG contrast ratio between the text color and the background is below 4.5:1; for a gradient background, the worse of the two colors is used. The warning does not prevent saving.
+- **TPL-018** — A theme is readable when its four contrast checks pass, the contrast ratio being that of WCAG 2.x, computed from the relative luminance of the sRGB colors: (1) the text on the background, at least 4.5:1; (2) the muted text on a hovered row, at least 4.5:1; (3) the text on the accent (TPL-021), at least 4.5:1; (4) the accent on a hovered row, at least 3:1. With a gradient background, checks 1, 2 and 4 must pass on both of its colors. The muted text is the text color mixed at 78% with the background's first color in the Oklab space; a hovered row is the text color at 12% opacity laid over the background color.
 - **TPL-019** — An unknown ready-made theme or font pair, for example because it was removed from the repository, is replaced at render time by the default theme and pair.
+- **TPL-021** — The color of text laid on the accent is `#FFFFFF` or `#111111`, whichever contrasts more with the accent. It is computed from the accent, never stored.
+- **TPL-022** — A theme is dark when its text color has a higher relative luminance than its background's first color, and light otherwise. The card's native controls (date pickers, checkboxes) follow it (CSS `color-scheme`), and the error color of the event form is `#B3261E` on a light theme and `#FF8A80` on a dark one.
+- **TPL-023** — The server applies TPL-018 to the theme of every card save, as it will be rendered (the ready-made theme's values, then the owner's settings, with the fallbacks of TPL-019). An unreadable theme is rejected (`400`, field `theme`, code `low_contrast`) and nothing is saved (see EDI-015). A card stored with an unreadable theme before this rule is still displayed as stored; its next save is refused until its colors pass. Duplicating a card (EDI-014) copies its theme without checking it.
+- **TPL-024** — Next to a failed check, a button "Utiliser une couleur lisible (#RRGGBB)" ("Use a readable color") replaces the setting concerned (the text color for checks 1 and 2, the accent for checks 3 and 4) with the first of these colors that makes all four checks pass: the ready-made theme's own value for that setting, then `#111111`, then `#FFFFFF`. When none does, no button is shown.
+- **TPL-025** — Cards that reference the ready-made themes and font pairs of plans 2 and 3 are renamed once in the database: themes `clair` → `craie`, `sombre` → `encre`, `sable` → `ivoire`, `ocean` → `minuit`, `foret` → `sauge`, `corail` → `terracotta`; pairs `moderne` → `inter`, `editorial` → `playfair`, `chaleureux` → `fraunces`. A card without a pair of its own, whose former theme's pair (renamed) differs from its new theme's pair, receives that renamed pair as its own, so that its fonts do not change. The owner's colors and other settings are kept.
+- **TPL-026** — The theme's CSS variables (`--c-*`) are set only on the element that holds the card (on the public page and the event form, the area around the card, whose background they paint; in the editor's preview and in the dashboard's card thumbnails, the card itself), never on the document root: a card's theme never changes the dashboard's own colors (`--app-*`), and the reverse.

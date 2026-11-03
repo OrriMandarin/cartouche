@@ -1,6 +1,6 @@
 # Public card link
 
-> Status: implemented (plans 2 and 3); LNK-015 and LNK-016: plan 4
+> Status: implemented (plans 2 and 3); LNK-015 and LNK-016: plan 4; LNK-006, LNK-023 and LNK-027 amended, LNK-034: plan 6 (phase A); LNK-035 and LNK-036: plan 6 (phase B)
 
 ## Format and uniqueness
 
@@ -9,9 +9,10 @@
 - **LNK-018** — A slug is 3 to 64 characters long: lowercase letters without accents, digits and hyphens, with no hyphen at the start or end, and no two hyphens in a row. The input is trimmed of leading and trailing spaces and lowercased before being checked; an invalid slug is rejected (`400`, field `slug`, code `invalid_slug`).
 - **LNK-019** — The slug suggestion (see LNK-001) starts from the first and last name: accents removed, lowercased, every other character replaced with a hyphen, then made to conform to LNK-018 (extra hyphens removed, 64 characters at most). If this slug is not available, `-2`, `-3`… is appended until the first available slug.
 - **LNK-020** — Before saving, the dashboard shows whether the entered slug is available, already taken, reserved or invalid.
+- **LNK-035** — When the entered slug is taken or reserved, the dashboard proposes three available slugs, each chosen with one click: the first three available slugs of the sequence `<slug>-2`, `<slug>-3`… built from the entered slug, made to conform to LNK-018 as in LNK-019. When the slug is available or invalid, nothing is proposed.
 - **LNK-021** — A link entered with uppercase letters (`/c/Alice-Durand`) permanently redirects to its lowercase form.
 - **LNK-022** — Claiming a slug that belongs to another user (current slug, former slug or reserved slug) is rejected with `409 slug_taken`, without saying who owns it. When two requests claim the same available slug at the same time, only one succeeds and the other gets `409 slug_taken`.
-- **LNK-023** — A slug that was never assigned shows a "Carte introuvable" ("Card not found") page, with HTTP status 404.
+- **LNK-023** — A slug that was never assigned shows the neutral page of a card that is not served (LNK-027), with the same HTTP status 404: a visitor cannot tell an unknown link from a disabled or deleted card.
 
 ## Slug change
 
@@ -24,18 +25,20 @@
 ## Disabling by the owner
 
 - **LNK-005** — The owner can disable or re-enable a card at any time from the dashboard, in one click.
-- **LNK-006** — The link of a disabled card shows a neutral page "Cette carte n'est plus active" ("This card is no longer active"), not a 404 error.
+- **LNK-006** — The link of a disabled card shows the neutral page (LNK-027, LNK-034) instead of the card.
 - **LNK-007** — On a disabled card, the vCard and the event forms are unreachable, including for an event still in progress, and the server rejects submissions.
 - **LNK-008** — The data of a disabled card (content, events, leads) is kept, and remains visible and exportable in the dashboard.
 - **LNK-009** — Re-enabling a card puts the same link back into service, changing nothing else.
 - **LNK-026** — The public page, the vCard and the forms of a card are served only if the card is disabled neither by its owner nor by support, and if its owner's account is `approved`. In all other cases, the link shows the neutral page and the vCard responds `410 card_inactive`.
-- **LNK-027** — The neutral page is the same whether the card is disabled by its owner or by support, deleted, or its owner's account is suspended: it does not reveal the reason and shows no card data, not even in the OpenGraph tags. It is served with HTTP status 200 and asks search engines not to index it.
+- **LNK-027** — The neutral page is the same whether the slug was never assigned (LNK-023), the card is disabled by its owner or by support, deleted, or its owner's account is suspended: it does not reveal the reason and shows no card data, not even in the OpenGraph tags. It is served with HTTP status 404 and asks search engines not to index it (`noindex`).
+- **LNK-034** — The neutral page shows a broken-link pictogram, the title "Cette carte n’est pas disponible" ("This card is not available") and the text "Le lien est peut-être incorrect, ou la carte n’est plus active." ("The link may be wrong, or the card is no longer active."). It always uses the neutral theme (accent and text `#1C1C1A`, background `#F5F5F3`, "Sobre" font pair, TPL-011), never the card's.
 
 ## Disabling by support
 
 - **LNK-010** — Disabling by support is a state distinct from disabling by the owner. On the public side, the card shows the same neutral page (see LNK-006).
 - **LNK-011** — For a card disabled by support, the owner sees "Désactivée par le support" ("Disabled by support") in their dashboard and cannot re-enable it themselves; only an administrator can lift this block (see ADM-009 and ADM-010).
 - **LNK-028** — Disabling by the owner and disabling by support are independent. As long as support blocks a card, its owner can neither disable nor re-enable it (`409 card_disabled_by_support`); when support lifts the block, the card returns to the state its owner had chosen.
+- **LNK-036** — As long as support blocks a card, its owner cannot change it either: saving the card, uploading media to it and re-framing its media (MED-030) are refused with `409 card_disabled_by_support`, and the dashboard shows the card read-only. Its events stay editable (EVT-025) and its leads exportable (LNK-008).
 
 ## Deletion
 

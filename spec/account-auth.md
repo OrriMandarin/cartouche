@@ -1,6 +1,6 @@
 # Account and authentication
 
-> Status: implemented (plans 1 and 2): ACC-001 to ACC-017; ACC-018: plan 4
+> Status: implemented (plans 1 and 2): ACC-001 to ACC-017; ACC-018: plan 4; ACC-025 to ACC-027: plan 6 (phase B)
 
 ## Account creation and status
 
@@ -13,6 +13,8 @@
 - **ACC-010** — A user creates their account and signs in through the identity provider, and can sign out.
 - **ACC-011** — A user whose account is `pending` sees a "Ton compte est en attente de validation" ("Your account is pending approval") page and cannot create anything.
 - **ACC-012** — The default sign-up mode (`SIGNUP_MODE` absent) is `approval`.
+- **ACC-025** — The sign-in page shows, on a computer, the tagline "Ta carte de visite, toujours à jour." ("Your business card, always up to date."), three arguments ("Un tag NFC ou un QR code", "Une page à ton image", "Les contacts de tes salons, au même endroit") and the preview of a card next to the identity provider's sign-in block, and on a phone the tagline above the block. Under the block, links lead to the terms of service and to the privacy policy (ADM-021). The block takes the dashboard's colors and font, with fields and buttons at least 44 pixels high.
+- **ACC-026** — The screens of a `pending`, `rejected` or `suspended` account (ACC-004) are short centered pages with a state badge, a title, a text and a "Se déconnecter" ("Sign out") button. Pending: "Ton compte est en attente de validation" (ACC-011), with the user's email in the text. Rejected: "Ton inscription n’a pas été acceptée" ("Your sign-up was not accepted"). Suspended: "Ton compte est suspendu" ("Your account is suspended"). The rejected and suspended screens also offer "Contacter le support" ("Contact support", ADM-021).
 
 ## Token verification
 
@@ -37,3 +39,4 @@
 ## Account deletion
 
 - **ACC-018** — When a user deletes their account, all their data is deleted (slugs are then handled according to LNK-015).
+- **ACC-027** — The account deletion area of the account page gives the number of cards, events and leads that the deletion would remove ("{c} cartes, {e} événements et {l} contacts", "{c} cards, {e} events and {l} contacts") and offers "Exporter mes contacts d’abord" ("Export my contacts first"), which leads to the "Contacts" page (EDI-031).

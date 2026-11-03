@@ -22,10 +22,15 @@ Domain concepts, as the spec uses them.
 | **Current slug** | A card's present slug, the one in its public link. |
 | **Former slug** | A slug a card used before its current slug; it redirects to the current slug (see LNK-003). |
 | **Reserved slug** | A slug of a deleted card: it stays with its former owner, who can attach it to a new card (see LNK-013 and LNK-014). |
-| **Neutral page** | The "Cette carte n'est plus active" ("This card is no longer active") page, shown at the link of a card that is not served (see LNK-026 and LNK-027). |
+| **Neutral page** | The "Cette carte n’est pas disponible" ("This card is not available") page, served with HTTP status 404 at the link of a card that is not served and of a slug never assigned (see LNK-023, LNK-026, LNK-027 and LNK-034). |
 | **Media** | A card's header background (image or video) or profile photo, kept in the media storage. |
 | **Event state** | "À venir" ("upcoming"), "en cours" ("in progress") or "passé" ("past"), computed by the server (see EVT-020). |
 | **Submission window** | The period during which an event's form is open: from its start until 15 minutes after its end (see EVT-008 and EVT-026). |
+| **Ready-made theme** | One of the eight themes a card starts from (`craie`, `ivoire`, `terracotta`, `sauge`, `bonbon`, `lagon`, `encre`, `minuit`), adjusted by the owner's own settings (see TPL-009 and TPL-010). |
+| **Contrast checks** | The four contrast ratios a theme must reach to be saved: text, muted text, text on the accent, accent (see TPL-018 and TPL-023). |
+| **Source** | The whole image kept by the server for a media, from which its displayed files are cut, so that it can be re-framed (see MED-025). |
+| **Crop** | The rectangle of the source shown on the card, in proportions of the source: 4:3 for the header, square for the profile photo (see MED-026). |
+| **Framing** | A media's crop and, for a video, its loop and its poster time (see MED-028 and MED-030). |
 | **Device identifier** | A random identifier kept by the prospect's browser, used for the per-device submission limit (see EVT-028). |
 | **Honeypot field** | A form field invisible to a human; a bot that fills it in is ignored (see ABU-002). |
 | **Font pair** | A heading font and a body font, chosen together for a theme (see TPL-011). |
