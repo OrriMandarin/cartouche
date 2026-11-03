@@ -158,7 +158,7 @@ async fn not_yet_valid_token_is_rejected() {
     assert!(verifier.verify(&with_nbf(now - 10)).await.is_ok());
 }
 
-// spec: ACC-007
+// spec: ACC-007, ACC-013
 #[tokio::test]
 async fn wrong_issuer_is_rejected() {
     let (verifier, clock) = verifier(None);
@@ -520,7 +520,7 @@ async fn unreachable_jwks_endpoint_is_unavailable() {
     assert_eq!(verifier.verify(&token).await, Err(AuthError::Unavailable));
 }
 
-// spec: ACC-007
+// spec: ACC-007, ACC-013
 #[tokio::test]
 async fn jwks_keys_are_fetched_and_cached() {
     let (url, hits) = serve(|_| Some(("200 OK", TEST_JWKS.to_string()))).await;
@@ -533,7 +533,7 @@ async fn jwks_keys_are_fetched_and_cached() {
     assert_eq!(hits.load(Ordering::SeqCst), 1, "one fetch serves all calls");
 }
 
-// spec: ACC-007
+// spec: ACC-007, ACC-013
 #[tokio::test]
 async fn unknown_kid_refetches_at_most_once_per_30s() {
     let (url, hits) = serve(|_| Some(("200 OK", TEST_JWKS.to_string()))).await;
@@ -578,7 +578,7 @@ async fn a_rotated_in_key_is_picked_up_after_the_refetch_interval() {
     assert_eq!(hits.load(Ordering::SeqCst), 2);
 }
 
-// spec: ACC-007
+// spec: ACC-007, ACC-013
 #[tokio::test]
 async fn cached_keys_are_reloaded_after_the_ttl() {
     let (url, hits) = serve(|_| Some(("200 OK", TEST_JWKS.to_string()))).await;

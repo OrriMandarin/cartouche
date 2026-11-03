@@ -5,7 +5,7 @@ use std::time::Duration;
 use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwksKeySource, JwtVerifier};
 use cartouche_api::config::Config;
-use cartouche_api::startup::{TEST_SUPPORT_COMPILED, test_routes_enabled, validate};
+use cartouche_api::startup::{startup_summary, test_routes_enabled, validate};
 use cartouche_api::state::AppState;
 use cartouche_api::{db, telemetry};
 use cartouche_domain::{Clock, OverridableClock, SystemClock};
@@ -30,12 +30,14 @@ async fn main() -> ExitCode {
     }
 
     // Only named, non-secret fields are logged: never the whole `Config` (database URL, DSN).
+    let summary = startup_summary(&config);
     tracing::info!(
-        app_env = ?config.app_env,
-        auth_issuer = %config.auth.issuer,
-        test_support_compiled = TEST_SUPPORT_COMPILED,
-        test_routes_enabled = test_routes_enabled(&config),
-        bind_addr = %config.bind_addr,
+        app_env = ?summary.app_env,
+        signup_mode = ?summary.signup_mode,
+        auth_issuer = %summary.auth_issuer,
+        test_support_compiled = summary.test_support_compiled,
+        test_routes_enabled = summary.test_routes_enabled,
+        bind_addr = %summary.bind_addr,
         "starting cartouche-api"
     );
 

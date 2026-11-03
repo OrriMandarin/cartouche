@@ -1,5 +1,9 @@
 use thiserror::Error;
 
+use std::net::SocketAddr;
+
+use cartouche_domain::SignupMode;
+
 use crate::config::{AppEnv, Config};
 
 /// Issuer used by the test auth provider. Must never be accepted in production.
@@ -24,6 +28,28 @@ pub fn validate(config: &Config) -> Result<(), StartupError> {
 /// `/api/test/*` routes are mounted only if compiled in and not running in production.
 pub fn test_routes_enabled(config: &Config) -> bool {
     TEST_SUPPORT_COMPILED && config.app_env != AppEnv::Production
+}
+
+/// The non-secret facts logged when the API starts (ACC-016): never the whole `Config`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StartupSummary {
+    pub app_env: AppEnv,
+    pub signup_mode: SignupMode,
+    pub auth_issuer: String,
+    pub test_support_compiled: bool,
+    pub test_routes_enabled: bool,
+    pub bind_addr: SocketAddr,
+}
+
+pub fn startup_summary(config: &Config) -> StartupSummary {
+    StartupSummary {
+        app_env: config.app_env,
+        signup_mode: config.signup_mode,
+        auth_issuer: config.auth.issuer.clone(),
+        test_support_compiled: TEST_SUPPORT_COMPILED,
+        test_routes_enabled: test_routes_enabled(config),
+        bind_addr: config.bind_addr,
+    }
 }
 
 #[cfg(test)]
@@ -71,6 +97,19 @@ mod tests {
             validate(&config("production", "https://clerk.example.com")),
             Ok(())
         );
+    }
+
+    // spec: ACC-016
+    #[test]
+    fn startup_summary_reports_mode_issuer_and_compiled_features() {
+        let c = config("development", "https://issuer.example.com");
+        let summary = startup_summary(&c);
+        assert_eq!(summary.app_env, AppEnv::Development);
+        assert_eq!(summary.signup_mode, c.signup_mode);
+        assert_eq!(summary.auth_issuer, "https://issuer.example.com");
+        assert_eq!(summary.test_support_compiled, TEST_SUPPORT_COMPILED);
+        assert_eq!(summary.test_routes_enabled, test_routes_enabled(&c));
+        assert_eq!(summary.bind_addr, c.bind_addr);
     }
 
     // spec: ACC-008

@@ -153,6 +153,13 @@ mod tests {
         assert_eq!(AppEnv::parse(Some("production")), AppEnv::Production);
     }
 
+    // spec: ACC-012
+    #[test]
+    fn absent_signup_mode_defaults_to_approval() {
+        let c = Config::from_vars(vars(&[])).unwrap();
+        assert_eq!(c.signup_mode, SignupMode::Approval);
+    }
+
     #[test]
     fn defaults_apply() {
         let c = Config::from_vars(vars(&[])).unwrap();
