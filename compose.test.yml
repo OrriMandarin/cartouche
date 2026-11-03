@@ -1,0 +1,68 @@
+# Containerised stack for end-to-end tests: Postgres 15432, API 18080, web 13000.
+# Every value is hardcoded on purpose (no ${VAR} interpolation): the dev defaults exported
+# by the Makefile and any local .env must never leak into this stack.
+name: cartouche-test
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: cartouche
+      POSTGRES_PASSWORD: cartouche
+      POSTGRES_DB: cartouche
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartouche -d cartouche"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        FEATURES: test-support
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: test
+      DATABASE_URL: postgres://cartouche:cartouche@postgres:5432/cartouche
+      BIND_ADDR: 0.0.0.0:8080
+      PUBLIC_BASE_URL: http://localhost:13000
+      AUTH_ISSUER: cartouche-test-issuer
+      # The API fetches its own test JWKS.
+      AUTH_JWKS_URL: http://localhost:8080/api/test/jwks.json
+      ADMIN_USER_IDS: seed-admin
+      SIGNUP_MODE: approval
+    ports:
+      - "18080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        CARTOUCHE_BUILD_PROFILE: test
+        NEXT_PUBLIC_AUTH_PROVIDER: test
+        # Rewrites are baked at build time, hence a build argument as well as a runtime variable.
+        API_INTERNAL_URL: http://api:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_INTERNAL_URL: http://api:8080
+    ports:
+      - "13000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

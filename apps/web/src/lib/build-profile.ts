@@ -23,3 +23,16 @@ export function resolveBuildConfig(env: { profile?: string; authProvider?: strin
 
   return { profile, authProvider };
 }
+
+/**
+ * Rewrites are baked into the Next build, so the API URL must be known at build time.
+ * Development and test builds fall back to the local API; production must set it explicitly.
+ */
+export function resolveApiInternalUrl(profile: BuildProfile, value: string | undefined): string {
+  const url = value?.trim();
+  if (url !== undefined && url !== "") return url;
+  if (profile === "production") {
+    throw new Error("API_INTERNAL_URL must be set for the production build profile");
+  }
+  return "http://localhost:8080";
+}

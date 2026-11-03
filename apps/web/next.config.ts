@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { resolveBuildConfig } from "./src/lib/build-profile";
+import { resolveApiInternalUrl, resolveBuildConfig } from "./src/lib/build-profile";
 
 // Fails the build when the combination is invalid (spec: ACC-008).
 const { profile } = resolveBuildConfig({
@@ -8,7 +8,7 @@ const { profile } = resolveBuildConfig({
   authProvider: process.env.NEXT_PUBLIC_AUTH_PROVIDER,
 });
 
-const apiInternalUrl = process.env.API_INTERNAL_URL ?? "http://localhost:8080";
+const apiInternalUrl = resolveApiInternalUrl(profile, process.env.API_INTERNAL_URL);
 
 const nextConfig: NextConfig = {
   output: "standalone",

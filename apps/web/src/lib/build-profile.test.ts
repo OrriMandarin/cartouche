@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { resolveBuildConfig } from "./build-profile";
+import { resolveApiInternalUrl, resolveBuildConfig } from "./build-profile";
 
 // spec: ACC-008
 describe("resolveBuildConfig", () => {
@@ -44,5 +44,22 @@ describe("resolveBuildConfig", () => {
 
   test("rejects unknown provider", () => {
     expect(() => resolveBuildConfig({ authProvider: "auth0" })).toThrow(/Unknown auth provider/);
+  });
+});
+
+describe("resolveApiInternalUrl", () => {
+  test("uses the given URL whatever the profile", () => {
+    expect(resolveApiInternalUrl("production", "http://api:8080")).toBe("http://api:8080");
+    expect(resolveApiInternalUrl("test", " http://api:8080 ")).toBe("http://api:8080");
+  });
+
+  test("falls back to the local API for development and test profiles", () => {
+    expect(resolveApiInternalUrl("development", undefined)).toBe("http://localhost:8080");
+    expect(resolveApiInternalUrl("test", "")).toBe("http://localhost:8080");
+  });
+
+  test("throws a clear error when unset under the production profile", () => {
+    expect(() => resolveApiInternalUrl("production", undefined)).toThrow(/API_INTERNAL_URL must be set/);
+    expect(() => resolveApiInternalUrl("production", "  ")).toThrow(/API_INTERNAL_URL must be set/);
   });
 });
