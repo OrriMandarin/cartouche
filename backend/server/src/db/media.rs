@@ -61,26 +61,29 @@ fn variants_json(variants: &[StoredVariant]) -> Result<serde_json::Value, sqlx::
     serde_json::to_value(variants).map_err(|e| sqlx::Error::Encode(Box::new(e)))
 }
 
-/// Records a media of `card_id`. The caller has already checked that the card belongs to
-/// the user (`cards::find_for_owner`).
+/// Records a media on `media.card_id`, only when that card belongs to `owner_id`: `None`
+/// (and no row) otherwise.
 pub async fn insert(
     tx: &mut PgConnection,
-    card_id: Uuid,
+    owner_id: Uuid,
     media: MediaRecord,
-) -> Result<MediaRecord, sqlx::Error> {
+) -> Result<Option<MediaRecord>, sqlx::Error> {
     sqlx::query_as!(
         MediaRow,
-        "insert into media (id, card_id, slot, kind, variants) values ($1, $2, $3, $4, $5) \
+        "insert into media (id, card_id, slot, kind, variants) \
+         select $1, c.id, $3, $4, $5 from cards c where c.id = $2 and c.owner_id = $6 \
          returning id, card_id, slot, kind, variants",
         media.id,
-        card_id,
+        media.card_id,
         media.slot.as_str(),
         media.kind.as_str(),
         variants_json(&media.variants)?,
+        owner_id,
     )
-    .fetch_one(tx)
+    .fetch_optional(tx)
     .await?
-    .try_into()
+    .map(MediaRecord::try_from)
+    .transpose()
 }
 
 pub async fn find_for_owner(

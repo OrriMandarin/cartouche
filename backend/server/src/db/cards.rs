@@ -179,7 +179,7 @@ pub async fn insert(
 }
 
 /// Overwrites the content of the owner's card and its two media. `None` when the owner has
-/// no such card. The returned `slug` is the current one at that moment: apply a slug claim
+/// no such card, or when a media is not one of this card's, in the matching slot. The returned `slug` is the current one at that moment: apply a slug claim
 /// first if the save changes it.
 pub async fn update(
     tx: &mut PgConnection,
@@ -194,7 +194,11 @@ pub async fn update(
              last_name = $7, job_title = $8, company = $9, description = $10, email = $11, \
              phone = $12, links = $13, header_media_id = $14, avatar_media_id = $15, \
              updated_at = now() \
-         where id = $1 and owner_id = $2",
+         where id = $1 and owner_id = $2 \
+           and ($14::uuid is null or exists ( \
+                select 1 from media where id = $14 and card_id = $1 and slot = 'header')) \
+           and ($15::uuid is null or exists ( \
+                select 1 from media where id = $15 and card_id = $1 and slot = 'avatar'))",
         card_id,
         owner_id,
         card.template,

@@ -259,14 +259,17 @@ async fn delete_unreferenced_keeps_attached_media(pool: PgPool) {
     let card = create_card(&pool, alice, "alice").await;
 
     let mut tx = pool.begin().await.unwrap();
-    let attached = media::insert(&mut tx, card.id, media_record(card.id, Slot::Header))
+    let attached = media::insert(&mut tx, alice, media_record(card.id, Slot::Header))
         .await
+        .unwrap()
         .unwrap();
-    let orphan_a = media::insert(&mut tx, card.id, media_record(card.id, Slot::Avatar))
+    let orphan_a = media::insert(&mut tx, alice, media_record(card.id, Slot::Avatar))
         .await
+        .unwrap()
         .unwrap();
-    let orphan_b = media::insert(&mut tx, card.id, media_record(card.id, Slot::Avatar))
+    let orphan_b = media::insert(&mut tx, alice, media_record(card.id, Slot::Avatar))
         .await
+        .unwrap()
         .unwrap();
     let updated = cards::update(
         &mut tx,
@@ -341,8 +344,9 @@ async fn deleting_a_card_deletes_its_media_and_status_follows_the_switches(pool:
     let alice = insert_user(&pool, "alice").await;
     let card = create_card(&pool, alice, "alice").await;
     let mut tx = pool.begin().await.unwrap();
-    media::insert(&mut tx, card.id, media_record(card.id, Slot::Avatar))
+    media::insert(&mut tx, alice, media_record(card.id, Slot::Avatar))
         .await
+        .unwrap()
         .unwrap();
     tx.commit().await.unwrap();
 
@@ -406,8 +410,9 @@ async fn reset_empties_card_tables(pool: PgPool) {
     let alice = insert_user(&pool, "alice").await;
     let card = create_card(&pool, alice, "alice").await;
     let mut tx = pool.begin().await.unwrap();
-    media::insert(&mut tx, card.id, media_record(card.id, Slot::Header))
+    media::insert(&mut tx, alice, media_record(card.id, Slot::Header))
         .await
+        .unwrap()
         .unwrap();
     tx.commit().await.unwrap();
 
@@ -418,4 +423,116 @@ async fn reset_empties_card_tables(pool: PgPool) {
     for table in ["cards", "card_slugs", "media", "users"] {
         assert_eq!(count(&pool, table).await, 0, "{table}");
     }
+}
+
+// spec: ACC-017
+#[sqlx::test(migrations = "./migrations")]
+async fn media_insert_is_scoped_to_the_card_owner(pool: PgPool) {
+    let alice = insert_user(&pool, "alice").await;
+    let bob = insert_user(&pool, "bob").await;
+    let card = create_card(&pool, alice, "alice").await;
+
+    let mut tx = pool.begin().await.unwrap();
+    let refused = media::insert(&mut tx, bob, media_record(card.id, Slot::Header))
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    assert!(refused.is_none());
+    assert_eq!(count(&pool, "media").await, 0);
+}
+
+// spec: ACC-017
+#[sqlx::test(migrations = "./migrations")]
+async fn update_refuses_media_of_another_card_or_slot(pool: PgPool) {
+    let alice = insert_user(&pool, "alice").await;
+    let bob = insert_user(&pool, "bob").await;
+    let alices = create_card(&pool, alice, "alice").await;
+    let bobs = create_card(&pool, bob, "bob").await;
+    let mut tx = pool.begin().await.unwrap();
+    let bobs_header = media::insert(&mut tx, bob, media_record(bobs.id, Slot::Header))
+        .await
+        .unwrap()
+        .unwrap();
+    let alices_avatar = media::insert(&mut tx, alice, media_record(alices.id, Slot::Avatar))
+        .await
+        .unwrap()
+        .unwrap();
+    let alices_header = media::insert(&mut tx, alice, media_record(alices.id, Slot::Header))
+        .await
+        .unwrap()
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let valid = valid_card("alice");
+    let mut tx = pool.begin().await.unwrap();
+    // A media of Bob's card, a media in the wrong slot, and the wrong slot for avatar.
+    assert!(
+        cards::update(
+            &mut tx,
+            alice,
+            alices.id,
+            &valid,
+            Some(bobs_header.id),
+            None
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    assert!(
+        cards::update(
+            &mut tx,
+            alice,
+            alices.id,
+            &valid,
+            Some(alices_avatar.id),
+            None
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    assert!(
+        cards::update(
+            &mut tx,
+            alice,
+            alices.id,
+            &valid,
+            None,
+            Some(alices_header.id)
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    tx.commit().await.unwrap();
+
+    let unchanged = cards::find_for_owner(&pool, alice, alices.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (unchanged.header_media_id, unchanged.avatar_media_id),
+        (None, None)
+    );
+    assert_eq!(unchanged.updated_at, alices.updated_at);
+
+    let mut tx = pool.begin().await.unwrap();
+    let saved = cards::update(
+        &mut tx,
+        alice,
+        alices.id,
+        &valid,
+        Some(alices_header.id),
+        Some(alices_avatar.id),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(
+        (saved.header_media_id, saved.avatar_media_id),
+        (Some(alices_header.id), Some(alices_avatar.id))
+    );
 }
