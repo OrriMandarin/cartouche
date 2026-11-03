@@ -14,6 +14,7 @@ use tracing::{Span, field};
 
 use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
+use crate::routes::account::delete_me;
 use crate::routes::admin_cards::{
     get_card as admin_get_card, get_user as admin_get_user, support_disable_card,
     support_enable_card,
@@ -45,7 +46,7 @@ pub fn build_router(state: AppState) -> Router {
     let router = Router::new()
         .route("/api/openapi.json", get(openapi_json))
         .route("/api/health", get(health))
-        .route("/api/me", get(me))
+        .route("/api/me", get(me).delete(delete_me))
         .route("/api/cards", get(list_cards).post(create_card))
         .route(
             "/api/cards/{id}",

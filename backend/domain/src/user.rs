@@ -103,6 +103,21 @@ pub fn check_transition(from: UserStatus, to: UserStatus) -> Result<(), InvalidT
     }
 }
 
+/// An administrator tried to delete their account (ACC-021).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("administrators cannot delete their account")]
+pub struct AdminAccountDeletion;
+
+/// A current administrator (ACC-003) cannot delete their account: the operator must first
+/// remove them from the administrators.
+pub fn check_account_deletion(is_admin: bool) -> Result<(), AdminAccountDeletion> {
+    if is_admin {
+        Err(AdminAccountDeletion)
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,6 +178,13 @@ mod tests {
             }
         }
         assert_eq!(ok_count, 5);
+    }
+
+    // spec: ACC-021
+    #[test]
+    fn administrators_cannot_delete_their_account() {
+        assert_eq!(check_account_deletion(true), Err(AdminAccountDeletion));
+        assert_eq!(check_account_deletion(false), Ok(()));
     }
 
     #[test]

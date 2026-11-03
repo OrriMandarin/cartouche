@@ -562,7 +562,11 @@ export interface paths {
         get: operations["me"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete the account
+         * @description Deletes the caller's account, its cards, media (files included), events and leads. The card links stay blocked forever. Allowed whatever the account's status; refused to current administrators. All or nothing: if the media files cannot be deleted, nothing is deleted.
+         */
+        delete: operations["delete_me"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3891,6 +3895,69 @@ export interface operations {
                 };
             };
             /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account and all its data are deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller is an administrator (`cannot_delete_admin`), or signups are closed for a new user (`signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The account no longer exists (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure, or the media files could not be deleted: nothing was deleted (`internal_error`). */
             500: {
                 headers: {
                     [name: string]: unknown;

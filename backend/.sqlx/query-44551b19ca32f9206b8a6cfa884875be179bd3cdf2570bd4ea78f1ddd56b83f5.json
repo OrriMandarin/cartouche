@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update audit_log set metadata = metadata - 'slug' where metadata->>'owner_id' = $1::text",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "44551b19ca32f9206b8a6cfa884875be179bd3cdf2570bd4ea78f1ddd56b83f5"
+}

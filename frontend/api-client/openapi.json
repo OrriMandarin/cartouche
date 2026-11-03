@@ -3372,6 +3372,74 @@
             "bearer": []
           }
         ]
+      },
+      "delete": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Delete the account",
+        "description": "Deletes the caller's account, its cards, media (files included), events and leads. The card links stay blocked forever. Allowed whatever the account's status; refused to current administrators. All or nothing: if the media files cannot be deleted, nothing is deleted.",
+        "operationId": "delete_me",
+        "responses": {
+          "204": {
+            "description": "The account and all its data are deleted."
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller is an administrator (`cannot_delete_admin`), or signups are closed for a new user (`signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The account no longer exists (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure, or the media files could not be deleted: nothing was deleted (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
       }
     },
     "/api/public/cards/{slug}": {

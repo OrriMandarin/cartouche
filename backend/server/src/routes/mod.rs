@@ -1,3 +1,4 @@
+pub mod account;
 pub mod admin_cards;
 pub mod admin_leads;
 pub mod admin_users;
