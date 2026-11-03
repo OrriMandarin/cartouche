@@ -1895,7 +1895,7 @@ export interface operations {
                     "application/json": components["schemas"]["CardView"];
                 };
             };
-            /** @description Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`). */
+            /** @description Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`); the `theme` field error is `invalid_theme`, or `low_contrast` when its colours fail the contrast checks. */
             400: {
                 headers: {
                     [name: string]: unknown;

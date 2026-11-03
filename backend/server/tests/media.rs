@@ -465,7 +465,7 @@ async fn saving_a_deleted_card_is_404(pool: PgPool) {
     let media = uploaded(&app, id, "avatar", png(400, 400)).await;
     let body = json!({
         "slug": "alice-durand", "template": "classique", "settings": {},
-        "theme": { "preset": "clair" }, "content": { "first_name": "Alice" },
+        "theme": { "preset": "craie" }, "content": { "first_name": "Alice" },
         "links": [], "avatar_media_id": media["id"],
     });
     let deleted = app

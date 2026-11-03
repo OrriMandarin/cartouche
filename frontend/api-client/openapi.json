@@ -934,7 +934,7 @@
             }
           },
           "400": {
-            "description": "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`).",
+            "description": "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`); the `theme` field error is `invalid_theme`, or `low_contrast` when its colours fail the contrast checks.",
             "content": {
               "application/json": {
                 "schema": {

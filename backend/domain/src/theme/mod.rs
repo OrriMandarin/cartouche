@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::card::DEFAULT_THEME_PRESET;
 
+mod contrast;
+mod presets;
+
+pub use contrast::{ContrastCheck, Measures};
+pub use presets::{DEFAULT_PRESET, Preset, preset};
+
 const MAX_GRADIENT_ANGLE: u16 = 360;
 const MAX_HEADER_GRADIENT: u8 = 100;
 
@@ -136,6 +142,60 @@ impl Theme {
     }
 }
 
+/// The colours a theme is rendered with: the preset's values, then the overrides (TPL-019).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedColors {
+    pub accent: Color,
+    pub text: Color,
+    pub background: Background,
+}
+
+/// The colours of a theme do not pass the contrast checks (TPL-018, TPL-023).
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+#[error("low contrast")]
+pub struct LowContrast {
+    pub failed: Vec<ContrastCheck>,
+}
+
+impl Theme {
+    /// Preset values, then overrides; an unknown preset is `craie` (TPL-019).
+    pub fn resolved_colors(&self) -> ResolvedColors {
+        let base = preset(&self.preset)
+            .or_else(|| preset(DEFAULT_PRESET))
+            .expect("the default preset exists");
+        ResolvedColors {
+            accent: self.accent.clone().unwrap_or_else(|| base.accent.clone()),
+            text: self.text.clone().unwrap_or_else(|| base.text.clone()),
+            background: self
+                .background
+                .clone()
+                .unwrap_or_else(|| base.background.clone()),
+        }
+    }
+
+    /// Refuses a theme failing one of the four contrast checks (TPL-018, TPL-023).
+    pub fn check_readable(&self) -> Result<(), LowContrast> {
+        let colors = self.resolved_colors();
+        let stops: Vec<contrast::Rgb> = match &colors.background {
+            Background::Solid { color } => vec![contrast::parse_hex(color.as_str())],
+            Background::Gradient { from, to, .. } => vec![
+                contrast::parse_hex(from.as_str()),
+                contrast::parse_hex(to.as_str()),
+            ],
+        };
+        let failed = contrast::failed_checks(
+            contrast::parse_hex(colors.text.as_str()),
+            contrast::parse_hex(colors.accent.as_str()),
+            &stops,
+        );
+        if failed.is_empty() {
+            Ok(())
+        } else {
+            Err(LowContrast { failed })
+        }
+    }
+}
+
 /// `^[a-z0-9-]{1,32}$`
 fn is_identifier(value: &str) -> bool {
     (1..=32).contains(&value.len())
@@ -148,30 +208,87 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    fn rgb(color: &Color) -> contrast::Rgb {
+        contrast::parse_hex(color.as_str())
+    }
+
+    // spec: TPL-018
+    #[test]
+    fn ready_made_themes_measure_as_the_design_table() {
+        let file: serde_json::Value = serde_json::from_str(include_str!("presets.json")).unwrap();
+        for preset in presets::all() {
+            let stops: Vec<_> = match &preset.background {
+                Background::Solid { color } => vec![rgb(color)],
+                Background::Gradient { from, to, .. } => vec![rgb(from), rgb(to)],
+            };
+            let m = contrast::measure(rgb(&preset.text), rgb(&preset.accent), &stops);
+            let table = &file["contrastChecks"][&preset.id];
+            for (name, measured) in [
+                ("text", m.text),
+                ("mutedOnHover", m.muted_on_hover),
+                ("onAccent", m.on_accent),
+                ("accentVsBg", m.accent_vs_background),
+            ] {
+                let expected = table[name].as_f64().unwrap();
+                assert!(
+                    (measured - expected).abs() <= 0.1,
+                    "{} {name}: {measured} vs {expected}",
+                    preset.id
+                );
+            }
+            let theme = Theme::parse(&json!({ "preset": preset.id })).unwrap();
+            assert_eq!(theme.check_readable(), Ok(()), "{}", preset.id);
+        }
+    }
+
+    // spec: TPL-018
+    #[test]
+    fn thresholds_are_inclusive() {
+        let white = contrast::parse_hex("#ffffff");
+        let accent = contrast::parse_hex("#2f55d4");
+        let passes = |text: &str| {
+            !contrast::failed_checks(contrast::parse_hex(text), accent, &[white])
+                .contains(&ContrastCheck::Text)
+        };
+        assert!(passes("#767676"));
+        assert!(!passes("#777777"));
+    }
+
+    // spec: TPL-019, TPL-023
+    #[test]
+    fn an_unknown_preset_is_checked_as_craie() {
+        let theme = Theme::parse(&json!({ "preset": "zzz", "text": "#f7f6f2" })).unwrap();
+        let failed = theme.check_readable().unwrap_err().failed;
+        assert!(failed.contains(&ContrastCheck::Text));
+        let fallback = Theme::parse(&json!({ "preset": "zzz" })).unwrap();
+        assert_eq!(fallback.resolved_colors().accent.as_str(), "#2f55d4");
+        assert_eq!(fallback.check_readable(), Ok(()));
+    }
+
     // spec: TPL-017, Review Focus 4
     #[test]
     fn theme_rejects_css_injection() {
         for bad in [
-            json!({ "preset": "clair", "accent": "url(https://x)" }),
-            json!({ "preset": "clair", "accent": "red" }),
-            json!({ "preset": "clair", "accent": "#12345" }),
-            json!({ "preset": "clair", "accent": "#12345g" }),
-            json!({ "preset": "clair", "accent": "#1234567" }),
-            json!({ "preset": "clair", "text": "#fff; background:url(x)" }),
-            json!({ "preset": "clair", "font": "x;}body{display:none" }),
-            json!({ "preset": "clair", "font": "" }),
+            json!({ "preset": "craie", "accent": "url(https://x)" }),
+            json!({ "preset": "craie", "accent": "red" }),
+            json!({ "preset": "craie", "accent": "#12345" }),
+            json!({ "preset": "craie", "accent": "#12345g" }),
+            json!({ "preset": "craie", "accent": "#1234567" }),
+            json!({ "preset": "craie", "text": "#fff; background:url(x)" }),
+            json!({ "preset": "craie", "font": "x;}body{display:none" }),
+            json!({ "preset": "craie", "font": "" }),
             json!({ "preset": "Clair" }),
             json!({ "preset": "a".repeat(33) }),
-            json!({ "preset": "clair", "background": { "kind": "gradient", "from": "#000000", "to": "#ffffff", "angle": 361 } }),
-            json!({ "preset": "clair", "background": { "kind": "gradient", "from": "#000000", "to": "#ffffff", "angle": -1 } }),
-            json!({ "preset": "clair", "background": { "kind": "solid", "color": "blue" } }),
-            json!({ "preset": "clair", "background": { "kind": "image", "color": "#000000" } }),
-            json!({ "preset": "clair", "header_gradient": 101 }),
-            json!({ "preset": "clair", "header_gradient": -1 }),
-            json!({ "preset": "clair", "button_shape": "hexagon" }),
-            json!({ "preset": "clair", "extra": true }),
+            json!({ "preset": "craie", "background": { "kind": "gradient", "from": "#000000", "to": "#ffffff", "angle": 361 } }),
+            json!({ "preset": "craie", "background": { "kind": "gradient", "from": "#000000", "to": "#ffffff", "angle": -1 } }),
+            json!({ "preset": "craie", "background": { "kind": "solid", "color": "blue" } }),
+            json!({ "preset": "craie", "background": { "kind": "image", "color": "#000000" } }),
+            json!({ "preset": "craie", "header_gradient": 101 }),
+            json!({ "preset": "craie", "header_gradient": -1 }),
+            json!({ "preset": "craie", "button_shape": "hexagon" }),
+            json!({ "preset": "craie", "extra": true }),
             json!({ "accent": "#000000" }),
-            json!("clair"),
+            json!("craie"),
             json!(null),
         ] {
             assert_eq!(Theme::parse(&bad), Err(InvalidTheme), "{bad}");
@@ -182,7 +299,7 @@ mod tests {
     #[test]
     fn theme_accepts_full_settings() {
         let value = json!({
-            "preset": "sombre",
+            "preset": "encre",
             "font": "editorial-2",
             "accent": "#AABBCC",
             "text": "#0F0F0F",
@@ -191,7 +308,7 @@ mod tests {
             "button_shape": "pill"
         });
         let theme = Theme::parse(&value).unwrap();
-        assert_eq!(theme.preset, "sombre");
+        assert_eq!(theme.preset, "encre");
         assert_eq!(theme.font.as_deref(), Some("editorial-2"));
         assert_eq!(theme.accent.as_ref().map(Color::as_str), Some("#aabbcc"));
         assert_eq!(theme.text.as_ref().map(Color::as_str), Some("#0f0f0f"));
@@ -215,15 +332,15 @@ mod tests {
     // spec: TPL-017
     #[test]
     fn theme_accepts_minimal_and_solid_settings() {
-        let minimal = Theme::parse(&json!({ "preset": "clair" })).unwrap();
+        let minimal = Theme::parse(&json!({ "preset": "craie" })).unwrap();
         assert_eq!(minimal.background, None);
         assert_eq!(
             serde_json::to_value(&minimal).unwrap(),
-            json!({ "preset": "clair" })
+            json!({ "preset": "craie" })
         );
 
         let solid = Theme::parse(&json!({
-            "preset": "clair",
+            "preset": "craie",
             "background": { "kind": "solid", "color": "#112233" },
             "button_shape": "square",
             "header_gradient": 0
@@ -237,7 +354,7 @@ mod tests {
     #[test]
     fn default_theme_uses_the_default_preset() {
         let theme = Theme::default_theme();
-        assert_eq!(theme.preset, "clair");
+        assert_eq!(theme.preset, "craie");
         assert_eq!(
             Theme::parse(&serde_json::to_value(&theme).unwrap()),
             Ok(theme)

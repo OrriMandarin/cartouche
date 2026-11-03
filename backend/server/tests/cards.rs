@@ -29,7 +29,7 @@ async fn create_card_with_defaults(pool: PgPool) {
     assert_eq!(card["slug"], "alice-durand");
     assert_eq!(card["status"], "active");
     assert_eq!(card["template"], "classique");
-    assert_eq!(card["theme"]["preset"], "clair");
+    assert_eq!(card["theme"]["preset"], "craie");
     assert_eq!(card["settings"], json!({}));
     assert_eq!(card["links"], json!([]));
     assert_eq!(card["content"]["first_name"], "Alice");
@@ -177,7 +177,7 @@ async fn update_validates_and_normalizes(pool: PgPool) {
         id,
         json!({
             "links": [{ "kind": "website", "url": "javascript:alert(1)", "label": null }],
-            "theme": { "preset": "clair", "accent": "url(x)" },
+            "theme": { "preset": "craie", "accent": "url(x)" },
         }),
     )
     .await;
@@ -219,6 +219,85 @@ async fn rejected_update_changes_nothing(pool: PgPool) {
     let after = get_card(&app, "alice", id).await;
     assert_eq!(after.json["slug"], "alice-durand");
     assert_eq!(after.json["content"]["job_title"], Value::Null);
+}
+
+// spec: EDI-013
+#[sqlx::test(migrations = "./migrations")]
+async fn a_new_card_takes_craie(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let res = post_card(
+        &app,
+        "alice",
+        json!({ "slug": "alice-durand", "first_name": "Alice" }),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    assert_eq!(res.json["theme"], json!({ "preset": "craie" }));
+}
+
+// spec: TPL-023, EDI-015
+#[sqlx::test(migrations = "./migrations")]
+async fn an_unreadable_theme_is_refused_and_nothing_changes(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card["id"].as_str().unwrap();
+
+    let res = put_card(
+        &app,
+        "alice",
+        id,
+        json!({
+            "content": { "first_name": "Zoé" },
+            "theme": { "preset": "terracotta", "text": "#b89580" },
+        }),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(&res), "validation_failed");
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "theme", "code": "low_contrast" }])
+    );
+
+    let after = get_card(&app, "alice", id).await;
+    assert_eq!(after.json["content"]["first_name"], "Alice");
+    assert_eq!(after.json["theme"], json!({ "preset": "craie" }));
+}
+
+// spec: TPL-023
+#[sqlx::test(migrations = "./migrations")]
+async fn a_stored_unreadable_card_is_still_served_and_duplicated(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card["id"].as_str().unwrap();
+    sqlx::query("update cards set theme = '{\"preset\":\"craie\",\"text\":\"#f7f6f2\"}'::jsonb")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let public = app
+        .request("GET", "/api/public/cards/alice-durand", None, None)
+        .await;
+    assert_eq!(public.status, StatusCode::OK);
+    assert_ne!(public.body.as_ref(), br#"{"state":"inactive"}"#);
+
+    let copy = app
+        .request(
+            "POST",
+            &format!("/api/cards/{id}/duplicate"),
+            Some(&token("alice")),
+            Some(json!({ "slug": "alice-copie" })),
+        )
+        .await;
+    assert_eq!(copy.status, StatusCode::CREATED, "{}", copy.json);
+
+    // Saving without fixing the colours is refused.
+    let res = put_card(&app, "alice", id, json!({})).await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST, "{}", res.json);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "theme", "code": "low_contrast" }])
+    );
 }
 
 // spec: LNK-003, LNK-025
@@ -358,7 +437,7 @@ async fn other_users_cards_are_404(pool: PgPool) {
             Some(&token("bob")),
             Some(json!({
                 "slug": "bob-hijack", "template": "classique", "settings": {},
-                "theme": { "preset": "clair" },
+                "theme": { "preset": "craie" },
                 "content": { "first_name": "Bob" }, "links": [],
             })),
         )

@@ -121,14 +121,20 @@ test("TPL-004 template setting shows in the preview", async ({ page }) => {
   await expect(link).toHaveAttribute("aria-label", "Portfolio");
 });
 
-test("TPL-010 TPL-013 a low contrast warns in the editor and still saves", async ({ page }) => {
+test("TPL-013 TPL-023 a low contrast warns in the editor and the save is refused", async ({
+  page,
+}) => {
   await page.goto(editorUrl());
   await expect(page.getByTestId("contrast-warning")).toHaveCount(0);
   await page.getByTestId("theme-text").fill("#ffffff");
   await expect(page.getByTestId("contrast-warning")).toBeVisible();
   await expect(page.getByTestId("editor-save")).toBeEnabled();
+  const refused = page.waitForResponse(
+    (res) => res.request().method() === "PUT" && res.url().includes("/api/cards/"),
+  );
   await page.getByTestId("editor-save").click();
-  await expect(page.getByTestId("editor-status")).toHaveText("Modifications enregistrées");
+  expect((await refused).status()).toBe(400);
+  await expect(page.getByText("Ces couleurs ne sont pas assez lisibles\u00a0: corrige-les pour enregistrer la carte.")).toBeVisible();
 });
 
 test("EDI-016 reload with unsaved changes asks for confirmation", async ({ page }) => {

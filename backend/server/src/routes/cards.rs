@@ -219,7 +219,7 @@ pub struct UpdateCardBody {
     request_body = UpdateCardBody,
     responses(
         (status = 200, description = "The saved card.", body = CardView),
-        (status = 400, description = "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`).", body = ErrorBody),
+        (status = 400, description = "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`); the `theme` field error is `invalid_theme`, or `low_contrast` when its colours fail the contrast checks.", body = ErrorBody),
         (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
         (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
         (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
