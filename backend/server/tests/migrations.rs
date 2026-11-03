@@ -72,7 +72,10 @@ async fn theme_identifiers_are_renamed(pool: PgPool) {
     let owner = insert_user(&pool, "themes", "approved").await.unwrap();
     let cases = [
         (r#"{"preset":"clair"}"#, r#"{"preset":"craie"}"#),
-        (r#"{"preset":"ocean"}"#, r#"{"preset":"minuit","font":"inter"}"#),
+        (
+            r#"{"preset":"ocean"}"#,
+            r#"{"preset":"minuit","font":"inter"}"#,
+        ),
         (
             r#"{"preset":"ocean","font":"editorial"}"#,
             r#"{"preset":"minuit","font":"playfair"}"#,
