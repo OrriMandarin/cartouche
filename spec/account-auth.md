@@ -1,6 +1,6 @@
 # Compte et authentification
 
-> Statut : spécifié, implémenté par le plan 1 (fondations) ; ACC-018 : plan 4
+> Statut : implémenté (plan 1) : ACC-001 à ACC-016 ; ACC-017 et ACC-018 : spécifié (plans ultérieurs)
 
 ## Création du compte et statut
 
