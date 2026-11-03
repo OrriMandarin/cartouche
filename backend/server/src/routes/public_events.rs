@@ -22,7 +22,7 @@ use crate::db::events::{self, Event};
 use crate::db::leads::{self, NewLead};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
-use crate::rate_limit::{Bucket, RetryAfter};
+use crate::rate_limit::{Bucket, Reservation, RetryAfter};
 use crate::routes::public_cards::serve_card;
 use crate::state::AppState;
 use crate::views::{PublicEventForm, PublicEventHeading, ShownForm};
@@ -153,9 +153,9 @@ pub async fn unlock_public_event(
     ApiJson(body): ApiJson<UnlockBody>,
 ) -> Result<Json<PublicEventForm>, ApiError> {
     let now = state.clock.now();
-    state
-        .rate_limiter
-        .check(Bucket::FailedAccessCode, ip, now)
+    // Taken before reading the event, so that concurrent attempts cannot all pass the check;
+    // given back unless the code turns out wrong (ABU-007).
+    let attempt = Reservation::take(&state.rate_limiter, Bucket::FailedAccessCode, ip, now)
         .map_err(rate_limited)?;
     let (card, event) = card_and_event(&state, &slug, event_id).await?;
     match unlock_outcome(
@@ -166,7 +166,7 @@ pub async fn unlock_public_event(
     ) {
         UnlockOutcome::Closed => Err(ApiError::EventClosed),
         UnlockOutcome::WrongCode => {
-            state.rate_limiter.record(Bucket::FailedAccessCode, ip, now);
+            attempt.keep();
             Err(ApiError::InvalidAccessCode)
         }
         UnlockOutcome::Granted => Ok(Json(PublicEventForm::new(event, &card.content))),
@@ -220,13 +220,11 @@ pub async fn submit_lead(
         return Ok(StatusCode::NO_CONTENT);
     }
     if let Some(stored_code) = event.access_code.as_deref() {
-        state
-            .rate_limiter
-            .check(Bucket::FailedAccessCode, ip, now)
+        let attempt = Reservation::take(&state.rate_limiter, Bucket::FailedAccessCode, ip, now)
             .map_err(rate_limited)?;
         let typed = submission.access_code.as_deref().unwrap_or_default();
         if !access_code_matches(stored_code, typed) {
-            state.rate_limiter.record(Bucket::FailedAccessCode, ip, now);
+            attempt.keep();
             return Err(ApiError::InvalidAccessCode);
         }
     }

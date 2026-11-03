@@ -231,11 +231,11 @@ async fn reset_clears_the_rate_limiter(pool: PgPool) {
     for _ in 0..bucket.limit().max {
         limiter.hit(bucket, visitor, clock.now()).unwrap();
     }
-    assert!(limiter.check(bucket, visitor, clock.now()).is_err());
+    assert!(limiter.hit(bucket, visitor, clock.now()).is_err());
 
     let response = app.request("POST", "/api/test/reset", None, None).await;
     assert_eq!(response.status, StatusCode::NO_CONTENT);
-    assert_eq!(limiter.check(bucket, visitor, clock.now()), Ok(()));
+    assert_eq!(limiter.hit(bucket, visitor, clock.now()), Ok(()));
 }
 
 // spec: ACC-008

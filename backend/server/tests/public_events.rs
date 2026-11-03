@@ -4,6 +4,7 @@ use axum::http::StatusCode;
 use common::cards::{cards_app, create_card, put_card, token};
 use common::events::{create_event, event_body};
 use common::{TestApp, TestResponse, capture_logs};
+use futures_util::future::join_all;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -548,6 +549,32 @@ async fn failed_codes_are_limited_per_ip(pool: PgPool) {
         let res = unlock_from(&app, "192.0.2.9", "alice-durand", id, CODE).await;
         assert_eq!(res.status, StatusCode::OK, "attempt {attempt}");
     }
+}
+
+// spec: ABU-007
+#[sqlx::test(migrations = "./migrations")]
+async fn concurrent_wrong_codes_never_exceed_the_limit(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let event = coded_event(&app, "alice", &card).await;
+    let id = id_of(&event);
+
+    let responses =
+        join_all((0..50).map(|_| unlock_from(&app, "203.0.113.7", "alice-durand", id, "moulin")))
+            .await;
+    let forbidden = responses
+        .iter()
+        .filter(|res| res.status == StatusCode::FORBIDDEN)
+        .count();
+    let limited = responses
+        .iter()
+        .filter(|res| res.status == StatusCode::TOO_MANY_REQUESTS)
+        .count();
+    assert!(forbidden <= 30, "{forbidden} wrong codes answered 403");
+    assert_eq!(forbidden + limited, 50);
+    // Every wrong code counted: even a correct one is refused now.
+    let res = unlock_from(&app, "203.0.113.7", "alice-durand", id, CODE).await;
+    assert_eq!(res.status, StatusCode::TOO_MANY_REQUESTS, "{}", res.json);
 }
 
 // spec: ABU-007

@@ -58,6 +58,13 @@ impl SlidingWindow {
         self.events.push_back(now);
     }
 
+    /// Takes back one event recorded at `at`, if it is still in the window.
+    pub fn forget(&mut self, at: DateTime<Utc>) {
+        if let Some(index) = self.events.iter().rposition(|recorded| *recorded == at) {
+            self.events.remove(index);
+        }
+    }
+
     /// Whether no event is left in the window: the counter can be dropped.
     pub fn is_idle(&mut self, now: DateTime<Utc>, limit: &RateLimit) -> bool {
         self.expire(now, limit);
@@ -130,6 +137,23 @@ mod tests {
     fn failed_access_codes_are_limited_to_30_per_10_minutes() {
         let limit = failed_access_codes_per_ip();
         assert_eq!((limit.max, limit.window), (30, TimeDelta::minutes(10)));
+    }
+
+    // spec: ABU-007
+    #[test]
+    fn a_forgotten_event_frees_its_place() {
+        let limit = failed_access_codes_per_ip();
+        let mut window = SlidingWindow::default();
+        let later = t0() + TimeDelta::minutes(1);
+        admit(&mut window, t0(), 29, &limit);
+        admit(&mut window, later, 1, &limit);
+        assert!(window.check(later, &limit).is_err());
+        window.forget(later);
+        assert_eq!(window.check(later, &limit), Ok(()));
+        // An instant with no event recorded at it changes nothing.
+        window.record(later);
+        window.forget(t0() + TimeDelta::minutes(2));
+        assert!(window.check(later, &limit).is_err());
     }
 
     // spec: ABU-006
