@@ -26,8 +26,9 @@ Vérifier : `curl -s localhost:8080/api/health` doit répondre `{"status":"ok","
 make seed                      # scénario « base » (administrateur + un utilisateur par statut)
 make seed SCENARIO=<nom>       # autre scénario
 cd apps/api && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- list    # liste des scénarios
-cd apps/api && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- reset   # vide les tables
-curl -s -X POST localhost:8080/api/test/reset              # même chose, via l'API qui tourne
+cd apps/api && APP_ENV=development DATABASE_URL=postgres://cartouche:cartouche@localhost:54320/cartouche \
+  cargo run -p cartouche-api --features test-support --bin cartouche-seed -- reset   # vide les tables (APP_ENV et DATABASE_URL obligatoires hors `make`)
+curl -s -X POST localhost:8080/api/test/reset              # même chose, via l'API qui tourne (sans variables à exporter)
 ```
 
 Le binaire de seed refuse de tourner si `APP_ENV` n'est pas `development` ou `test`.
@@ -35,7 +36,7 @@ Repartir de zéro : `docker compose -f compose.dev.yml down -v && make dev-db`.
 
 ## Se connecter en local (adaptateur `test`)
 
-Le site propose un panneau de connexion de test sur `/login` (utilisateurs `seed-admin`, `seed-alice`, …). Pour un jeton à la main :
+Le site propose un panneau de connexion de test sur `/login` (utilisateurs `seed-admin`, `seed-alice`, …) ; un visiteur déjà connecté qui ouvre `/login` est redirigé vers `/dashboard`. Pour un jeton à la main :
 
 ```bash
 TOKEN=$(curl -s -X POST localhost:8080/api/test/token -H 'content-type: application/json' \

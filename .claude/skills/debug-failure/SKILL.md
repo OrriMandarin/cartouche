@@ -29,7 +29,7 @@ Les artefacts d'un test en échec sont dans `e2e/test-results/<dossier-du-test>/
 
 ```bash
 ls e2e/test-results/*/
-pnpm --filter e2e exec playwright show-trace e2e/test-results/<dossier-du-test>/trace.zip
+pnpm --filter e2e exec playwright show-trace test-results/<dossier-du-test>/trace.zip   # chemin relatif à e2e/ (pnpm exec s'exécute dans e2e/)
 pnpm --filter e2e report                                   # rapport HTML (e2e/playwright-report)
 cat e2e/test-results/<dossier-du-test>/api-logs.txt | grep <request_id>
 ```
