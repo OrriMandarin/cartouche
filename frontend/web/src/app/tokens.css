@@ -1,0 +1,92 @@
+/* =====================================================================
+   Cartouche — dashboard tokens ("Atelier" identity)
+   --app-* prefix only. No name is shared with the card variables (--c-*):
+   changing a card's theme never touches the app.
+   AA contrast checked (ratios in comments).
+   ===================================================================== */
+:root {
+  /* Surfaces */
+  --app-bg: #F5F4F1;            /* page background */
+  --app-surface: #FFFFFF;       /* cards, panels, fields */
+  --app-surface-2: #EFEDE8;     /* hover, active nav, slider track */
+  --app-border: #DEDAD3;        /* separators, card borders */
+  --app-border-strong: #8C877E; /* field border: 3.6:1 on white, 3.3:1 on --app-bg */
+
+  /* Text and actions */
+  --app-text: #1C1B19;          /* 15.7:1 on --app-bg */
+  --app-muted: #5C5850;         /* 6.0:1 on --app-surface-2, 7.1:1 on white */
+  --app-primary: #1C1B19;
+  --app-primary-hover: #3A3834;
+  --app-on-primary: #FFFFFF;    /* 17.2:1 */
+  --app-brand: #9A5B13;         /* ochre: logo and active nav only · 4.9:1 */
+  --app-ring: #1C1B19;          /* focus: 2px outline, 2px offset */
+
+  /* States (text / soft background) */
+  --app-success: #1D6B43; --app-success-soft: #E2F0E7; /* 5.5:1 */
+  --app-neutral: #4F4B44; --app-neutral-soft: #ECEAE5; /* 7.2:1 */
+  --app-warning: #8A4500; --app-warning-soft: #FBEBD3; /* 6.1:1 */
+  --app-danger:  #B3261E; --app-danger-soft:  #FBE5E2; /* 5.4:1; white on danger 6.5:1 */
+  --app-on-danger: #FFFFFF;
+  --app-info:    #1D4CA8; --app-info-soft:    #E4EBFB; /* 6.6:1 */
+  --app-on-dark-ok: #8FD5AE;    /* success icon inside a dark toast */
+
+  /* Media cropping */
+  --app-stage: #1C1B19;
+  --app-on-stage: #FFFFFF;
+  --app-stage-dim: rgb(0 0 0 / .6);
+
+  /* Scrim, radii, shadows */
+  --app-scrim: rgb(28 27 25 / .5);
+  --app-radius-sm: 6px;
+  --app-radius: 10px;    /* fields, buttons (= Clerk borderRadius) */
+  --app-radius-lg: 14px; /* cards, menus, toasts */
+  --app-radius-xl: 20px; /* dialogs, bottom sheets */
+  --app-shadow-sm: 0 1px 2px rgb(28 27 25 / .06);
+  --app-shadow: 0 1px 2px rgb(28 27 25 / .06), 0 12px 32px -16px rgb(28 27 25 / .22);
+  --app-shadow-lg: 0 32px 80px -20px rgb(28 27 25 / .45);
+
+  /* Typography (self-hosted via @fontsource-variable) */
+  --app-font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --app-font-display: 'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif;
+  --app-font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* Type scale
+   Display 40/1.1 Fraunces 600 (home, empty states)
+   H1 28/1.2 Inter 700 -0.02em · H2 20/1.3 650 -0.01em · H3 16/1.35 650
+   Text 15/1.5 400 · Small 13/1.4 · Mono 13 (links, codes)
+   Touch targets >= 44 px everywhere (buttons, menu items, tabs, icons). */
+
+/* Tailwind 4: expose the tokens as utilities (bg-app-surface, text-app-muted, rounded-app…) */
+@theme inline {
+  --color-app-bg: var(--app-bg);
+  --color-app-surface: var(--app-surface);
+  --color-app-surface-2: var(--app-surface-2);
+  --color-app-border: var(--app-border);
+  --color-app-border-strong: var(--app-border-strong);
+  --color-app-text: var(--app-text);
+  --color-app-muted: var(--app-muted);
+  --color-app-primary: var(--app-primary);
+  --color-app-on-primary: var(--app-on-primary);
+  --color-app-brand: var(--app-brand);
+  --color-app-success: var(--app-success);
+  --color-app-success-soft: var(--app-success-soft);
+  --color-app-neutral: var(--app-neutral);
+  --color-app-neutral-soft: var(--app-neutral-soft);
+  --color-app-warning: var(--app-warning);
+  --color-app-warning-soft: var(--app-warning-soft);
+  --color-app-danger: var(--app-danger);
+  --color-app-danger-soft: var(--app-danger-soft);
+  --color-app-info: var(--app-info);
+  --color-app-info-soft: var(--app-info-soft);
+  --radius-app-sm: var(--app-radius-sm);
+  --radius-app: var(--app-radius);
+  --radius-app-lg: var(--app-radius-lg);
+  --radius-app-xl: var(--app-radius-xl);
+  --shadow-app-sm: var(--app-shadow-sm);
+  --shadow-app: var(--app-shadow);
+  --shadow-app-lg: var(--app-shadow-lg);
+  --font-app: var(--app-font);
+  --font-app-display: var(--app-font-display);
+  --font-app-mono: var(--app-font-mono);
+}

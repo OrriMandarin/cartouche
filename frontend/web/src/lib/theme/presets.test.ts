@@ -42,7 +42,7 @@ describe("theme presets", () => {
 
     const css = readFileSync(join(process.cwd(), "src/lib/theme/fonts.css"), "utf8");
     const imports = [...css.matchAll(/@import\s+["']([^"']+)["']/g)].map((match) => match[1]);
-    expect(imports).toHaveLength(5);
+    expect(imports).toHaveLength(8);
     for (const target of imports) expect(target).toMatch(/^@fontsource-variable\//);
     expect(css).not.toMatch(/googleapis|gstatic|https?:/i);
   });
