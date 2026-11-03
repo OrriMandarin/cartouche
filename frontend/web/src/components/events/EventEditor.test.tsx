@@ -31,8 +31,12 @@ function type(testId: string, value: string) {
   fireEvent.change(screen.getByTestId(testId), { target: { value } });
 }
 
+/**
+ * Body of the last save request. The consent preview, asked 300 ms after the last keystroke of the title, may
+ * land at any moment: it is not a save and must not shadow it.
+ */
 function lastBody(mock: typeof post) {
-  const call = mock.mock.calls.at(-1);
+  const call = mock.mock.calls.findLast(([path]) => path !== "/api/cards/{id}/consent-preview");
   if (!call) throw new Error("no call");
   return (call[1] as { body: Record<string, unknown> }).body;
 }
