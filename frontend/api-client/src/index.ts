@@ -54,7 +54,8 @@ function asFieldErrors(value: unknown): FieldError[] {
   });
 }
 
-async function toApiError(response: Response): Promise<ApiError> {
+/** Builds the `ApiError` of a non-2xx response, for requests that bypass the generated client (multipart upload). */
+export async function toApiError(response: Response): Promise<ApiError> {
   const headerId = response.headers.get(REQUEST_ID_HEADER);
   let code = 'unknown';
   let message = `Request failed with status ${response.status}`;

@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_CARTOUCHE_BUILD_PROFILE: profile,
   },
+  experimental: {
+    // Next proxies `/api/*` to the API and, by default, keeps only the first 10 MB of a request body: a video
+    // upload (25 MB, plus its poster) would reach the API truncated. The API's own limit is 36 MiB.
+    proxyClientMaxBodySize: "40mb",
+  },
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${apiInternalUrl}/api/:path*` },

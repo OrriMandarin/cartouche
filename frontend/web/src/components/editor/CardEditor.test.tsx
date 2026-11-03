@@ -11,7 +11,8 @@ configure({ asyncUtilTimeout: 4000 });
 
 const get = vi.fn();
 const put = vi.fn();
-vi.mock("@/lib/api", () => ({ useApi: () => ({ GET: get, PUT: put }) }));
+const uploadMedia = vi.fn();
+vi.mock("@/lib/api", () => ({ useApi: () => ({ GET: get, PUT: put }), useUploadMedia: () => uploadMedia }));
 
 const avatar = {
   id: "0198a1a0-0000-7000-8000-000000000002",

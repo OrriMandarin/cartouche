@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useApi } from "@/lib/api";
+import { useApi, useUploadMedia } from "@/lib/api";
 import {
   applyTemplateChange,
   draftFromCard,
@@ -26,6 +26,7 @@ import { parseSettings } from "@/templates/settings-schema";
 import { ContentFields } from "./ContentFields";
 import { FieldMessage } from "./Field";
 import { LinksEditor } from "./LinksEditor";
+import { MediaField } from "./MediaField";
 import { PhonePreview } from "./PhonePreview";
 import { SettingsForm } from "./SettingsForm";
 import { TemplatePicker } from "./TemplatePicker";
@@ -48,6 +49,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function CardEditor({ card }: { card: CardView }) {
   const t = useTranslations();
   const api = useApi();
+  const uploadMedia = useUploadMedia(card.id);
   const [saved, setSaved] = useState(() => draftFromCard(card));
   const [draft, setDraft] = useState(saved);
   const [simulateEvent, setSimulateEvent] = useState(false);
@@ -180,9 +182,14 @@ export function CardEditor({ card }: { card: CardView }) {
         </Section>
 
         <Section title={t("editor.sections.media")}>
-          {/* Upload of the header and the profile photo: task 18. The draft keeps the card's media as they are. */}
-          <div data-testid="media-slot" className="space-y-2">
-            <p className="text-muted-foreground text-sm">{t("editor.media.soon")}</p>
+          <div data-testid="media-slot" className="space-y-4">
+            <MediaField
+              media={template.media}
+              header={draft.header}
+              avatar={draft.avatar}
+              upload={uploadMedia}
+              onChange={(slot, media) => edit({ [slot]: media }, [`${slot}_media_id`])}
+            />
             {mediaErrors.map((path) => (
               <FieldMessage key={path} path={path} message={messages[path]} />
             ))}

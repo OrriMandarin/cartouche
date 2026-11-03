@@ -255,7 +255,37 @@
     "media": {
       "header": "En-tête",
       "avatar": "Photo de profil",
-      "soon": "L'envoi de photo et de vidéo arrive bientôt."
+      "headerHintImage": "Image JPEG, PNG ou WebP, 10 Mo au plus.",
+      "headerHintVideo": "Image JPEG, PNG ou WebP (10 Mo au plus) ou vidéo MP4 (30 secondes et 25 Mo au plus).",
+      "avatarHint": "Image JPEG, PNG ou WebP, 10 Mo au plus. Elle sera recadrée en carré.",
+      "choose": "Choisir un fichier",
+      "replace": "Remplacer",
+      "remove": "Retirer",
+      "uploading": "Envoi en cours…",
+      "current": "Fichier actuel : {kind}",
+      "kinds": {
+        "image": "image",
+        "video": "vidéo"
+      },
+      "thumbnail": "Aperçu du fichier actuel",
+      "cropper": {
+        "title": "Recadrer la photo",
+        "description": "Déplace et zoome la photo : la partie dans le cercle sera gardée.",
+        "zoom": "Zoom",
+        "confirm": "Valider",
+        "cancel": "Annuler"
+      },
+      "errors": {
+        "unsupported": "Ce format n'est pas accepté",
+        "too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
+        "unreadable": "Ce fichier ne peut pas être lu par le navigateur",
+        "video_too_long": "La vidéo dépasse 30 secondes",
+        "image_too_large": "Cette image est trop grande (40 millions de pixels au plus)",
+        "poster_required": "L'image d'attente de la vidéo est manquante : réessaie",
+        "payload_too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
+        "unsupported_media_type": "Ce fichier n'est pas une image JPEG, PNG ou WebP ni une vidéo MP4, ou il est abîmé",
+        "generic": "L'envoi a échoué : réessaie dans un instant"
+      }
     },
     "preview": {
       "title": "Aperçu de la carte",
