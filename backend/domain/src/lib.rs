@@ -10,6 +10,7 @@ pub mod text;
 pub mod theme;
 pub mod user;
 pub mod validation;
+pub mod vcard;
 
 pub use card::{
     CardContent, CardInput, ContentInput, DEFAULT_TEMPLATE, DEFAULT_THEME_PRESET, Link, LinkInput,
@@ -29,3 +30,4 @@ pub use user::{
     InvalidTransition, SignupClosed, SignupMode, UserStatus, check_transition, initial_status,
 };
 pub use validation::FieldError;
+pub use vcard::{VCard, render as render_vcard};
