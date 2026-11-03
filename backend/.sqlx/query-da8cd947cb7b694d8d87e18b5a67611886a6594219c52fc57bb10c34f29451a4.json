@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select card_id as \"card_id!\" from card_slugs where slug = $1 and is_current",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "card_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "card_slugs",
+            "name": "card_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "da8cd947cb7b694d8d87e18b5a67611886a6594219c52fc57bb10c34f29451a4"
+}

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into leads (id, event_id, device_id, submitted_at, first_name, last_name, email, phone, custom_answers, consent_at, consent_text, spam_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $4, $10, $11) on conflict (id) do update set event_id = excluded.event_id, device_id = excluded.device_id, submitted_at = excluded.submitted_at, first_name = excluded.first_name, last_name = excluded.last_name, email = excluded.email, phone = excluded.phone, custom_answers = excluded.custom_answers, consent_at = excluded.consent_at, consent_text = excluded.consent_text, spam_at = excluded.spam_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8e4f4e5a42ce997e96e5f061ec799ca7c2819459a40d00696c82b930661e1783"
+}

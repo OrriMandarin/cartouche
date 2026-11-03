@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { test as base, expect, request, type APIRequestContext } from "@playwright/test";
-import { API_URL } from "./env";
+import { API_URL, EVENTS_NOW } from "./env";
 
 const execFileAsync = promisify(execFile);
 
@@ -21,10 +21,81 @@ export interface SeededCard {
   owner: string;
 }
 
+export interface SeededEvent {
+  id: string;
+  /** The slug of the card the event belongs to. */
+  card_slug: string;
+  title: string;
+}
+
 /** What `POST /api/test/seed` returns: only the rows the scenario created. */
 export interface SeedReport {
   users: SeededUser[];
   cards: SeededCard[];
+  events: SeededEvent[];
+}
+
+export interface StandardFields {
+  first_name: FieldMode;
+  last_name: FieldMode;
+  birth_date: FieldMode;
+  email: FieldMode;
+  phone: FieldMode;
+  address: FieldMode;
+}
+
+export type FieldMode = "off" | "optional" | "required";
+
+export interface CustomFieldView {
+  id: string;
+  label: string;
+  kind: "text" | "long_text" | "date" | "number" | "single_choice" | "checkbox";
+  required: boolean;
+  help: string | null;
+  options: string[];
+}
+
+/** An event as its owner sees it (the fields the tests read; the API sends more). */
+export interface EventView {
+  id: string;
+  card_id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  phase: "upcoming" | "running" | "past";
+  access_code: string | null;
+  device_limit: number;
+  standard_fields: StandardFields;
+  custom_fields: CustomFieldView[];
+  consent_text: string | null;
+  default_consent_text: string;
+  lead_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A contact as the owner of its event sees it. */
+export interface LeadView {
+  id: string;
+  event_id: string;
+  submitted_at: string;
+  spam: boolean;
+  answers: {
+    first_name: string | null;
+    last_name: string | null;
+    birth_date: string | null;
+    email: string | null;
+    phone: string | null;
+    street: string | null;
+    postal_code: string | null;
+    city: string | null;
+    country: string | null;
+  };
+  phone_display: string | null;
+  custom: { field_id: string; label: string; kind: string; value: unknown }[];
+  consent_at: string;
+  consent_text: string;
 }
 
 export interface MediaView {
@@ -75,6 +146,12 @@ export type TestApi = APIRequestContext & {
   seed(scenario: string): Promise<SeedReport>;
   /** Freezes the API clock at an RFC 3339 instant, or releases it with `null`. */
   setClock(iso: string | null): Promise<void>;
+  /**
+   * Sets up the events tests: empties the database, freezes the clock at `EVENTS_NOW`, then
+   * loads `base`, `cards` and `events` (reports merged). Sign in (`loginAs`, `api.token`) only
+   * afterwards: a token signed at real time is expired for a clock in 2027.
+   */
+  seedEvents(): Promise<SeedReport>;
   /** Mints a token for a subject, signed by the test issuer. */
   token(subject: string): Promise<string>;
   /** `Authorization` header for a subject, to pass to `api.get`/`post`/`put`/`delete`. */
@@ -86,6 +163,13 @@ export type TestApi = APIRequestContext & {
    * Fails unless the API answers 2xx.
    */
   updateCard(subject: string, id: string, patch: Record<string, unknown>): Promise<CardView>;
+  /**
+   * Edits an event as its owner: reads it, merges `patch` over it and saves the whole.
+   * Fails unless the API answers 2xx.
+   */
+  updateEvent(subject: string, id: string, patch: Record<string, unknown>): Promise<EventView>;
+  /** The contacts of an event as its owner sees them, newest first, spam ones included. */
+  leads(subject: string, eventId: string): Promise<LeadView[]>;
   /** Uploads a header or avatar media (with `poster` for a video); the card shows it once saved with its id. */
   uploadMedia(
     subject: string,
@@ -110,20 +194,62 @@ async function createApi(): Promise<TestApi> {
     return ((await response.json()) as { token: string }).token;
   };
   const authHeaders = async (subject: string) => ({ authorization: `Bearer ${await token(subject)}` });
+  const reset = async () => {
+    await ensureOk("POST /api/test/reset", await context.post("/api/test/reset"));
+  };
+  const seed = async (scenario: string) => {
+    const response = await context.post("/api/test/seed", { data: { scenario } });
+    await ensureOk("POST /api/test/seed", response);
+    return (await response.json()) as SeedReport;
+  };
+  const setClock = async (iso: string | null) => {
+    await ensureOk("POST /api/test/clock", await context.post("/api/test/clock", { data: { now: iso } }));
+  };
   const helpers = {
-    async reset() {
-      await ensureOk("POST /api/test/reset", await context.post("/api/test/reset"));
-    },
-    async seed(scenario: string) {
-      const response = await context.post("/api/test/seed", { data: { scenario } });
-      await ensureOk("POST /api/test/seed", response);
-      return (await response.json()) as SeedReport;
-    },
-    async setClock(iso: string | null) {
-      await ensureOk("POST /api/test/clock", await context.post("/api/test/clock", { data: { now: iso } }));
+    reset,
+    seed,
+    setClock,
+    async seedEvents() {
+      await reset();
+      await setClock(EVENTS_NOW);
+      const base = await seed("base");
+      const cards = await seed("cards");
+      const events = await seed("events");
+      return {
+        users: [...base.users, ...cards.users, ...events.users],
+        cards: [...base.cards, ...cards.cards, ...events.cards],
+        events: [...base.events, ...cards.events, ...events.events],
+      };
     },
     token,
     authHeaders,
+    async updateEvent(subject: string, id: string, patch: Record<string, unknown>) {
+      const headers = await authHeaders(subject);
+      const current = await context.get(`/api/events/${id}`, { headers });
+      await ensureOk(`GET /api/events/${id}`, current);
+      const event = (await current.json()) as EventView;
+      // The PUT body replaces the whole event: start from what is stored, minus what the API computes.
+      const {
+        id: _id,
+        card_id: _card,
+        phase: _phase,
+        default_consent_text: _default,
+        lead_count: _count,
+        created_at: _c,
+        updated_at: _u,
+        ...stored
+      } = event;
+      const response = await context.put(`/api/events/${id}`, { headers, data: { ...stored, ...patch } });
+      await ensureOk(`PUT /api/events/${id}`, response);
+      return (await response.json()) as EventView;
+    },
+    async leads(subject: string, eventId: string) {
+      const response = await context.get(`/api/events/${eventId}/leads`, {
+        headers: await authHeaders(subject),
+      });
+      await ensureOk(`GET /api/events/${eventId}/leads`, response);
+      return ((await response.json()) as { leads: LeadView[] }).leads;
+    },
     async updateCard(subject: string, id: string, patch: Record<string, unknown>) {
       const headers = await authHeaders(subject);
       const current = await context.get(`/api/cards/${id}`, { headers });
