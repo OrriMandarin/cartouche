@@ -3,4 +3,4 @@
 pub mod process;
 mod service;
 
-pub use service::{MediaError, MediaObject, MediaService};
+pub use service::{CACHE_CONTROL, MediaError, MediaObject, MediaService};

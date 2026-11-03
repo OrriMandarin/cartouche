@@ -2,13 +2,16 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use cartouche_domain::Slot;
+use cartouche_domain::{Slot, served_content_type};
 use futures_util::TryStreamExt;
 use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
+#[cfg(any(test, feature = "test-support"))]
 use object_store::memory::InMemory;
 use object_store::path::Path;
-use object_store::{GetOptions, GetRange, ObjectStore, ObjectStoreExt};
+use object_store::{
+    Attribute, Attributes, GetOptions, GetRange, ObjectStore, ObjectStoreExt, PutOptions,
+};
 use thiserror::Error;
 use tokio::sync::Semaphore;
 use url::Url;
@@ -16,6 +19,9 @@ use uuid::Uuid;
 
 use super::process::{EncodedVariant, ProcessError, process_image};
 use crate::config::MediaStorageConfig;
+
+/// Files never change under their name (MED-016).
+pub const CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 
 /// Images processed at the same time: decoding and resizing are CPU and memory heavy.
 const IMAGE_PROCESSING_PERMITS: usize = 2;
@@ -58,6 +64,10 @@ pub struct MediaService {
     /// Public address of the storage root, without a trailing slash.
     base_url: String,
     serves_locally: bool,
+    /// Whether `put` stores a content type and a cache policy with each file. A bucket serves
+    /// them itself (S3 mode); the local file system cannot store them, the API sets them when
+    /// it serves the file.
+    stores_headers: bool,
     image_permits: Arc<Semaphore>,
 }
 
@@ -107,11 +117,13 @@ impl MediaService {
 
     /// An in-memory store that behaves like local mode: files are served by the API.
     /// `public_base` is the address keys are appended to (e.g. `http://localhost:3000/media/`).
+    #[cfg(any(test, feature = "test-support"))]
     pub fn in_memory(public_base: Url) -> MediaService {
         MediaService::new(Arc::new(InMemory::new()), public_base.as_str(), true)
     }
 
     /// An in-memory store that behaves like S3 mode: files are served from `public_base`.
+    #[cfg(any(test, feature = "test-support"))]
     pub fn in_memory_remote(public_base: Url) -> MediaService {
         MediaService::new(Arc::new(InMemory::new()), public_base.as_str(), false)
     }
@@ -121,6 +133,7 @@ impl MediaService {
             store,
             base_url: base_url.trim_end_matches('/').to_string(),
             serves_locally,
+            stores_headers: !serves_locally,
             image_permits: Arc::new(Semaphore::new(IMAGE_PROCESSING_PERMITS)),
         }
     }
@@ -136,7 +149,14 @@ impl MediaService {
     }
 
     pub async fn put(&self, key: &str, bytes: Bytes) -> Result<(), MediaError> {
-        self.store.put(&Path::parse(key)?, bytes.into()).await?;
+        let options = if self.stores_headers {
+            PutOptions::from(object_attributes(key))
+        } else {
+            PutOptions::default()
+        };
+        self.store
+            .put_opts(&Path::parse(key)?, bytes.into(), options)
+            .await?;
         Ok(())
     }
 
@@ -177,6 +197,7 @@ impl MediaService {
     }
 
     /// Every stored key, in no particular order. For tests.
+    #[cfg(any(test, feature = "test-support"))]
     pub async fn list_keys(&self) -> Vec<String> {
         let metas: Vec<_> = self
             .store
@@ -224,6 +245,18 @@ impl MediaService {
         }
         Ok(())
     }
+}
+
+/// What a bucket must send when it serves the file under `key`: its content type (iOS refuses
+/// a video served as `binary/octet-stream`, PUB-005, MED-017) and the immutable cache policy
+/// (MED-016).
+fn object_attributes(key: &str) -> Attributes {
+    let mut attributes = Attributes::new();
+    if let Some(content_type) = served_content_type(key) {
+        attributes.insert(Attribute::ContentType, content_type.into());
+    }
+    attributes.insert(Attribute::CacheControl, CACHE_CONTROL.into());
+    attributes
 }
 
 #[cfg(test)]
@@ -276,5 +309,61 @@ mod tests {
         })
         .await
         .expect("permit released after the work ended");
+    }
+
+    const CARD: &str = "0198a1b2-0000-7000-8000-000000000001";
+    const MEDIA: &str = "0198a1b2-0000-7000-8000-000000000002";
+
+    // spec: MED-016
+    #[test]
+    fn s3_files_get_their_content_type_and_immutable_cache_policy() {
+        for (name, content_type) in [
+            ("s640.webp", "image/webp"),
+            ("w1920.webp", "image/webp"),
+            ("s256.jpg", "image/jpeg"),
+            ("video.mp4", "video/mp4"),
+        ] {
+            let attributes = object_attributes(&format!("cards/{CARD}/{MEDIA}/{name}"));
+            assert_eq!(
+                attributes.get(&Attribute::ContentType).map(|v| v.as_ref()),
+                Some(content_type),
+                "{name}"
+            );
+            assert_eq!(
+                attributes.get(&Attribute::CacheControl).map(|v| v.as_ref()),
+                Some("public, max-age=31536000, immutable"),
+                "{name}"
+            );
+        }
+    }
+
+    // spec: MED-016
+    #[tokio::test]
+    async fn remote_mode_stores_the_attributes_and_local_mode_does_not() {
+        let key = format!("cards/{CARD}/{MEDIA}/video.mp4");
+        let remote = MediaService::in_memory_remote("https://cdn.example".parse().unwrap());
+        remote.put(&key, Bytes::from_static(b"mp4")).await.unwrap();
+        let stored = remote
+            .store
+            .get_opts(&Path::parse(&key).unwrap(), GetOptions::default())
+            .await
+            .unwrap();
+        assert_eq!(
+            stored
+                .attributes
+                .get(&Attribute::ContentType)
+                .map(|v| v.as_ref()),
+            Some("video/mp4")
+        );
+        assert!(stored.attributes.get(&Attribute::CacheControl).is_some());
+
+        let local = service();
+        local.put(&key, Bytes::from_static(b"mp4")).await.unwrap();
+        let stored = local
+            .store
+            .get_opts(&Path::parse(&key).unwrap(), GetOptions::default())
+            .await
+            .unwrap();
+        assert!(stored.attributes.is_empty());
     }
 }

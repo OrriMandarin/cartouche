@@ -9,10 +9,8 @@ use cartouche_domain::{ByteRange, parse_range, served_content_type};
 
 use crate::error::ApiError;
 use crate::extract::ApiPath;
+use crate::media::CACHE_CONTROL;
 use crate::state::AppState;
-
-/// Files never change under their name (MED-016).
-const CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 
 fn response(status: StatusCode, content_type: &'static str) -> axum::http::response::Builder {
     Response::builder()
