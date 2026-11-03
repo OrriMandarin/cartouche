@@ -4,9 +4,11 @@ pub mod access_code;
 pub mod card;
 pub mod card_status;
 pub mod clock;
+pub mod consent;
 pub mod email;
 pub mod event;
 pub mod form;
+pub mod lead;
 pub mod media;
 pub mod media_files;
 pub mod phone;
@@ -25,6 +27,7 @@ pub use card::{
 };
 pub use card_status::{CardStatus, SupportBlockUnchanged, check_support_block, is_served};
 pub use clock::{Clock, ManualClock, OverridableClock, SystemClock};
+pub use consent::{consent_text, default_consent_text};
 pub use email::is_valid_email;
 pub use event::{
     DEFAULT_DEVICE_LIMIT, EventInput, EventNotRunning, EventPhase, MAX_ACCESS_CODE_CHARS,
@@ -36,6 +39,10 @@ pub use form::{
     CustomField, CustomFieldKind, FieldMode, FormDefinition, MAX_CHOICE_OPTIONS, MAX_CUSTOM_FIELDS,
     MAX_FIELD_HELP_CHARS, MAX_FIELD_LABEL_CHARS, MAX_OPTION_CHARS, MIN_CHOICE_OPTIONS,
     StandardField, StandardFields,
+};
+pub use lead::{
+    AddressInput, AnswerSnapshot, AnswersInput, DeviceLimitReached, PublicForm, StandardAnswers,
+    ValidLead, check_device_limit, form_version, honeypot_filled, validate_lead,
 };
 pub use media::{
     MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, MAX_VIDEO_BYTES, MAX_VIDEO_DURATION, MediaFormat, MediaKind,
