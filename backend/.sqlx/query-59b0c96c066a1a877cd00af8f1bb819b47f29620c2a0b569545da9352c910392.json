@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select c.id from events e join cards c on c.id = e.card_id where e.id = $1 and c.owner_id = $2 for update of c",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "cards",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "59b0c96c066a1a877cd00af8f1bb819b47f29620c2a0b569545da9352c910392"
+}

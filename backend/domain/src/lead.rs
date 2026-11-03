@@ -409,7 +409,7 @@ mod tests {
     use crate::{
         CustomField, CustomFieldKind, FieldError, FieldMode, FormDefinition, StandardFields,
     };
-    use chrono::{Datelike, NaiveDate};
+    use chrono::NaiveDate;
     use serde_json::json;
     use uuid::Uuid;
 
