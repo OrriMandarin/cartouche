@@ -117,6 +117,14 @@ test("LNK-021 uppercase slug redirects to lowercase", async ({ page, api }) => {
   expect(response.headers()["location"]).toMatch(/\/c\/alice-durand$/);
 });
 
+test("LNK-024 LNK-030 permanent redirects are not cached", async ({ api }) => {
+  for (const path of ["/c/alice", "/c/Alice-Durand", "/api/public/cards/alice/vcard"]) {
+    const response = await api.get(`${WEB_URL}${path}`, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(308);
+    expect(response.headers()["cache-control"], path).toContain("no-store");
+  }
+});
+
 test("LNK-006 LNK-027 disabled card shows the neutral page", async ({ page }) => {
   const response = await page.goto("/c/alice-archive");
   expect(response?.status()).toBe(200);

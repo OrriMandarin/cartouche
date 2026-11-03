@@ -1,7 +1,24 @@
 import { canvasToJpeg } from "./canvas";
 
-/** A `<video>` outside the page, loaded with the file, and the means to release it. */
-async function loadVideo(file: File): Promise<{ video: HTMLVideoElement; release: () => void }> {
+/** How long a video may take to become readable before the upload is given up (MED-021). */
+export const VIDEO_LOAD_TIMEOUT_MS = 15_000;
+
+/** The browser neither loaded nor refused the video in time. */
+export class VideoLoadTimeout extends Error {
+  constructor() {
+    super("The video took too long to load.");
+    this.name = "VideoLoadTimeout";
+  }
+}
+
+/**
+ * spec: MED-021. A `<video>` outside the page, loaded with the file, and the means to release it. Rejects with
+ * `VideoLoadTimeout` when neither `loadeddata` nor `error` comes within `timeoutMs`.
+ */
+async function loadVideo(
+  file: File,
+  timeoutMs = VIDEO_LOAD_TIMEOUT_MS,
+): Promise<{ video: HTMLVideoElement; release: () => void }> {
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.muted = true;
@@ -12,15 +29,19 @@ async function loadVideo(file: File): Promise<{ video: HTMLVideoElement; release
     video.load();
     URL.revokeObjectURL(url);
   };
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await new Promise<void>((resolve, reject) => {
       video.addEventListener("loadeddata", () => resolve(), { once: true });
       video.addEventListener("error", () => reject(new Error("The video cannot be read.")), { once: true });
+      timer = setTimeout(() => reject(new VideoLoadTimeout()), timeoutMs);
       video.src = url;
     });
   } catch (error) {
     release();
     throw error;
+  } finally {
+    clearTimeout(timer);
   }
   return { video, release };
 }
