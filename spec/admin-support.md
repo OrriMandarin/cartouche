@@ -1,6 +1,6 @@
 # Validation des inscriptions et support
 
-> Statut : partiellement implémenté : ADM-001 à ADM-005 (plan 1) ; ADM-006 et suivantes : spécifié (plans 2 et 4, indiqués règle par règle)
+> Statut : implémenté : ADM-001 à ADM-006 et ADM-009 à ADM-015 (plans 1 et 2) ; ADM-007 et ADM-008 : plan 4
 
 ## Accès et gestion des comptes
 

@@ -1,6 +1,6 @@
 # Tableau de bord et éditeur de carte
 
-> Statut : spécifié, non implémenté (plan 2) ; la liste des événements : plan 3 ; l'accès aux contacts et aux exports : plan 4
+> Statut : implémenté (plan 2) ; EDI-009 : plan 3 ; EDI-010 : plan 4
 
 ## Cartes
 

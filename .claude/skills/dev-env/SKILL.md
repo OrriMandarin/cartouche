@@ -20,11 +20,15 @@ make web       # site sur :3000
 
 Vérifier : `curl -s localhost:8080/api/health` doit répondre `{"status":"ok","db":"ok"}`.
 
+## Médias
+
+Par défaut (`MEDIA_STORAGE=local`), l'API écrit les médias des cartes dans `MEDIA_LOCAL_DIR` et les sert elle-même sous `/media/*`. Le `Makefile` fixe `MEDIA_LOCAL_DIR` à `.data/media` à la racine du dépôt (ignoré par git) : supprimer ce dossier pour repartir sans média. `make e2e` écrit dans `/data/media` du conteneur de l'API (perdu à `make e2e-down`). Le mode `s3` (`MEDIA_S3_*`, `MEDIA_PUBLIC_BASE_URL`) est documenté dans `.env.example`.
+
 ## Données
 
 ```bash
 make seed                      # scénario « base » (administrateur + un utilisateur par statut)
-make seed SCENARIO=<nom>       # autre scénario
+make seed SCENARIO=<nom>       # autre scénario (par exemple « cards » : cartes de démonstration)
 cd backend && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- list    # liste des scénarios
 cd backend && APP_ENV=development DATABASE_URL=postgres://cartouche:cartouche@localhost:54320/cartouche \
   cargo run -p cartouche-api --features test-support --bin cartouche-seed -- reset   # vide les tables (APP_ENV et DATABASE_URL obligatoires hors `make`)

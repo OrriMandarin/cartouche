@@ -1,6 +1,6 @@
 # Page publique et vCard
 
-> Statut : spécifié, non implémenté (plan 2) ; PUB-008 à PUB-010 : rendus par le template dès le plan 2 (vérifiés avec un événement simulé), alimentés par les vrais événements au plan 3
+> Statut : implémenté (plan 2) ; PUB-008 à PUB-010 : vérifiés avec un événement simulé, alimentés par les vrais événements au plan 3
 
 Cette page décrit le comportement de la page publique, quel que soit le template (voir TPL-003). Le visuel est celui du template « Classique », le template de référence.
 
