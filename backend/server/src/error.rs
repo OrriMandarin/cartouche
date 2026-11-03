@@ -77,6 +77,10 @@ pub enum ApiError {
     TooManySimultaneousEvents,
     /// `end now` was asked on an event that is not running (EVT-021).
     EventNotRunning,
+    /// The event is outside its submission window (EVT-008, EVT-026).
+    EventClosed,
+    /// The access code typed for an event is wrong (EVT-027).
+    InvalidAccessCode,
     /// The caller's address used up a rate limit (ABU-006, ABU-007).
     RateLimited {
         retry_after_secs: u64,
@@ -113,6 +117,8 @@ impl ApiError {
             ApiError::CardInactive => "card_inactive",
             ApiError::TooManySimultaneousEvents => "too_many_simultaneous_events",
             ApiError::EventNotRunning => "event_not_running",
+            ApiError::EventClosed => "event_closed",
+            ApiError::InvalidAccessCode => "invalid_access_code",
             ApiError::RateLimited { .. } => "rate_limited",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
@@ -133,7 +139,8 @@ impl ApiError {
             | ApiError::AccountRejected
             | ApiError::AccountSuspended
             | ApiError::Forbidden
-            | ApiError::CannotModerateAdmin => StatusCode::FORBIDDEN,
+            | ApiError::CannotModerateAdmin
+            | ApiError::InvalidAccessCode => StatusCode::FORBIDDEN,
             ApiError::InvalidRequest | ApiError::Validation(_) => StatusCode::BAD_REQUEST,
             ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -142,7 +149,8 @@ impl ApiError {
             | ApiError::SlugReserved
             | ApiError::CardDisabledBySupport
             | ApiError::TooManySimultaneousEvents
-            | ApiError::EventNotRunning => StatusCode::CONFLICT,
+            | ApiError::EventNotRunning
+            | ApiError::EventClosed => StatusCode::CONFLICT,
             ApiError::CardInactive => StatusCode::GONE,
             ApiError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -177,6 +185,8 @@ impl ApiError {
                 "Too many events of this card would run at the same time."
             }
             ApiError::EventNotRunning => "This event is not running.",
+            ApiError::EventClosed => "This event is not open for submissions.",
+            ApiError::InvalidAccessCode => "The access code is wrong.",
             ApiError::RateLimited { .. } => "Too many requests. Try again later.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
@@ -356,6 +366,15 @@ mod tests {
     fn inactive_card_is_410() {
         assert_eq!(ApiError::CardInactive.code(), "card_inactive");
         assert_eq!(ApiError::CardInactive.status(), StatusCode::GONE);
+    }
+
+    // spec: EVT-026, EVT-027
+    #[test]
+    fn event_access_errors() {
+        assert_eq!(ApiError::EventClosed.code(), "event_closed");
+        assert_eq!(ApiError::EventClosed.status(), StatusCode::CONFLICT);
+        assert_eq!(ApiError::InvalidAccessCode.code(), "invalid_access_code");
+        assert_eq!(ApiError::InvalidAccessCode.status(), StatusCode::FORBIDDEN);
     }
 
     // spec: ACC-007

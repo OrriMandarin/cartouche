@@ -1,8 +1,9 @@
 //! JSON shapes of the API that are shared by several routes.
 
 use cartouche_domain::{
-    CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind, StandardFields,
-    Theme, VariantFormat, default_consent_text, format_international, storage_key,
+    CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind, PublicForm,
+    StandardField, StandardFields, Theme, VariantFormat, consent_text, default_consent_text,
+    form_version, format_international, storage_key,
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -11,7 +12,7 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::db::cards::Card;
-use crate::db::events::EventWithCount;
+use crate::db::events::{Event, EventWithCount, PublicCandidate};
 use crate::db::media::MediaRecord;
 use crate::error::ApiError;
 use crate::media::MediaService;
@@ -112,6 +113,99 @@ pub struct PublicCard {
     pub avatar: Option<MediaView>,
     /// Where to download the contact card: `/api/public/cards/{slug}/vcard`.
     pub vcard_url: String,
+    /// The events running now, by start then title (PUB-008, PUB-009, PUB-029).
+    pub events: Vec<PublicEventButton>,
+}
+
+/// A running event, as a button of the public card.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicEventButton {
+    pub id: Uuid,
+    pub title: String,
+    pub starts_at: DateTime<Utc>,
+}
+
+impl PublicEventButton {
+    /// The buttons among `candidates` (already in display order): the events running at `now`
+    /// (EVT-002, PUB-029).
+    pub fn running(candidates: Vec<PublicCandidate>, now: DateTime<Utc>) -> Vec<PublicEventButton> {
+        candidates
+            .into_iter()
+            .filter(|candidate| candidate.period.is_running(now))
+            .map(|candidate| PublicEventButton {
+                id: candidate.id,
+                title: candidate.title,
+                starts_at: candidate.period.starts_at,
+            })
+            .collect()
+    }
+}
+
+/// What a visitor learns of an event whose form is not handed out: its title only (EVT-027).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicEventHeading {
+    pub id: Uuid,
+    pub title: String,
+}
+
+impl From<&Event> for PublicEventHeading {
+    fn from(event: &Event) -> Self {
+        PublicEventHeading {
+            id: event.id,
+            title: event.title.clone(),
+        }
+    }
+}
+
+/// A standard field of the form, in display order (FRM-017).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicStandardField {
+    pub field: StandardField,
+    pub required: bool,
+}
+
+/// The form a prospect fills in. It never carries the access code, the device limit or dates.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicEventForm {
+    pub id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    /// The enabled standard fields, in display order (FRM-017, FRM-019).
+    pub standard_fields: Vec<PublicStandardField>,
+    pub custom_fields: Vec<CustomField>,
+    /// The text the prospect accepts, as it will be recorded (FRM-007, FRM-028).
+    pub consent_text: String,
+    /// Fingerprint of this form, sent back with the submission (FRM-030).
+    pub form_version: String,
+}
+
+impl PublicEventForm {
+    /// `card` is the content of the event's card (it names the data controller).
+    pub fn new(event: Event, card: &CardContent) -> PublicEventForm {
+        let consent = consent_text(event.consent_text.as_deref(), card, &event.title);
+        let form_version = form_version(&PublicForm {
+            title: &event.title,
+            description: event.description.as_deref(),
+            standard: &event.form.standard,
+            custom: &event.form.custom,
+            consent_text: &consent,
+        });
+        PublicEventForm {
+            standard_fields: event
+                .form
+                .standard
+                .enabled()
+                .into_iter()
+                .map(|(field, required)| PublicStandardField { field, required })
+                .collect(),
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            custom_fields: event.form.custom,
+            consent_text: consent,
+            form_version,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -291,6 +385,7 @@ impl PublicCard {
         attached: &[MediaRecord],
         config: &Config,
         media: &MediaService,
+        events: Vec<PublicEventButton>,
     ) -> Result<PublicCard, ApiError> {
         let theme = stored_theme(&card)?;
         let view_of = |id: Option<Uuid>| attached_view(attached, id, media, Audience::Public);
@@ -305,6 +400,7 @@ impl PublicCard {
             theme,
             content: card.content.into(),
             links: card.links.into_iter().map(LinkView::from).collect(),
+            events,
         })
     }
 }

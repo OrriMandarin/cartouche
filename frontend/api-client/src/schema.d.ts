@@ -397,11 +397,51 @@ export interface paths {
         };
         /**
          * Resolve a public card
-         * @description No token needed. `active` carries the card; `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.
+         * @description No token needed. `active` carries the card, with a button for each event running now (by start, then title); `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.
          */
         get: operations["get_public_card"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/cards/{slug}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a public event form
+         * @description No token needed. `open` carries the form. `code_required` and `closed` carry only the id and title of the event: the description, fields and consent text of an event with an access code are given by the unlock route after a correct code. An old slug or a slug with capitals reaches the event too. An event outside its submission window (from its start to 15 minutes after its end) is `closed`, whether or not it has a code.
+         */
+        get: operations["get_public_event"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/cards/{slug}/events/{event_id}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unlock a public event form
+         * @description No token needed. A correct code (or any code, for an event without one) returns the form. A wrong code is `403 invalid_access_code`. Each address may fail 30 codes per 10 minutes; past that every attempt is `429 rate_limited` with `Retry-After`, a correct code included. A correct code does not count.
+         */
+        post: operations["unlock_public_event"];
         delete?: never;
         options?: never;
         head?: never;
@@ -626,7 +666,7 @@ export interface components {
             description?: string | null;
             /**
              * Format: int64
-             * @description Signed and wide so that any out-of-range number is a field error, not a malformed body.
+             * @description Submissions allowed per device, from 1 to 100 (EVT-014, EVT-030).
              */
             device_limit: number;
             /** Format: date-time */
@@ -763,6 +803,8 @@ export interface components {
         PublicCard: {
             avatar?: null | components["schemas"]["MediaView"];
             content: components["schemas"]["ContentView"];
+            /** @description The events running now, by start then title (PUB-008, PUB-009, PUB-029). */
+            events: components["schemas"]["PublicEventButton"][];
             header?: null | components["schemas"]["MediaView"];
             links: components["schemas"]["LinkView"][];
             /** @description Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`. */
@@ -790,6 +832,53 @@ export interface components {
             /** @enum {string} */
             state: "redirect";
         };
+        /** @description A running event, as a button of the public card. */
+        PublicEventButton: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            starts_at: string;
+            title: string;
+        };
+        /** @description The form a prospect fills in. It never carries the access code, the device limit or dates. */
+        PublicEventForm: {
+            /** @description The text the prospect accepts, as it will be recorded (FRM-007, FRM-028). */
+            consent_text: string;
+            custom_fields: components["schemas"]["CustomField"][];
+            description?: string | null;
+            /** @description Fingerprint of this form, sent back with the submission (FRM-030). */
+            form_version: string;
+            /** Format: uuid */
+            id: string;
+            /** @description The enabled standard fields, in display order (FRM-017, FRM-019). */
+            standard_fields: components["schemas"]["PublicStandardField"][];
+            title: string;
+        };
+        /** @description What a visitor learns of an event whose form is not handed out: its title only (EVT-027). */
+        PublicEventHeading: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        /** @description What a visitor gets for an event. */
+        PublicEventResponse: {
+            event: components["schemas"]["PublicEventForm"];
+            /** @enum {string} */
+            state: "open";
+        } | {
+            event: components["schemas"]["PublicEventHeading"];
+            /** @enum {string} */
+            state: "code_required";
+        } | {
+            event: components["schemas"]["PublicEventHeading"];
+            /** @enum {string} */
+            state: "closed";
+        };
+        /** @description A standard field of the form, in display order (FRM-017). */
+        PublicStandardField: {
+            field: components["schemas"]["StandardField"];
+            required: boolean;
+        };
         /** @description The status to move an account to. */
         SetStatusBody: {
             status: components["schemas"]["UserStatus"];
@@ -810,6 +899,11 @@ export interface components {
             /** @description A free slug derived from the name, or `null` when the name gives nothing usable. */
             slug?: string | null;
         };
+        /**
+         * @description The standard fields an owner can enable (FRM-017).
+         * @enum {string}
+         */
+        StandardField: "first_name" | "last_name" | "birth_date" | "email" | "phone" | "address";
         /** @description The mode of each standard field. */
         StandardFields: {
             address: components["schemas"]["FieldMode"];
@@ -844,6 +938,10 @@ export interface components {
             /** @description Preset identifier; an unknown one is accepted and falls back at render time. */
             preset: string;
             text?: null | components["schemas"]["Color"];
+        };
+        UnlockBody: {
+            /** @description The code as typed: case, surrounding spaces and accents do not matter. */
+            access_code: string;
         };
         /** @description The whole editable content of a card; it replaces what is stored. */
         UpdateCardBody: {
@@ -2800,6 +2898,159 @@ export interface operations {
             };
             /** @description The slug was never attributed (`not_found`). */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_public_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+                /** @description Id of the event. */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The form, or what to do before getting it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEventResponse"];
+                };
+            };
+            /** @description Malformed event id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown slug, or an event that is unknown, deleted or of another card (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The card is not served (`card_inactive`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    unlock_public_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+                /** @description Id of the event. */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnlockBody"];
+            };
+        };
+        responses: {
+            /** @description The form. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEventForm"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Wrong access code (`invalid_access_code`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown slug, or an event that is unknown, deleted or of another card (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The event does not accept submissions now (`event_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The card is not served (`card_inactive`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many wrong codes from this address (`rate_limited`). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

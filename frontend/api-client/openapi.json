@@ -2412,7 +2412,7 @@
           "public"
         ],
         "summary": "Resolve a public card",
-        "description": "No token needed. `active` carries the card; `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.",
+        "description": "No token needed. `active` carries the card, with a button for each event running now (by start, then title); `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.",
         "operationId": "get_public_card",
         "parameters": [
           {
@@ -2438,6 +2438,212 @@
           },
           "404": {
             "description": "The slug was never attributed (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/cards/{slug}/events/{event_id}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Read a public event form",
+        "description": "No token needed. `open` carries the form. `code_required` and `closed` carry only the id and title of the event: the description, fields and consent text of an event with an access code are given by the unlock route after a correct code. An old slug or a slug with capitals reaches the event too. An event outside its submission window (from its start to 15 minutes after its end) is `closed`, whether or not it has a code.",
+        "operationId": "get_public_event",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "description": "The slug, in any case.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The form, or what to do before getting it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEventResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed event id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown slug, or an event that is unknown, deleted or of another card (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The card is not served (`card_inactive`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/cards/{slug}/events/{event_id}/unlock": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Unlock a public event form",
+        "description": "No token needed. A correct code (or any code, for an event without one) returns the form. A wrong code is `403 invalid_access_code`. Each address may fail 30 codes per 10 minutes; past that every attempt is `429 rate_limited` with `Retry-After`, a correct code included. A correct code does not count.",
+        "operationId": "unlock_public_event",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "description": "The slug, in any case.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnlockBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The form.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEventForm"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong access code (`invalid_access_code`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown slug, or an event that is unknown, deleted or of another card (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The event does not accept submissions now (`event_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The card is not served (`card_inactive`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many wrong codes from this address (`rate_limited`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3288,7 +3494,7 @@
           "device_limit": {
             "type": "integer",
             "format": "int64",
-            "description": "Signed and wide so that any out-of-range number is a field error, not a malformed body."
+            "description": "Submissions allowed per device, from 1 to 100 (EVT-014, EVT-030)."
           },
           "ends_at": {
             "type": [
@@ -3646,7 +3852,8 @@
           "theme",
           "content",
           "links",
-          "vcard_url"
+          "vcard_url",
+          "events"
         ],
         "properties": {
           "avatar": {
@@ -3661,6 +3868,13 @@
           },
           "content": {
             "$ref": "#/components/schemas/ContentView"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicEventButton"
+            },
+            "description": "The events running now, by start then title (PUB-008, PUB-009, PUB-029)."
           },
           "header": {
             "oneOf": [
@@ -3761,6 +3975,171 @@
         ],
         "description": "What a visitor gets for a slug."
       },
+      "PublicEventButton": {
+        "type": "object",
+        "description": "A running event, as a button of the public card.",
+        "required": [
+          "id",
+          "title",
+          "starts_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicEventForm": {
+        "type": "object",
+        "description": "The form a prospect fills in. It never carries the access code, the device limit or dates.",
+        "required": [
+          "id",
+          "title",
+          "standard_fields",
+          "custom_fields",
+          "consent_text",
+          "form_version"
+        ],
+        "properties": {
+          "consent_text": {
+            "type": "string",
+            "description": "The text the prospect accepts, as it will be recorded (FRM-007, FRM-028)."
+          },
+          "custom_fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomField"
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "form_version": {
+            "type": "string",
+            "description": "Fingerprint of this form, sent back with the submission (FRM-030)."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "standard_fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicStandardField"
+            },
+            "description": "The enabled standard fields, in display order (FRM-017, FRM-019)."
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicEventHeading": {
+        "type": "object",
+        "description": "What a visitor learns of an event whose form is not handed out: its title only (EVT-027).",
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PublicEventResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "The form is open and needs no code.",
+            "required": [
+              "event",
+              "state"
+            ],
+            "properties": {
+              "event": {
+                "$ref": "#/components/schemas/PublicEventForm"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The form needs the access code first: only the title is given.",
+            "required": [
+              "event",
+              "state"
+            ],
+            "properties": {
+              "event": {
+                "$ref": "#/components/schemas/PublicEventHeading"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "code_required"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The event does not accept submissions now: only the title is given.",
+            "required": [
+              "event",
+              "state"
+            ],
+            "properties": {
+              "event": {
+                "$ref": "#/components/schemas/PublicEventHeading"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "closed"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "What a visitor gets for an event."
+      },
+      "PublicStandardField": {
+        "type": "object",
+        "description": "A standard field of the form, in display order (FRM-017).",
+        "required": [
+          "field",
+          "required"
+        ],
+        "properties": {
+          "field": {
+            "$ref": "#/components/schemas/StandardField"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
       "SetStatusBody": {
         "type": "object",
         "description": "The status to move an account to.",
@@ -3820,6 +4199,18 @@
             "description": "A free slug derived from the name, or `null` when the name gives nothing usable."
           }
         }
+      },
+      "StandardField": {
+        "type": "string",
+        "description": "The standard fields an owner can enable (FRM-017).",
+        "enum": [
+          "first_name",
+          "last_name",
+          "birth_date",
+          "email",
+          "phone",
+          "address"
+        ]
       },
       "StandardFields": {
         "type": "object",
@@ -3951,6 +4342,18 @@
         },
         "additionalProperties": false
       },
+      "UnlockBody": {
+        "type": "object",
+        "required": [
+          "access_code"
+        ],
+        "properties": {
+          "access_code": {
+            "type": "string",
+            "description": "The code as typed: case, surrounding spaces and accents do not matter."
+          }
+        }
+      },
       "UpdateCardBody": {
         "type": "object",
         "description": "The whole editable content of a card; it replaces what is stored.",
@@ -4069,7 +4472,7 @@
     },
     {
       "name": "public",
-      "description": "A published card and its vCard, no sign-in"
+      "description": "A published card, its vCard, its running events and their forms, no sign-in"
     },
     {
       "name": "admin",

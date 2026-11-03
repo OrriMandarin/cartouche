@@ -108,6 +108,7 @@ export function draftToPublicCard(draft: CardDraft, publicBaseUrl: string): Publ
     header: draft.header,
     avatar: draft.avatar,
     vcard_url: `/api/public/cards/${encodeURIComponent(draft.slug)}/vcard`,
+    events: [],
   };
 }
 

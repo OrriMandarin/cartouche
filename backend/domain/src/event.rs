@@ -141,7 +141,8 @@ pub struct EventInput {
     pub starts_at: Option<DateTime<Utc>>,
     pub ends_at: Option<DateTime<Utc>>,
     pub access_code: Option<String>,
-    /// Signed and wide so that any out-of-range number is a field error, not a malformed body.
+    /// Submissions allowed per device, from 1 to 100 (EVT-014, EVT-030).
+    // Signed and wide so that any out-of-range number is a field error, not a malformed body.
     pub device_limit: i64,
     pub standard_fields: StandardFields,
     pub custom_fields: Vec<CustomField>,

@@ -22,6 +22,15 @@ pub enum PublicAccess {
     Inactive,
 }
 
+impl PublicAccess {
+    /// Whether the public API serves the card's resources (events, forms) at this address: a
+    /// redirect is for pages and the vCard; an old slug or capitals still reach the form
+    /// endpoints (LNK-003, FRM-024).
+    pub fn serves_api(self) -> bool {
+        matches!(self, PublicAccess::Serve | PublicAccess::Redirect)
+    }
+}
+
 /// `typed_as_stored` tells whether the slug was typed exactly as stored (lowercase). A card
 /// that is not served is neutral from every address, so that nothing tells why, nor where its
 /// current slug is (LNK-027).
@@ -71,5 +80,13 @@ mod tests {
             );
             assert_eq!(public_access(SlugMatch::Deleted, typed), Inactive);
         }
+    }
+
+    // spec: LNK-003, LNK-026, FRM-024
+    #[test]
+    fn the_api_serves_redirects_but_not_inactive_cards() {
+        assert!(PublicAccess::Serve.serves_api());
+        assert!(PublicAccess::Redirect.serves_api());
+        assert!(!PublicAccess::Inactive.serves_api());
     }
 }

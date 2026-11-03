@@ -7,4 +7,5 @@ pub mod health;
 pub mod me;
 pub mod media_files;
 pub mod public_cards;
+pub mod public_events;
 pub mod slugs;

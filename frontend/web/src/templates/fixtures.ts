@@ -45,6 +45,7 @@ export const sampleCard: PublicCard = {
     jpeg_url: `${media}/a1/s512.jpg`,
   },
   vcard_url: "/api/public/cards/eloise-daubigne/vcard",
+  events: [],
 };
 
 /** The same card with a video header; the waiting image is the largest of its images. */
