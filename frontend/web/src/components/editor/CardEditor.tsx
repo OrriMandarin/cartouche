@@ -92,6 +92,11 @@ export function CardEditor({ card }: { card: CardView }) {
   const message = (key: string | undefined) => (key ? (t.has(key) ? t(key) : t("editor.invalid")) : undefined);
   const messages = Object.fromEntries(Object.entries(errors).map(([path, key]) => [path, message(key)!]));
 
+  // Leaving by a link asks first when there are unsaved changes (EDI-016).
+  function confirmLeave(event: React.MouseEvent) {
+    if (dirty && !window.confirm(t("editor.leaveConfirm"))) event.preventDefault();
+  }
+
   /** Applies an edit; the messages of the fields it corrects go away. */
   function edit(patch: Partial<CardDraft>, fixed: string[]) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -143,16 +148,24 @@ export function CardEditor({ card }: { card: CardView }) {
         }}
       >
         <div className="bg-background/95 sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-b px-1 py-3 backdrop-blur">
-          <Link
-            href="/dashboard"
-            data-testid="editor-back"
-            className="text-sm underline"
-            onClick={(event) => {
-              if (dirty && !window.confirm(t("editor.leaveConfirm"))) event.preventDefault();
-            }}
-          >
-            {t("editor.back")}
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/dashboard"
+              data-testid="editor-back"
+              className="text-sm underline"
+              onClick={confirmLeave}
+            >
+              {t("editor.back")}
+            </Link>
+            <Link
+              href={`/dashboard/cards/${card.id}/events`}
+              data-testid="editor-events"
+              className="text-sm underline"
+              onClick={confirmLeave}
+            >
+              {t("editor.events")}
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <p data-testid="editor-status" role="status" className="text-muted-foreground text-sm">
               {dirty ? t("editor.unsaved") : justSaved ? t("editor.saved") : null}

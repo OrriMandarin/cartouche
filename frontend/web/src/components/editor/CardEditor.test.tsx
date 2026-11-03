@@ -269,14 +269,14 @@ describe("CardEditor", { timeout: 15_000 }, () => {
   });
 
   /** Clicks the link and tells whether its own handler let the navigation go; the navigation itself is stopped. */
-  function backNavigates(): boolean {
+  function backNavigates(testId = "editor-back"): boolean {
     let allowed = false;
     const stop = (event: Event) => {
       allowed = !event.defaultPrevented;
       event.preventDefault();
     };
     document.addEventListener("click", stop);
-    fireEvent.click(screen.getByTestId("editor-back"));
+    fireEvent.click(screen.getByTestId(testId));
     document.removeEventListener("click", stop);
     return allowed;
   }
@@ -293,6 +293,21 @@ describe("CardEditor", { timeout: 15_000 }, () => {
 
     confirm.mockReturnValue(true);
     expect(backNavigates()).toBe(true);
+  });
+
+  test("EDI-018 the events of the card are one link away, which also asks before leaving unsaved changes", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderEditor();
+    expect(screen.getByTestId("editor-events")).toHaveAttribute(
+      "href",
+      "/dashboard/cards/0198c8a0-0000-7000-8000-000000000001/events",
+    );
+    expect(screen.getByTestId("editor-events")).toHaveTextContent("Événements");
+    expect(backNavigates("editor-events")).toBe(true);
+
+    type("editor-job_title", "Directrice");
+    expect(backNavigates("editor-events")).toBe(false);
+    expect(confirm).toHaveBeenCalledTimes(1);
   });
 
   test("EDI-016 reverting a setting leaves the editor clean", () => {

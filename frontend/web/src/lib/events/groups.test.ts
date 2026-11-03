@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { eventView } from "./event-view.fixture";
-import { groupEvents } from "./groups";
+import { canEndNow, groupEvents } from "./groups";
 
 describe("groupEvents", () => {
   test("EDI-009 EVT-020 events are grouped by their server phase", () => {
@@ -21,5 +21,13 @@ describe("groupEvents", () => {
 
   test("EDI-009 no event gives three empty groups", () => {
     expect(groupEvents([])).toEqual({ running: [], upcoming: [], past: [] });
+  });
+});
+
+describe("canEndNow", () => {
+  test("EVT-006 EVT-021 only a running event can be ended now", () => {
+    expect(canEndNow(eventView({ phase: "running" }))).toBe(true);
+    expect(canEndNow(eventView({ phase: "upcoming" }))).toBe(false);
+    expect(canEndNow(eventView({ phase: "past" }))).toBe(false);
   });
 });

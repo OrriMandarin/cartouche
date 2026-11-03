@@ -4,12 +4,18 @@ import {
   type CustomFieldDraft,
   type EventDraft,
   addCustomField,
+  addOption,
+  clearErrors,
   draftFromEvent,
   draftToBody,
+  enableEnd,
   eventFieldErrors,
   moveCustomField,
   newEventDraft,
   removeCustomField,
+  removeOption,
+  setOption,
+  updateCustomField,
 } from "./draft";
 import { eventView } from "./event-view.fixture";
 
@@ -174,6 +180,77 @@ describe("event draft", () => {
   });
 });
 
+describe("custom field editing", () => {
+  const now = new Date("2027-03-15T09:20:00Z");
+
+  test("FRM-021 a single choice field starts with two empty options, other kinds with none", () => {
+    const draft = addCustomField(addCustomField(newEventDraft(PARIS, now), "single_choice"), "text");
+    expect(fieldAt(draft, 0).options).toEqual(["", ""]);
+    expect(fieldAt(draft, 1).options).toEqual([]);
+  });
+
+  test("FRM-020 a field is edited in place, its id and kind kept", () => {
+    let draft = addCustomField(addCustomField(newEventDraft(PARIS, now), "text"), "checkbox");
+    const [a, b] = [fieldAt(draft, 0), fieldAt(draft, 1)];
+    draft = updateCustomField(draft, 1, { label: "Newsletter", required: true, help: "Une fois par mois" });
+    expect(fieldAt(draft, 0)).toEqual(a);
+    expect(fieldAt(draft, 1)).toEqual({ ...b, label: "Newsletter", required: true, help: "Une fois par mois" });
+  });
+
+  test("FRM-021 options are added, typed and removed", () => {
+    let draft = addCustomField(newEventDraft(PARIS, now), "single_choice");
+    draft = setOption(draft, 0, 0, "< 5 000 €");
+    draft = setOption(draft, 0, 1, "> 5 000 €");
+    draft = addOption(draft, 0);
+    expect(fieldAt(draft, 0).options).toEqual(["< 5 000 €", "> 5 000 €", ""]);
+    draft = removeOption(draft, 0, 1);
+    expect(fieldAt(draft, 0).options).toEqual(["< 5 000 €", ""]);
+  });
+
+  test("FRM-021 FRM-032 no more than 20 options", () => {
+    let draft = addCustomField(newEventDraft(PARIS, now), "single_choice");
+    for (let i = 0; i < 30; i += 1) draft = addOption(draft, 0);
+    expect(fieldAt(draft, 0).options).toHaveLength(20);
+  });
+
+  test("EVT-017 EDI-019 switching an open end on gives an end one hour after the start", () => {
+    const draft = { ...newEventDraft(PARIS, now), startsAt: "2027-03-15T23:30" };
+    expect(enableEnd(draft, PARIS).endsAt).toBe("2027-03-16T00:30");
+    // An end already typed is kept.
+    expect(enableEnd({ ...draft, endsAt: "2027-03-16T09:00" }, PARIS).endsAt).toBe("2027-03-16T09:00");
+    // Without a start there is nothing to add an hour to.
+    expect(enableEnd({ ...draft, startsAt: "" }, PARIS).endsAt).toBe("");
+  });
+});
+
+describe("clearErrors", () => {
+  const errors = {
+    title: "fieldErrors.required",
+    "custom_fields[1].label": "fieldErrors.required",
+    "custom_fields[1].options": "fieldErrors.too_few_options",
+    "custom_fields[1].options[0]": "fieldErrors.required",
+    "custom_fields[10].label": "fieldErrors.required",
+    custom_fields: "fieldErrors.too_many_fields",
+  };
+
+  test("EDI-015 a corrected field loses its message, and the ones below it", () => {
+    expect(clearErrors(errors, ["title"])).not.toHaveProperty("title");
+    expect(Object.keys(clearErrors(errors, ["custom_fields[1].options"]))).toEqual([
+      "title",
+      "custom_fields[1].label",
+      "custom_fields[10].label",
+      "custom_fields",
+    ]);
+    // `custom_fields[1]` is not `custom_fields[10]`.
+    expect(clearErrors(errors, ["custom_fields[1]"])).toHaveProperty(["custom_fields[10].label"]);
+    expect(clearErrors(errors, ["custom_fields"])).toEqual({ title: "fieldErrors.required" });
+  });
+
+  test("EDI-015 nothing to clear returns the same object", () => {
+    expect(clearErrors(errors, ["description"])).toBe(errors);
+  });
+});
+
 describe("eventFieldErrors", () => {
   function validationError(fields: { field: string; code: string }[]) {
     return new ApiError({ status: 400, code: "validation_failed", message: "x", requestId: "r", fields });
@@ -183,7 +260,8 @@ describe("eventFieldErrors", () => {
     expect(
       eventFieldErrors(
         validationError([
-          { field: "custom_fields[0]?.options[1]", code: "duplicate_option" },
+          { field: "custom_fields[0].options[1]", code: "duplicate_option" },
+          { field: "custom_fields[1].label", code: "required" },
           { field: "starts_at", code: "required" },
           { field: "device_limit", code: "out_of_range" },
           { field: "ends_at", code: "end_before_start" },
@@ -191,7 +269,8 @@ describe("eventFieldErrors", () => {
         ]),
       ),
     ).toEqual({
-      "custom_fields[0]?.options[1]": "fieldErrors.duplicate_option",
+      "custom_fields[0].options[1]": "fieldErrors.duplicate_option",
+      "custom_fields[1].label": "fieldErrors.required",
       starts_at: "fieldErrors.required",
       device_limit: "fieldErrors.out_of_range",
       ends_at: "fieldErrors.end_before_start",

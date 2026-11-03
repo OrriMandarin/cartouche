@@ -1,4 +1,4 @@
-import { configure, act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, configure, act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiError } from "@cartouche/api-client";
@@ -42,6 +42,15 @@ describe("CardActions", { timeout: 15_000 }, () => {
     expect(screen.getByTestId("card-blocked-alice-durand")).toHaveTextContent("Désactivée par le support");
     expect(screen.getByTestId("card-edit-alice-durand")).toBeInTheDocument();
     expect(screen.getByTestId("card-delete-alice-durand")).toBeInTheDocument();
+  });
+
+  test("EDI-018 EVT-025 every card links to its events, a disabled one too", () => {
+    for (const status of ["active", "disabled", "disabled_by_support"] as const) {
+      renderActions(cardView({ status }));
+      expect(screen.getByTestId("card-events-alice-durand")).toHaveAttribute("href", "/dashboard/cards/card-1/events");
+      expect(screen.getByTestId("card-events-alice-durand")).toHaveTextContent("Événements");
+      cleanup();
+    }
   });
 
   test("LNK-005 an active card is disabled with one click, a disabled one enabled", async () => {

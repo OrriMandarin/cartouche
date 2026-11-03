@@ -1,4 +1,5 @@
 import { fieldErrors } from "@/lib/cards/draft";
+import { MAX_OPTIONS } from "./fields";
 import { fromLocalInput, toLocalInput } from "./time";
 import type { CustomFieldKind, EventInput, EventView, StandardFields } from "./types";
 
@@ -118,10 +119,57 @@ export function draftToBody(draft: EventDraft, zone: string): EventInput {
   };
 }
 
-/** Adds an empty custom field of `kind` at the end, with a fresh stable id (FRM-032). */
+/**
+ * Adds an empty custom field of `kind` at the end, with a fresh stable id (FRM-032). A single choice
+ * field starts with its two empty options (FRM-021).
+ */
 export function addCustomField(draft: EventDraft, kind: CustomFieldKind): EventDraft {
-  const field: CustomFieldDraft = { id: crypto.randomUUID(), label: "", kind, required: false, help: "", options: [] };
+  const options = kind === "single_choice" ? ["", ""] : [];
+  const field: CustomFieldDraft = { id: crypto.randomUUID(), label: "", kind, required: false, help: "", options };
   return { ...draft, customFields: [...draft.customFields, field] };
+}
+
+function withField(draft: EventDraft, index: number, change: (field: CustomFieldDraft) => CustomFieldDraft): EventDraft {
+  return { ...draft, customFields: draft.customFields.map((field, i) => (i === index ? change(field) : field)) };
+}
+
+/** Changes the label, help or required flag of the custom field at `index`; its id and kind stay (FRM-032). */
+export function updateCustomField(
+  draft: EventDraft,
+  index: number,
+  patch: Partial<Pick<CustomFieldDraft, "label" | "help" | "required">>,
+): EventDraft {
+  return withField(draft, index, (field) => ({ ...field, ...patch }));
+}
+
+/** Adds an empty option to the single choice field at `index`, up to the limit (FRM-032). */
+export function addOption(draft: EventDraft, index: number): EventDraft {
+  return withField(draft, index, (field) =>
+    field.options.length >= MAX_OPTIONS ? field : { ...field, options: [...field.options, ""] },
+  );
+}
+
+/** Types the option `option` of the custom field at `index`. */
+export function setOption(draft: EventDraft, index: number, option: number, text: string): EventDraft {
+  return withField(draft, index, (field) => ({
+    ...field,
+    options: field.options.map((current, i) => (i === option ? text : current)),
+  }));
+}
+
+/** Removes the option `option` of the custom field at `index`. */
+export function removeOption(draft: EventDraft, index: number, option: number): EventDraft {
+  return withField(draft, index, (field) => ({ ...field, options: field.options.filter((_, i) => i !== option) }));
+}
+
+/**
+ * The event gets an end, one hour after its start unless one was typed. Without a start there is
+ * nothing to count from, and the end stays empty (the owner picks it).
+ */
+export function enableEnd(draft: EventDraft, zone: string): EventDraft {
+  if (draft.endsAt !== "" || draft.startsAt === "") return draft;
+  const start = Date.parse(fromLocalInput(draft.startsAt, zone));
+  return { ...draft, endsAt: toLocalInput(new Date(start + HOUR_MS).toISOString(), zone) };
 }
 
 /** Moves the custom field at `index` by `delta` places (FRM-020); out of range, nothing moves. */
@@ -145,4 +193,16 @@ export function removeCustomField(draft: EventDraft, index: number): EventDraft 
  */
 export function eventFieldErrors(error: unknown): Record<string, string> {
   return fieldErrors(error);
+}
+
+/**
+ * The messages without the ones of `paths` and of the fields below them (`custom_fields[1].options` takes
+ * `custom_fields[1].options[0]` with it): the owner corrected them (EDI-015). Returns `errors` itself when
+ * nothing goes.
+ */
+export function clearErrors(errors: Record<string, string>, paths: string[]): Record<string, string> {
+  const gone = (path: string) =>
+    paths.some((fixed) => path === fixed || path.startsWith(`${fixed}[`) || path.startsWith(`${fixed}.`));
+  const kept = Object.entries(errors).filter(([path]) => !gone(path));
+  return kept.length === Object.keys(errors).length ? errors : Object.fromEntries(kept);
 }

@@ -81,7 +81,8 @@
       "disable": "Désactiver",
       "enable": "Réactiver",
       "duplicate": "Dupliquer",
-      "delete": "Supprimer"
+      "delete": "Supprimer",
+      "events": "Événements"
     },
     "share": {
       "copy": "Copier le lien",
@@ -304,6 +305,129 @@
       "frame": "Aperçu dans un téléphone",
       "simulateEvent": "Simuler un événement en cours",
       "event": "Événement de démonstration"
+    },
+    "events": "Événements"
+  },
+  "events": {
+    "title": "Événements",
+    "loading": "Chargement des événements…",
+    "notFound": "Événement introuvable",
+    "newEvent": "Nouvel événement",
+    "backToDashboard": "Retour au tableau de bord",
+    "backToEvents": "Retour aux événements",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "groups": {
+      "running": "En cours",
+      "upcoming": "À venir",
+      "past": "Passés",
+      "empty": "Aucun événement"
+    },
+    "phase": {
+      "running": "En cours",
+      "upcoming": "À venir",
+      "past": "Passé"
+    },
+    "row": {
+      "starts": "Début : {date}",
+      "ends": "Fin : {date}",
+      "noEnd": "Sans fin",
+      "leads": "{count, plural, =0 {Aucun contact} one {# contact} other {# contacts}}"
+    },
+    "actions": {
+      "edit": "Modifier",
+      "leads": "Contacts",
+      "endNow": "Terminer maintenant",
+      "delete": "Supprimer"
+    },
+    "delete": {
+      "title": "Supprimer l'événement ?",
+      "description": "L'événement « {title} » sera supprimé définitivement. {count, plural, =0 {Il n'a aucun contact.} one {# contact sera supprimé avec lui.} other {# contacts seront supprimés avec lui.}}",
+      "confirm": "Supprimer définitivement"
+    },
+    "errors": {
+      "too_many_simultaneous_events": "La carte a déjà le maximum d'événements en même temps sur cette période. Change les dates de cet événement ou termine-en un autre, puis réessaie.",
+      "event_not_running": "Cet événement n'est pas en cours : il ne peut pas être terminé maintenant. Recharge la page pour voir son état actuel."
+    },
+    "editor": {
+      "titleNew": "Nouvel événement",
+      "titleEdit": "Modifier l'événement",
+      "formLabel": "Formulaire de l'événement",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+      "sections": {
+        "general": "Événement",
+        "dates": "Dates",
+        "access": "Accès et limites",
+        "standardFields": "Informations demandées",
+        "customFields": "Champs personnalisés",
+        "consent": "Consentement"
+      },
+      "name": "Titre",
+      "description": "Description",
+      "startsAt": "Début",
+      "endsAt": "Fin",
+      "noEnd": "Sans fin",
+      "zone": "Fuseau horaire : {zone}",
+      "accessCode": "Code d'accès",
+      "accessCodeHint": "Facultatif. Les prospects doivent le saisir avant de voir le formulaire. Il s'affiche ici en clair.",
+      "deviceLimit": "Envois par appareil",
+      "deviceLimitHint": "Combien de fois un même appareil peut envoyer le formulaire, de 1 à 100.",
+      "standard": {
+        "hint": "Choisis les informations que le formulaire demande aux prospects.",
+        "labels": {
+          "first_name": "Prénom",
+          "last_name": "Nom",
+          "birth_date": "Date de naissance",
+          "email": "E-mail",
+          "phone": "Téléphone",
+          "address": "Adresse postale"
+        },
+        "modes": {
+          "off": "Non demandé",
+          "optional": "Facultatif",
+          "required": "Obligatoire"
+        }
+      },
+      "custom": {
+        "empty": "Aucun champ personnalisé pour l'instant.",
+        "item": "Champ {index}",
+        "kinds": {
+          "text": "Texte",
+          "long_text": "Texte long",
+          "date": "Date",
+          "number": "Nombre",
+          "single_choice": "Choix unique",
+          "checkbox": "Case à cocher"
+        },
+        "add": "Ajouter : {kind}",
+        "addHint": "Ajouter un champ",
+        "label": "Libellé",
+        "help": "Texte d'aide",
+        "required": "Obligatoire",
+        "options": "Options",
+        "option": "Option {index}",
+        "addOption": "Ajouter une option",
+        "removeOption": "Retirer l'option {index}",
+        "moveUp": "Monter le champ {index}",
+        "moveDown": "Descendre le champ {index}",
+        "remove": "Retirer le champ {index}",
+        "max": "Un événement a au plus 30 champs personnalisés."
+      },
+      "consent": {
+        "mode": "Texte de consentement",
+        "modes": {
+          "default": "Texte par défaut",
+          "custom": "Texte personnalisé"
+        },
+        "defaultHint": "Texte présenté aux prospects, avec le contenu actuel de la carte.",
+        "loading": "Chargement du texte…",
+        "unavailable": "Le texte par défaut n'a pas pu être chargé.",
+        "custom": "Ton texte",
+        "customHint": "Il s'affiche tel quel, sans variable (3 000 caractères au plus). Vide, il revient au texte par défaut.",
+        "noEmail": "Ta carte n'a pas d'e-mail : le texte par défaut renvoie les demandes d'accès et de suppression vers toi, sans adresse. Ajoute un e-mail à la carte pour que les prospects sachent où écrire."
+      }
     }
   },
   "fieldErrors": {
@@ -322,6 +446,14 @@
     "invalid_media": "Ce fichier n'est pas utilisable ici.",
     "image_too_large": "Cette image est trop grande.",
     "video_too_long": "Cette vidéo est trop longue.",
-    "poster_required": "Une image d'attente est nécessaire pour la vidéo."
+    "poster_required": "Une image d'attente est nécessaire pour la vidéo.",
+    "out_of_range": "Cette valeur est en dehors des limites autorisées.",
+    "end_before_start": "La fin doit être après le début.",
+    "duplicate_option": "Cette option est déjà dans la liste.",
+    "too_few_options": "Un choix unique a au moins 2 options.",
+    "too_many_options": "Un choix unique a au plus 20 options.",
+    "no_fields": "Le formulaire doit demander au moins un champ : choisis un champ standard ou ajoute un champ personnalisé.",
+    "too_many_fields": "Un événement a au plus 30 champs personnalisés.",
+    "duplicate_field_id": "Ce champ est en double : retire-le et ajoute-le à nouveau."
   }
 }

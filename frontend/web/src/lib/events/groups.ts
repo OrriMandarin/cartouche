@@ -22,3 +22,8 @@ export function groupEvents(events: EventView[]): EventGroups {
     past: ordered.filter((event) => event.phase === "past").reverse(),
   };
 }
+
+/** « Terminer maintenant » is offered on running events only (EVT-006, EVT-021). */
+export function canEndNow(event: EventView): boolean {
+  return event.phase === "running";
+}
