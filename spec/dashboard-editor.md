@@ -1,6 +1,6 @@
 # Dashboard and card editor
 
-> Status: implemented (plans 2 and 3); EDI-010: plan 4
+> Status: implemented (plans 2 and 3); EDI-010 and EDI-021: plan 4
 
 ## Cards
 
@@ -29,6 +29,7 @@
 - **EDI-019** — The event editor sets the title, the description, the start, the end, the access code (shown in clear, see EVT-010), the per-device limit, the standard fields (not asked, optional or required), the custom fields (adding, order, type, label, help text, options, required or not) and the consent text (default or custom). Each error is shown next to its field, with no input lost (see EDI-015).
 - **EDI-020** — For each event, the dashboard lists its leads, from newest to oldest, with the submission date, the name, the email, the phone and the "Spam" label, and lets the owner mark or unmark a lead as spam and delete it (see ABU-003, ABU-004, ABU-009 and ABU-010). Search, the detailed view, the "toute la carte" ("whole card") view and exports come with EDI-010.
 - **EDI-010** — The dashboard gives access to the leads and their exports (see LEA-001 and LEA-006).
+- **EDI-021** — Leaving the event editor with unsaved changes requires confirmation, as in the card editor (EDI-016): closing or reloading the page, and following a link of the page, ask first; after a successful save, or when the changes have been undone, nothing is asked.
 
 ## Interface
 

@@ -1,6 +1,6 @@
 # Public card link
 
-> Status: implemented (plans 2 and 3); LNK-015 and LNK-016: plan 4
+> Status: implemented (plans 2 and 3); LNK-015, LNK-016 and LNK-031 to LNK-033: plan 4
 
 ## Format and uniqueness
 
@@ -44,6 +44,9 @@
 - **LNK-014** — The same user can attach one of their reserved slugs to a new card.
 - **LNK-015** — When an account is deleted, the user's slugs are kept only as a hash in a blocked-slugs table, with no link to a person. They remain blocked permanently: nobody, including the former user, can take them again.
 - **LNK-016** — No personal data is kept after an account is deleted (see ACC-018), and no former link can point to a stranger.
+- **LNK-031** — A blocked slug (LNK-015) is stored as the SHA-256 hash of the slug as stored (lowercase, UTF-8), and nothing else: no user, no card, no date. All the slugs of the deleted account are blocked: current slugs, former slugs (LNK-003) and reserved slugs (LNK-013).
+- **LNK-032** — A blocked slug cannot be claimed: creating a card with it or changing a slug to it is refused with `409 slug_taken` (LNK-022), the availability check says it is taken (LNK-020), and the suggestion skips it (LNK-019). When a claim and the deletion of the account that held the slug happen at the same time, the slug ends up blocked, never claimed.
+- **LNK-033** — The link of a blocked slug, its vCard and its forms answer like those of a deleted card: the neutral page (LNK-012, LNK-027), and `410 card_inactive` for the vCard and the public event routes.
 
 ## Sharing
 
