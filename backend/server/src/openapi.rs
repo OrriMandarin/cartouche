@@ -68,6 +68,7 @@ impl Modify for BearerAuth {
         public_cards::get_public_vcard,
         public_events::get_public_event,
         public_events::unlock_public_event,
+        public_events::submit_lead,
     ),
     components(schemas(crate::error::ErrorBody, crate::error::ErrorDetail)),
     modifiers(&BearerAuth),

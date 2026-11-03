@@ -151,6 +151,14 @@ pub async fn insert(tx: &mut PgConnection, new: &NewLead<'_>) -> Result<(), sqlx
     Ok(())
 }
 
+/// Whether `insert` failed because the event no longer exists: it was deleted after the caller
+/// resolved it (the event is the only foreign key of a lead).
+pub fn is_missing_event(error: &sqlx::Error) -> bool {
+    error
+        .as_database_error()
+        .is_some_and(|e| e.is_foreign_key_violation())
+}
+
 /// The leads of the owner's event, newest first. `None` when the owner has no such event.
 pub async fn list_for_event(
     pool: &PgPool,

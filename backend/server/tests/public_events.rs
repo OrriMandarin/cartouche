@@ -317,6 +317,11 @@ async fn a_coded_event_hides_its_form_until_unlocked(pool: PgPool) {
         );
     }
     let logged = logs.contents().to_lowercase();
+    // Otherwise the check below would pass on an empty capture.
+    assert!(
+        logged.contains("request completed"),
+        "the requests were not logged"
+    );
     assert!(
         !logged.contains("château") && !logged.contains("chateau"),
         "the code was logged"

@@ -1,9 +1,10 @@
 //! Helpers for the event integration tests.
 
 use axum::http::StatusCode;
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
+use uuid::Uuid;
 
-use super::cards::token;
+use super::cards::{merge, token};
 use super::{TestApp, TestResponse};
 
 /// The fields of a view that an event save sends back.
@@ -112,4 +113,57 @@ pub async fn put_event(app: &TestApp, sub: &str, id: &str, patch: Value) -> Test
         Some(body),
     )
     .await
+}
+
+/// A valid submission for `form` (a `PublicEventForm`): an answer to every field it shows,
+/// consent given, a new device id, no code, an empty trap field and the form's version.
+/// `overrides` is merged in, objects key by key (`{"answers": {"email": "x"}}`).
+pub fn submission(form: &Value, overrides: Value) -> Value {
+    let mut answers = Map::new();
+    for field in form["standard_fields"].as_array().expect("standard fields") {
+        let name = field["field"].as_str().expect("a field name");
+        let answer = match name {
+            "first_name" => json!("Éloïse"),
+            "last_name" => json!("D’Aubigné-Müller"),
+            "birth_date" => json!("1990-05-12"),
+            "email" => json!("eloise@example.com"),
+            "phone" => json!("06 12 34 56 78"),
+            "address" => json!({
+                "street": "12 rue de l’Église",
+                "postal_code": "63000",
+                "city": "Clermont-Ferrand",
+                "country": "France",
+            }),
+            other => panic!("unknown standard field {other}"),
+        };
+        answers.insert(name.to_string(), answer);
+    }
+    let custom: Map<String, Value> = form["custom_fields"]
+        .as_array()
+        .expect("custom fields")
+        .iter()
+        .map(|field| {
+            let answer = match field["kind"].as_str().expect("a kind") {
+                "text" => json!("Zoé Lefèvre ✨"),
+                "long_text" => json!("Une réception de 120 personnes."),
+                "date" => json!("2027-06-12"),
+                "number" => json!(120),
+                "single_choice" => field["options"][0].clone(),
+                "checkbox" => json!(true),
+                other => panic!("unknown field kind {other}"),
+            };
+            (field["id"].as_str().expect("an id").to_string(), answer)
+        })
+        .collect();
+    answers.insert("custom".to_string(), Value::Object(custom));
+    let mut body = json!({
+        "device_id": Uuid::now_v7(),
+        "form_version": form["form_version"],
+        "access_code": null,
+        "consent": true,
+        "answers": answers,
+        "fax": null,
+    });
+    merge(&mut body, overrides);
+    body
 }

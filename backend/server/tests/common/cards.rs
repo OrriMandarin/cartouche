@@ -43,7 +43,7 @@ pub async fn create_card(app: &TestApp, sub: &str, slug: &str) -> Value {
 }
 
 /// Recursively merges `patch` into `base`: objects merge key by key, anything else replaces.
-fn merge(base: &mut Value, patch: Value) {
+pub fn merge(base: &mut Value, patch: Value) {
     match (base, patch) {
         (Value::Object(base), Value::Object(patch)) => {
             for (key, value) in patch {

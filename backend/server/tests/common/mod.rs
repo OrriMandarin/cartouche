@@ -375,14 +375,64 @@ impl LogBuffer {
     }
 }
 
-/// Captures every event (down to `debug`) on the current thread until the guard is dropped.
-/// Use from a current-thread runtime (the default of `#[tokio::test]`).
-pub fn capture_logs() -> (LogBuffer, tracing::subscriber::DefaultGuard) {
+thread_local! {
+    /// Where the logs of the current thread go while a capture is active.
+    static CAPTURE: std::cell::RefCell<Option<LogBuffer>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Writes each log line to the buffer of the capture active on the writing thread, if any.
+struct ThreadCapture;
+
+impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for ThreadCapture {
+    type Writer = CaptureWriter;
+    fn make_writer(&'a self) -> Self::Writer {
+        CaptureWriter(CAPTURE.with(|capture| capture.borrow().clone()))
+    }
+}
+
+struct CaptureWriter(Option<LogBuffer>);
+
+impl std::io::Write for CaptureWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match &mut self.0 {
+            Some(logs) => logs.write(buf),
+            None => Ok(buf.len()),
+        }
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Ends the capture of the current thread when dropped.
+pub struct CaptureGuard;
+
+impl Drop for CaptureGuard {
+    fn drop(&mut self) {
+        CAPTURE.with(|capture| *capture.borrow_mut() = None);
+    }
+}
+
+/// Captures every event (down to `debug`) of the current thread until the guard is dropped.
+/// Use from a current-thread runtime (the default of `#[tokio::test]` and `#[sqlx::test]`).
+///
+/// One global subscriber serves every capture. A per-test `set_default` would lose lines:
+/// tracing caches whether each log statement is enabled, and a parallel test that runs the
+/// same statement first, with no subscriber, can leave it cached as disabled.
+pub fn capture_logs() -> (LogBuffer, CaptureGuard) {
+    static INSTALL: std::sync::Once = std::sync::Once::new();
+    INSTALL.call_once(|| {
+        let subscriber = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .with_ansi(false)
+            .with_writer(ThreadCapture)
+            .finish();
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("no other global subscriber in the integration tests");
+    });
+    // Statements first run by another thread while the subscriber was being installed.
+    tracing::callsite::rebuild_interest_cache();
     let logs = LogBuffer::default();
-    let subscriber = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .with_ansi(false)
-        .with_writer(logs.clone())
-        .finish();
-    (logs, tracing::subscriber::set_default(subscriber))
+    CAPTURE.with(|capture| *capture.borrow_mut() = Some(logs.clone()));
+    (logs, CaptureGuard)
 }

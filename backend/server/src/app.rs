@@ -31,7 +31,7 @@ use crate::routes::health::health;
 use crate::routes::me::me;
 use crate::routes::media_files::get_media_file;
 use crate::routes::public_cards::{get_public_card, get_public_vcard};
-use crate::routes::public_events::{get_public_event, unlock_public_event};
+use crate::routes::public_events::{get_public_event, submit_lead, unlock_public_event};
 use crate::routes::slugs::{slug_availability, suggest_slug};
 use crate::state::AppState;
 
@@ -73,6 +73,10 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/public/cards/{slug}/events/{event_id}/unlock",
             post(unlock_public_event),
+        )
+        .route(
+            "/api/public/cards/{slug}/events/{event_id}/leads",
+            post(submit_lead),
         )
         .route("/api/admin/users", get(list_users))
         .route("/api/admin/users/{id}", get(admin_get_user))

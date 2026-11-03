@@ -81,6 +81,10 @@ pub enum ApiError {
     EventClosed,
     /// The access code typed for an event is wrong (EVT-027).
     InvalidAccessCode,
+    /// The form changed since the prospect loaded it (FRM-030).
+    FormChanged,
+    /// The device already sent as many submissions as the event allows (EVT-029).
+    DeviceLimitReached,
     /// The caller's address used up a rate limit (ABU-006, ABU-007).
     RateLimited {
         retry_after_secs: u64,
@@ -119,6 +123,8 @@ impl ApiError {
             ApiError::EventNotRunning => "event_not_running",
             ApiError::EventClosed => "event_closed",
             ApiError::InvalidAccessCode => "invalid_access_code",
+            ApiError::FormChanged => "form_changed",
+            ApiError::DeviceLimitReached => "device_limit_reached",
             ApiError::RateLimited { .. } => "rate_limited",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
@@ -150,7 +156,9 @@ impl ApiError {
             | ApiError::CardDisabledBySupport
             | ApiError::TooManySimultaneousEvents
             | ApiError::EventNotRunning
-            | ApiError::EventClosed => StatusCode::CONFLICT,
+            | ApiError::EventClosed
+            | ApiError::FormChanged
+            | ApiError::DeviceLimitReached => StatusCode::CONFLICT,
             ApiError::CardInactive => StatusCode::GONE,
             ApiError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -187,6 +195,10 @@ impl ApiError {
             ApiError::EventNotRunning => "This event is not running.",
             ApiError::EventClosed => "This event is not open for submissions.",
             ApiError::InvalidAccessCode => "The access code is wrong.",
+            ApiError::FormChanged => "The form changed since it was loaded.",
+            ApiError::DeviceLimitReached => {
+                "This device already sent as many submissions as this event allows."
+            }
             ApiError::RateLimited { .. } => "Too many requests. Try again later.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
@@ -375,6 +387,15 @@ mod tests {
         assert_eq!(ApiError::EventClosed.status(), StatusCode::CONFLICT);
         assert_eq!(ApiError::InvalidAccessCode.code(), "invalid_access_code");
         assert_eq!(ApiError::InvalidAccessCode.status(), StatusCode::FORBIDDEN);
+    }
+
+    // spec: FRM-030, EVT-029
+    #[test]
+    fn submission_conflicts_are_409() {
+        assert_eq!(ApiError::FormChanged.code(), "form_changed");
+        assert_eq!(ApiError::FormChanged.status(), StatusCode::CONFLICT);
+        assert_eq!(ApiError::DeviceLimitReached.code(), "device_limit_reached");
+        assert_eq!(ApiError::DeviceLimitReached.status(), StatusCode::CONFLICT);
     }
 
     // spec: ACC-007

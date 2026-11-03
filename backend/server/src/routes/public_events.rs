@@ -1,11 +1,16 @@
 //! Public routes for an event's form: read it (or learn that a code or an open window is
-//! needed) and unlock it with the access code (EVT-008, EVT-011, EVT-012, EVT-026, EVT-027,
-//! FRM-002, FRM-003, FRM-024, ABU-007). The access code never leaves the server: before a
-//! correct code, only the id and title of the event go out.
+//! needed), unlock it with the access code and send it (EVT-008, EVT-011, EVT-012, EVT-013,
+//! EVT-026, EVT-027, EVT-029, FRM-002, FRM-003, FRM-024, FRM-030, ABU-005 to ABU-007). The
+//! access code never leaves the server: before a correct code, only the id and title of the
+//! event go out. Neither the code nor the answers are ever logged.
 
 use axum::Json;
 use axum::extract::State;
-use cartouche_domain::{PublicFormState, UnlockOutcome, public_form_state, unlock_outcome};
+use axum::http::StatusCode;
+use cartouche_domain::{
+    AnswersInput, DeviceLimitReached, PublicFormState, UnlockOutcome, access_code_matches,
+    check_device_limit, honeypot_filled, public_form_state, unlock_outcome, validate_lead,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -13,12 +18,13 @@ use uuid::Uuid;
 use crate::client_ip::ClientIp;
 use crate::db::cards::Card;
 use crate::db::events::{self, Event};
+use crate::db::leads::{self, NewLead};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
 use crate::rate_limit::{Bucket, RetryAfter};
 use crate::routes::public_cards::serve_card;
 use crate::state::AppState;
-use crate::views::{PublicEventForm, PublicEventHeading};
+use crate::views::{PublicEventForm, PublicEventHeading, ShownForm};
 
 /// What a visitor gets for an event.
 #[derive(Debug, Serialize, ToSchema)]
@@ -32,10 +38,32 @@ pub enum PublicEventResponse {
     Closed { event: PublicEventHeading },
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+// No `Debug`: the code must never reach a log line (EVT-027).
+#[derive(Deserialize, ToSchema)]
 pub struct UnlockBody {
     /// The code as typed: case, surrounding spaces and accents do not matter.
     pub access_code: String,
+}
+
+/// What a prospect sends.
+// No `Debug`: neither the code nor the answers may reach a log line (EVT-027).
+#[derive(Deserialize, ToSchema)]
+pub struct LeadSubmission {
+    /// Identifier of the browser, kept in a cookie (EVT-028).
+    pub device_id: Uuid,
+    /// The `form_version` of the form the prospect filled in.
+    pub form_version: String,
+    /// The code typed to unlock the form, for an event with an access code.
+    pub access_code: Option<String>,
+    /// Whether the consent box is ticked.
+    pub consent: bool,
+    pub answers: AnswersInput,
+    /// Hidden trap field: the form always leaves it empty.
+    pub fax: Option<String>,
+}
+
+fn rate_limited(RetryAfter(retry_after_secs): RetryAfter) -> ApiError {
+    ApiError::RateLimited { retry_after_secs }
 }
 
 /// The served card behind the slug and its event, or `not_found` for an event that does not
@@ -127,7 +155,7 @@ pub async fn unlock_public_event(
     state
         .rate_limiter
         .check(Bucket::FailedAccessCode, ip, now)
-        .map_err(|RetryAfter(retry_after_secs)| ApiError::RateLimited { retry_after_secs })?;
+        .map_err(rate_limited)?;
     let (card, event) = card_and_event(&state, &slug, event_id).await?;
     match unlock_outcome(
         &event.period,
@@ -142,4 +170,97 @@ pub async fn unlock_public_event(
         }
         UnlockOutcome::Granted => Ok(Json(PublicEventForm::new(event, &card.content))),
     }
+}
+
+/// Sends a prospect's answers.
+#[utoipa::path(
+    post,
+    path = "/api/public/cards/{slug}/events/{event_id}/leads",
+    summary = "Send a public event form",
+    description = "No token needed. Stores the answers as a lead of the event, with the consent text shown with the form and the time of sending. Each address may make 120 sends per 10 minutes, accepted or refused, over every event; past that every send is `429 rate_limited` with `Retry-After`. The event must accept submissions (from its start to 15 minutes after its end). For an event with an access code, the code is checked again: a wrong or missing one is `403 invalid_access_code` and counts against the 30 wrong codes per address of the unlock route. A `form_version` that is no longer the form's is `409 form_changed`: reload the form. A device may send as many leads to an event as its device limit, leads marked as spam included. A send whose `fax` is not blank is answered like an accepted one and not stored.",
+    tag = "public",
+    params(
+        ("slug" = String, Path, description = "The slug, in any case."),
+        ("event_id" = Uuid, Path, description = "Id of the event."),
+    ),
+    request_body = LeadSubmission,
+    responses(
+        (status = 204, description = "The lead is stored."),
+        (status = 400, description = "Malformed id or body (`invalid_request`), or invalid answers (`validation_failed`, every invalid field listed).", body = ErrorBody),
+        (status = 403, description = "Wrong or missing access code (`invalid_access_code`).", body = ErrorBody),
+        (status = 404, description = "Unknown slug, or an event that is unknown, deleted or of another card (`not_found`).", body = ErrorBody),
+        (status = 409, description = "The event does not accept submissions now (`event_closed`), the form changed (`form_changed`) or this device reached the event's limit (`device_limit_reached`).", body = ErrorBody),
+        (status = 410, description = "The card is not served (`card_inactive`).", body = ErrorBody),
+        (status = 429, description = "Too many sends, or too many wrong codes, from this address (`rate_limited`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
+pub async fn submit_lead(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    path: Result<ApiPath<(String, Uuid)>, ApiError>,
+    body: Result<ApiJson<LeadSubmission>, ApiError>,
+) -> Result<StatusCode, ApiError> {
+    let now = state.clock.now();
+    // Every send counts, malformed ones included (ABU-006).
+    state
+        .rate_limiter
+        .hit(Bucket::LeadSubmission, ip, now)
+        .map_err(rate_limited)?;
+    let ApiPath((slug, event_id)) = path?;
+    let ApiJson(submission) = body?;
+    let (card, event) = card_and_event(&state, &slug, event_id).await?;
+    if !event.period.accepts_submissions(now) {
+        return Err(ApiError::EventClosed);
+    }
+    if honeypot_filled(submission.fax.as_deref()) {
+        // The same answer as an accepted send, and nothing stored (ABU-005).
+        tracing::info!("honeypot");
+        return Ok(StatusCode::NO_CONTENT);
+    }
+    if let Some(stored_code) = event.access_code.as_deref() {
+        state
+            .rate_limiter
+            .check(Bucket::FailedAccessCode, ip, now)
+            .map_err(rate_limited)?;
+        let typed = submission.access_code.as_deref().unwrap_or_default();
+        if !access_code_matches(stored_code, typed) {
+            state.rate_limiter.record(Bucket::FailedAccessCode, ip, now);
+            return Err(ApiError::InvalidAccessCode);
+        }
+    }
+    let shown = ShownForm::new(&event, &card.content);
+    if submission.form_version != shown.form_version {
+        return Err(ApiError::FormChanged);
+    }
+    let lead = validate_lead(
+        &event.form,
+        submission.answers,
+        submission.consent,
+        now.date_naive(),
+    )
+    .map_err(ApiError::Validation)?;
+
+    let mut tx = state.db.begin().await?;
+    leads::lock_device(&mut tx, event.id, submission.device_id).await?;
+    let count = leads::count_for_device(&mut tx, event.id, submission.device_id).await?;
+    check_device_limit(count, event.device_limit)
+        .map_err(|DeviceLimitReached| ApiError::DeviceLimitReached)?;
+    let new_lead = NewLead {
+        id: Uuid::now_v7(),
+        event_id: event.id,
+        device_id: submission.device_id,
+        submitted_at: now,
+        lead: &lead,
+        consent_text: &shown.consent_text,
+    };
+    leads::insert(&mut tx, &new_lead).await.map_err(|error| {
+        if leads::is_missing_event(&error) {
+            ApiError::NotFound
+        } else {
+            error.into()
+        }
+    })?;
+    tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
 }

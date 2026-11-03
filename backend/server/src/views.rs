@@ -179,9 +179,16 @@ pub struct PublicEventForm {
     pub form_version: String,
 }
 
-impl PublicEventForm {
+/// The consent text of an event's form and the version of the form, as the prospect is shown
+/// them; a submission is checked and recorded against the same values (FRM-008, FRM-030).
+pub struct ShownForm {
+    pub consent_text: String,
+    pub form_version: String,
+}
+
+impl ShownForm {
     /// `card` is the content of the event's card (it names the data controller).
-    pub fn new(event: Event, card: &CardContent) -> PublicEventForm {
+    pub fn new(event: &Event, card: &CardContent) -> ShownForm {
         let consent = consent_text(event.consent_text.as_deref(), card, &event.title);
         let form_version = form_version(&PublicForm {
             title: &event.title,
@@ -190,6 +197,20 @@ impl PublicEventForm {
             custom: &event.form.custom,
             consent_text: &consent,
         });
+        ShownForm {
+            consent_text: consent,
+            form_version,
+        }
+    }
+}
+
+impl PublicEventForm {
+    /// `card` is the content of the event's card (it names the data controller).
+    pub fn new(event: Event, card: &CardContent) -> PublicEventForm {
+        let ShownForm {
+            consent_text,
+            form_version,
+        } = ShownForm::new(&event, card);
         PublicEventForm {
             standard_fields: event
                 .form
@@ -202,7 +223,7 @@ impl PublicEventForm {
             title: event.title,
             description: event.description,
             custom_fields: event.form.custom,
-            consent_text: consent,
+            consent_text,
             form_version,
         }
     }

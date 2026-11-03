@@ -428,6 +428,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/cards/{slug}/events/{event_id}/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a public event form
+         * @description No token needed. Stores the answers as a lead of the event, with the consent text shown with the form and the time of sending. Each address may make 120 sends per 10 minutes, accepted or refused, over every event; past that every send is `429 rate_limited` with `Retry-After`. The event must accept submissions (from its start to 15 minutes after its end). For an event with an access code, the code is checked again: a wrong or missing one is `403 invalid_access_code` and counts against the 30 wrong codes per address of the unlock route. A `form_version` that is no longer the form's is `409 form_changed`: reload the form. A device may send as many leads to an event as its device limit, leads marked as spam included. A send whose `fax` is not blank is answered like an accepted one and not stored.
+         */
+        post: operations["submit_lead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/cards/{slug}/events/{event_id}/unlock": {
         parameters: {
             query?: never;
@@ -512,6 +532,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description The postal address as typed by the prospect. */
+        AddressInput: {
+            city?: string | null;
+            country?: string | null;
+            postal_code?: string | null;
+            street?: string | null;
+        };
         /** @description One card with the account that owns it. */
         AdminCardDetail: {
             card: components["schemas"]["CardView"];
@@ -539,6 +566,20 @@ export interface components {
             is_admin: boolean;
             status: components["schemas"]["UserStatus"];
             subject: string;
+        };
+        /** @description The answers of a prospect, as sent by the form (the `answers` of a submission). */
+        AnswersInput: {
+            address?: null | components["schemas"]["AddressInput"];
+            /** @description `AAAA-MM-JJ`. */
+            birth_date?: string | null;
+            /** @description Answers to the custom fields, by field identifier. */
+            custom?: {
+                [key: string]: unknown;
+            };
+            email?: string | null;
+            first_name?: string | null;
+            last_name?: string | null;
+            phone?: string | null;
         };
         Background: {
             color: components["schemas"]["Color"];
@@ -759,6 +800,23 @@ export interface components {
              * @description Width in pixels (the side, for a profile photo).
              */
             width: number;
+        };
+        /** @description What a prospect sends. */
+        LeadSubmission: {
+            /** @description The code typed to unlock the form, for an event with an access code. */
+            access_code?: string | null;
+            answers: components["schemas"]["AnswersInput"];
+            /** @description Whether the consent box is ticked. */
+            consent: boolean;
+            /**
+             * Format: uuid
+             * @description Identifier of the browser, kept in a cookie (EVT-028).
+             */
+            device_id: string;
+            /** @description Hidden trap field: the form always leaves it empty. */
+            fax?: string | null;
+            /** @description The `form_version` of the form the prospect filled in. */
+            form_version: string;
         };
         LinkInput: {
             kind: components["schemas"]["LinkKind"];
@@ -2959,6 +3017,96 @@ export interface operations {
             };
             /** @description The card is not served (`card_inactive`). */
             410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    submit_lead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+                /** @description Id of the event. */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadSubmission"];
+            };
+        };
+        responses: {
+            /** @description The lead is stored. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed id or body (`invalid_request`), or invalid answers (`validation_failed`, every invalid field listed). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Wrong or missing access code (`invalid_access_code`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown slug, or an event that is unknown, deleted or of another card (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The event does not accept submissions now (`event_closed`), the form changed (`form_changed`) or this device reached the event's limit (`device_limit_reached`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The card is not served (`card_inactive`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many sends, or too many wrong codes, from this address (`rate_limited`). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
