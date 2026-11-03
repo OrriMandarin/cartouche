@@ -23,6 +23,7 @@ use crate::routes::cards::{
 use crate::routes::health::health;
 use crate::routes::me::me;
 use crate::routes::media_files::get_media_file;
+use crate::routes::public_cards::{get_public_card, get_public_vcard};
 use crate::routes::slugs::{slug_availability, suggest_slug};
 use crate::state::AppState;
 
@@ -45,6 +46,8 @@ pub fn build_router(state: AppState) -> Router {
         )
         .route("/api/slugs/suggestion", get(suggest_slug))
         .route("/api/slugs/availability", get(slug_availability))
+        .route("/api/public/cards/{slug}", get(get_public_card))
+        .route("/api/public/cards/{slug}/vcard", get(get_public_vcard))
         .route("/api/admin/users", get(list_users))
         .route("/api/admin/users/{id}/status", post(set_user_status));
     // In S3 mode the bucket serves the files.

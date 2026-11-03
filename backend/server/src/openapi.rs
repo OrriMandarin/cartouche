@@ -7,7 +7,7 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
-use crate::routes::{admin_users, card_media, cards, health, me, slugs};
+use crate::routes::{admin_users, card_media, cards, health, me, public_cards, slugs};
 
 struct BearerAuth;
 
@@ -50,6 +50,8 @@ impl Modify for BearerAuth {
         card_media::upload_media,
         slugs::suggest_slug,
         slugs::slug_availability,
+        public_cards::get_public_card,
+        public_cards::get_public_vcard,
     ),
     components(schemas(crate::error::ErrorBody, crate::error::ErrorDetail)),
     modifiers(&BearerAuth),
@@ -57,6 +59,7 @@ impl Modify for BearerAuth {
         (name = "health", description = "Service health"),
         (name = "account", description = "The signed-in user's account"),
         (name = "cards", description = "The signed-in user's cards and their links"),
+        (name = "public", description = "A published card and its vCard, no sign-in"),
         (name = "admin", description = "Support tools, administrators only"),
     ),
 )]

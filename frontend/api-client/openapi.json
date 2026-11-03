@@ -1250,6 +1250,133 @@
         ]
       }
     },
+    "/api/public/cards/{slug}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Resolve a public card",
+        "description": "No token needed. `active` carries the card; `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.",
+        "operationId": "get_public_card",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "description": "The slug, in any case.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The card, the neutral state or a redirect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicCardResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The slug was never attributed (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/cards/{slug}/vcard": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Download the vCard",
+        "description": "No token needed. A vCard 3.0 with the card's content, one `URL` per link and the profile photo (the smallest JPEG). An old slug or a slug with capitals answers 308 towards the current address; a card that is not served is `410 card_inactive`.",
+        "operationId": "get_public_vcard",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "description": "The slug, in any case.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The vCard, as an attachment named `<slug>.vcf`.",
+            "content": {
+              "text/vcard": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "308": {
+            "description": "Permanent redirect to the vCard of the current slug.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`/api/public/cards/<current>/vcard`"
+              }
+            }
+          },
+          "404": {
+            "description": "The slug was never attributed (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "The card is not served (`card_inactive`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/slugs/availability": {
       "get": {
         "tags": [
@@ -2049,6 +2176,132 @@
           }
         }
       },
+      "PublicCard": {
+        "type": "object",
+        "description": "A served card as any visitor sees it: no internal id and no date. The files' addresses\ncarry the media ids, so they are no secret.",
+        "required": [
+          "slug",
+          "public_url",
+          "template",
+          "settings",
+          "theme",
+          "content",
+          "links",
+          "vcard_url"
+        ],
+        "properties": {
+          "avatar": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MediaView"
+              }
+            ]
+          },
+          "content": {
+            "$ref": "#/components/schemas/ContentView"
+          },
+          "header": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MediaView"
+              }
+            ]
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkView"
+            }
+          },
+          "public_url": {
+            "type": "string",
+            "description": "Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`."
+          },
+          "settings": {
+            "type": "object",
+            "description": "Template-specific settings, a JSON object."
+          },
+          "slug": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string",
+            "description": "Identifier of the template."
+          },
+          "theme": {
+            "$ref": "#/components/schemas/Theme"
+          },
+          "vcard_url": {
+            "type": "string",
+            "description": "Where to download the contact card: `/api/public/cards/{slug}/vcard`."
+          }
+        }
+      },
+      "PublicCardResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "The card is served.",
+            "required": [
+              "card",
+              "state"
+            ],
+            "properties": {
+              "card": {
+                "$ref": "#/components/schemas/PublicCard"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "active"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The card is not served, whatever the reason (disabled, deleted, owner suspended):\nnothing else is said (LNK-027).",
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "inactive"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The address is not the canonical one: an old slug or capitals (LNK-003, LNK-021).",
+            "required": [
+              "slug",
+              "state"
+            ],
+            "properties": {
+              "slug": {
+                "type": "string",
+                "description": "The slug to go to."
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "redirect"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "What a visitor gets for a slug."
+      },
       "SetStatusBody": {
         "type": "object",
         "description": "The status to move an account to.",
@@ -2317,6 +2570,10 @@
     {
       "name": "cards",
       "description": "The signed-in user's cards and their links"
+    },
+    {
+      "name": "public",
+      "description": "A published card and its vCard, no sign-in"
     },
     {
       "name": "admin",

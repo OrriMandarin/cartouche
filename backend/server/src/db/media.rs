@@ -23,6 +23,16 @@ pub struct MediaRecord {
     pub variants: Vec<StoredVariant>,
 }
 
+impl MediaRecord {
+    /// The smallest JPEG file of a profile photo (what the vCard embeds).
+    pub fn smallest_jpeg(&self) -> Option<&StoredVariant> {
+        self.variants
+            .iter()
+            .filter(|v| v.format == VariantFormat::Jpeg)
+            .min_by_key(|v| v.width)
+    }
+}
+
 /// A `media` row as the database returns it.
 struct MediaRow {
     id: Uuid,

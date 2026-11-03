@@ -35,27 +35,27 @@ impl Card {
 }
 
 /// A `cards` row joined with its current slug, as the database returns it.
-struct CardRow {
-    id: Uuid,
-    owner_id: Uuid,
-    slug: String,
-    template: String,
-    settings: serde_json::Value,
-    theme: serde_json::Value,
-    first_name: Option<String>,
-    last_name: Option<String>,
-    job_title: Option<String>,
-    company: Option<String>,
-    description: Option<String>,
-    email: Option<String>,
-    phone: Option<String>,
-    links: serde_json::Value,
-    header_media_id: Option<Uuid>,
-    avatar_media_id: Option<Uuid>,
-    owner_disabled_at: Option<DateTime<Utc>>,
-    support_disabled_at: Option<DateTime<Utc>>,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+pub(crate) struct CardRow {
+    pub(crate) id: Uuid,
+    pub(crate) owner_id: Uuid,
+    pub(crate) slug: String,
+    pub(crate) template: String,
+    pub(crate) settings: serde_json::Value,
+    pub(crate) theme: serde_json::Value,
+    pub(crate) first_name: Option<String>,
+    pub(crate) last_name: Option<String>,
+    pub(crate) job_title: Option<String>,
+    pub(crate) company: Option<String>,
+    pub(crate) description: Option<String>,
+    pub(crate) email: Option<String>,
+    pub(crate) phone: Option<String>,
+    pub(crate) links: serde_json::Value,
+    pub(crate) header_media_id: Option<Uuid>,
+    pub(crate) avatar_media_id: Option<Uuid>,
+    pub(crate) owner_disabled_at: Option<DateTime<Utc>>,
+    pub(crate) support_disabled_at: Option<DateTime<Utc>>,
+    pub(crate) created_at: DateTime<Utc>,
+    pub(crate) updated_at: DateTime<Utc>,
 }
 
 impl TryFrom<CardRow> for Card {

@@ -47,6 +47,8 @@ fn openapi_documents_every_public_route_and_the_error_shape() {
     for (path, method) in [
         ("/api/health", "get"),
         ("/api/me", "get"),
+        ("/api/public/cards/{slug}", "get"),
+        ("/api/public/cards/{slug}/vcard", "get"),
         ("/api/admin/users", "get"),
         ("/api/admin/users/{id}/status", "post"),
     ] {

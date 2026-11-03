@@ -70,6 +70,9 @@ pub enum ApiError {
     SlugReserved,
     /// Support disabled the card: its owner can neither toggle nor duplicate it (LNK-028).
     CardDisabledBySupport,
+    /// The card is not publicly served: disabled, deleted or its owner is suspended
+    /// (LNK-007, LNK-026). Says nothing of the reason (LNK-027).
+    CardInactive,
     /// `POST /api/test/seed` named a scenario that does not exist.
     #[cfg(feature = "test-support")]
     UnknownScenario,
@@ -99,6 +102,7 @@ impl ApiError {
             ApiError::SlugTaken => "slug_taken",
             ApiError::SlugReserved => "slug_reserved",
             ApiError::CardDisabledBySupport => "card_disabled_by_support",
+            ApiError::CardInactive => "card_inactive",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
             ApiError::Internal(_) => "internal_error",
@@ -126,6 +130,7 @@ impl ApiError {
             | ApiError::SlugTaken
             | ApiError::SlugReserved
             | ApiError::CardDisabledBySupport => StatusCode::CONFLICT,
+            ApiError::CardInactive => StatusCode::GONE,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -153,6 +158,7 @@ impl ApiError {
             ApiError::SlugTaken => "This link is already taken.",
             ApiError::SlugReserved => "This link was used by another of your cards.",
             ApiError::CardDisabledBySupport => "This card was disabled by support.",
+            ApiError::CardInactive => "This card is no longer active.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
             ApiError::Internal(_) => "An internal error occurred.",
@@ -297,6 +303,13 @@ mod tests {
         assert_eq!(ApiError::SlugTaken.status(), StatusCode::CONFLICT);
         assert_eq!(ApiError::SlugReserved.code(), "slug_reserved");
         assert_eq!(ApiError::SlugReserved.status(), StatusCode::CONFLICT);
+    }
+
+    // spec: LNK-007, LNK-027
+    #[test]
+    fn inactive_card_is_410() {
+        assert_eq!(ApiError::CardInactive.code(), "card_inactive");
+        assert_eq!(ApiError::CardInactive.status(), StatusCode::GONE);
     }
 
     // spec: ACC-007

@@ -29,5 +29,6 @@ pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
 pub mod audit;
 pub mod cards;
 pub mod media;
+pub mod public_cards;
 pub mod slugs;
 pub mod users;

@@ -40,6 +40,27 @@ pub struct CardView {
     pub updated_at: DateTime<Utc>,
 }
 
+/// A served card as any visitor sees it: no internal id and no date. The files' addresses
+/// carry the media ids, so they are no secret.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicCard {
+    pub slug: String,
+    /// Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`.
+    pub public_url: String,
+    /// Identifier of the template.
+    pub template: String,
+    /// Template-specific settings, a JSON object.
+    #[schema(value_type = Object)]
+    pub settings: serde_json::Value,
+    pub theme: Theme,
+    pub content: ContentView,
+    pub links: Vec<LinkView>,
+    pub header: Option<MediaView>,
+    pub avatar: Option<MediaView>,
+    /// Where to download the contact card: `/api/public/cards/{slug}/vcard`.
+    pub vcard_url: String,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ContentView {
     pub first_name: Option<String>,
@@ -119,6 +140,22 @@ pub fn public_url(config: &Config, slug: &str) -> String {
     )
 }
 
+/// The card's stored theme; invalid only through a bug of ours.
+fn stored_theme(card: &Card) -> Result<Theme, ApiError> {
+    Theme::parse(&card.theme)
+        .map_err(|_| ApiError::Internal(format!("card {} has an invalid theme", card.id)))
+}
+
+/// The view of the attached media `id`, among the card's `attached` records.
+fn attached_view(
+    attached: &[MediaRecord],
+    id: Option<Uuid>,
+    media: &MediaService,
+) -> Option<MediaView> {
+    let record = attached.iter().find(|m| Some(m.id) == id)?;
+    Some(MediaView::new(record, media))
+}
+
 impl From<CardContent> for ContentView {
     fn from(content: CardContent) -> Self {
         ContentView {
@@ -154,12 +191,8 @@ impl CardView {
         media: &MediaService,
     ) -> Result<CardView, ApiError> {
         let status = card.status();
-        let theme = Theme::parse(&card.theme)
-            .map_err(|_| ApiError::Internal(format!("card {} has an invalid theme", card.id)))?;
-        let view_of = |id: Option<Uuid>| {
-            let record = attached.iter().find(|m| Some(m.id) == id);
-            record.map(|record| MediaView::new(record, media))
-        };
+        let theme = stored_theme(&card)?;
+        let view_of = |id: Option<Uuid>| attached_view(attached, id, media);
         Ok(CardView {
             header: view_of(card.header_media_id),
             avatar: view_of(card.avatar_media_id),
@@ -174,6 +207,31 @@ impl CardView {
             links: card.links.into_iter().map(LinkView::from).collect(),
             created_at: card.created_at,
             updated_at: card.updated_at,
+        })
+    }
+}
+
+impl PublicCard {
+    /// `attached` holds the card's header and avatar records (others are ignored).
+    pub fn new(
+        card: Card,
+        attached: &[MediaRecord],
+        config: &Config,
+        media: &MediaService,
+    ) -> Result<PublicCard, ApiError> {
+        let theme = stored_theme(&card)?;
+        let view_of = |id: Option<Uuid>| attached_view(attached, id, media);
+        Ok(PublicCard {
+            header: view_of(card.header_media_id),
+            avatar: view_of(card.avatar_media_id),
+            public_url: public_url(config, &card.slug),
+            vcard_url: format!("/api/public/cards/{}/vcard", card.slug),
+            slug: card.slug,
+            template: card.template,
+            settings: card.settings,
+            theme,
+            content: card.content.into(),
+            links: card.links.into_iter().map(LinkView::from).collect(),
         })
     }
 }

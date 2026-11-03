@@ -216,6 +216,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/cards/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve a public card
+         * @description No token needed. `active` carries the card; `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.
+         */
+        get: operations["get_public_card"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/cards/{slug}/vcard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the vCard
+         * @description No token needed. A vCard 3.0 with the card's content, one `URL` per link and the profile photo (the smallest JPEG). An old slug or a slug with capitals answers 308 towards the current address; a card that is not served is `410 card_inactive`.
+         */
+        get: operations["get_public_vcard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/slugs/availability": {
         parameters: {
             query?: never;
@@ -434,6 +474,40 @@ export interface components {
             kind: components["schemas"]["MediaKind"];
             /** @description The MP4 file, for a video. */
             video_url?: string | null;
+        };
+        /**
+         * @description A served card as any visitor sees it: no internal id and no date. The files' addresses
+         *     carry the media ids, so they are no secret.
+         */
+        PublicCard: {
+            avatar?: null | components["schemas"]["MediaView"];
+            content: components["schemas"]["ContentView"];
+            header?: null | components["schemas"]["MediaView"];
+            links: components["schemas"]["LinkView"][];
+            /** @description Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`. */
+            public_url: string;
+            /** @description Template-specific settings, a JSON object. */
+            settings: Record<string, never>;
+            slug: string;
+            /** @description Identifier of the template. */
+            template: string;
+            theme: components["schemas"]["Theme"];
+            /** @description Where to download the contact card: `/api/public/cards/{slug}/vcard`. */
+            vcard_url: string;
+        };
+        /** @description What a visitor gets for a slug. */
+        PublicCardResponse: {
+            card: components["schemas"]["PublicCard"];
+            /** @enum {string} */
+            state: "active";
+        } | {
+            /** @enum {string} */
+            state: "inactive";
+        } | {
+            /** @description The slug to go to. */
+            slug: string;
+            /** @enum {string} */
+            state: "redirect";
         };
         /** @description The status to move an account to. */
         SetStatusBody: {
@@ -1502,6 +1576,106 @@ export interface operations {
             };
             /** @description The identity provider is unreachable (`auth_unavailable`). */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_public_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The card, the neutral state or a redirect. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicCardResponse"];
+                };
+            };
+            /** @description The slug was never attributed (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_public_vcard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The vCard, as an attachment named `<slug>.vcf`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/vcard": string;
+                };
+            };
+            /** @description Permanent redirect to the vCard of the current slug. */
+            308: {
+                headers: {
+                    /** @description `/api/public/cards/<current>/vcard` */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The slug was never attributed (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The card is not served (`card_inactive`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
