@@ -189,14 +189,23 @@ impl MediaService {
         bytes: Bytes,
         slot: Slot,
     ) -> Result<Vec<EncodedVariant>, ProcessError> {
-        let _permit = self
-            .image_permits
-            .acquire()
+        self.run_limited(move || process_image(&bytes, slot)).await
+    }
+
+    /// Runs `work` on a blocking thread under a processing permit. The permit travels with the
+    /// work: if the caller is dropped (client disconnect), the work still holds its permit
+    /// until it ends, so the limit counts running threads, not waiting callers.
+    async fn run_limited<T: Send + 'static>(&self, work: impl FnOnce() -> T + Send + 'static) -> T {
+        let permit = Arc::clone(&self.image_permits)
+            .acquire_owned()
             .await
             .expect("the semaphore is never closed");
-        tokio::task::spawn_blocking(move || process_image(&bytes, slot))
-            .await
-            .expect("image processing does not panic")
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            work()
+        })
+        .await
+        .expect("image processing does not panic")
     }
 
     async fn delete_prefix(&self, prefix: &str) -> Result<(), MediaError> {
@@ -209,5 +218,58 @@ impl MediaService {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    use super::*;
+
+    fn service() -> MediaService {
+        MediaService::in_memory("http://localhost:3000/media/".parse().unwrap())
+    }
+
+    // spec: MED-012
+    #[tokio::test]
+    async fn permit_is_held_until_the_blocking_work_ends_even_if_the_caller_is_dropped() {
+        let media = service();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+
+        let caller = tokio::spawn({
+            let media = media.clone();
+            async move {
+                media
+                    .run_limited(move || {
+                        started_tx.send(()).unwrap();
+                        release_rx.recv().unwrap();
+                    })
+                    .await
+            }
+        });
+        // Wait (off the async threads) until the work is really running.
+        tokio::task::spawn_blocking(move || started_rx.recv_timeout(Duration::from_secs(5)))
+            .await
+            .unwrap()
+            .expect("work started");
+        assert_eq!(media.image_permits.available_permits(), 1);
+
+        // The client goes away: the awaiting future is dropped, the thread keeps running.
+        caller.abort();
+        let _ = caller.await;
+        assert_eq!(media.image_permits.available_permits(), 1);
+
+        // Only the end of the blocking work gives the permit back.
+        release_tx.send(()).unwrap();
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while media.image_permits.available_permits() < IMAGE_PROCESSING_PERMITS {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .expect("permit released after the work ended");
     }
 }

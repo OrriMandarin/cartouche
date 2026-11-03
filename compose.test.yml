@@ -37,6 +37,8 @@ services:
       AUTH_JWKS_URL: http://localhost:8080/api/test/jwks.json
       ADMIN_USER_IDS: seed-admin
       SIGNUP_MODE: approval
+      MEDIA_STORAGE: local
+      MEDIA_LOCAL_DIR: /data/media
     ports:
       - "127.0.0.1:18080:8080"
     healthcheck:

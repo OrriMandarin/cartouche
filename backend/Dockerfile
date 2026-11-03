@@ -31,8 +31,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin cartouche
 COPY --from=builder /out/ /usr/local/bin/
+# Local media storage (MEDIA_STORAGE=local): a directory the unprivileged user can write.
+# Mount a volume here to keep media across container restarts.
+RUN mkdir -p /data/media && chown cartouche /data/media
 USER cartouche
 # Migrations are embedded in the binary (sqlx::migrate!) and applied at startup.
 ENV BIND_ADDR=0.0.0.0:8080
+ENV MEDIA_LOCAL_DIR=/data/media
 EXPOSE 8080
 CMD ["cartouche-api"]
