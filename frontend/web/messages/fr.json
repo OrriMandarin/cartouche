@@ -144,6 +144,18 @@
       "status": "Statut",
       "createdAt": "Créé le",
       "actions": "Actions"
+    },
+    "cards": {
+      "title": "Cartes",
+      "empty": "Cet utilisateur n'a aucune carte.",
+      "untitled": "Carte sans nom",
+      "view": "Voir",
+      "owner": "Propriétaire :",
+      "disable": "Désactiver (support)",
+      "enable": "Lever le blocage",
+      "backToSupport": "Retour au support",
+      "userNotFound": "Utilisateur introuvable",
+      "cardNotFound": "Carte introuvable"
     }
   },
   "themes": {

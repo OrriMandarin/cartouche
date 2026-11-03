@@ -3,8 +3,9 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AccountGate, useMe } from "@/components/account/AccountGate";
+import { AccountGate } from "@/components/account/AccountGate";
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { SupportGuard } from "@/components/support/SupportGuard";
 import { UserModerationTable, type ModerationUser } from "@/components/support/UserModerationTable";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -87,24 +88,13 @@ function SupportContent() {
   );
 }
 
-function SupportGuard() {
-  const t = useTranslations("support");
-  const me = useMe();
-  if (!me.is_admin) {
-    return (
-      <p data-testid="support-forbidden" className="text-muted-foreground py-10 text-center text-lg">
-        {t("forbidden")}
-      </p>
-    );
-  }
-  return <SupportContent />;
-}
-
 /** spec: ADM-001, ADM-002. Admin-only moderation page, one tab per account status. */
 export default function SupportPage() {
   return (
     <AccountGate>
-      <SupportGuard />
+      <SupportGuard>
+        <SupportContent />
+      </SupportGuard>
     </AccountGate>
   );
 }
