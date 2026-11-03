@@ -7,6 +7,7 @@ import { useCallback, useMemo } from "react";
 import { AccountGate } from "@/components/account/AccountGate";
 import { CardScope } from "@/components/events/CardScope";
 import { EventScope } from "@/components/events/EventScope";
+import { ExportDialog } from "@/components/events/ExportDialog";
 import { LeadList } from "@/components/events/LeadList";
 import { useApi } from "@/lib/api";
 import { ownerLeadActions } from "@/lib/events/lead-actions";
@@ -37,10 +38,10 @@ function EventLeads({ eventId }: { eventId: string }) {
   }, [api, eventId]);
   const actions = useMemo(() => ownerLeadActions(api), [api]);
 
-  return <LeadList load={load} actions={actions} showEvent={false} />;
+  return <LeadList load={load} actions={actions} showEvent={false} toolbar={<ExportDialog scope={{ kind: "event", id: eventId }} />} />;
 }
 
-/** spec: EDI-020. The contacts of one event of one card of the signed-in user. */
+/** spec: EDI-020, LEA-021. The contacts of one event of one card of the signed-in user. */
 export default function EventLeadsPage() {
   const { id, eventId } = useParams<{ id: string; eventId: string }>();
 

@@ -16,10 +16,24 @@ const api = { GET: get, PUT: put, DELETE: del };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "card-1", eventId: "event-1" }) }));
 vi.mock("@/components/account/AccountGate", () => ({ AccountGate: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("@/components/events/ExportDialog", () => ({
+  ExportDialog: ({ scope }: { scope: { kind: string; id: string } }) => <p data-testid="export-stub">{`${scope.kind}:${scope.id}`}</p>,
+}));
 const lead = leadView({ id: "lead-1" });
 vi.mock("@/components/events/LeadList", () => ({
-  LeadList: ({ load, actions, showEvent }: { load: () => Promise<LeadView[]>; actions: LeadActions | null; showEvent: boolean }) => (
+  LeadList: ({
+    load,
+    actions,
+    showEvent,
+    toolbar,
+  }: {
+    load: () => Promise<LeadView[]>;
+    actions: LeadActions | null;
+    showEvent: boolean;
+    toolbar?: React.ReactNode;
+  }) => (
     <div data-testid="lead-list-stub" data-show-event={String(showEvent)}>
+      {toolbar}
       <button data-testid="stub-load" onClick={() => void load()} />
       <button data-testid="stub-spam" onClick={() => void actions?.setSpam(lead, true)} />
       <button data-testid="stub-remove" onClick={() => void actions?.remove(lead)} />
@@ -67,6 +81,12 @@ describe("EventLeadsPage", () => {
     del.mockResolvedValue({});
     fireEvent.click(screen.getByTestId("stub-remove"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/leads/{id}", { params: { path: { id: "lead-1" } } }));
+  });
+
+  test("LEA-021 the toolbar exports the leads of this event", async () => {
+    answer(eventView({ id: "event-1", card_id: "card-1" }));
+    renderWithIntl(<EventLeadsPage />);
+    expect(await screen.findByTestId("export-stub")).toHaveTextContent("event:event-1");
   });
 
   test("ACC-017 an event that does not exist or belongs to someone else reads as « Événement introuvable »", async () => {
