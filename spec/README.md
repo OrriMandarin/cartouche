@@ -1,60 +1,60 @@
-# Spec Cartouche
+# Cartouche spec
 
-La `spec/` décrit **comment le produit doit se comporter**. Elle est la référence vivante du projet : en cas de désaccord entre le code et la spec, c'est la spec qui fait foi, ou alors la spec doit être modifiée explicitement.
+`spec/` describes **how the product must behave**. It is the project's living reference: when the code and the spec disagree, the spec is authoritative, unless the spec is explicitly changed.
 
-Elle est issue du document de design initial (`docs/superpowers/specs/2026-11-02-cartouche-design.md`, sections 4 à 6 et 7.5), qui n'est plus mis à jour. Les décisions marquées « choix Claude » dans le design y sont devenues des règles ordinaires.
+It comes from the initial design document (`docs/superpowers/specs/2026-11-02-cartouche-design.md`, sections 4 to 6 and 7.5, in French), which is no longer updated. The decisions marked "choix Claude" ("Claude's choice") in the design have become ordinary rules here.
 
-## Fichiers et préfixes
+## Files and prefixes
 
-Un fichier par sujet, pour que deux modifications simultanées touchent presque toujours des fichiers différents. Chaque fichier a son propre préfixe d'identifiants : la numérotation est indépendante d'un fichier à l'autre.
+One file per topic, so that two simultaneous changes almost always touch different files. Each file has its own ID prefix: numbering is independent from one file to the next.
 
-Le vérificateur (`node scripts/spec-lint.mjs`) lit ce tableau : un fichier de sujet absent du tableau, ou un préfixe utilisé deux fois, est une erreur.
+The spec linter (`node scripts/spec-lint.mjs`) reads this table: a topic file missing from the table, or a prefix used twice, is an error.
 
-| Fichier | Préfixe | Sujet |
+| File | Prefix | Topic |
 |---|---|---|
-| `card-links.md` | LNK | Lien public, slug, désactivation, suppression |
-| `public-page.md` | PUB | Page publique, vCard, aperçus de lien |
-| `templates-themes.md` | TPL | Contrat des templates, thèmes, polices |
-| `media.md` | MED | Images, vidéos, limites, traitement |
-| `events.md` | EVT | Période, chevauchement, code d'accès, limite par appareil |
-| `event-form.md` | FRM | Formulaire prospect, champs, consentement |
-| `anti-abuse.md` | ABU | Limites par IP, champ piège, spam |
-| `leads-exports.md` | LEA | Consultation, suppression, exports des contacts |
-| `account-auth.md` | ACC | Compte, authentification, isolation des données |
-| `admin-support.md` | ADM | Validation des inscriptions, support, audit |
-| `dashboard-editor.md` | EDI | Tableau de bord, éditeur, aperçu en direct |
-| `landing.md` | LND | Landing page, pages CGU et confidentialité |
+| `card-links.md` | LNK | Public link, slug, disabling, deletion |
+| `public-page.md` | PUB | Public page, vCard, link previews |
+| `templates-themes.md` | TPL | Template contract, themes, fonts |
+| `media.md` | MED | Images, videos, limits, processing |
+| `events.md` | EVT | Period, overlap, access code, per-device limit |
+| `event-form.md` | FRM | Lead form, fields, consent |
+| `anti-abuse.md` | ABU | Per-IP limits, honeypot field, spam |
+| `leads-exports.md` | LEA | Viewing, deleting and exporting leads |
+| `account-auth.md` | ACC | Account, authentication, data isolation |
+| `admin-support.md` | ADM | Sign-up approval, support, audit |
+| `dashboard-editor.md` | EDI | Dashboard, editor, live preview |
+| `landing.md` | LND | Landing page, terms of service and privacy pages |
 
-Le glossaire des concepts est dans `glossary.md` (il ne contient pas de règles numérotées).
+The glossary of concepts is in `glossary.md` (it contains no numbered rules).
 
-## Format d'une règle
+## Rule format
 
-Une règle est une ligne de liste de la forme :
+A rule is a list line of the form:
 
 ```
-- **XXX-NNN** — Texte de la règle.
+- **XXX-NNN** — Rule text.
 ```
 
-- `XXX` est le préfixe du fichier (3 lettres majuscules), `NNN` un numéro à 3 chiffres, suivi d'un tiret cadratin entouré d'espaces.
-- Une règle décrit **un seul comportement vérifiable**. Les règles sont regroupées sous des titres `##`.
-- Un identifiant est **stable** : on ne le renumérote jamais et on ne le réutilise jamais, même si la règle disparaît.
-- Une règle qui en concerne une autre la **cite par son identifiant** (par exemple « voir EVT-004 ») au lieu de la recopier, pour ne pas créer deux versions du même texte. Toute citation doit viser une règle existante.
-- Chaque fichier de sujet s'ouvre, sous son titre, sur une ligne `> Statut : …` qui dit si le sujet est déjà implémenté ou à quel plan il appartient.
-- La spec est rédigée en français, en UTF-8, avec les accents.
+- `XXX` is the file's prefix (3 capital letters), `NNN` a 3-digit number, followed by an em dash surrounded by spaces.
+- A rule describes **a single verifiable behavior**. Rules are grouped under `##` headings.
+- An ID is **stable**: it is never renumbered and never reused, even if the rule is removed.
+- A rule that concerns another one **cites it by its ID** (for example "see EVT-004") instead of copying it, so that there are never two versions of the same text. Every citation must point to an existing rule.
+- Each topic file opens, under its title, with a `> Status: …` line that says whether the topic is already implemented or which plan it belongs to.
+- The spec is written in English, in UTF-8. When a rule quotes a label of the user interface (which is in French), it keeps the French label verbatim and gives its English meaning in parentheses.
 
-## Modifier la spec
+## Changing the spec
 
-1. **Toute fonctionnalité ou correction de bug commence par une mise à jour de la spec.**
-2. On vérifie alors qu'**aucune règle existante n'est contredite** (relire les fichiers voisins et suivre les citations).
-3. S'il y a une contradiction ou un changement de comportement, on le **signale explicitement au porteur du projet avant de coder**.
-4. Un nouveau sujet devient un nouveau fichier, avec un nouveau préfixe déclaré dans le tableau ci-dessus.
-5. On lance `node scripts/spec-lint.mjs` (ou `make spec-lint`) : doublons, préfixes incohérents et citations vers des règles inconnues font échouer la vérification.
+1. **Every feature or bug fix starts with a spec update.**
+2. Then check that **no existing rule is contradicted** (reread the neighboring files and follow the citations).
+3. If there is a contradiction or a behavior change, **flag it explicitly to the project maintainer before coding**.
+4. A new topic becomes a new file, with a new prefix declared in the table above.
+5. Run `node scripts/spec-lint.mjs` (or `make spec-lint`): duplicates, inconsistent prefixes and citations of unknown rules make the check fail.
 
-## Citer une règle dans les tests
+## Citing a rule in tests
 
-Tout test qui vérifie une règle cite son identifiant, pour qu'on retrouve les tests d'une règle et, inversement, les règles d'un test.
+Every test that checks a rule cites its ID, so that the tests of a rule can be found and, conversely, the rules of a test.
 
-- **TypeScript** (`*.test.ts`, `*.spec.ts`, `*.test.tsx`) : l'identifiant figure dans le nom du test, par exemple `test('EVT-004 refuse un quatrième événement simultané', …)`.
-- **Rust** (fichiers sous `tests/` et sous `src/` pour les tests en ligne) : un commentaire `// spec: EVT-004` juste avant le test.
-- Le vérificateur considère comme citation toute occurrence de `XXX-NNN` (3 lettres majuscules, tiret, 3 chiffres) dans ces fichiers. Une citation vers une règle inexistante est une erreur.
-- `node scripts/spec-lint.mjs --coverage` liste en plus les règles qu'aucun test ne cite encore.
+- **TypeScript** (`*.test.ts`, `*.spec.ts`, `*.test.tsx`): the ID appears in the test name, for example `test('EVT-004 rejects a fourth concurrent event', …)`.
+- **Rust** (files under `tests/` and under `src/` for inline tests): a `// spec: EVT-004` comment right before the test.
+- The linter treats any occurrence of `XXX-NNN` (3 capital letters, a hyphen, 3 digits) in these files as a citation. A citation of a rule that does not exist is an error.
+- `node scripts/spec-lint.mjs --coverage` also lists the rules that no test cites yet.

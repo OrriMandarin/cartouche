@@ -1,10 +1,10 @@
-# Protections anti-abus
+# Anti-abuse protections
 
-> Statut : spécifié, non implémenté (plan 3)
+> Status: specified, not implemented (plan 3)
 
-Ces protections sont toujours actives.
+These protections are always active.
 
-- **ABU-001** — Les envois de formulaire sont soumis à une limite large par adresse IP, uniquement pour stopper les rafales automatiques : des dizaines de prospects qui partagent la même IP de Wi-Fi sur un salon ne sont pas bloqués.
-- **ABU-002** — Le formulaire contient un champ piège invisible : un envoi qui le remplit est ignoré silencieusement.
-- **ABU-003** — Dans le tableau de bord, le propriétaire peut marquer un contact comme spam.
-- **ABU-004** — Dans le tableau de bord, le propriétaire peut supprimer un contact.
+- **ABU-001** — Form submissions are subject to a generous per-IP-address limit, only to stop automated bursts: dozens of prospects sharing the same Wi-Fi IP at a trade show are not blocked.
+- **ABU-002** — The form contains an invisible honeypot field: a submission that fills it in is silently ignored.
+- **ABU-003** — In the dashboard, the owner can mark a lead as spam.
+- **ABU-004** — In the dashboard, the owner can delete a lead.

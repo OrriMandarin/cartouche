@@ -1,27 +1,27 @@
-# Glossaire
+# Glossary
 
-Concepts du domaine, tels que la spec les emploie.
+Domain concepts, as the spec uses them.
 
-| Concept | Définition |
+| Concept | Definition |
 |---|---|
-| **Utilisateur** | Titulaire d'un compte. Identifié par le `sub` du JWT de son fournisseur d'identité (avec Clerk, c'est l'identifiant utilisateur Clerk, `user_…`), et enregistré dans la table `users` à la première connexion. Il a un **statut** : `en attente` (`pending`), `validé` (`approved`), `refusé` (`rejected`) ou `suspendu` (`suspended`). |
-| **Administrateur** | Un utilisateur dont l'identifiant figure dans la configuration de l'instance. Il valide les inscriptions et peut tout consulter. |
-| **Carte** | Une carte de visite digitale. Appartient à un utilisateur. Possède un slug (lien public), un template, des réglages de thème, des médias, un contenu et un état actif/désactivé. |
-| **Template** | La mise en page complète d'une carte publique (structure, disposition, animations). C'est du code dans le dépôt. |
-| **Thème** | Les réglages visuels appliqués à l'intérieur d'un template (couleurs, police, styles). Ce sont des données. |
-| **Événement** | Une période de collecte de contacts rattachée à une carte : titre, description, début, fin optionnelle, champs du formulaire, code d'accès optionnel, limite d'envois par appareil. |
-| **Contact collecté** (*lead*) | Une soumission du formulaire d'un événement par un prospect. |
+| **User** | An account holder. Identified by the `sub` of the JWT from their identity provider (with Clerk, this is the Clerk user ID, `user_…`), and recorded in the `users` table on first sign-in. A user has a **status**: `pending`, `approved`, `rejected` or `suspended`. |
+| **Administrator** | A user whose ID is listed in the instance configuration. Administrators approve sign-ups and can view everything. |
+| **Card** | A digital business card. Belongs to a user. Has a slug (public link), a template, theme settings, media, content and an enabled/disabled state. |
+| **Template** | The complete layout of a public card (structure, arrangement, animations). It is code in the repository. |
+| **Theme** | The visual settings applied inside a template (colors, font, styles). They are data. |
+| **Event** | A lead collection period attached to a card: title, description, start, optional end, form fields, optional access code, per-device submission limit. |
+| **Lead** | A submission of an event's form by a prospect. |
 
-## Termes complémentaires
+## Additional terms
 
-| Terme | Définition |
+| Term | Definition |
 |---|---|
-| **Prospect** | Visiteur anonyme de la page publique d'une carte, le plus souvent sur mobile. |
-| **Porteur** | Propriétaire d'une carte : l'utilisateur qui la gère. |
-| **Slug** | Partie variable du lien public d'une carte (`/c/<slug>`). |
-| **Slug courant** | Le slug actuel d'une carte, celui de son lien public. |
-| **Ancien slug** | Un slug qu'une carte a porté avant son slug courant ; il redirige vers le slug courant (voir LNK-003). |
-| **Slug réservé** | Un slug d'une carte supprimée : il reste à son ancien propriétaire, qui peut le rattacher à une nouvelle carte (voir LNK-013 et LNK-014). |
-| **Page neutre** | La page « Cette carte n'est plus active », affichée au lien d'une carte qui n'est pas servie (voir LNK-026 et LNK-027). |
-| **Média** | Le fond d'en-tête (image ou vidéo) ou la photo de profil d'une carte, stocké dans le stockage de médias. |
-| **Paire de polices** | Une police de titre et une police de texte, choisies ensemble pour un thème (voir TPL-011). |
+| **Prospect** | An anonymous visitor of a card's public page, most often on a phone. |
+| **Owner** | The owner of a card: the user who manages it. |
+| **Slug** | The variable part of a card's public link (`/c/<slug>`). |
+| **Current slug** | A card's present slug, the one in its public link. |
+| **Former slug** | A slug a card used before its current slug; it redirects to the current slug (see LNK-003). |
+| **Reserved slug** | A slug of a deleted card: it stays with its former owner, who can attach it to a new card (see LNK-013 and LNK-014). |
+| **Neutral page** | The "Cette carte n'est plus active" ("This card is no longer active") page, shown at the link of a card that is not served (see LNK-026 and LNK-027). |
+| **Media** | A card's header background (image or video) or profile photo, kept in the media storage. |
+| **Font pair** | A heading font and a body font, chosen together for a theme (see TPL-011). |

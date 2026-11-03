@@ -1,54 +1,54 @@
-# Page publique et vCard
+# Public page and vCard
 
-> Statut : implémenté (plan 2) ; PUB-008 à PUB-010 : vérifiés avec un événement simulé, alimentés par les vrais événements au plan 3
+> Status: implemented (plan 2); PUB-008 to PUB-010: verified with a simulated event, fed by real events in plan 3
 
-Cette page décrit le comportement de la page publique, quel que soit le template (voir TPL-003). Le visuel est celui du template « Classique », le template de référence.
+This page describes the behavior of the public page, whatever the template (see TPL-003). The visuals are those of the "Classique" ("Classic") template, the reference template.
 
-## Rendu général
+## General rendering
 
-- **PUB-001** — La page publique est pensée pour le mobile d'abord.
-- **PUB-002** — La page publique est rendue par le serveur, pour la vitesse et pour les aperçus de lien.
-- **PUB-003** — La page est servie en UTF-8 et tous les accents s'y affichent correctement.
+- **PUB-001** — The public page is designed mobile first.
+- **PUB-002** — The public page is rendered by the server, for speed and for link previews.
+- **PUB-003** — The page is served in UTF-8 and all accents display correctly.
 
-## En-tête et profil
+## Header and profile
 
-- **PUB-004** — L'en-tête est une image ou une vidéo en pleine largeur.
-- **PUB-005** — La vidéo d'en-tête est muette, en lecture automatique et en boucle, avec `playsinline` pour ne jamais passer en plein écran sur iOS.
-- **PUB-006** — Une image d'attente s'affiche pendant le chargement de la vidéo d'en-tête.
-- **PUB-007** — Un dégradé fond l'en-tête dans le contenu, et la photo de profil (ronde) est centrée sur ce dégradé, à cheval entre le média et le contenu.
+- **PUB-004** — The header is a full-width image or video.
+- **PUB-005** — The header video is muted, autoplays and loops, with `playsinline` so it never goes fullscreen on iOS.
+- **PUB-006** — A placeholder image is shown while the header video loads.
+- **PUB-007** — A gradient blends the header into the content, and the (round) profile photo is centered on this gradient, straddling the media and the content.
 
-## Boutons d'événement
+## Event buttons
 
-- **PUB-008** — Quand un ou plusieurs événements sont en cours, chacun apparaît comme un bouton très visible et animé, portant le nom de l'événement.
-- **PUB-009** — Les boutons d'événement sont triés par date de début.
-- **PUB-010** — Sans événement en cours, rien ne s'affiche à l'emplacement des boutons d'événement.
+- **PUB-008** — When one or more events are in progress, each appears as a very visible, animated button carrying the event's name.
+- **PUB-009** — Event buttons are sorted by start date.
+- **PUB-010** — With no event in progress, nothing is shown where the event buttons would be.
 
-## Informations et liens
+## Information and links
 
-- **PUB-011** — La page affiche le nom, le poste, l'entreprise, la description et les coordonnées de la carte.
-- **PUB-012** — Les liens sont cliquables et accompagnés de leur icône : site personnel, LinkedIn, Instagram, Facebook, TikTok, YouTube, X, plus des liens libres avec un intitulé.
-- **PUB-013** — Les liens ouvrent l'application native quand elle est installée.
+- **PUB-011** — The page shows the card's name, job title, company, description and contact details.
+- **PUB-012** — Links are clickable and come with their icon: personal website, LinkedIn, Instagram, Facebook, TikTok, YouTube, X, plus free-form links with a label.
+- **PUB-013** — Links open the native app when it is installed.
 
-## Contenu de la carte
+## Card content
 
-- **PUB-018** — Le contenu d'une carte comprend un prénom, un nom, un poste, une entreprise, une description, un email et un téléphone. Le prénom ou le nom est obligatoire (code `required`) ; les autres champs sont facultatifs.
-- **PUB-019** — Longueurs maximales, comptées en caractères après normalisation (voir EDI-008) : 100 pour le prénom, le nom, le poste et l'entreprise ; 1 000 pour la description. Au-delà, le champ est refusé avec le code `too_long`.
-- **PUB-020** — L'email de la carte doit être valide (code `invalid_email`). Le téléphone est validé et normalisé au format international E.164, la France étant le pays par défaut (code `invalid_phone`), et la page l'affiche au format international.
-- **PUB-021** — Sur la page, l'email ouvre la messagerie (`mailto:`) et le téléphone lance l'appel (`tel:`).
-- **PUB-022** — Une carte a au plus 20 liens (voir PUB-012), dans l'ordre choisi par son propriétaire. Chaque lien a une adresse absolue en `https://` ou `http://` d'au plus 2 048 caractères ; toute autre forme (`javascript:`, `data:`, adresse relative…) est refusée (code `invalid_url`). Un lien libre a un intitulé obligatoire d'au plus 50 caractères.
-- **PUB-023** — Un élément vide n'est pas affiché : pas d'intitulé sans valeur, pas de cercle vide sans photo de profil. Sans fond d'en-tête, l'en-tête prend le fond du thème.
+- **PUB-018** — A card's content includes a first name, a last name, a job title, a company, a description, an email and a phone number. The first name or the last name is required (code `required`); the other fields are optional.
+- **PUB-019** — Maximum lengths, counted in characters after normalization (see EDI-008): 100 for the first name, last name, job title and company; 1,000 for the description. Beyond that, the field is rejected with the code `too_long`.
+- **PUB-020** — The card's email must be valid (code `invalid_email`). The phone number is validated and normalized to the international E.164 format, with France as the default country (code `invalid_phone`), and the page displays it in international format.
+- **PUB-021** — On the page, the email opens the mail app (`mailto:`) and the phone number starts a call (`tel:`).
+- **PUB-022** — A card has at most 20 links (see PUB-012), in the order chosen by its owner. Each link has an absolute `https://` or `http://` address of at most 2,048 characters; any other form (`javascript:`, `data:`, relative address…) is rejected (code `invalid_url`). A free-form link has a required label of at most 50 characters.
+- **PUB-023** — An empty element is not displayed: no label without a value, no empty circle without a profile photo. Without a header background, the header takes the theme's background.
 
 ## vCard
 
-- **PUB-014** — Le bouton « Enregistrer le contact » télécharge une vCard (`.vcf`) en version 3.0, encodée en UTF-8, avec la photo de profil incluse.
-- **PUB-015** — La vCard ne contient que les éléments visibles sur la carte.
-- **PUB-016** — Dans la vCard, les caractères sont échappés comme l'exige la norme.
-- **PUB-024** — La vCard contient, quand ils sont renseignés : le nom structuré et le nom complet (`N`, `FN`), l'entreprise (`ORG`), le poste (`TITLE`), l'email (`EMAIL`), le téléphone (`TEL`), un `URL` par lien, la description (`NOTE`) et la photo de profil (`PHOTO`).
-- **PUB-025** — La photo de la vCard est un JPEG de 256 × 256 pixels, encodé en base64 : les applications de contacts ne lisent pas le WebP (exception à MED-006, voir MED-015).
-- **PUB-026** — Les lignes de la vCard se terminent par CRLF et sont repliées à 75 octets, sans jamais couper un caractère codé sur plusieurs octets.
-- **PUB-027** — La vCard est servie avec le type `text/vcard; charset=utf-8`, sous le nom de fichier `<slug>.vcf`.
+- **PUB-014** — The "Enregistrer le contact" ("Save contact") button downloads a vCard (`.vcf`) in version 3.0, encoded in UTF-8, with the profile photo included.
+- **PUB-015** — The vCard contains only the elements visible on the card.
+- **PUB-016** — In the vCard, characters are escaped as the standard requires.
+- **PUB-024** — The vCard contains, when they are filled in: the structured name and the full name (`N`, `FN`), the company (`ORG`), the job title (`TITLE`), the email (`EMAIL`), the phone number (`TEL`), one `URL` per link, the description (`NOTE`) and the profile photo (`PHOTO`).
+- **PUB-025** — The vCard photo is a 256 × 256 pixel JPEG, base64-encoded: contacts apps do not read WebP (exception to MED-006, see MED-015).
+- **PUB-026** — vCard lines end with CRLF and are folded at 75 bytes, never splitting a multi-byte character.
+- **PUB-027** — The vCard is served with the type `text/vcard; charset=utf-8`, under the file name `<slug>.vcf`.
 
-## Aperçu de lien
+## Link preview
 
-- **PUB-017** — La page expose des balises OpenGraph avec le nom, le poste et la photo, pour un bel aperçu quand le lien est partagé (WhatsApp, LinkedIn…).
-- **PUB-028** — Les balises OpenGraph donnent : en titre, le nom complet ; en description, le poste et l'entreprise ; en image, l'adresse absolue de la photo de profil en JPEG de 512 × 512 pixels (voir MED-015) ; en adresse canonique, le lien avec le slug courant.
+- **PUB-017** — The page exposes OpenGraph tags with the name, job title and photo, for a nice preview when the link is shared (WhatsApp, LinkedIn…).
+- **PUB-028** — The OpenGraph tags give: as title, the full name; as description, the job title and company; as image, the absolute address of the profile photo as a 512 × 512 pixel JPEG (see MED-015); as canonical address, the link with the current slug.

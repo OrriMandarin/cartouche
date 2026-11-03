@@ -1,27 +1,27 @@
-# Événements
+# Events
 
-> Statut : spécifié, non implémenté (plan 3)
+> Status: specified, not implemented (plan 3)
 
-## Période
+## Period
 
-- **EVT-001** — Un événement appartient à une carte. Il a un titre, une description, une date de début (obligatoire) et une date de fin (optionnelle).
-- **EVT-002** — Un événement est en cours si `début <= maintenant` et (`fin` absente ou `maintenant < fin`).
-- **EVT-003** — Une fin absente signifie que l'événement dure jusqu'à sa clôture manuelle.
-- **EVT-004** — Une carte ne peut pas avoir plus de 3 événements simultanés à n'importe quel instant. Cette limite est réglable dans la configuration de l'instance.
-- **EVT-005** — La limite d'événements simultanés (EVT-004) est vérifiée à chaque création et à chaque modification, en calculant le chevauchement maximal sur toute la période de l'événement ; une fin absente compte comme l'infini.
-- **EVT-006** — Le bouton « Terminer maintenant » fixe la fin de l'événement à l'instant présent.
-- **EVT-007** — Les dates sont saisies et affichées dans le fuseau de l'utilisateur (Europe/Paris par défaut) et stockées en UTC.
-- **EVT-008** — Le serveur n'accepte un envoi de formulaire que si l'événement est en cours ou s'est terminé il y a au plus 15 minutes, pour ne pas perdre un prospect en train de remplir.
-- **EVT-009** — Le propriétaire peut modifier, clore et supprimer un événement de sa carte.
+- **EVT-001** — An event belongs to a card. It has a title, a description, a start date (required) and an end date (optional).
+- **EVT-002** — An event is in progress if `start <= now` and (`end` is absent or `now < end`).
+- **EVT-003** — An absent end means the event lasts until it is closed manually.
+- **EVT-004** — A card cannot have more than 3 concurrent events at any instant. This limit is configurable in the instance configuration.
+- **EVT-005** — The concurrent events limit (EVT-004) is checked on every creation and every modification, by computing the maximum overlap over the event's whole period; an absent end counts as infinity.
+- **EVT-006** — The "Terminer maintenant" ("End now") button sets the event's end to the present instant.
+- **EVT-007** — Dates are entered and displayed in the user's time zone (Europe/Paris by default) and stored in UTC.
+- **EVT-008** — The server accepts a form submission only if the event is in progress or ended at most 15 minutes ago, so as not to lose a prospect who is in the middle of filling it in.
+- **EVT-009** — The owner can edit, close and delete an event of their card.
 
-## Code d'accès
+## Access code
 
-- **EVT-010** — Un événement peut avoir un code d'accès, optionnel et modifiable à tout moment. Il est stocké de façon à pouvoir être réaffiché au propriétaire.
-- **EVT-011** — La comparaison du code d'accès ignore la casse, les espaces en début et en fin, et les accents.
-- **EVT-012** — Le code d'accès est vérifié par le serveur et n'est jamais envoyé au navigateur.
-- **EVT-013** — Le code d'accès est revérifié au moment de l'envoi : si le propriétaire l'a changé entre-temps, le prospect doit saisir le nouveau.
+- **EVT-010** — An event can have an access code, optional and editable at any time. It is stored in a way that lets it be shown again to the owner.
+- **EVT-011** — The access code comparison ignores case, leading and trailing spaces, and accents.
+- **EVT-012** — The access code is verified by the server and is never sent to the browser.
+- **EVT-013** — The access code is rechecked at submission time: if the owner changed it in the meantime, the prospect must enter the new one.
 
-## Limite par appareil
+## Per-device limit
 
-- **EVT-014** — La limite d'envois par appareil est réglable par événement ; elle vaut 1 par défaut, et le serveur refuse les envois au-delà.
-- **EVT-015** — Un appareil est reconnu par un identifiant aléatoire conservé dans un cookie et dans le stockage local. C'est une protection légère, qui se contourne en navigation privée.
+- **EVT-014** — The per-device submission limit is configurable per event; it is 1 by default, and the server rejects submissions beyond it.
+- **EVT-015** — A device is recognized by a random identifier kept in a cookie and in local storage. This is a light protection, which can be bypassed in private browsing.
