@@ -1,5 +1,6 @@
 import { ApiError } from "@cartouche/api-client";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { renderWithIntl } from "@/components/editor/test-helpers";
 import type { LeadActions } from "@/lib/events/lead-actions";
@@ -256,6 +257,26 @@ describe("LeadList", () => {
     await waitFor(() => expect(screen.queryByTestId("lead-detail")).toBeNull());
     expect(screen.queryByTestId("lead-row-lead-bot")).toBeNull();
     expect(screen.getByTestId("lead-row-lead-zoe")).toBeVisible();
+  });
+
+  test("LEA-014 an inline load function is called once, however often the parent re-renders", async () => {
+    serve([zoe]);
+    function Parent() {
+      const [renders, setRenders] = useState(0);
+      return (
+        <>
+          <button data-testid="rerender" onClick={() => setRenders(renders + 1)} />
+          <LeadList load={() => load()} actions={actions} showEvent={renders > 0} />
+        </>
+      );
+    }
+    renderWithIntl(<Parent />);
+    await screen.findByTestId("lead-row-lead-zoe");
+    fireEvent.click(screen.getByTestId("rerender"));
+    await screen.findByTestId("lead-event-lead-zoe");
+    fireEvent.click(screen.getByTestId("rerender"));
+    await waitFor(() => expect(screen.getByTestId("lead-row-lead-zoe")).toBeVisible());
+    expect(load).toHaveBeenCalledTimes(1);
   });
 
   test("EDI-020 a failure to load shows the generic notice", async () => {

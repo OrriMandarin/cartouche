@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,8 +93,9 @@ function LeadRow({
 /**
  * spec: EDI-020, LEA-002, LEA-003, LEA-014 to LEA-017, LEA-020, ABU-003, ABU-004, ABU-009, ABU-010. A list of
  * contacts, loaded once, with the search, the detail view and (with `actions`) the spam mark and the deletion. After
- * a successful action the list is updated from the answer, never reloaded. `showEvent` adds the event of each
- * contact (whole-card view); `toolbar` is shown above the list.
+ * a successful action the list is updated from the answer, never reloaded. `load` is called once, on mount, whatever
+ * function the parent passes on later renders (give the list a new `key` to load again). `showEvent` adds the event
+ * of each contact (whole-card view); `toolbar` is shown above the list.
  */
 export function LeadList({
   load,
@@ -115,11 +116,17 @@ export function LeadList({
   const [openId, setOpenId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<LeadView | null>(null);
 
+  // The latest `load`, so that a new function on each render of the parent never triggers another request.
+  const latestLoad = useRef(load);
+  useEffect(() => {
+    latestLoad.current = load;
+  }, [load]);
+
   useEffect(() => {
     let cancelled = false;
     async function fetchLeads() {
       try {
-        const loaded = await load();
+        const loaded = await latestLoad.current();
         if (cancelled) return;
         setLeads(loaded);
         setLoadError(null);
@@ -132,7 +139,7 @@ export function LeadList({
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, []);
 
   function applyChange(change: LeadChange) {
     setLeads((current) => (current === null ? current : applyLeadChange(current, change)));
