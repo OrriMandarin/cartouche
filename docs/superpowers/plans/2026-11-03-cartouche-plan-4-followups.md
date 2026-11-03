@@ -55,6 +55,13 @@ Pre-flight of the plan (R-PF, before Task 1) then execution (R-E). Each line: de
 - Ruling R-PF15 (T1): `spam_body_and_lead_id_are_checked` is a regression test that passes before the change — the extractors already reject bad input — cost if wrong: none.
 - Ruling R-PF17 (T2–T4): `ExportContext.event` alone decides the event scope, with a `debug_assert!` in `render` — one source of truth — cost if wrong: none.
 - Ruling R-PF18 (T7, T12, T13): extra tests: the pending/rejected/suspended screens all offer deletion, a support lead detail sends no request (ADM-019), a test reset empties `blocked_slugs` — partial coverage found in pre-flight — cost if wrong: a few tests.
+- Ruling R-E1 (T4): the export time-zone test runs at 2026-01-15T04:30Z instead of 2027-03-15T23:30Z — the Rust test tokens expire at 2026-01-15 13:00Z; the day-in-zone rule is still exercised (Paris on the 15th, New York on the 14th) — cost if wrong: none.
+- Ruling R-E2 (T8): `strip_slugs_from_audit` binds `user_id.to_string()` — sqlx types `$1::text` as a string; it is the same text form as `json!({"owner_id": uuid})`, and a test asserts it — cost if wrong: none.
+- Ruling R-E3 (T11): the plan's hand-derived CSV row for Zoé (09:00) was wrong; the e2e expects 10:00 (09:00Z in Europe/Paris, UTC+1 before 2027-03-28), as LEA-026 requires — cost if wrong: none.
+- Ruling R-E4 (T13): the auth module's `signOut` takes an optional `{ redirectTo }`: Clerk passes `redirectUrl`, OIDC passes `post_logout_redirect_uri = origin + redirectTo`, the test adapter ignores it; `/account-deleted` calls `signOut({ redirectTo: "/account-deleted" })` only while signed in — with the real providers a plain sign-out navigated to `/` and the ACC-023 explanation flashed away; R-S16 had not foreseen the adapters' redirects — cost if wrong: an OIDC client must allow `<origin>/account-deleted` as a post-logout redirect URI (documented in `.env.example` and the `dev-env` skill); Clerk's allowed redirect URLs may need it too (not verified on a real Clerk instance).
+- Ruling R-E5 (T13): two review minors entered the fix round because they broke `CLAUDE.md` rules: a vacuous e2e assertion (replaced by a real "the new account has no card" check) and the deletion outcome sorting in the component (moved to `lib/account/deletion.ts` `deletionOutcome`) — cost if wrong: none.
+- Ruling R-E6 (T16): Task 16 (status lines, coverage, gate) had no separate task review; the final whole-branch review covered its diff — mechanical diff, as plan 3's R-E6 — cost if wrong: none.
+- Ruling R-E7 (final review): the final review approved the branch (no Critical or Important finding); one fix wave applied six cheap minors (account deletion comment, delayed `revokeObjectURL`, consent text label in the lead detail, exact brochure assertion in e2e, `{word}` in the confirmation label, email fallback on the account page) and ADM-019 now says "through the support views" — ADM-019's last sentence could be read as auditing the owner dashboard too — cost if wrong: none.
 
 ## Deferred findings (carried over from plan 3)
 
@@ -66,4 +73,33 @@ Pre-flight of the plan (R-PF, before Task 1) then execution (R-E). Each line: de
 
 ## Deferred findings (plan 4 reviews)
 
+Raised by the task reviews or the final review, not fixed, to be triaged by a later plan:
+
+- Account deletion lists then deletes a card's media prefix: a media upload by the same user that lands in storage after the listing leaves an orphan file (LNK-016), only through the user's own concurrent action (`routes/account.rs`, `media/service.rs::delete_prefix`).
+- In `next dev`, React StrictMode mounts the lead list twice, so one support view can write two `leads.viewed` audit rows; production builds write one (documented in the `dev-env` and `debug-failure` skills).
+- Lead search does not fold the typographic apostrophe: "d'aubigne" typed with a straight apostrophe does not find "D’Aubigné" (LEA-015 only requires case and accents).
+- Export headers: a generated " (2)" suffix is not checked against a literal "X (2)" label, so two headers could collide in a rare case (Notion wants unique headers) (`export/table.rs::suffix_duplicates`).
+- Export headers: a deleted field's header and type come from the most recent exported snapshot even when its value is null; LEA-024 says "most recent answer" (`export/table.rs`).
+- A modified click (ctrl/meta) on an internal link from a dirty editor still asks, although it opens a new tab (`lib/leave-guard.ts`).
+- The real Clerk and OIDC sign-out return trips (R-E4) are covered only by mocked unit tests; e2e uses the test provider.
+- The shared e2e stack (`cartouche-test`, fixed ports) breaks when two worktrees with different migration sets use it in turn ("migration N was previously applied but is missing"); `make e2e-down` before a run fixes it (seen at the final gate).
+
 ## Minor findings (plan 4 task reviews)
+
+Fixed in the final fix wave: the `routes/account.rs` comment on concurrent deletions; `revokeObjectURL` right after the download click; the real `URL` object patched by `lead-export.test.ts`; the unused `leads.detail.consentText` key; the brochure assertion that also matched "Non renseigné"; "SUPPRIMER" repeated in `account.delete.inputLabel`; the empty email on the account page. Kept:
+
+- Task 1: the whole-card test uses one card, so nothing proves another card of the same owner is excluded; `event_title` "current title" is never checked after a rename; the `set_lead_spam` OpenAPI text does not say the first spam date is kept; long SQL strings in `db/leads.rs`.
+- Task 2: `header_of_standard` uses a `let … else unreachable!`; no test of a card-scope export with two same-label fields in one event and one in another.
+- Task 3: the JSON export gives an empty event title to a lead whose event is missing from the request (unreachable with the routes' data); the XLSX number fallback to a string is unreachable without serde's `arbitrary_precision`; extra dev-dependency `zip` for the frozen-pane test.
+- Task 4: no API test of an export error → 500 (the writer cannot fail on valid data); the internal-error message is repeated in `lead_exports.rs`.
+- Task 5: `seeded_consent_texts_are_the_ones_a_submission_records` passes on the old code too (seeded titles are already NFC): a guard, not a fail-first test.
+- Task 6: the audit-metadata test checks the absence of names and a street the fixture leads never carry (the key-set assertion is the real check); `support_lists_a_cards_events` uses two events with the same start; `list_card_events` makes a redundant existence query; `db/admin_leads.rs` copies the `EventRow` mapping.
+- Task 7: the race test counts any lock waiter, not the `card_slugs … for update` one; a public lead submission on a blocked slug is not exercised (same `serve_card` path); the slug suggestion makes two queries per candidate.
+- Task 8: the handler ignores the results of `strip_slugs_from_audit` and `delete_user`; `a_storage_failure_deletes_nothing` compares the number of media keys, not the key set.
+- Task 9: `api.test` does not assert that the error report omits the export path.
+- Task 10: the lead detail test's number (120) does not exercise French digit grouping; the list and the detail keep separate busy states.
+- Task 11: the e2e cannot prove `tz` is sent (browser and fallback are both Europe/Paris; unit tests cover it); a redundant spam count check in `exports.spec.ts`; the whole-card page repeats the event leads page header; two page tests repeat the same mocks.
+- Task 12: the synthetic "No such event." error message is never shown; the support lead tests repeat the notice and no-export assertions.
+- Task 13: the e2e does not show that the former user, once approved again, is refused `bob-martin` (the Rust tests do).
+- Task 14: the "after a save nothing is asked" test cannot prove the ordering against `router.push`.
+- Task 15: the `dev-env` account-deletion note is unclear about a reseeded `bob-martin` (the reseeded card holds the slug and the slug is blocked).

@@ -13,7 +13,7 @@
 
 - **ADM-005** — Every administrator action is recorded in the audit log: actor, action, type and identifier of the target, metadata (old and new status), timestamp.
 - **ADM-008** — Every time an administrator views the leads of another user, it is recorded in the audit log (who, what, when).
-- **ADM-019** — For ADM-008, each request by which an administrator obtains leads (the list of an event, or the whole-card list of a card) records one audit entry before any lead is sent: action `leads.viewed`, target type `event` or `card` with its identifier, metadata holding the owner's user identifier, the card's identifier and the number of leads returned. If the entry cannot be recorded, no lead is sent. The detail view shows leads already received and records nothing more. The entry is recorded even when the administrator views their own leads.
+- **ADM-019** — For ADM-008, each request by which an administrator obtains leads (the list of an event, or the whole-card list of a card) records one audit entry before any lead is sent: action `leads.viewed`, target type `event` or `card` with its identifier, metadata holding the owner's user identifier, the card's identifier and the number of leads returned. If the entry cannot be recorded, no lead is sent. The detail view shows leads already received and records nothing more. The entry is recorded even when the administrator views their own leads through the support views; the owner dashboard routes record nothing.
 - **ADM-020** — An audit entry holds no personal data of prospects: only identifiers, statuses, a slug (ADM-014) and counts.
 
 ## Viewing (read-only)
