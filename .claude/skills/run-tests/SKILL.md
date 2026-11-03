@@ -56,5 +56,5 @@ node scripts/spec-lint.mjs --coverage   # règles sans test : à lire, pas bloqu
 make e2e-down                   # arrête la stack de test quand on a fini
 ```
 
-`make test` = `test-api` + `test-web` + `spec-lint`. Ne jamais annoncer « ça passe » sans avoir vu la sortie de ces commandes.
+`make test` = `test-api` + `test-web` + `spec-lint-test` + `spec-lint`. Ne jamais annoncer « ça passe » sans avoir vu la sortie de ces commandes.
 Un échec : voir la skill `debug-failure`.

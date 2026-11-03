@@ -11,12 +11,12 @@ AUTH_ISSUER ?= cartouche-test-issuer
 AUTH_JWKS_URL ?= http://localhost:8080/api/test/jwks.json
 PUBLIC_BASE_URL ?= http://localhost:3000
 ADMIN_USER_IDS ?= seed-admin
-BIND_ADDR ?= 0.0.0.0:8080
+BIND_ADDR ?= 127.0.0.1:8080
 CARTOUCHE_BUILD_PROFILE ?= development
 NEXT_PUBLIC_AUTH_PROVIDER ?= test
 API_INTERNAL_URL ?= http://localhost:8080
 
-.PHONY: setup dev-db api web seed test test-api test-web lint openapi spec-lint e2e e2e-down
+.PHONY: setup dev-db api web seed test test-api test-web lint openapi spec-lint spec-lint-test e2e e2e-down
 
 setup:
 	pnpm install && cargo fetch --manifest-path apps/api/Cargo.toml
@@ -33,7 +33,7 @@ web:
 seed:
 	cd apps/api && cargo run -p cartouche-api --features test-support --bin cartouche-seed -- seed $(or $(SCENARIO),base)
 
-test: test-api test-web spec-lint
+test: test-api test-web spec-lint-test spec-lint
 
 test-api:
 	cd apps/api && cargo test --workspace --all-features
@@ -50,7 +50,10 @@ openapi:
 	cd apps/api && UPDATE_OPENAPI=1 cargo test -p cartouche-api --test openapi && pnpm --filter @cartouche/api-client generate
 
 spec-lint:
-	node scripts/spec-lint.mjs
+	node scripts/spec-lint.mjs $(ARGS)
+
+spec-lint-test:
+	node --test scripts/spec-lint.test.mjs
 
 e2e:
 	docker compose -f compose.test.yml up -d --build --wait && pnpm --filter e2e test $(ARGS)

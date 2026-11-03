@@ -7,5 +7,7 @@ e2e/playwright-report/
 .env.local
 .superpowers/
 next-env.d.ts
+# Written by `next dev`.
+apps/web/AGENTS.md
 *.tsbuildinfo
 coverage/

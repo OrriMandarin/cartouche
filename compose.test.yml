@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: cartouche
       POSTGRES_DB: cartouche
     ports:
-      - "15432:5432"
+      - "127.0.0.1:15432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cartouche -d cartouche"]
       interval: 2s
@@ -38,7 +38,7 @@ services:
       ADMIN_USER_IDS: seed-admin
       SIGNUP_MODE: approval
     ports:
-      - "18080:8080"
+      - "127.0.0.1:18080:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
       interval: 2s
@@ -60,7 +60,7 @@ services:
     environment:
       API_INTERNAL_URL: http://api:8080
     ports:
-      - "13000:3000"
+      - "127.0.0.1:13000:3000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:3000/"]
       interval: 2s

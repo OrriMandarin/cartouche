@@ -87,6 +87,10 @@ jobs:
       - run: pnpm -r lint
       - run: pnpm -r typecheck
       - run: pnpm -r --filter '!e2e' test
+      - name: The TypeScript client matches the OpenAPI contract
+        run: |
+          pnpm --filter @cartouche/api-client generate
+          git diff --exit-code packages/api-client/src/schema.d.ts
       - name: Production build with the test auth adapter must fail
         shell: bash
         env:
@@ -113,7 +117,14 @@ jobs:
           NEXT_PUBLIC_AUTH_PROVIDER: clerk
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ env.CLERK_DUMMY_KEY }}
           API_INTERNAL_URL: http://api:8080
-        run: pnpm --filter web build
+        run: |
+          pnpm --filter web build
+          # The test auth adapter must not have been bundled into the client.
+          test -d apps/web/.next/static
+          if grep -r "cartouche.test.token" apps/web/.next/static; then
+            echo "::error::the test auth adapter leaked into the production client bundle"
+            exit 1
+          fi
 
   e2e:
     name: End-to-end

@@ -16,8 +16,6 @@ Cartouche est une application open source de carte de visite numérique (backend
 | `.claude/agents/` | Agents du projet. `.claude/skills/` : skills du projet. |
 | `compose.dev.yml`, `compose.test.yml` | Base de dev ; stack complète (db, api, web) pour les tests e2e. |
 
-Une partie de cette carte décrit la structure cible du plan 1 (`docs/superpowers/plans/2026-11-02-cartouche-plan-1-fondations.md`) : tous les fichiers n'existent pas encore.
-
 ## Commandes (`make`)
 
 | Commande | Effet |
@@ -26,10 +24,10 @@ Une partie de cette carte décrit la structure cible du plan 1 (`docs/superpower
 | `make dev-db` | Démarre PostgreSQL de dev (port 54320). |
 | `make api` / `make web` | Lance l'API (8080, avec `test-support`) / le site (3000). |
 | `make seed [SCENARIO=base]` | Alimente la base avec un scénario de données. |
-| `make test` | `test-api` + `test-web` + `spec-lint`. |
+| `make test` | `test-api` + `test-web` + `spec-lint-test` (tests du vérificateur) + `spec-lint`. |
 | `make lint` | `cargo fmt --check`, `clippy -D warnings`, lint et typecheck pnpm. |
 | `make openapi` | Régénère `openapi.json` puis le client TypeScript. |
-| `make spec-lint` | `node scripts/spec-lint.mjs` ; ajouter `--coverage` pour lister les règles sans test. |
+| `make spec-lint [ARGS=--coverage]` | `node scripts/spec-lint.mjs` ; `ARGS=--coverage` liste les règles sans test. |
 | `make e2e [ARGS="-g ACC-004"]` | Monte la stack de test et lance Playwright. `make e2e-down` l'arrête. |
 
 Sans fichier `.env`, tout fonctionne en local **sans Clerk** (fournisseur d'authentification de test, JWKS servi par l'API). Voir `.env.example`.
