@@ -4,12 +4,12 @@ import { themeToCssVars } from "@/lib/theme/css-vars";
 import { isHttpUrl, mailtoHref, telHref } from "../contact-links";
 import {
   TEMPLATE_TEST_IDS as TEST_IDS,
-  linkLabel,
   type LinkKind,
   type MediaView,
   type PublicEvent,
   type TemplateProps,
 } from "../contract";
+import { linkName } from "../link-display";
 import type { ClassiqueSettings } from "./settings";
 
 // The installed lucide-react has no brand icons: brands share the generic globe.
@@ -213,7 +213,7 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
               {safeLinks.map(({ link, index }) => {
                 // A kind this build does not know (a newer backend) reads as a website (TPL-016).
                 const Icon = Object.hasOwn(LINK_ICONS, link.kind) ? LINK_ICONS[link.kind] : Globe;
-                const label = linkLabel(labels, link);
+                const label = linkName(labels, link);
                 return (
                   <li key={`${index}-${link.url}`}>
                     <a

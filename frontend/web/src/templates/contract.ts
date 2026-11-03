@@ -78,12 +78,6 @@ export const TEMPLATE_TEST_IDS = {
   eventButton: (eventId: string) => `event-button-${eventId}`,
 } as const;
 
-/** What a link is called when it has no label of its own; a kind this build does not know reads as a website (TPL-016). */
-export function linkLabel(labels: TemplateLabels, link: PublicCard["links"][number]): string {
-  if (link.label) return link.label;
-  return Object.hasOwn(labels.links, link.kind) ? labels.links[link.kind] : labels.links.website;
-}
-
 /** Loose type of a next-intl translator, so the contract does not depend on its generics. */
 type Translate = (key: string) => string;
 
