@@ -1,13 +1,13 @@
-//! Owner routes for cards: list, create, read, update (with slug change), delete
-//! (EDI-001, EDI-008, EDI-013, EDI-015, LNK-001 to LNK-003, LNK-012 to LNK-014, LNK-022,
-//! LNK-025, ACC-017).
+//! Owner routes for cards: list, create, read, update (with slug change), delete, disable,
+//! enable and duplicate (EDI-001, EDI-008, EDI-013, EDI-014, EDI-015, LNK-001 to LNK-003,
+//! LNK-005, LNK-009, LNK-011 to LNK-014, LNK-022, LNK-025, LNK-028, ACC-017).
 
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use cartouche_domain::{
-    CardInput, ContentInput, LinkInput, Slug, SlugClaim, SlugClaimError, Theme, ValidCard,
-    decide_claim, invalid_media_refs, validate_card,
+    CardInput, ContentInput, FieldError, LinkInput, Slot, Slug, SlugClaim, SlugClaimError, Theme,
+    ValidCard, decide_claim, invalid_media_refs, storage_key, validate_card,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
@@ -15,7 +15,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::auth::ApprovedUser;
-use crate::db::media::MediaRecord;
+use crate::db::media::{MediaRecord, StoredVariant};
 use crate::db::{cards, media, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
@@ -239,7 +239,10 @@ pub async fn update_card(
     let owner_id = me.user.id;
     let mut tx = state.db.begin().await?;
     // The lock keeps a concurrent deletion or upload out until this save is committed.
-    if !cards::lock_for_owner(&mut tx, owner_id, id).await? {
+    if cards::lock_for_owner(&mut tx, owner_id, id)
+        .await?
+        .is_none()
+    {
         return Err(ApiError::NotFound);
     }
     let card_media: Vec<_> = media::list_for_card(&mut *tx, owner_id, id)
@@ -328,4 +331,246 @@ pub async fn delete_card(
         tracing::warn!(card_id = %id, %error, "cannot delete card media files");
     }
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Sets or clears the owner's own switch, once the card is known to be the caller's and not
+/// disabled by support.
+async fn set_disabled(
+    state: &AppState,
+    owner_id: Uuid,
+    id: Uuid,
+    disabled: bool,
+) -> Result<Json<CardView>, ApiError> {
+    let mut tx = state.db.begin().await?;
+    let locked = cards::lock_for_owner(&mut tx, owner_id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    if locked.support_disabled {
+        return Err(ApiError::CardDisabledBySupport);
+    }
+    let at = disabled.then(|| state.clock.now());
+    let card = cards::set_owner_disabled(&mut tx, owner_id, id, at)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    let attached = media::list_attached(&mut *tx, owner_id, &[id]).await?;
+    tx.commit().await?;
+    Ok(Json(CardView::new(
+        card,
+        &attached,
+        &state.config,
+        &state.media,
+    )?))
+}
+
+/// Disables a card: its public page stops being served (LNK-005).
+#[utoipa::path(
+    post,
+    path = "/api/cards/{id}/disable",
+    summary = "Disable a card",
+    description = "Turns the card off. Its link, content and media are kept and it stays in the list. Idempotent. Refused while support has disabled the card.",
+    tag = "cards",
+    security(("bearer" = [])),
+    params(("id" = Uuid, Path, description = "Id of the card.")),
+    responses(
+        (status = 200, description = "The card, now disabled.", body = CardView),
+        (status = 400, description = "Malformed id (`invalid_request`).", body = ErrorBody),
+        (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
+        (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
+        (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
+        (status = 409, description = "Support disabled the card (`card_disabled_by_support`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
+pub async fn disable_card(
+    ApprovedUser(me): ApprovedUser,
+    State(state): State<AppState>,
+    ApiPath(id): ApiPath<Uuid>,
+) -> Result<Json<CardView>, ApiError> {
+    set_disabled(&state, me.user.id, id, true).await
+}
+
+/// Enables a card again (LNK-009).
+#[utoipa::path(
+    post,
+    path = "/api/cards/{id}/enable",
+    summary = "Enable a card",
+    description = "Turns the card back on with its link, content and media unchanged. Idempotent. Refused while support has disabled the card.",
+    tag = "cards",
+    security(("bearer" = [])),
+    params(("id" = Uuid, Path, description = "Id of the card.")),
+    responses(
+        (status = 200, description = "The card, now active.", body = CardView),
+        (status = 400, description = "Malformed id (`invalid_request`).", body = ErrorBody),
+        (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
+        (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
+        (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
+        (status = 409, description = "Support disabled the card (`card_disabled_by_support`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
+pub async fn enable_card(
+    ApprovedUser(me): ApprovedUser,
+    State(state): State<AppState>,
+    ApiPath(id): ApiPath<Uuid>,
+) -> Result<Json<CardView>, ApiError> {
+    set_disabled(&state, me.user.id, id, false).await
+}
+
+/// The slug of a duplicate.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct DuplicateCardBody {
+    pub slug: String,
+}
+
+/// A media of the source card and its copy on the new card.
+struct MediaCopy {
+    source: MediaRecord,
+    copy: MediaRecord,
+}
+
+/// Storage keys of every variant of `source` and of its `copy`.
+fn variant_keys<'a>(
+    source: &'a MediaRecord,
+    copy: &'a MediaRecord,
+) -> impl Iterator<Item = (String, String)> + 'a {
+    source
+        .variants
+        .iter()
+        .map(move |StoredVariant { name, .. }| {
+            (
+                storage_key(source.card_id, source.id, name),
+                storage_key(copy.card_id, copy.id, name),
+            )
+        })
+}
+
+/// Copies the files of every media of `copies`; when one fails, removes what was copied.
+async fn copy_files(storage: &MediaService, copies: &[MediaCopy]) -> Result<(), ApiError> {
+    for MediaCopy { source, copy } in copies {
+        for (from, to) in variant_keys(source, copy) {
+            if let Err(error) = storage.copy(&from, &to).await {
+                remove_copied_files(storage, copies).await;
+                return Err(error.into());
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Best effort: removes the files of the copies after a failure.
+async fn remove_copied_files(storage: &MediaService, copies: &[MediaCopy]) {
+    for MediaCopy { copy, .. } in copies {
+        if let Err(error) = storage.delete_media(copy.card_id, copy.id).await {
+            tracing::warn!(media_id = %copy.id, card_id = %copy.card_id, %error, "cannot delete copied media files");
+        }
+    }
+}
+
+/// Records the new card, its slug and its media in the transaction, and commits it.
+async fn record_duplicate(
+    mut tx: sqlx::Transaction<'_, sqlx::Postgres>,
+    owner_id: Uuid,
+    source_id: Uuid,
+    new_id: Uuid,
+    slug: &Slug,
+    claim: SlugClaim,
+    copies: &[MediaCopy],
+) -> Result<(cards::Card, Vec<MediaRecord>), ApiError> {
+    let card = cards::duplicate(&mut tx, owner_id, source_id, new_id, slug.as_str())
+        .await
+        .map_err(slug_race)?
+        .ok_or(ApiError::NotFound)?;
+    slugs::apply_claim(&mut tx, owner_id, new_id, slug, claim)
+        .await
+        .map_err(slug_race)?;
+    let mut attached = Vec::new();
+    let (mut header_id, mut avatar_id) = (None, None);
+    for MediaCopy { source, copy } in copies {
+        let recorded = media::insert(&mut tx, owner_id, copy.clone())
+            .await?
+            .ok_or(ApiError::NotFound)?;
+        match source.slot {
+            Slot::Header => header_id = Some(recorded.id),
+            Slot::Avatar => avatar_id = Some(recorded.id),
+        }
+        attached.push(recorded);
+    }
+    let card = if attached.is_empty() {
+        card
+    } else {
+        cards::set_media(&mut tx, owner_id, new_id, header_id, avatar_id)
+            .await?
+            .ok_or(ApiError::NotFound)?
+    };
+    tx.commit().await.map_err(slug_race)?;
+    Ok((card, attached))
+}
+
+/// Duplicates a card under a new slug (EDI-001, EDI-014).
+#[utoipa::path(
+    post,
+    path = "/api/cards/{id}/duplicate",
+    summary = "Duplicate a card",
+    description = "Creates an active card with the source's template, settings, theme, content and links under a new slug, and a copy of its header and avatar. Slug history and uploads that are not attached are not copied. Refused while support has disabled the source.",
+    tag = "cards",
+    security(("bearer" = [])),
+    params(("id" = Uuid, Path, description = "Id of the card to copy.")),
+    request_body = DuplicateCardBody,
+    responses(
+        (status = 201, description = "The new card.", body = CardView),
+        (status = 400, description = "Malformed id or body (`invalid_request`) or invalid slug (`validation_failed`).", body = ErrorBody),
+        (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
+        (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
+        (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
+        (status = 409, description = "The slug is not available (`slug_taken`, `slug_reserved`) or support disabled the source (`card_disabled_by_support`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
+pub async fn duplicate_card(
+    ApprovedUser(me): ApprovedUser,
+    State(state): State<AppState>,
+    ApiPath(id): ApiPath<Uuid>,
+    ApiJson(body): ApiJson<DuplicateCardBody>,
+) -> Result<(StatusCode, Json<CardView>), ApiError> {
+    let slug = Slug::parse(&body.slug)
+        .map_err(|_| ApiError::Validation(vec![FieldError::new("slug", "invalid_slug")]))?;
+
+    let owner_id = me.user.id;
+    let mut tx = state.db.begin().await?;
+    let locked = cards::lock_for_owner(&mut tx, owner_id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    if locked.support_disabled {
+        return Err(ApiError::CardDisabledBySupport);
+    }
+    let claim = claim_slug(&mut tx, owner_id, None, &slug).await?;
+
+    let new_id = Uuid::now_v7();
+    let copies: Vec<MediaCopy> = media::list_attached(&mut *tx, owner_id, &[id])
+        .await?
+        .into_iter()
+        .map(|source| {
+            let copy = MediaRecord {
+                id: Uuid::now_v7(),
+                card_id: new_id,
+                ..source.clone()
+            };
+            MediaCopy { source, copy }
+        })
+        .collect();
+    // Files first: the new rows only ever point at files that exist.
+    copy_files(&state.media, &copies).await?;
+    match record_duplicate(tx, owner_id, id, new_id, &slug, claim, &copies).await {
+        Ok((card, attached)) => Ok((
+            StatusCode::CREATED,
+            Json(CardView::new(card, &attached, &state.config, &state.media)?),
+        )),
+        Err(error) => {
+            remove_copied_files(&state.media, &copies).await;
+            Err(error)
+        }
+    }
 }

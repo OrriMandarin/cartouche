@@ -68,6 +68,8 @@ pub enum ApiError {
     SlugTaken,
     /// The slug is an old slug of another card of the same owner (LNK-025).
     SlugReserved,
+    /// Support disabled the card: its owner can neither toggle nor duplicate it (LNK-028).
+    CardDisabledBySupport,
     /// `POST /api/test/seed` named a scenario that does not exist.
     #[cfg(feature = "test-support")]
     UnknownScenario,
@@ -96,6 +98,7 @@ impl ApiError {
             ApiError::InvalidTransition => "invalid_transition",
             ApiError::SlugTaken => "slug_taken",
             ApiError::SlugReserved => "slug_reserved",
+            ApiError::CardDisabledBySupport => "card_disabled_by_support",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
             ApiError::Internal(_) => "internal_error",
@@ -119,9 +122,10 @@ impl ApiError {
             ApiError::InvalidRequest | ApiError::Validation(_) => StatusCode::BAD_REQUEST,
             ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            ApiError::InvalidTransition | ApiError::SlugTaken | ApiError::SlugReserved => {
-                StatusCode::CONFLICT
-            }
+            ApiError::InvalidTransition
+            | ApiError::SlugTaken
+            | ApiError::SlugReserved
+            | ApiError::CardDisabledBySupport => StatusCode::CONFLICT,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -148,6 +152,7 @@ impl ApiError {
             ApiError::InvalidTransition => "This status change is not allowed.",
             ApiError::SlugTaken => "This link is already taken.",
             ApiError::SlugReserved => "This link was used by another of your cards.",
+            ApiError::CardDisabledBySupport => "This card was disabled by support.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
             ApiError::Internal(_) => "An internal error occurred.",

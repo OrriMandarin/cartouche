@@ -685,6 +685,343 @@
         ]
       }
     },
+    "/api/cards/{id}/disable": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Disable a card",
+        "description": "Turns the card off. Its link, content and media are kept and it stays in the list. Idempotent. Refused while support has disabled the card.",
+        "operationId": "disable_card",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The card, now disabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Support disabled the card (`card_disabled_by_support`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/cards/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Duplicate a card",
+        "description": "Creates an active card with the source's template, settings, theme, content and links under a new slug, and a copy of its header and avatar. Slug history and uploads that are not attached are not copied. Refused while support has disabled the source.",
+        "operationId": "duplicate_card",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card to copy.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateCardBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id or body (`invalid_request`) or invalid slug (`validation_failed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The slug is not available (`slug_taken`, `slug_reserved`) or support disabled the source (`card_disabled_by_support`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/cards/{id}/enable": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Enable a card",
+        "description": "Turns the card back on with its link, content and media unchanged. Idempotent. Refused while support has disabled the card.",
+        "operationId": "enable_card",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The card, now active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Support disabled the card (`card_disabled_by_support`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/cards/{id}/media": {
       "post": {
         "tags": [
@@ -1463,6 +1800,18 @@
               "null"
             ]
           },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "DuplicateCardBody": {
+        "type": "object",
+        "description": "The slug of a duplicate.",
+        "required": [
+          "slug"
+        ],
+        "properties": {
           "slug": {
             "type": "string"
           }

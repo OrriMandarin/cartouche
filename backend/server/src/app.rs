@@ -16,7 +16,10 @@ use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
 use crate::routes::admin_users::{list_users, set_user_status};
 use crate::routes::card_media::{UPLOAD_BODY_LIMIT, upload_media};
-use crate::routes::cards::{create_card, delete_card, get_card, list_cards, update_card};
+use crate::routes::cards::{
+    create_card, delete_card, disable_card, duplicate_card, enable_card, get_card, list_cards,
+    update_card,
+};
 use crate::routes::health::health;
 use crate::routes::me::me;
 use crate::routes::media_files::get_media_file;
@@ -33,6 +36,9 @@ pub fn build_router(state: AppState) -> Router {
             "/api/cards/{id}",
             get(get_card).put(update_card).delete(delete_card),
         )
+        .route("/api/cards/{id}/disable", post(disable_card))
+        .route("/api/cards/{id}/enable", post(enable_card))
+        .route("/api/cards/{id}/duplicate", post(duplicate_card))
         .route(
             "/api/cards/{id}/media",
             post(upload_media).layer(DefaultBodyLimit::max(UPLOAD_BODY_LIMIT)),

@@ -178,21 +178,31 @@ pub async fn insert(
     row.try_into()
 }
 
+/// What the lock on a card reveals.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LockedCard {
+    /// Whether support has disabled the card (LNK-028).
+    pub support_disabled: bool,
+}
+
 /// Locks the owner's card until the transaction ends, so a save cannot race a deletion or
-/// an upload. `false` when the owner has no such card.
+/// an upload. `None` when the owner has no such card.
 pub async fn lock_for_owner(
     tx: &mut PgConnection,
     owner_id: Uuid,
     card_id: Uuid,
-) -> Result<bool, sqlx::Error> {
+) -> Result<Option<LockedCard>, sqlx::Error> {
     let locked = sqlx::query!(
-        "select id from cards where id = $1 and owner_id = $2 for update",
+        r#"select support_disabled_at is not null as "support_disabled!"
+           from cards where id = $1 and owner_id = $2 for update"#,
         card_id,
         owner_id,
     )
     .fetch_optional(tx)
     .await?;
-    Ok(locked.is_some())
+    Ok(locked.map(|row| LockedCard {
+        support_disabled: row.support_disabled,
+    }))
 }
 
 /// Overwrites the content of the owner's card and its two media. `None` when the owner has
@@ -242,12 +252,11 @@ pub async fn update(
 
 /// Sets (`Some(at)`) or clears (`None`) the owner's own switch.
 pub async fn set_owner_disabled(
-    pool: &PgPool,
+    tx: &mut PgConnection,
     owner_id: Uuid,
     card_id: Uuid,
     at: Option<DateTime<Utc>>,
 ) -> Result<Option<Card>, sqlx::Error> {
-    let mut conn = pool.acquire().await?;
     let updated = sqlx::query!(
         "update cards set owner_disabled_at = $3, updated_at = now() \
          where id = $1 and owner_id = $2",
@@ -255,14 +264,73 @@ pub async fn set_owner_disabled(
         owner_id,
         at,
     )
-    .execute(&mut *conn)
+    .execute(&mut *tx)
     .await?;
     if updated.rows_affected() == 0 {
         return Ok(None);
     }
-    Ok(select_cards(&mut conn, owner_id, Some(card_id))
-        .await?
-        .pop())
+    Ok(select_cards(tx, owner_id, Some(card_id)).await?.pop())
+}
+
+/// Copies the owner's card `source_id` into a new, active card `new_id`: template, settings,
+/// theme, content and links, but no media (the caller copies those, then calls
+/// `set_media`). `None` when the owner has no such card. Like `insert`, the slug is not
+/// recorded here: the caller claims `slug` right after in the same transaction.
+pub async fn duplicate(
+    tx: &mut PgConnection,
+    owner_id: Uuid,
+    source_id: Uuid,
+    new_id: Uuid,
+    slug: &str,
+) -> Result<Option<Card>, sqlx::Error> {
+    let row = sqlx::query_as!(
+        CardRow,
+        r#"insert into cards (id, owner_id, template, settings, theme, first_name, last_name,
+                              job_title, company, description, email, phone, links)
+           select $1, owner_id, template, settings, theme, first_name, last_name,
+                  job_title, company, description, email, phone, links
+           from cards where id = $2 and owner_id = $3
+           returning id, owner_id, $4::text as "slug!", template, settings, theme, first_name,
+                     last_name, job_title, company, description, email, phone, links,
+                     header_media_id, avatar_media_id, owner_disabled_at, support_disabled_at,
+                     created_at, updated_at"#,
+        new_id,
+        source_id,
+        owner_id,
+        slug,
+    )
+    .fetch_optional(tx)
+    .await?;
+    row.map(Card::try_from).transpose()
+}
+
+/// Sets the header and avatar of the owner's card. `None` when the owner has no such card,
+/// or when a media is not one of this card's, in the matching slot.
+pub async fn set_media(
+    tx: &mut PgConnection,
+    owner_id: Uuid,
+    card_id: Uuid,
+    header_media_id: Option<Uuid>,
+    avatar_media_id: Option<Uuid>,
+) -> Result<Option<Card>, sqlx::Error> {
+    let updated = sqlx::query!(
+        "update cards set header_media_id = $3, avatar_media_id = $4, updated_at = now() \
+         where id = $1 and owner_id = $2 \
+           and ($3::uuid is null or exists ( \
+                select 1 from media where id = $3 and card_id = $1 and slot = 'header')) \
+           and ($4::uuid is null or exists ( \
+                select 1 from media where id = $4 and card_id = $1 and slot = 'avatar'))",
+        card_id,
+        owner_id,
+        header_media_id,
+        avatar_media_id,
+    )
+    .execute(&mut *tx)
+    .await?;
+    if updated.rows_affected() == 0 {
+        return Ok(None);
+    }
+    Ok(select_cards(tx, owner_id, Some(card_id)).await?.pop())
 }
 
 /// Deletes the owner's card and its media. Its slugs stay reserved to the owner, no longer

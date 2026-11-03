@@ -97,7 +97,7 @@ async fn find_for_owner_ignores_other_owners(pool: PgPool) {
             .is_none()
     );
     assert!(
-        cards::set_owner_disabled(&pool, bob, card.id, Some(chrono::Utc::now()))
+        cards::set_owner_disabled(&mut tx, bob, card.id, Some(chrono::Utc::now()))
             .await
             .unwrap()
             .is_none()
@@ -350,16 +350,18 @@ async fn deleting_a_card_deletes_its_media_and_status_follows_the_switches(pool:
         .unwrap();
     tx.commit().await.unwrap();
 
-    let disabled = cards::set_owner_disabled(&pool, alice, card.id, Some(chrono::Utc::now()))
+    let mut tx = pool.begin().await.unwrap();
+    let disabled = cards::set_owner_disabled(&mut tx, alice, card.id, Some(chrono::Utc::now()))
         .await
         .unwrap()
         .unwrap();
     assert_eq!(disabled.status(), CardStatus::Disabled);
-    let enabled = cards::set_owner_disabled(&pool, alice, card.id, None)
+    let enabled = cards::set_owner_disabled(&mut tx, alice, card.id, None)
         .await
         .unwrap()
         .unwrap();
     assert_eq!(enabled.status(), CardStatus::Active);
+    tx.commit().await.unwrap();
 
     let mut tx = pool.begin().await.unwrap();
     assert!(
