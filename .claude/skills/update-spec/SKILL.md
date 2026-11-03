@@ -3,56 +3,56 @@ name: update-spec
 description: Use when a feature request, change of behavior or bug fix needs a new or modified rule in spec/, before writing any code, or when you need to add a spec file, number a rule, or check that a change does not contradict existing rules.
 ---
 
-# Modifier la spec sans contradiction
+# Change the spec without contradictions
 
-La `spec/` fait foi. **Toute fonctionnalité ou correction de bug commence ici**, avant le code. Format et conventions complets : `spec/README.md`.
+The `spec/` is authoritative. **Every feature or bug fix starts here**, before the code. Full format and conventions: `spec/README.md`.
 
-## 1. Trouver le bon fichier
+## 1. Find the right file
 
-Le tableau de `spec/README.md` associe un fichier, un préfixe de 3 lettres et un sujet (`account-auth.md` → `ACC`, `events.md` → `EVT`, …).
-
-```bash
-sed -n '/^| Fichier/,/^$/p' spec/README.md      # le tableau
-grep -n "^## " spec/<fichier>.md                  # les sections du fichier
-```
-
-Un sujet qui n'existe pas encore = un **nouveau fichier** + une ligne dans le tableau avec un préfixe libre (jamais déjà utilisé) + une ligne `> Statut : …` sous le titre.
-
-## 2. Prendre le prochain numéro libre
+The table in `spec/README.md` maps a file, a 3-letter prefix and a topic (`account-auth.md` → `ACC`, `events.md` → `EVT`, …).
 
 ```bash
-grep -o 'ACC-[0-9]\{3\}' spec/account-auth.md | sort -u | tail -3     # remplacer ACC par le préfixe
+sed -n '/^| File/,/^$/p' spec/README.md        # the table
+grep -n "^## " spec/<file>.md                     # the sections of the file
 ```
 
-Prendre le suivant. **Ne jamais renuméroter ni réutiliser** un identifiant, même disparu. Une règle = un seul comportement vérifiable, sous la forme :
+A topic that does not exist yet = a **new file** + a line in the table with a free prefix (never used before) + a `> Status: …` line under the title.
 
-```
-- **ACC-019** — Texte de la règle.
-```
-
-(tiret cadratin entouré d'espaces ; français avec accents, UTF-8). Une règle qui en concerne une autre la cite par identifiant (« voir ACC-004 ») au lieu de la recopier.
-
-## 3. Chercher les règles liées et les contradictions
-
-Avant d'écrire, relire les voisines :
+## 2. Take the next free number
 
 ```bash
-grep -rn -i "<mot-clé>" spec/                 # mots du vocabulaire (statut, limite, lien, appareil…)
-grep -rn "ACC-004" spec/ apps e2e --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.next    # qui cite une règle
-grep -n -i "<terme>" spec/glossary.md         # le glossaire fixe les termes
+grep -o 'ACC-[0-9]\{3\}' spec/account-auth.md | sort -u | tail -3     # replace ACC with the prefix
 ```
 
-Suivre chaque identifiant cité par la règle qu'on touche, et chaque règle qui la cite.
+Take the next one. **Never renumber or reuse** an identifier, even a vanished one. One rule = a single verifiable behavior, in the form:
 
-## 4. Signaler avant de coder
+```
+- **ACC-019** — Text of the rule.
+```
 
-Si la nouvelle règle **contredit** une règle existante, ou **change un comportement** déjà spécifié ou implémenté : s'arrêter et le dire au porteur du projet (règle concernée, ancien comportement, nouveau, tests à changer). Ne pas coder tant que ce n'est pas tranché. Une règle modifiée garde son identifiant ; les tests qui la citent doivent être relus.
+(em dash surrounded by spaces; written in English, UTF-8). A rule that concerns another one cites it by identifier ("see ACC-004") instead of copying it.
 
-## 5. Vérifier
+## 3. Look for related rules and contradictions
+
+Before writing, reread the neighboring rules:
 
 ```bash
-node scripts/spec-lint.mjs              # doublons, préfixes, citations vers une règle inexistante
-node scripts/spec-lint.mjs --coverage   # en plus : règles qu'aucun test ne cite encore
+grep -rn -i "<keyword>" spec/                 # vocabulary words (status, limit, link, device…)
+grep -rn "ACC-004" spec/ apps e2e --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.next    # who cites a rule
+grep -n -i "<term>" spec/glossary.md          # the glossary fixes the terms
 ```
 
-Puis planifier les tests : chaque règle nouvelle ou modifiée a au moins un test qui la cite (`// spec: XXX-NNN` en Rust, `XXX-NNN` dans le nom du test en TypeScript). Mettre à jour la ligne `> Statut` du fichier si le périmètre implémenté change.
+Follow every identifier cited by the rule being touched, and every rule that cites it.
+
+## 4. Flag before coding
+
+If the new rule **contradicts** an existing rule, or **changes a behavior** already specified or implemented: stop and tell the project maintainer (rule concerned, old behavior, new one, tests to change). Do not code until it is decided. A modified rule keeps its identifier; the tests that cite it must be reread.
+
+## 5. Verify
+
+```bash
+node scripts/spec-lint.mjs              # duplicates, prefixes, citations of a nonexistent rule
+node scripts/spec-lint.mjs --coverage   # also: rules that no test cites yet
+```
+
+Then plan the tests: every new or modified rule has at least one test that cites it (`// spec: XXX-NNN` in Rust, `XXX-NNN` in the test name in TypeScript). Update the file's `> Status` line if the implemented scope changes.

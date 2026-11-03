@@ -1,19 +1,19 @@
-# Protections anti-abus
+# Anti-abuse protections
 
-> Statut : implémenté (plan 3)
+> Status: implemented (plan 3)
 
-Ces protections sont toujours actives.
+These protections are always active.
 
-- **ABU-001** — Les envois de formulaire sont soumis à une limite large par adresse IP, uniquement pour stopper les rafales automatiques : des dizaines de prospects qui partagent la même IP de Wi-Fi sur un salon ne sont pas bloqués.
-- **ABU-002** — Le formulaire contient un champ piège invisible : un envoi qui le remplit est ignoré silencieusement.
-- **ABU-003** — Dans le tableau de bord, le propriétaire peut marquer un contact comme spam.
-- **ABU-004** — Dans le tableau de bord, le propriétaire peut supprimer un contact.
+- **ABU-001** — Form submissions are subject to a generous per-IP-address limit, only to stop automated bursts: dozens of prospects sharing the same Wi-Fi IP at a trade show are not blocked.
+- **ABU-002** — The form contains an invisible honeypot field: a submission that fills it in is silently ignored.
+- **ABU-003** — In the dashboard, the owner can mark a lead as spam.
+- **ABU-004** — In the dashboard, the owner can delete a lead.
 
-## Précisions
+## Details
 
-- **ABU-005** — Un envoi dont le champ piège (ABU-002) n'est pas vide après retrait des espaces reçoit exactement la même réponse qu'un envoi accepté, mais rien n'est enregistré et il ne compte pas dans la limite par appareil (EVT-014). Le champ piège est un champ texte nommé `fax`, placé hors de l'écran (sans `display: none`), sans autocomplétion, hors de la navigation au clavier et masqué aux lecteurs d'écran.
-- **ABU-006** — La limite de ABU-001 est de 120 envois par adresse IP sur toute fenêtre glissante de 10 minutes, tous événements confondus, qu'ils soient acceptés ou refusés. Au-delà, l'envoi est refusé par `429 rate_limited` avec un en-tête `Retry-After` en secondes.
-- **ABU-007** — Les codes d'accès faux sont limités à 30 par adresse IP sur toute fenêtre glissante de 10 minutes ; au-delà, toute vérification de code est refusée par `429 rate_limited` avec un en-tête `Retry-After`. Un code correct ne compte pas.
-- **ABU-008** — L'adresse IP retenue est celle placée par le reverse proxy dans `X-Forwarded-For` : la n-ième en partant de la droite, n étant la variable `TRUSTED_PROXY_HOPS` (1 par défaut). Avec 0, ou si l'en-tête en contient moins, c'est l'adresse de la connexion. Une adresse IPv6 compte pour son préfixe /64.
-- **ABU-009** — Un contact marqué spam reste dans la liste avec une étiquette « Spam », et le propriétaire peut retirer ce marquage.
-- **ABU-010** — La suppression d'un contact est définitive et demande une confirmation.
+- **ABU-005** — A submission whose honeypot field (ABU-002) is not empty after trimming spaces gets exactly the same response as an accepted submission, but nothing is recorded and it does not count toward the per-device limit (EVT-014). The honeypot field is a text field named `fax`, placed off-screen (without `display: none`), with no autocompletion, outside keyboard navigation and hidden from screen readers.
+- **ABU-006** — The limit of ABU-001 is 120 submissions per IP address over any sliding 10-minute window, across all events, whether accepted or rejected. Beyond that, the submission is rejected with `429 rate_limited` and a `Retry-After` header in seconds.
+- **ABU-007** — Wrong access codes are limited to 30 per IP address over any sliding 10-minute window; beyond that, every code check is rejected with `429 rate_limited` and a `Retry-After` header. A correct code does not count.
+- **ABU-008** — The IP address used is the one placed by the reverse proxy in `X-Forwarded-For`: the n-th from the right, n being the `TRUSTED_PROXY_HOPS` variable (1 by default). With 0, or if the header contains fewer addresses, it is the connection's address. An IPv6 address counts as its /64 prefix.
+- **ABU-009** — A lead marked as spam stays in the list with a "Spam" label, and the owner can remove this mark.
+- **ABU-010** — Deleting a lead is permanent and requires confirmation.

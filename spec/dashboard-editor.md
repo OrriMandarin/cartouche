@@ -1,35 +1,35 @@
-# Tableau de bord et éditeur de carte
+# Dashboard and card editor
 
-> Statut : implémenté (plans 2 et 3) ; EDI-010 : plan 4
+> Status: implemented (plans 2 and 3); EDI-010: plan 4
 
-## Cartes
+## Cards
 
-- **EDI-001** — Le tableau de bord permet de lister, créer, éditer, dupliquer, désactiver, réactiver et supprimer des cartes.
-- **EDI-002** — Supprimer une carte demande une confirmation (voir LNK-012).
-- **EDI-012** — La liste des cartes affiche, pour chacune, le nom, le lien public et l'état : « Active », « Désactivée » ou « Désactivée par le support » (voir LNK-011).
-- **EDI-013** — Pour créer une carte, l'utilisateur saisit un prénom et un nom, puis accepte ou modifie le slug proposé (voir LNK-019). La carte est créée active, avec le template Classique et le thème par défaut, et s'ouvre dans l'éditeur.
-- **EDI-014** — Dupliquer une carte copie son contenu, ses liens, son template, son thème, ses réglages et ses médias, sous un nouveau slug choisi par l'utilisateur. Ni les anciens slugs, ni les événements, ni les contacts collectés ne sont copiés, et la copie est active. Une carte désactivée par le support ne peut pas être dupliquée (`409 card_disabled_by_support`).
+- **EDI-001** — The dashboard lets users list, create, edit, duplicate, disable, re-enable and delete cards.
+- **EDI-002** — Deleting a card requires confirmation (see LNK-012).
+- **EDI-012** — The card list shows, for each card, the name, the public link and the state: "Active", "Désactivée" ("Disabled") or "Désactivée par le support" ("Disabled by support") (see LNK-011).
+- **EDI-013** — To create a card, the user enters a first name and a last name, then accepts or edits the suggested slug (see LNK-019). The card is created active, with the Classique ("Classic") template and the default theme, and opens in the editor.
+- **EDI-014** — Duplicating a card copies its content, its links, its template, its theme, its settings and its media, under a new slug chosen by the user. Neither the former slugs, nor the events, nor the leads are copied, and the copy is active. A card disabled by support cannot be duplicated (`409 card_disabled_by_support`).
 
-## Éditeur de carte
+## Card editor
 
-- **EDI-003** — L'éditeur affiche un formulaire à gauche et un aperçu en direct dans un cadre de téléphone à droite ; sur mobile, les deux sont empilés.
-- **EDI-004** — L'aperçu se met à jour à chaque modification, sans qu'il soit nécessaire d'enregistrer.
-- **EDI-005** — Un interrupteur de l'éditeur simule « événement en cours » dans l'aperçu.
-- **EDI-006** — Les changements ne sont publiés qu'à l'enregistrement.
-- **EDI-007** — Le formulaire de l'éditeur est généré à partir du schéma de réglages du template choisi (voir TPL-004).
-- **EDI-008** — Les chaînes saisies dans l'éditeur sont normalisées en NFC avant d'être stockées.
-- **EDI-015** — L'enregistrement est tout ou rien : si une partie est refusée (slug pris, champ invalide), rien n'est modifié. Chaque erreur s'affiche à côté de son champ, et aucune saisie n'est perdue.
-- **EDI-016** — Quitter l'éditeur avec des modifications non enregistrées demande une confirmation.
-- **EDI-017** — L'événement simulé de EDI-005 n'existe que dans l'aperçu : il n'est jamais enregistré ni visible sur la page publique.
+- **EDI-003** — The editor shows a form on the left and a live preview in a phone frame on the right; on mobile, the two are stacked.
+- **EDI-004** — The preview updates on every change, without needing to save.
+- **EDI-005** — A switch in the editor simulates "event in progress" in the preview.
+- **EDI-006** — Changes are only published on save.
+- **EDI-007** — The editor form is generated from the settings schema of the chosen template (see TPL-004).
+- **EDI-008** — Strings entered in the editor are normalized to NFC before being stored.
+- **EDI-015** — Saving is all-or-nothing: if any part is refused (slug taken, invalid field), nothing is modified. Each error is shown next to its field, and no input is lost.
+- **EDI-016** — Leaving the editor with unsaved changes requires confirmation.
+- **EDI-017** — The simulated event of EDI-005 exists only in the preview: it is never saved nor visible on the public page.
 
-## Événements et contacts
+## Events and leads
 
-- **EDI-009** — La page d'une carte liste ses événements en trois groupes (en cours, à venir, passés) et permet de les créer, éditer, clore et supprimer (voir EVT-009).
-- **EDI-018** — La liste des événements d'une carte montre, pour chacun, son titre, son début, sa fin (ou « Sans fin »), son état (EVT-020) et son nombre de contacts. Elle est accessible depuis la liste des cartes et depuis l'éditeur de la carte.
-- **EDI-019** — L'éditeur d'événement règle le titre, la description, le début, la fin, le code d'accès (affiché en clair, voir EVT-010), la limite par appareil, les champs standards (non demandé, facultatif ou obligatoire), les champs personnalisés (ajout, ordre, type, libellé, aide, options, caractère obligatoire) et le texte de consentement (par défaut ou personnalisé). Chaque erreur s'affiche à côté de son champ, sans perte de saisie (voir EDI-015).
-- **EDI-020** — Pour chaque événement, le tableau de bord liste ses contacts, du plus récent au plus ancien, avec la date d'envoi, le nom, l'email, le téléphone et l'étiquette « Spam », et permet de marquer ou démarquer un contact comme spam et de le supprimer (voir ABU-003, ABU-004, ABU-009 et ABU-010). La recherche, la vue détaillée, la vue « toute la carte » et les exports viennent avec EDI-010.
-- **EDI-010** — Le tableau de bord donne accès aux contacts collectés et à leurs exports (voir LEA-001 et LEA-006).
+- **EDI-009** — A card's page lists its events in three groups (in progress, upcoming, past) and lets users create, edit, close and delete them (see EVT-009).
+- **EDI-018** — A card's event list shows, for each event, its title, its start, its end (or "Sans fin" ("No end")), its state (EVT-020) and its number of leads. It can be reached from the card list and from the card's editor.
+- **EDI-019** — The event editor sets the title, the description, the start, the end, the access code (shown in clear, see EVT-010), the per-device limit, the standard fields (not asked, optional or required), the custom fields (adding, order, type, label, help text, options, required or not) and the consent text (default or custom). Each error is shown next to its field, with no input lost (see EDI-015).
+- **EDI-020** — For each event, the dashboard lists its leads, from newest to oldest, with the submission date, the name, the email, the phone and the "Spam" label, and lets the owner mark or unmark a lead as spam and delete it (see ABU-003, ABU-004, ABU-009 and ABU-010). Search, the detailed view, the "toute la carte" ("whole card") view and exports come with EDI-010.
+- **EDI-010** — The dashboard gives access to the leads and their exports (see LEA-001 and LEA-006).
 
 ## Interface
 
-- **EDI-011** — L'interface est en français en v1, et tous ses textes passent par un système d'i18n, pour pouvoir ajouter l'anglais sans réécriture.
+- **EDI-011** — The interface is in French in v1, and all its texts go through an i18n system, so that English can be added without a rewrite.

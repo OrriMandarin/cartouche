@@ -3,72 +3,72 @@ name: run-tests
 description: Use when you need to run Cartouche tests: one test, the tests of a spec rule (XXX-NNN), a single package, or the full suite before concluding a task.
 ---
 
-# Lancer les tests
+# Run the tests
 
-Poste local : `export PATH="$HOME/.local/bin:$PATH"` et `source ~/.cargo/env` si besoin.
+Local machine: `export PATH="$HOME/.local/bin:$PATH"` and `source ~/.cargo/env` if needed.
 
-## Prérequis
+## Prerequisites
 
-- **Rust (intégration)** : les tests `#[sqlx::test]` ont besoin de la base de dev et de `DATABASE_URL`.
+- **Rust (integration)**: the `#[sqlx::test]` tests need the dev database and `DATABASE_URL`.
   ```bash
   make dev-db
   export DATABASE_URL=postgres://cartouche:cartouche@localhost:54320/cartouche
   ```
-  `make test-api` / `make test` utilisent le `DATABASE_URL` par défaut du `Makefile` ; pour un `cargo test` direct, l'exporter.
-- **Rust : toujours `--all-features`** (certains tests utilisent la sonde `test-support`, p. ex. `/api/test/approved-check`).
-- **e2e** : Docker démarré ; les tests tournent dans le fuseau `Europe/Paris` et la langue `fr-FR` (`frontend/e2e/playwright.config.ts`), donc les heures affichées et saisies dans les tests d'événements sont des heures de Paris (une assertion de date doit en tenir compte) ; `make e2e` construit et lance la stack de test (ports 15432/18080/13000). Ne pas lancer deux `make e2e` en parallèle (base partagée).
+  `make test-api` / `make test` use the `Makefile`'s default `DATABASE_URL`; for a direct `cargo test`, export it.
+- **Rust: always `--all-features`** (some tests use the `test-support` probe, e.g. `/api/test/approved-check`).
+- **e2e**: Docker running; the tests run in the `Europe/Paris` time zone and the `fr-FR` locale (`frontend/e2e/playwright.config.ts`), so the times shown and entered in the event tests are Paris times (a date assertion must take this into account); `make e2e` builds and starts the test stack (ports 15432/18080/13000). Do not run two `make e2e` in parallel (shared database).
 
-## Un test ciblé
+## A targeted test
 
 ```bash
-# Rust : fichier tests/<fichier>.rs, filtre sur le nom du test
+# Rust: file tests/<file>.rs, filter on the test name
 cd backend && cargo test -p cartouche-api --all-features --test account approved_user
-cd backend && cargo test -p cartouche-domain                      # logique métier pure
-cd backend && cargo test -p cartouche-api --all-features --lib    # tests en ligne de src/
+cd backend && cargo test -p cartouche-domain                      # pure business logic
+cd backend && cargo test -p cartouche-api --all-features --lib    # inline tests in src/
 
-# Web (vitest) : motif de fichier, ou -t pour filtrer sur le nom du test
+# Web (vitest): file pattern, or -t to filter on the test name
 pnpm -C frontend --filter web test AccountGate
 pnpm -C frontend --filter web test -t ACC-004
 pnpm -C frontend --filter @cartouche/api-client test
 
-# e2e (Playwright) : ARGS est transmis à `playwright test`
+# e2e (Playwright): ARGS is passed to `playwright test`
 make e2e ARGS="-g ACC-004"
 make e2e ARGS="tests/account.spec.ts --project=desktop"
 ```
 
-N'écrivez pas `pnpm -C frontend --filter web test -- <motif>` : le `--` est transmis tel quel à vitest et le filtre est ignoré (toute la suite tourne).
+Do not write `pnpm -C frontend --filter web test -- <pattern>`: the `--` is passed as is to vitest and the filter is ignored (the whole suite runs).
 
-## Les tests d'une règle
+## The tests of a rule
 
-Un test cite sa règle (`// spec: ACC-004` en Rust, `ACC-004` dans le nom en TypeScript).
+A test cites its rule (`// spec: ACC-004` in Rust, `ACC-004` in the name in TypeScript).
 
 ```bash
 grep -rn "ACC-004" backend frontend --include='*.rs' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.next
 ```
 
-Lancer ensuite chaque fichier trouvé (Rust : `--test <fichier sans .rs>` pour `backend/server/tests/<fichier>.rs`, ou `--lib` pour `src/` ; web : `pnpm -C frontend --filter web test <fichier>` ; e2e : `make e2e ARGS="-g ACC-004"`). Une règle sans test apparaît avec `node scripts/spec-lint.mjs --coverage`.
+Then run each file found (Rust: `--test <file without .rs>` for `backend/server/tests/<file>.rs`, or `--lib` for `src/`; web: `pnpm -C frontend --filter web test <file>`; e2e: `make e2e ARGS="-g ACC-004"`). A rule without a test shows up with `node scripts/spec-lint.mjs --coverage`.
 
-## Les tests des événements et des contacts
+## The tests of events and leads
 
-Règles : `EVT-*` (`spec/events.md`), `FRM-*` (`spec/event-form.md`), `ABU-*` (`spec/anti-abuse.md`), `LEA-*` (`spec/leads-exports.md`, contacts).
+Rules: `EVT-*` (`spec/events.md`), `FRM-*` (`spec/event-form.md`), `ABU-*` (`spec/anti-abuse.md`), `LEA-*` (`spec/leads-exports.md`, leads).
 
-| Sujet | Rust (`backend/server/tests/`, `--test <fichier>`) | Web (vitest, motif de fichier) | e2e (`make e2e ARGS=…`) |
+| Topic | Rust (`backend/server/tests/`, `--test <file>`) | Web (vitest, file pattern) | e2e (`make e2e ARGS=…`) |
 |---|---|---|---|
-| Événements du propriétaire (création, durée, simultanés, code) | `events`, `db_events` ; domaine : `cargo test -p cartouche-domain` | `src/lib/events`, `src/components/events` (`EventEditor`, `EventList`) | `tests/events.spec.ts` |
-| Contacts (liste, spam, suppression) | `leads`, `db_events` | `LeadList`, `src/lib/events/leads` | `tests/leads.spec.ts` |
-| Page publique, formulaire, envoi | `public_events`, `public_cards`, `leads_submit` | `src/lib/event-form`, `src/components/event-form` (`LeadForm`, `EventFormPage`), `src/lib/public-event.test.ts` | `tests/event-form.spec.ts`, `tests/public-page.spec.ts` (`-g TPL-003`) |
-| Limite par IP, adresse retenue, champ piège | `client_ip`, `leads_submit`, `public_events` ; fenêtre glissante : `cargo test -p cartouche-domain` | | `tests/event-form.spec.ts` (`-g ABU-`) |
-| Adresses signées de médias (MED-023, MED-024) | `media` ; signature : `cargo test -p cartouche-api --all-features --lib` | | |
+| Owner's events (creation, duration, concurrent, code) | `events`, `db_events`; domain: `cargo test -p cartouche-domain` | `src/lib/events`, `src/components/events` (`EventEditor`, `EventList`) | `tests/events.spec.ts` |
+| Leads (list, spam, deletion) | `leads`, `db_events` | `LeadList`, `src/lib/events/leads` | `tests/leads.spec.ts` |
+| Public page, form, submission | `public_events`, `public_cards`, `leads_submit` | `src/lib/event-form`, `src/components/event-form` (`LeadForm`, `EventFormPage`), `src/lib/public-event.test.ts` | `tests/event-form.spec.ts`, `tests/public-page.spec.ts` (`-g TPL-003`) |
+| Per-IP limit, address used, honeypot field | `client_ip`, `leads_submit`, `public_events`; sliding window: `cargo test -p cartouche-domain` | | `tests/event-form.spec.ts` (`-g ABU-`) |
+| Signed media URLs (MED-023, MED-024) | `media`; signature: `cargo test -p cartouche-api --all-features --lib` | | |
 
-Ces tests dépendent de l'horloge : en Rust le harnais (`tests/common/`) fournit une horloge figée (`ManualClock`) et `request_from(ip, …)` pour fixer l'adresse du client ; en e2e, `api.seedEvents()` fige l'horloge à `EVENTS_NOW` (2027-03-15 10:00 UTC) **avant** toute connexion. Un test d'événements qui échoue avec un jeton expiré a oublié cet ordre (voir `add-seed-scenario`). Les tests de concurrence (`join_all`) vivent dans `tests/events.rs` (événements simultanés) et `tests/leads_submit.rs` (double envoi).
+These tests depend on the clock: in Rust the harness (`tests/common/`) provides a frozen clock (`ManualClock`) and `request_from(ip, …)` to set the client's address; in e2e, `api.seedEvents()` freezes the clock at `EVENTS_NOW` (2027-03-15 10:00 UTC) **before** any sign-in. An event test that fails with an expired token forgot this order (see `add-seed-scenario`). The concurrency tests (`join_all`) live in `tests/events.rs` (concurrent events) and `tests/leads_submit.rs` (double submission).
 
-## La suite complète (avant de conclure une tâche)
+## The full suite (before concluding a task)
 
 ```bash
-make lint test e2e              # lint, tests unitaires + intégration + spec-lint, puis Playwright : obligatoire avant chaque push (la CI ne lance l'e2e que sur main)
-node scripts/spec-lint.mjs --coverage   # règles sans test : à lire, pas bloquant
-make e2e-down                   # arrête la stack de test quand on a fini
+make lint test e2e              # lint, unit + integration tests + spec-lint, then Playwright: mandatory before every push (CI runs e2e only on main)
+node scripts/spec-lint.mjs --coverage   # rules without a test: to read, not blocking
+make e2e-down                   # stops the test stack when done
 ```
 
-`make test` = `test-api` + `test-web` + `spec-lint-test` + `spec-lint`. Ne jamais annoncer « ça passe » sans avoir vu la sortie de ces commandes.
-Un échec : voir la skill `debug-failure`.
+`make test` = `test-api` + `test-web` + `spec-lint-test` + `spec-lint`. Never announce "it passes" without having seen the output of these commands.
+On failure: see the `debug-failure` skill.

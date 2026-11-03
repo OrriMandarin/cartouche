@@ -1,78 +1,78 @@
-# Formulaire d'événement
+# Event form
 
-> Statut : implémenté (plan 3)
+> Status: implemented (plan 3)
 
-## Parcours du prospect
+## Prospect journey
 
-- **FRM-001** — Un clic sur le bouton d'événement ouvre le formulaire en plein écran, avec un bouton de retour vers la carte.
-- **FRM-002** — Si l'événement a un code d'accès, un écran demande le code avant le formulaire (voir EVT-011, EVT-012 et EVT-013).
-- **FRM-003** — Le formulaire affiche le titre et la description de l'événement, puis les champs standards activés, puis les champs personnalisés.
-- **FRM-004** — Après l'envoi, un écran de confirmation propose d'enregistrer la vCard du porteur, puis un retour à la carte.
-- **FRM-005** — Le formulaire est accessible : libellés, navigation au clavier, types de clavier mobile adaptés (`type="email"`, `inputmode="tel"`…).
+- **FRM-001** — A click on the event button opens the form fullscreen, with a back button to the card.
+- **FRM-002** — If the event has an access code, a screen asks for the code before the form (see EVT-011, EVT-012 and EVT-013).
+- **FRM-003** — The form shows the event's title and description, then the enabled standard fields, then the custom fields.
+- **FRM-004** — After submission, a confirmation screen offers to save the owner's vCard, then a return to the card.
+- **FRM-005** — The form is accessible: labels, keyboard navigation, suitable mobile keyboard types (`type="email"`, `inputmode="tel"`…).
 
-## Consentement
+## Consent
 
-- **FRM-006** — Le consentement est obligatoire : une case à cocher accompagne un texte de mentions légales.
-- **FRM-007** — Un texte de mentions légales par défaut, en français et conforme à l'esprit du RGPD, est fourni ; il peut être remplacé par événement.
-- **FRM-008** — À l'envoi, le serveur enregistre l'horodatage du consentement et le texte exact accepté.
-- **FRM-009** — Le responsable des données est le propriétaire de la carte, pas l'opérateur de l'instance : le texte par défaut est rempli automatiquement avec le nom ou l'entreprise et l'email de la carte.
-- **FRM-010** — Le texte par défaut précise la finalité (recontact commercial lié à l'événement) et le droit d'accès et de suppression.
-- **FRM-011** — Le texte par défaut ne s'engage sur aucune durée de conservation chiffrée : il n'y a pas de suppression automatique en v1, la suppression reste manuelle.
+- **FRM-006** — Consent is required: a checkbox accompanies a legal notice text.
+- **FRM-007** — A default legal notice text, in French and in the spirit of the GDPR, is provided; it can be replaced per event.
+- **FRM-008** — On submission, the server records the consent timestamp and the exact text that was accepted.
+- **FRM-009** — The data controller is the card's owner, not the instance operator: the default text is filled in automatically with the card's name or company and email.
+- **FRM-010** — The default text states the purpose (commercial follow-up related to the event) and the right of access and deletion.
+- **FRM-011** — The default text commits to no specific retention period: there is no automatic deletion in v1, deletion remains manual.
 
 ## Validation
 
-- **FRM-012** — L'email saisi doit être valide.
-- **FRM-013** — Le téléphone est validé et normalisé au format international E.164, la France étant le pays par défaut.
-- **FRM-014** — Les dates saisies doivent être valides.
-- **FRM-015** — Les erreurs s'affichent à côté de chaque champ, et la saisie n'est jamais perdue.
-- **FRM-016** — Les chaînes saisies sont normalisées en NFC avant d'être stockées.
+- **FRM-012** — The entered email must be valid.
+- **FRM-013** — The phone number is validated and normalized to the international E.164 format, with France as the default country.
+- **FRM-014** — Entered dates must be valid.
+- **FRM-015** — Errors are shown next to each field, and the input is never lost.
+- **FRM-016** — Entered strings are normalized to NFC before being stored.
 
-## Champs standards
+## Standard fields
 
-- **FRM-017** — Les champs standards que le propriétaire peut cocher sont : prénom, nom, date de naissance, email, téléphone et adresse postale.
-- **FRM-018** — L'adresse postale se décompose en rue, code postal, ville et pays.
-- **FRM-019** — Chaque champ standard coché peut être obligatoire ou facultatif.
+- **FRM-017** — The standard fields the owner can check are: first name, last name, date of birth, email, phone number and postal address.
+- **FRM-018** — The postal address breaks down into street, postal code, city and country.
+- **FRM-019** — Each checked standard field can be required or optional.
 
-## Champs personnalisés
+## Custom fields
 
-- **FRM-020** — Le propriétaire peut ajouter autant de champs personnalisés qu'il veut, et les ordonner. Chaque champ a un libellé, un type, un caractère obligatoire ou non, et un texte d'aide optionnel.
-- **FRM-021** — Les types de champ personnalisé sont : `texte`, `texte long`, `date`, `nombre`, `choix unique` (avec une liste d'options) et `case à cocher`.
+- **FRM-020** — The owner can add as many custom fields as they want, and order them. Each field has a label, a type, a required or optional flag, and an optional help text.
+- **FRM-021** — The custom field types are: `text`, `long text`, `date`, `number`, `single choice` (with a list of options) and `checkbox`.
 
-## Évolution des champs
+## Field evolution
 
-- **FRM-022** — Modifier les champs d'un événement alors que des contacts existent déjà ne casse jamais les contacts existants : chaque contact conserve ses réponses avec le libellé et le type du champ au moment de l'envoi.
-- **FRM-023** — Un champ supprimé reste visible sur les anciens contacts et dans les exports (voir LEA-011).
+- **FRM-022** — Changing an event's fields while leads already exist never breaks the existing leads: each lead keeps its answers with the field's label and type as they were at submission time.
+- **FRM-023** — A deleted field remains visible on old leads and in exports (see LEA-011).
 
-## Adresse et états du formulaire
+## Form address and states
 
-- **FRM-024** — Le formulaire d'un événement est servi à l'adresse `/c/<slug>/e/<identifiant de l'événement>`. Un ancien slug ou un slug écrit en majuscules redirige vers l'adresse du slug courant (voir LNK-024 et LNK-030) ; une carte qui n'est pas servie affiche la page neutre (voir LNK-007 et LNK-027) ; un événement inconnu, supprimé ou d'une autre carte affiche une page « Formulaire introuvable » avec le statut 404 ; hors de la fenêtre de EVT-026, un écran indique que le formulaire n'est pas ouvert, avec un retour à la carte.
-- **FRM-025** — Le formulaire, son écran de code et son écran de confirmation sont communs à tous les templates (voir TPL-020) ; leurs textes s'adressent au prospect en le vouvoyant.
+- **FRM-024** — An event's form is served at the address `/c/<slug>/e/<event ID>`. A former slug or a slug written in uppercase redirects to the address of the current slug (see LNK-024 and LNK-030); a card that is not served shows the neutral page (see LNK-007 and LNK-027); an unknown or deleted event, or one of another card, shows a "Formulaire introuvable" ("Form not found") page with HTTP status 404; outside the window of EVT-026, a screen says the form is not open, with a return to the card.
+- **FRM-025** — The form, its code screen and its confirmation screen are shared by all templates (see TPL-020); their texts address the prospect formally (with "vous").
 
-## Texte de consentement
+## Consent text
 
-- **FRM-026** — Le texte par défaut est, mot pour mot : « En cochant cette case, j'accepte que {responsable} conserve les informations saisies dans ce formulaire afin de me recontacter à des fins commerciales en lien avec l'événement « {événement} ». {responsable} est responsable de ce traitement. Je peux à tout moment demander l'accès à mes données, leur rectification ou leur suppression en écrivant à {email}. » {événement} est le titre de l'événement ; {email} est l'email de la carte.
-- **FRM-027** — Dans le texte par défaut, {responsable} est le prénom et le nom de la carte (ou celui des deux qui est renseigné, voir PUB-018), suivis de l'entreprise entre parenthèses quand elle est renseignée : « Alice Durand (Atelier Durand & Fils) ». Si la carte n'a pas d'email, la dernière phrase devient « Je peux à tout moment demander l'accès à mes données, leur rectification ou leur suppression auprès de {responsable}. »
-- **FRM-028** — Un texte personnalisé (FRM-007) compte au plus 3 000 caractères et s'affiche tel quel, sans variable ; un texte vide après normalisation revient au texte par défaut.
-- **FRM-029** — L'éditeur d'événement affiche le texte par défaut tel qu'il sera présenté, et avertit le propriétaire quand la carte n'a pas d'email.
-- **FRM-030** — Le serveur calcule lui-même le texte enregistré par FRM-008. Si la définition du formulaire présentée au prospect (titre, description, champs ou texte de consentement) a changé avant l'envoi, l'envoi est refusé par `409 form_changed` : le formulaire se recharge, les réponses aux champs qui existent toujours sont conservées et la case de consentement est décochée.
+- **FRM-026** — The default text is, word for word: "En cochant cette case, j'accepte que {responsable} conserve les informations saisies dans ce formulaire afin de me recontacter à des fins commerciales en lien avec l'événement « {événement} ». {responsable} est responsable de ce traitement. Je peux à tout moment demander l'accès à mes données, leur rectification ou leur suppression en écrivant à {email}." ("By checking this box, I agree that {controller} keeps the information entered in this form in order to contact me again for commercial purposes related to the event '{event}'. {controller} is the controller of this processing. I can at any time request access to my data, its correction or its deletion by writing to {email}.") {événement} is the event's title; {email} is the card's email.
+- **FRM-027** — In the default text, {responsable} is the card's first and last name (or whichever of the two is filled in, see PUB-018), followed by the company in parentheses when it is filled in: "Alice Durand (Atelier Durand & Fils)". If the card has no email, the last sentence becomes "Je peux à tout moment demander l'accès à mes données, leur rectification ou leur suppression auprès de {responsable}." ("I can at any time request access to my data, its correction or its deletion from {controller}.")
+- **FRM-028** — A custom text (FRM-007) is at most 3,000 characters long and is shown as is, without variables; a text that is empty after normalization falls back to the default text.
+- **FRM-029** — The event editor shows the default text as it will be presented, and warns the owner when the card has no email.
+- **FRM-030** — The server computes the text recorded by FRM-008 itself. If the form definition presented to the prospect (title, description, fields or consent text) changed before submission, the submission is rejected with `409 form_changed`: the form reloads, the answers to the fields that still exist are kept and the consent checkbox is unchecked.
 
-## Définition des champs
+## Field definition
 
-- **FRM-031** — Un formulaire a au moins un champ, standard coché ou personnalisé ; sinon le champ `standard_fields` est refusé avec le code `no_fields`.
-- **FRM-032** — Un événement a au plus 30 champs personnalisés (code `too_many_fields`). Chacun a un identifiant stable (UUID créé par l'éditeur, unique dans l'événement, code `duplicate_field_id`), un libellé obligatoire d'au plus 100 caractères et un texte d'aide d'au plus 300. Un champ `choix unique` a de 2 à 20 options (codes `too_few_options`, `too_many_options`), chacune obligatoire, d'au plus 100 caractères et sans doublon (code `duplicate_option`) ; les autres types n'ont pas d'option.
-- **FRM-033** — Si l'adresse postale est obligatoire, ses quatre parties le sont ; le formulaire propose « France » comme pays.
+- **FRM-031** — A form has at least one field, a checked standard field or a custom field; otherwise the `standard_fields` field is rejected with the code `no_fields`.
+- **FRM-032** — An event has at most 30 custom fields (code `too_many_fields`). Each one has a stable identifier (a UUID created by the editor, unique within the event, code `duplicate_field_id`), a required label of at most 100 characters and a help text of at most 300. A `single choice` field has 2 to 20 options (codes `too_few_options`, `too_many_options`), each required, at most 100 characters long and with no duplicate (code `duplicate_option`); the other types have no options.
+- **FRM-033** — If the postal address is required, its four parts are required; the form suggests "France" as the country.
 
-## Réponses
+## Answers
 
-- **FRM-034** — Longueurs maximales des réponses : 100 caractères pour le prénom, le nom, la ville et le pays ; 254 pour l'email ; 200 pour la rue ; 20 pour le code postal ; 500 pour un champ `texte` ; 5 000 pour un `texte long`. Au-delà : code `too_long`. Un champ obligatoire vide : code `required` ; une `case à cocher` obligatoire doit être cochée.
-- **FRM-035** — Une date est au format `AAAA-MM-JJ`, existe dans le calendrier et se situe entre le 1er janvier 1900 et le 31 décembre 2100 ; une date de naissance n'est pas dans le futur. Sinon : code `invalid_date`.
-- **FRM-036** — Un `nombre` est un nombre décimal, saisi avec un point ou une virgule (code `invalid_number`) ; un `choix unique` est l'une des options du champ (code `invalid_choice`).
-- **FRM-037** — Le consentement non coché est refusé (champ `consent`, code `required`).
-- **FRM-038** — Un contact enregistre : la date d'envoi, les réponses aux champs standards, une réponse par champ personnalisé existant au moment de l'envoi (vide si non renseigné) avec son identifiant, son libellé et son type (voir FRM-022), l'horodatage du consentement et son texte (voir FRM-008), et l'identifiant d'appareil. L'adresse IP du prospect n'est pas enregistrée.
+- **FRM-034** — Maximum answer lengths: 100 characters for the first name, the last name, the city and the country; 254 for the email; 200 for the street; 20 for the postal code; 500 for a `text` field; 5,000 for a `long text`. Beyond that: code `too_long`. An empty required field: code `required`; a required `checkbox` must be checked.
+- **FRM-035** — A date is in the `YYYY-MM-DD` format, exists in the calendar and lies between January 1, 1900 and December 31, 2100; a date of birth is not in the future. Otherwise: code `invalid_date`.
+- **FRM-036** — A `number` is a decimal number, entered with a point or a comma (code `invalid_number`); a `single choice` is one of the field's options (code `invalid_choice`).
+- **FRM-037** — Unchecked consent is rejected (field `consent`, code `required`).
+- **FRM-038** — A lead records: the submission date, the answers to the standard fields, one answer per custom field existing at submission time (empty if not filled in) with its identifier, its label and its type (see FRM-022), the consent timestamp and its text (see FRM-008), and the device identifier. The prospect's IP address is not recorded.
 
-## Saisie du prospect
+## Prospect input
 
-- **FRM-039** — Les champs utilisent les types et l'autocomplétion du navigateur : prénom `given-name`, nom `family-name`, date de naissance `type="date"` et `bday`, email `type="email"` et `email`, téléphone `type="tel"`, `inputmode="tel"` et `tel`, adresse `street-address`, `postal-code`, `address-level2` et `country-name`, nombre `inputmode="decimal"`, date `type="date"`.
-- **FRM-040** — La saisie est conservée dans le stockage de session du navigateur jusqu'à l'envoi réussi : un rechargement de la page, une erreur réseau ou un refus du serveur ne la perd pas. Une erreur réseau affiche un message et permet de renvoyer.
-- **FRM-041** — Si le code a changé entre la saisie du code et l'envoi (EVT-013), l'envoi est refusé par `403 invalid_access_code` : l'écran du code réapparaît avec un message, et les réponses sont conservées pour l'envoi suivant.
-- **FRM-042** — Chaque refus du serveur à l'envoi a son message : formulaire fermé (`event_closed`), limite de l'appareil atteinte (`device_limit_reached`), trop d'envois depuis ce réseau (`rate_limited`), carte devenue inactive (`card_inactive`).
+- **FRM-039** — Fields use the browser's input types and autocompletion: first name `given-name`, last name `family-name`, date of birth `type="date"` and `bday`, email `type="email"` and `email`, phone `type="tel"`, `inputmode="tel"` and `tel`, address `street-address`, `postal-code`, `address-level2` and `country-name`, number `inputmode="decimal"`, date `type="date"`.
+- **FRM-040** — The input is kept in the browser's session storage until the submission succeeds: a page reload, a network error or a server rejection does not lose it. A network error shows a message and lets the prospect resend.
+- **FRM-041** — If the code changed between entering the code and submitting (EVT-013), the submission is rejected with `403 invalid_access_code`: the code screen reappears with a message, and the answers are kept for the next submission.
+- **FRM-042** — Each server rejection on submission has its own message: form closed (`event_closed`), device limit reached (`device_limit_reached`), too many submissions from this network (`rate_limited`), card no longer active (`card_inactive`).

@@ -1,90 +1,90 @@
-# Cartouche — consignes pour les agents
+# Cartouche — instructions for agents
 
-Cartouche est une application open source de carte de visite numérique (backend Rust, frontend Next.js). Ce fichier est lu en premier par tous les agents : il décrit le dépôt, les commandes, le cycle de travail et les règles de qualité. **Langues** : ce fichier, le corps des agents, `spec/` et les textes d'interface sont en français, avec les accents. Le code, les commentaires, les identifiants et les messages de commit sont en **anglais**.
+Cartouche is an open-source digital business card application (Rust backend, Next.js frontend). Every agent reads this file first: it describes the repository, the commands, the workflow and the quality rules. **Languages**: this file, the agent and skill bodies, `spec/`, the docs, the code, the comments, the identifiers and the commit messages are in **English**. Only the **user interface texts** (`frontend/web/messages/fr.json`) are in French, with accents. The historical design and plans in `docs/superpowers/` stay in French and are not translated.
 
-## Carte du dépôt
+## Repository map
 
-| Chemin | Contenu |
+| Path | Contents |
 |---|---|
-| `spec/` | **Référence produit** : règles numérotées (`XXX-NNN`), un fichier par sujet. Voir `spec/README.md`. |
-| `docs/superpowers/` | Design initial (figé) et plans de réalisation. |
-| `backend/` | **Tout le Rust** : workspace Cargo, `rust-toolchain.toml`, `Dockerfile`, cache SQLx `.sqlx/`. `domain/` (crate `cartouche-domain`) : logique métier pure. `server/` (crate `cartouche-api`) : Axum, `config`, `auth/`, `db/` (requêtes SQLx), `routes/`, `test_support/` (feature `test-support`), `migrations/`, `tests/` (intégration). |
-| `frontend/` | **Tout le TypeScript** : workspace pnpm (`package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`). Les commandes pnpm se lancent depuis ce dossier ou avec `pnpm -C frontend …`. |
-| `frontend/web/` | Next.js : `src/app/` (pages, dont la page publique `/c/<slug>` et le formulaire prospect `/c/<slug>/e/<id>`), `src/components/` (dont `events/` : tableau de bord des événements et contacts, et `event-form/` : formulaire prospect commun à tous les templates), `src/lib/` (logique : auth, `api.ts`, profil de build, `events/` : modèle de brouillon, heures, contacts ; `event-form/` : appareil, réponses, brouillon local, issues d'envoi), `src/templates/` (templates de carte : contrat, registre, schéma de réglages, un dossier par template), `messages/fr.json` (textes d'interface). |
-| `frontend/api-client/` | Client TypeScript **généré** depuis l'OpenAPI (`openapi.json`, `schema.d.ts` commités ; ne pas éditer à la main). |
-| `frontend/e2e/` | Tests Playwright de bout en bout, sur la stack complète (`fixtures.ts` avec les aides `api.setClock` et `api.seedEvents()`, `env.ts`, `tests/*.spec.ts`). |
-| `scripts/` | `spec-lint.mjs` (vérificateur de la spec), `check-prod-guard.sh`. |
-| `.claude/agents/` | Agents du projet. `.claude/skills/` : skills du projet. |
-| `compose.dev.yml`, `compose.test.yml` | Base de dev ; stack complète (db, api, web) pour les tests e2e. |
-| `.data/media/` | Médias des cartes en local (`MEDIA_STORAGE=local`, `MEDIA_LOCAL_DIR`), ignoré par git ; en production, stockage compatible S3. |
+| `spec/` | **Product reference**: numbered rules (`XXX-NNN`), one file per topic. See `spec/README.md`. |
+| `docs/superpowers/` | Initial design (frozen) and implementation plans, in French. |
+| `backend/` | **All the Rust code**: Cargo workspace, `rust-toolchain.toml`, `Dockerfile`, SQLx cache `.sqlx/`. `domain/` (crate `cartouche-domain`): pure business logic. `server/` (crate `cartouche-api`): Axum, `config`, `auth/`, `db/` (SQLx queries), `routes/`, `test_support/` (feature `test-support`), `migrations/`, `tests/` (integration). |
+| `frontend/` | **All the TypeScript code**: pnpm workspace (`package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`). Run pnpm commands from this folder or with `pnpm -C frontend …`. |
+| `frontend/web/` | Next.js: `src/app/` (pages, including the public page `/c/<slug>` and the prospect form `/c/<slug>/e/<id>`), `src/components/` (including `events/`: dashboard for events and leads, and `event-form/`: prospect form shared by all templates), `src/lib/` (logic: auth, `api.ts`, build profile, `events/`: draft model, times, leads; `event-form/`: device, answers, local draft, submission outcomes), `src/templates/` (card templates: contract, registry, settings schema, one folder per template), `messages/fr.json` (interface texts). |
+| `frontend/api-client/` | TypeScript client **generated** from the OpenAPI document (`openapi.json`, `schema.d.ts` committed; never edit by hand). |
+| `frontend/e2e/` | Playwright end-to-end tests, on the full stack (`fixtures.ts` with the `api.setClock` and `api.seedEvents()` helpers, `env.ts`, `tests/*.spec.ts`). |
+| `scripts/` | `spec-lint.mjs` (spec linter), `check-prod-guard.sh`. |
+| `.claude/agents/` | Project agents. `.claude/skills/`: project skills. |
+| `compose.dev.yml`, `compose.test.yml` | Development database; full stack (db, api, web) for the e2e tests. |
+| `.data/media/` | Local card media (`MEDIA_STORAGE=local`, `MEDIA_LOCAL_DIR`), ignored by git; in production, S3-compatible storage. |
 
-## Commandes (`make`)
+## Commands (`make`)
 
-| Commande | Effet |
+| Command | Effect |
 |---|---|
-| `make setup` | Installe les dépendances (pnpm, `cargo fetch`, `sqlx-cli`). |
-| `make dev-db` | Démarre PostgreSQL de dev (port 54320). |
-| `make api` / `make web` | Lance l'API (8080, avec `test-support`) / le site (3000). |
-| `make seed [SCENARIO=base]` | Alimente la base avec un scénario de données. `cards` complète `base` et `events` complète `cards` : charger `base`, puis `cards`, puis `events` (voir la skill `dev-env`). |
-| `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (tests du vérificateur) + `spec-lint`. |
-| `make sqlx-prepare` | Après tout ajout ou changement de requête ou de migration : régénère le cache `backend/.sqlx/` (à commiter). `make sqlx-check` vérifie qu'il est à jour (aussi en CI). |
-| `make lint` | `cargo fmt --check`, `clippy -D warnings`, lint et typecheck pnpm. |
-| `make openapi` | Régénère `openapi.json` (tests lancés avec `--all-features`) puis le client TypeScript. |
-| `make spec-lint [ARGS=--coverage]` | `node scripts/spec-lint.mjs` ; `ARGS=--coverage` liste les règles sans test. |
-| `make e2e [ARGS="-g ACC-004"]` | Monte la stack de test et lance Playwright. `make e2e-down` l'arrête. |
+| `make setup` | Installs the dependencies (pnpm, `cargo fetch`, `sqlx-cli`). |
+| `make dev-db` | Starts the development PostgreSQL (port 54320). |
+| `make api` / `make web` | Runs the API (8080, with `test-support`) / the site (3000). |
+| `make seed [SCENARIO=base]` | Fills the database with a data scenario. `cards` extends `base` and `events` extends `cards`: load `base`, then `cards`, then `events` (see the `dev-env` skill). |
+| `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (linter tests) + `spec-lint`. |
+| `make sqlx-prepare` | After any query or migration addition or change: regenerates the `backend/.sqlx/` cache (to be committed). `make sqlx-check` checks that it is up to date (also in CI). |
+| `make lint` | `cargo fmt --check`, `clippy -D warnings`, pnpm lint and typecheck. |
+| `make openapi` | Regenerates `openapi.json` (tests run with `--all-features`), then the TypeScript client. |
+| `make spec-lint [ARGS=--coverage]` | `node scripts/spec-lint.mjs`; `ARGS=--coverage` lists the rules without a test. |
+| `make e2e [ARGS="-g ACC-004"]` | Starts the test stack and runs Playwright. `make e2e-down` stops it. |
 
-Sans fichier `.env`, tout fonctionne en local **sans Clerk** (fournisseur d'authentification de test, JWKS servi par l'API). Voir `.env.example`, qui documente aussi `MAX_SIMULTANEOUS_EVENTS` (événements simultanés par carte, 3 par défaut) et `TRUSTED_PROXY_HOPS` (reverse proxies de confiance pour la limite par IP, 1 par défaut).
+Without a `.env` file, everything works locally **without Clerk** (test authentication provider, JWKS served by the API). See `.env.example`, which also documents `MAX_SIMULTANEOUS_EVENTS` (concurrent events per card, 3 by default) and `TRUSTED_PROXY_HOPS` (trusted reverse proxies for the per-IP limit, 1 by default).
 
-Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Node 25 n'a pas Corepack) et `cargo` s'obtient avec `source ~/.cargo/env`. En cas de « command not found », exporter `PATH="$HOME/.local/bin:$PATH"` et sourcer `~/.cargo/env` avant de lancer `make`.
+Note for the local development machine: `pnpm` is in `~/.local/bin` (Node 25 has no Corepack) and `cargo` is available after `source ~/.cargo/env`. On "command not found", export `PATH="$HOME/.local/bin:$PATH"` and source `~/.cargo/env` before running `make`.
 
-## Cycle de travail obligatoire
+## Mandatory workflow
 
-1. **Spec d'abord.** `planner` met à jour `spec/` (nouvelle règle, règle modifiée) et vérifie qu'aucune règle existante n'est contredite. Toute contradiction ou changement de comportement est signalé au porteur du projet **avant** de coder.
-2. **Plan de tâches** : petites tâches, chacune avec ses tests et les identifiants de règles concernés.
-3. **`builder` implémente en TDD** : un test qui échoue, le code minimal, le test qui passe, un commit par tâche.
-4. **`task-reviewer`** relit chaque tâche terminée. Rien ne passe à la suite tant que le verdict n'est pas `APPROVED`.
-5. **`make test`**, puis **`make e2e`**, doivent passer **en local avant chaque push**. La CI ne lance les tests e2e que sur `main` : sur une branche, c'est ce passage local qui les garantit.
-6. **`feature-reviewer`** relit la fonctionnalité complète en fin de parcours.
-7. **Un bug part toujours d'un test qui le reproduit.** `debugger` d'abord ; si deux tentatives échouent, `debugger-deep`. Si le bug révèle une règle manquante ou fausse, on corrige la spec d'abord (étape 1).
+1. **Spec first.** `planner` updates `spec/` (new rule, changed rule) and checks that no existing rule is contradicted. Any contradiction or behavior change is flagged to the project maintainer **before coding**.
+2. **Task plan**: small tasks, each with its tests and the IDs of the rules involved.
+3. **`builder` implements in TDD**: a failing test, the minimal code, the passing test, one commit per task.
+4. **`task-reviewer`** reviews each finished task. Nothing moves on until the verdict is `APPROVED`.
+5. **`make test`**, then **`make e2e`**, must pass **locally before every push**. CI only runs the e2e tests on `main`: on a branch, this local run is what guarantees them.
+6. **`feature-reviewer`** reviews the complete feature at the end.
+7. **A bug always starts from a test that reproduces it.** `debugger` first; if two attempts fail, `debugger-deep`. If the bug reveals a missing or wrong rule, fix the spec first (step 1).
 
-## Règles de qualité
+## Quality rules
 
-- **Aucune logique métier dans les handlers ni dans les composants** : elle va dans `cartouche-domain` (Rust) ou dans `frontend/web/src/lib` (TypeScript). Un handler lit la requête, appelle le domaine et `db/`, formate la réponse.
-- **Toute dépendance externe passe derrière un trait ou une interface** (horloge, vérification de jeton, stockage, e-mail, Clerk…), pour pouvoir la remplacer dans les tests.
-- **Chaque requête utilisateur est filtrée par propriétaire dans `db/`** : aucune fonction de lecture ou d'écriture de données utilisateur sans l'identifiant du propriétaire. Les exceptions (lectures et écritures de la page publique et du formulaire prospect, support) sont listées en tête du fichier `db/` concerné ; voir la skill `change-api`.
-- **Les tests citent leurs règles** : `// spec: ACC-004` avant un test Rust ; `ACC-004` dans le nom d'un test TypeScript. `node scripts/spec-lint.mjs --coverage` signale les règles sans test.
-- **Aucun texte d'interface en dur** : tout passe par `frontend/web/messages/fr.json`. Seule exception : le texte de consentement par défaut d'un formulaire d'événement, dans `backend/domain/src/consent.rs`, car il est enregistré tel quel avec chaque contact (preuve du texte vu par le prospect).
-- Le code de test (`test-support`, adaptateur d'authentification `test`) ne doit jamais être présent dans un build de production.
-- Ne jamais éditer à la main les fichiers générés (`openapi.json`, `schema.d.ts`) : `make openapi`.
-- Code lisible, noms explicites, pas de code mort ; ne pas ajouter de fonctionnalité hors de la tâche.
+- **No business logic in handlers or components**: it goes in `cartouche-domain` (Rust) or in `frontend/web/src/lib` (TypeScript). A handler reads the request, calls the domain and `db/`, and formats the response.
+- **Every external dependency sits behind a trait or an interface** (clock, token verification, storage, email, Clerk…), so that tests can replace it.
+- **Every user query is filtered by owner in `db/`**: no function reads or writes user data without the owner's ID. The exceptions (reads and writes of the public page and the prospect form, support) are listed at the top of the `db/` file concerned; see the `change-api` skill.
+- **Tests cite their rules**: `// spec: ACC-004` before a Rust test; `ACC-004` in the name of a TypeScript test. `node scripts/spec-lint.mjs --coverage` reports the rules without a test.
+- **No hard-coded interface text**: everything goes through `frontend/web/messages/fr.json`. The only exception: the default consent text of an event form, in `backend/domain/src/consent.rs`, because it is recorded as is with each lead (proof of the text the prospect saw).
+- Test code (`test-support`, `test` authentication adapter) must never be present in a production build.
+- Never edit the generated files (`openapi.json`, `schema.d.ts`) by hand: `make openapi`.
+- Readable code, explicit names, no dead code; do not add features outside the task.
 
-## Déboguer
+## Debugging
 
-- Chaque réponse de l'API porte un en-tête `x-request-id`, repris dans le champ `error.request_id` des erreurs JSON (`{"error":{"code","message","request_id"}}`) et dans **chaque ligne de log** de la requête.
-- Les logs de l'API sont en JSON : `docker compose -f compose.test.yml logs api | grep <request_id>`.
-- Un test e2e en échec laisse ses artefacts dans `frontend/e2e/test-results/` : `trace.zip` (à ouvrir avec `pnpm -C frontend --filter e2e exec playwright show-trace <chemin>`), capture d'écran, vidéo et pièce jointe `api-logs` (logs de l'API pendant le test, avec les `request_id`).
-- Reproduire d'abord par un test, ensuite seulement corriger.
+- Every API response carries an `x-request-id` header, repeated in the `error.request_id` field of JSON errors (`{"error":{"code","message","request_id"}}`) and in **every log line** of the request.
+- The API logs are JSON: `docker compose -f compose.test.yml logs api | grep <request_id>`.
+- A failing e2e test leaves its artifacts in `frontend/e2e/test-results/`: `trace.zip` (open it with `pnpm -C frontend --filter e2e exec playwright show-trace <path>`), screenshot, video and an `api-logs` attachment (the API logs during the test, with the `request_id`s).
+- Reproduce with a test first, fix only afterwards.
 
 ## Agents (`.claude/agents/`)
 
-| Agent | Quand l'utiliser | Modèle |
+| Agent | When to use it | Model |
 |---|---|---|
-| `explorer` | Chercher et résumer dans le code ou la spec, en lecture seule. | Haiku 5.5 |
-| `planner` | Transformer une demande en mise à jour de la spec et en plan de tâches (n'écrit que dans `spec/` et `docs/`). | Opus 5.5, high |
-| `builder` | Implémenter une tâche du plan, avec ses tests. | Sonnet 5.5, medium |
-| `task-reviewer` | Relire une tâche terminée (plan, spec, tests, lisibilité). | Sonnet 5.5, high |
-| `feature-reviewer` | Relire une fonctionnalité ou une correction de bout en bout. | Opus 5.5, high |
-| `debugger` | Reproduire, diagnostiquer et corriger un bug. | Sonnet 5.5, high |
-| `debugger-deep` | Bug complexe, ou quand `debugger` a échoué deux fois. | Opus 5.5, high |
+| `explorer` | Search and summarize the code or the spec, read-only. | Haiku 5.5 |
+| `planner` | Turn a request into a spec update and a task plan (writes only in `spec/` and `docs/`). | Opus 5.5, high |
+| `builder` | Implement a task of the plan, with its tests. | Sonnet 5.5, medium |
+| `task-reviewer` | Review a finished task (plan, spec, tests, readability). | Sonnet 5.5, high |
+| `feature-reviewer` | Review a feature or a fix end to end. | Opus 5.5, high |
+| `debugger` | Reproduce, diagnose and fix a bug. | Sonnet 5.5, high |
+| `debugger-deep` | Complex bug, or when `debugger` has failed twice. | Opus 5.5, high |
 
 ## Skills (`.claude/skills/`)
 
-| Skill | Quand l'utiliser |
+| Skill | When to use it |
 |---|---|
-| `dev-env` | Démarrer la base, l'API et le site en local ; seeder ; réinitialiser ; passer de l'adaptateur `test` à Clerk ; piloter l'horloge de test. |
-| `run-tests` | Lancer un test ciblé, les tests d'une règle (`XXX-NNN`) ou la suite complète avant de conclure. |
-| `debug-failure` | Diagnostiquer un échec : test reproducteur, `x-request-id`, logs de l'API, trace Playwright, escalade vers `debugger-deep`. |
-| `update-spec` | Ajouter ou modifier une règle de `spec/` sans contradiction, avant de coder. |
-| `change-api` | Modifier l'API : migration, `db/`, domaine, route et OpenAPI, tests, client généré, frontend. |
-| `add-seed-scenario` | Ajouter un scénario de données pour `make seed` et Playwright. |
-| `add-card-template` | Ajouter un template de carte (page publique) : dossier, schéma de réglages, registre, traductions, contrat et e2e. |
+| `dev-env` | Start the database, the API and the site locally; seed; reset; switch from the `test` adapter to Clerk; drive the test clock. |
+| `run-tests` | Run a targeted test, the tests of a rule (`XXX-NNN`) or the full suite before concluding. |
+| `debug-failure` | Diagnose a failure: reproducing test, `x-request-id`, API logs, Playwright trace, escalation to `debugger-deep`. |
+| `update-spec` | Add or change a rule in `spec/` without contradiction, before coding. |
+| `change-api` | Change the API: migration, `db/`, domain, route and OpenAPI, tests, generated client, frontend. |
+| `add-seed-scenario` | Add a data scenario for `make seed` and Playwright. |
+| `add-card-template` | Add a card template (public page): folder, settings schema, registry, translations, contract and e2e. |

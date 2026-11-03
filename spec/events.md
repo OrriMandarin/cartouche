@@ -1,57 +1,57 @@
-# Événements
+# Events
 
-> Statut : implémenté (plan 3)
+> Status: implemented (plan 3)
 
-## Période
+## Period
 
-- **EVT-001** — Un événement appartient à une carte. Il a un titre, une description, une date de début (obligatoire) et une date de fin (optionnelle).
-- **EVT-002** — Un événement est en cours si `début <= maintenant` et (`fin` absente ou `maintenant < fin`).
-- **EVT-003** — Une fin absente signifie que l'événement dure jusqu'à sa clôture manuelle.
-- **EVT-004** — Une carte ne peut pas avoir plus de 3 événements simultanés à n'importe quel instant. Cette limite est réglable dans la configuration de l'instance.
-- **EVT-005** — La limite d'événements simultanés (EVT-004) est vérifiée à chaque création et à chaque modification, en calculant le chevauchement maximal sur toute la période de l'événement ; une fin absente compte comme l'infini.
-- **EVT-006** — Le bouton « Terminer maintenant » fixe la fin de l'événement à l'instant présent.
-- **EVT-007** — Les dates sont saisies et affichées dans le fuseau de l'utilisateur (Europe/Paris par défaut) et stockées en UTC.
-- **EVT-008** — Le serveur n'accepte un envoi de formulaire que si l'événement est en cours ou s'est terminé il y a au plus 15 minutes, pour ne pas perdre un prospect en train de remplir.
-- **EVT-009** — Le propriétaire peut modifier, clore et supprimer un événement de sa carte.
+- **EVT-001** — An event belongs to a card. It has a title, a description, a start date (required) and an end date (optional).
+- **EVT-002** — An event is in progress if `start <= now` and (`end` is absent or `now < end`).
+- **EVT-003** — An absent end means the event lasts until it is closed manually.
+- **EVT-004** — A card cannot have more than 3 concurrent events at any instant. This limit is configurable in the instance configuration.
+- **EVT-005** — The concurrent events limit (EVT-004) is checked on every creation and every modification, by computing the maximum overlap over the event's whole period; an absent end counts as infinity.
+- **EVT-006** — The "Terminer maintenant" ("End now") button sets the event's end to the present instant.
+- **EVT-007** — Dates are entered and displayed in the user's time zone (Europe/Paris by default) and stored in UTC.
+- **EVT-008** — The server accepts a form submission only if the event is in progress or ended at most 15 minutes ago, so as not to lose a prospect who is in the middle of filling it in.
+- **EVT-009** — The owner can edit, close and delete an event of their card.
 
-## Code d'accès
+## Access code
 
-- **EVT-010** — Un événement peut avoir un code d'accès, optionnel et modifiable à tout moment. Il est stocké de façon à pouvoir être réaffiché au propriétaire.
-- **EVT-011** — La comparaison du code d'accès ignore la casse, les espaces en début et en fin, et les accents.
-- **EVT-012** — Le code d'accès est vérifié par le serveur et n'est jamais envoyé au navigateur.
-- **EVT-013** — Le code d'accès est revérifié au moment de l'envoi : si le propriétaire l'a changé entre-temps, le prospect doit saisir le nouveau.
+- **EVT-010** — An event can have an access code, optional and editable at any time. It is stored in a way that lets it be shown again to the owner.
+- **EVT-011** — The access code comparison ignores case, leading and trailing spaces, and accents.
+- **EVT-012** — The access code is verified by the server and is never sent to the browser.
+- **EVT-013** — The access code is rechecked at submission time: if the owner changed it in the meantime, the prospect must enter the new one.
 
-## Limite par appareil
+## Per-device limit
 
-- **EVT-014** — La limite d'envois par appareil est réglable par événement ; elle vaut 1 par défaut, et le serveur refuse les envois au-delà.
-- **EVT-015** — Un appareil est reconnu par un identifiant aléatoire conservé dans un cookie et dans le stockage local. C'est une protection légère, qui se contourne en navigation privée.
+- **EVT-014** — The per-device submission limit is configurable per event; it is 1 by default, and the server rejects submissions beyond it.
+- **EVT-015** — A device is recognized by a random identifier kept in a cookie and in local storage. This is a light protection, which can be bypassed in private browsing.
 
-## Saisie et limites
+## Input and limits
 
-- **EVT-016** — Le titre est obligatoire (code `required`) et compte au plus 120 caractères ; la description au plus 2 000 ; le code d'accès au plus 32 (vide après normalisation = pas de code). Au-delà, le champ est refusé avec le code `too_long`. Longueurs comptées en caractères après normalisation NFC et retrait des espaces de début et de fin.
-- **EVT-030** — La limite par appareil (EVT-014) est un entier de 1 à 100 ; hors de cet intervalle, le champ `device_limit` est refusé avec le code `out_of_range`.
-- **EVT-017** — Une fin, quand elle est donnée, est strictement postérieure au début ; sinon le champ `ends_at` est refusé avec le code `end_before_start`.
-- **EVT-018** — Une création ou une modification qui ferait dépasser la limite de EVT-004 est refusée par `409 too_many_simultaneous_events`, et rien n'est enregistré. Quand plusieurs créations ou modifications arrivent au même moment sur une carte, elles ne peuvent pas dépasser la limite ensemble.
-- **EVT-019** — La limite de EVT-004 se règle par la variable `MAX_SIMULTANEOUS_EVENTS`, un entier d'au moins 1, qui vaut 3 quand elle est absente.
-- **EVT-020** — Un événement est « à venir » si son début est dans le futur, « en cours » selon EVT-002, et « passé » si sa fin est atteinte. Le serveur calcule cet état avec son horloge, jamais avec celle du navigateur.
-- **EVT-021** — « Terminer maintenant » (EVT-006) n'est possible que sur un événement en cours ; sur un événement à venir ou passé, la demande est refusée par `409 event_not_running`. Après la clôture, la fenêtre de EVT-008 s'applique.
+- **EVT-016** — The title is required (code `required`) and is at most 120 characters long; the description at most 2,000; the access code at most 32 (empty after normalization = no code). Beyond that, the field is rejected with the code `too_long`. Lengths are counted in characters after NFC normalization and trimming of leading and trailing spaces.
+- **EVT-030** — The per-device limit (EVT-014) is an integer from 1 to 100; outside this range, the `device_limit` field is rejected with the code `out_of_range`.
+- **EVT-017** — An end, when given, is strictly after the start; otherwise the `ends_at` field is rejected with the code `end_before_start`.
+- **EVT-018** — A creation or modification that would exceed the limit of EVT-004 is rejected with `409 too_many_simultaneous_events`, and nothing is recorded. When several creations or modifications arrive at the same moment on a card, they cannot exceed the limit together.
+- **EVT-019** — The limit of EVT-004 is set by the `MAX_SIMULTANEOUS_EVENTS` variable, an integer of at least 1, which is 3 when absent.
+- **EVT-020** — An event is "à venir" ("upcoming") if its start is in the future, "en cours" ("in progress") according to EVT-002, and "passé" ("past") once its end is reached. The server computes this state with its own clock, never with the browser's.
+- **EVT-021** — "Terminer maintenant" ("End now", EVT-006) is only possible on an event in progress; on an upcoming or past event, the request is rejected with `409 event_not_running`. After closing, the window of EVT-008 applies.
 
-## Fuseau horaire
+## Time zone
 
-- **EVT-022** — Le fuseau de l'utilisateur (EVT-007) est celui de son navigateur ; si le navigateur n'en donne pas, c'est Europe/Paris. Le tableau de bord affiche le nom de ce fuseau à côté des champs de date. L'API n'échange que des instants UTC au format RFC 3339.
-- **EVT-023** — Une heure saisie qui n'existe pas dans le fuseau (passage à l'heure d'été) est avancée d'une heure ; une heure qui existe deux fois (retour à l'heure d'hiver) désigne la première des deux.
+- **EVT-022** — The user's time zone (EVT-007) is their browser's; if the browser does not provide one, it is Europe/Paris. The dashboard shows the name of this time zone next to the date fields. The API only exchanges UTC instants in RFC 3339 format.
+- **EVT-023** — An entered time that does not exist in the time zone (switch to summer time) is moved forward one hour; a time that exists twice (switch back to winter time) designates the first of the two.
 
-## Suppression et carte désactivée
+## Deletion and disabled card
 
-- **EVT-024** — Supprimer un événement supprime ses contacts collectés. Le tableau de bord demande une confirmation qui indique leur nombre.
-- **EVT-025** — Les événements d'une carte désactivée, par son propriétaire ou par le support, restent listés et modifiables dans le tableau de bord (voir LNK-008), mais ne sont jamais servis au public (voir LNK-007).
+- **EVT-024** — Deleting an event deletes its leads. The dashboard asks for a confirmation that states their number.
+- **EVT-025** — The events of a card disabled, by its owner or by support, stay listed and editable in the dashboard (see LNK-008), but are never served to the public (see LNK-007).
 
-## Ouverture du formulaire
+## Form opening
 
-- **EVT-026** — Le formulaire d'un événement peut être consulté, déverrouillé par son code et envoyé pendant la même fenêtre que EVT-008 : de son début jusqu'à 15 minutes après sa fin. Hors de cette fenêtre, le serveur refuse par `409 event_closed`.
-- **EVT-027** — Quand l'événement a un code d'accès, le serveur ne donne au navigateur que le titre de l'événement tant qu'un code correct n'a pas été saisi : la description, les champs et le texte de consentement ne sont envoyés qu'après. Un code faux est refusé par `403 invalid_access_code`. Le code lui-même n'apparaît dans aucune réponse publique ni dans les logs (voir EVT-012).
+- **EVT-026** — An event's form can be viewed, unlocked with its code and submitted during the same window as EVT-008: from its start until 15 minutes after its end. Outside this window, the server rejects with `409 event_closed`.
+- **EVT-027** — When the event has an access code, the server gives the browser only the event's title until a correct code has been entered: the description, the fields and the consent text are only sent afterwards. A wrong code is rejected with `403 invalid_access_code`. The code itself appears in no public response and in no log (see EVT-012).
 
-## Identifiant d'appareil
+## Device identifier
 
-- **EVT-028** — L'identifiant d'appareil (EVT-015) est un UUID aléatoire créé par le navigateur à la première visite d'un formulaire. Il est conservé dans le cookie `cartouche_device` (chemin `/`, 400 jours, `SameSite=Lax`) et dans le stockage local ; le navigateur reprend celui qu'il trouve en premier, puis le réécrit aux deux endroits. Il accompagne chaque envoi.
-- **EVT-029** — Pour EVT-014, le serveur compte les contacts de l'événement qui portent le même identifiant d'appareil, y compris ceux marqués spam ; un contact supprimé ne compte plus. À la limite, l'envoi est refusé par `409 device_limit_reached`. Deux envois simultanés du même appareil ne peuvent pas dépasser la limite ensemble.
+- **EVT-028** — The device identifier (EVT-015) is a random UUID created by the browser on its first visit to a form. It is kept in the `cartouche_device` cookie (path `/`, 400 days, `SameSite=Lax`) and in local storage; the browser takes the one it finds first, then writes it back to both places. It accompanies every submission.
+- **EVT-029** — For EVT-014, the server counts the event's leads that carry the same device identifier, including those marked as spam; a deleted lead no longer counts. At the limit, the submission is rejected with `409 device_limit_reached`. Two simultaneous submissions from the same device cannot exceed the limit together.
