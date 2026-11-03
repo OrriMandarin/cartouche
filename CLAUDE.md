@@ -78,4 +78,13 @@ Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Nod
 
 ## Skills (`.claude/skills/`)
 
-À venir (plan 1, tâche 17) : `dev-env` (environnement local, seed, horloge de test), `run-tests` (tests ciblés, par règle, suite complète), `debug-failure` (diagnostic d'un échec), `update-spec` (modifier la spec sans contradiction), `change-api` (migration, OpenAPI, client), `add-seed-scenario` (nouveau scénario de données). Cette section sera mise à jour quand elles existeront.
+| Skill | Quand l'utiliser |
+|---|---|
+| `dev-env` | Démarrer la base, l'API et le site en local ; seeder ; réinitialiser ; passer de l'adaptateur `test` à Clerk ; piloter l'horloge de test. |
+| `run-tests` | Lancer un test ciblé, les tests d'une règle (`XXX-NNN`) ou la suite complète avant de conclure. |
+| `debug-failure` | Diagnostiquer un échec : test reproducteur, `x-request-id`, logs de l'API, trace Playwright, escalade vers `debugger-deep`. |
+| `update-spec` | Ajouter ou modifier une règle de `spec/` sans contradiction, avant de coder. |
+| `change-api` | Modifier l'API : migration, `db/`, domaine, route et OpenAPI, tests, client généré, frontend. |
+| `add-seed-scenario` | Ajouter un scénario de données pour `make seed` et Playwright. |
+
+La skill « ajouter un template de carte » viendra avec le plan 2, en même temps que le contrat des templates.
