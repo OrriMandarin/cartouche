@@ -198,6 +198,51 @@
       "custom": "Lien"
     }
   },
+  "eventForm": {
+    "back": "Retour à la carte",
+    "notFound": "Formulaire introuvable",
+    "closed": "Ce formulaire n'est pas ouvert en ce moment.",
+    "optional": "facultatif",
+    "code": {
+      "intro": "Saisissez le code d'accès communiqué sur place pour ouvrir le formulaire.",
+      "label": "Code d'accès",
+      "submit": "Continuer",
+      "invalid": "Ce code n'est pas le bon. Vérifiez-le et réessayez.",
+      "changed": "Le code d'accès a changé. Saisissez le nouveau code pour envoyer vos réponses : elles sont conservées."
+    },
+    "fields": {
+      "first_name": "Prénom",
+      "last_name": "Nom",
+      "birth_date": "Date de naissance",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "address": "Adresse postale",
+      "street": "Rue",
+      "postal_code": "Code postal",
+      "city": "Ville",
+      "country": "Pays",
+      "choose": "Choisissez une option"
+    },
+    "honeypot": "Fax",
+    "submit": "Envoyer",
+    "retry": "Réessayer",
+    "fix": "Certaines réponses sont à corriger : voyez les messages sous les champs.",
+    "refused": {
+      "form_changed": "Le formulaire a été modifié pendant votre saisie. Vos réponses sont conservées : vérifiez-les, cochez à nouveau la case de consentement, puis envoyez.",
+      "closed": "Ce formulaire est fermé : il n'accepte plus de réponses.",
+      "device_limit": "Vous avez déjà envoyé ce formulaire depuis cet appareil.",
+      "rate_limited": "Trop d'envois depuis ce réseau. Réessayez dans quelques minutes.",
+      "inactive": "Cette carte n'est plus active : le formulaire ne peut plus être envoyé.",
+      "network": "La connexion a échoué. Vos réponses sont conservées : réessayez.",
+      "unknown": "Une erreur est survenue. Réessayez dans un instant."
+    },
+    "confirmation": {
+      "title": "Merci !",
+      "text": "Vos informations ont bien été envoyées.",
+      "saveContact": "Enregistrer le contact",
+      "back": "Retour à la carte"
+    }
+  },
   "editor": {
     "title": "Modifier la carte",
     "loading": "Chargement de la carte…",

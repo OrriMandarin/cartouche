@@ -1,0 +1,355 @@
+import type { Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { EVENTS_NOW, WEB_URL } from "../env";
+import { expect, test } from "../fixtures";
+
+const MARIAGE = "Salon du Mariage Clermont 2027";
+const PORTES = "Portes ouvertes de l'Atelier";
+const DEMO = "Démonstration en boutique";
+const DECOUVERTE = "Atelier découverte";
+const LYON = "Foire de Lyon";
+const ARCHIVE = "Événement archivé";
+const BLOQUE = "Salon bloqué";
+
+const NEUTRAL_TEXT = "Cette carte n'est plus active";
+
+let eventIds: Record<string, string>;
+
+// The events scenario freezes the API clock at T0 before seeding: no token is signed before it.
+test.beforeEach(async ({ api }) => {
+  const { events } = await api.seedEvents();
+  eventIds = Object.fromEntries(events.map((event) => [event.title, event.id]));
+});
+
+const idOf = (title: string) => {
+  const id = eventIds[title];
+  if (!id) throw new Error(`no seeded event "${title}"`);
+  return id;
+};
+const formUrl = (title: string, slug = "alice-durand") => `/c/${slug}/e/${idOf(title)}`;
+const minutesAfterNow = (minutes: number) => new Date(Date.parse(EVENTS_NOW) + minutes * 60_000).toISOString();
+
+const field = (page: Page, path: string) => page.getByTestId(`field-${path}`);
+
+/** Fills the required fields of the wedding fair form and ticks the consent box. */
+async function fillMariage(page: Page, firstName = "Maëlle") {
+  await field(page, "answers.first_name").fill(firstName);
+  await field(page, "answers.last_name").fill("N’Guessan-Lefèvre ✨");
+  await field(page, "answers.email").fill("maelle@example.test");
+  await page.getByTestId("consent-checkbox").check();
+}
+
+/** Fills the one field of a form that asks only for an email, and ticks the consent box. */
+async function fillEmailOnly(page: Page, email: string) {
+  await field(page, "answers.email").fill(email);
+  await page.getByTestId("consent-checkbox").check();
+}
+
+async function unlock(page: Page, code: string) {
+  await page.getByTestId("access-code-input").fill(code);
+  await page.getByTestId("access-code-submit").click();
+  await expect(page.getByTestId("event-form")).toBeVisible();
+}
+
+test("FRM-001 PUB-008 the event button opens the full-screen form with a way back", async ({ page }) => {
+  const mariage = idOf(MARIAGE);
+  await page.goto("/c/alice-durand");
+  await page.getByTestId(`event-button-${mariage}`).click();
+  await expect(page).toHaveURL(new RegExp(`/c/alice-durand/e/${mariage}$`));
+  await expect(page.getByTestId("event-form-title")).toHaveText(MARIAGE);
+  // The form takes the whole screen: nothing of the card page is left.
+  await expect(page.getByTestId("card-name")).toHaveCount(0);
+
+  await page.getByTestId("event-form-back").click();
+  await expect(page).toHaveURL(/\/c\/alice-durand$/);
+  await expect(page.getByTestId("card-name")).toHaveText("Alice Durand");
+});
+
+test("FRM-003 FRM-012 FRM-013 FRM-015 FRM-004 FRM-016 fill, fix, send, confirm", async ({ page, api }) => {
+  const mariage = idOf(MARIAGE);
+  expect(await api.leads("seed-alice", mariage)).toHaveLength(3);
+  await page.goto(formUrl(MARIAGE));
+  await expect(page.getByTestId("event-form-title")).toHaveText(MARIAGE);
+
+  await fillMariage(page);
+  await field(page, "answers.email").fill("maelle@");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("field-error-answers.email")).toHaveText("Cette adresse e-mail n'est pas valide.");
+  await expect(field(page, "answers.first_name")).toHaveValue("Maëlle");
+
+  await field(page, "answers.email").fill("maelle@example.test");
+  await field(page, "answers.phone").fill("06 12 34 56 78");
+  const consentText = await page.getByTestId("consent-text").textContent();
+  expect(consentText).toContain("Alice Durand (Atelier Durand & Fils)");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("confirmation-save-contact").click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("alice-durand.vcf");
+  expect(await readFile(await download.path(), "utf8")).toContain("FN:Alice Durand");
+
+  const leads = await api.leads("seed-alice", mariage);
+  expect(leads).toHaveLength(4);
+  const lead = leads.find((candidate) => candidate.answers.first_name === "Maëlle");
+  expect(lead?.answers).toMatchObject({
+    last_name: "N’Guessan-Lefèvre ✨",
+    email: "maelle@example.test",
+    phone: "+33612345678",
+  });
+  expect(Date.parse(lead?.submitted_at ?? "")).toBe(Date.parse(EVENTS_NOW));
+  expect(lead?.consent_text).toBe(consentText);
+
+  await page.getByTestId("confirmation-back").click();
+  await expect(page).toHaveURL(/\/c\/alice-durand$/);
+});
+
+test("FRM-002 EVT-011 the access code ignores case, spaces and accents", async ({ page }) => {
+  await page.goto(formUrl(PORTES));
+  await expect(page.getByTestId("event-form-title")).toHaveText(PORTES);
+  await page.getByTestId("access-code-input").fill("moulin");
+  await page.getByTestId("access-code-submit").click();
+  await expect(page.getByTestId("access-code-message")).toHaveText(
+    "Ce code n'est pas le bon. Vérifiez-le et réessayez.",
+  );
+  await expect(page.getByTestId("event-form")).toHaveCount(0);
+
+  await unlock(page, "  chateau ");
+  await expect(field(page, "answers.first_name")).toBeVisible();
+  await expect(page.getByTestId("consent-text")).toHaveText(
+    "Vos coordonnées restent chez l'Atelier Durand & Fils, qui ne les partage avec personne.",
+  );
+});
+
+test("EVT-012 EVT-027 the access code is never sent to the browser", async ({ page, api }) => {
+  const portes = idOf(PORTES);
+  await api.updateEvent("seed-alice", portes, { description: "Visite guidée de l’atelier ✨" });
+  const bodies: Promise<string>[] = [];
+  page.on("response", (response) => {
+    if (new URL(response.url()).pathname.startsWith("/api/public/")) bodies.push(response.text().catch(() => ""));
+  });
+
+  await page.goto(formUrl(PORTES));
+  await expect(page.getByTestId("access-code-input")).toBeEnabled();
+  const locked = await page.content();
+  expect(locked).not.toContain("Château");
+  // Before the code: the title only, neither the description nor any field nor the consent text.
+  expect(locked).not.toContain("Visite guidée");
+  expect(locked).not.toContain("Vos coordonnées restent");
+  await expect(page.getByTestId(/^field-answers\./)).toHaveCount(0);
+
+  await unlock(page, "chateau");
+  await expect(page.getByTestId("event-form-description")).toHaveText("Visite guidée de l’atelier ✨");
+  expect(await page.content()).not.toContain("Château");
+  const received = await Promise.all(bodies);
+  expect(received.length).toBeGreaterThan(0);
+  for (const body of received) expect(body).not.toContain("Château");
+
+  const served = await api.get(`${WEB_URL}${formUrl(PORTES)}`);
+  expect(served.status()).toBe(200);
+  expect(await served.text()).not.toContain("Château");
+});
+
+test("FRM-041 EVT-013 a changed code sends the prospect back to the code screen", async ({ page, api }) => {
+  const portes = idOf(PORTES);
+  await page.goto(formUrl(PORTES));
+  await unlock(page, "chateau");
+  await field(page, "answers.first_name").fill("Zoé");
+  await fillEmailOnly(page, "zoe.nouvelle@example.test");
+
+  await api.updateEvent("seed-alice", portes, { access_code: "Moulin" });
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("access-code-message")).toContainText("Le code d'accès a changé.");
+  await expect(page.getByTestId("event-form")).toHaveCount(0);
+
+  await unlock(page, "moulin");
+  // Nothing to type again.
+  await expect(field(page, "answers.first_name")).toHaveValue("Zoé");
+  await expect(field(page, "answers.email")).toHaveValue("zoe.nouvelle@example.test");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+  expect((await api.leads("seed-alice", portes)).map((lead) => lead.answers.first_name)).toEqual(["Zoé"]);
+});
+
+test("EVT-014 FRM-042 a second submission from the same device is refused", async ({ page, api }) => {
+  const demo = idOf(DEMO);
+  await page.goto(formUrl(DEMO));
+  await fillEmailOnly(page, "premier@example.test");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+
+  await page.goto(formUrl(DEMO));
+  await fillEmailOnly(page, "second@example.test");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-message")).toHaveText(
+    "Vous avez déjà envoyé ce formulaire depuis cet appareil.",
+  );
+  await expect(field(page, "answers.email")).toHaveValue("second@example.test");
+  expect((await api.leads("seed-alice", demo)).map((lead) => lead.answers.email)).toEqual(["premier@example.test"]);
+});
+
+test("EVT-015 a new private context can submit again", async ({ page, api, browser }) => {
+  const demo = idOf(DEMO);
+  await page.goto(formUrl(DEMO));
+  await fillEmailOnly(page, "premier@example.test");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+
+  const privateContext = await browser.newContext({ baseURL: WEB_URL });
+  try {
+    const other = await privateContext.newPage();
+    await other.goto(formUrl(DEMO));
+    await fillEmailOnly(other, "prive@example.test");
+    await other.getByTestId("event-form-submit").click();
+    await expect(other.getByTestId("event-form-confirmation")).toBeVisible();
+  } finally {
+    await privateContext.close();
+  }
+  expect(await api.leads("seed-alice", demo)).toHaveLength(2);
+});
+
+test("EVT-008 EVT-026 a form opened during the grace period can still be sent", async ({ page, api, browser }) => {
+  const decouverte = idOf(DECOUVERTE);
+  // Ended ten minutes ago: the form still opens.
+  await page.goto(formUrl(DECOUVERTE));
+  await field(page, "answers.first_name").fill("Léon");
+  await fillEmailOnly(page, "leon@example.test");
+  await api.setClock(minutesAfterNow(4));
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+
+  const otherContext = await browser.newContext({ baseURL: WEB_URL });
+  try {
+    const late = await otherContext.newPage();
+    await late.goto(formUrl(DECOUVERTE));
+    await field(late, "answers.first_name").fill("Inès");
+    await fillEmailOnly(late, "ines@example.test");
+    // The end of the event plus 15 minutes is past.
+    await api.setClock(minutesAfterNow(6));
+    await late.getByTestId("event-form-submit").click();
+    await expect(late.getByTestId("event-form-message")).toContainText("fermé");
+  } finally {
+    await otherContext.close();
+  }
+  expect((await api.leads("seed-alice", decouverte)).map((lead) => lead.answers.first_name)).toEqual(["Léon"]);
+});
+
+test("FRM-024 an upcoming event shows the closed screen", async ({ page }) => {
+  const response = await page.goto(formUrl(LYON));
+  expect(response?.status()).toBe(200);
+  await expect(page.getByTestId("event-form-title")).toHaveText(LYON);
+  await expect(page.getByTestId("event-closed")).toHaveText("Ce formulaire n'est pas ouvert en ce moment.");
+  await expect(page.getByTestId("event-form")).toHaveCount(0);
+  await page.getByTestId("event-form-back").click();
+  await expect(page).toHaveURL(/\/c\/alice-durand$/);
+});
+
+test("FRM-024 an unknown event is a 404", async ({ page }) => {
+  const unknown = await page.goto("/c/alice-durand/e/0198c8a2-0000-7000-8000-0000000000ff");
+  expect(unknown?.status()).toBe(404);
+  await expect(page.getByText("Formulaire introuvable")).toBeVisible();
+
+  const malformed = await page.goto("/c/alice-durand/e/abc");
+  expect(malformed?.status()).toBe(404);
+  await expect(page.getByText("Formulaire introuvable")).toBeVisible();
+
+  // An event of another card is unknown here.
+  const elsewhere = await page.goto(`/c/alice-durand/e/${idOf(BLOQUE)}`);
+  expect(elsewhere?.status()).toBe(404);
+});
+
+test("LNK-007 FRM-024 the form of an unserved card shows the neutral page", async ({ page }) => {
+  for (const url of [formUrl(ARCHIVE, "alice-archive"), formUrl(BLOQUE, "bob-martin")]) {
+    const response = await page.goto(url);
+    expect(response?.status(), url).toBe(200);
+    await expect(page.locator("main"), url).toHaveText(NEUTRAL_TEXT);
+    await expect(page.getByTestId("event-form"), url).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]'), url).toHaveAttribute("content", /noindex/);
+  }
+});
+
+test("FRM-024 LNK-030 an old slug redirects to the current form address", async ({ page, api }) => {
+  const mariage = idOf(MARIAGE);
+  for (const slug of ["alice", "Alice-Durand"]) {
+    const response = await api.get(`${WEB_URL}/c/${slug}/e/${mariage}`, { maxRedirects: 0 });
+    expect(response.status(), slug).toBe(308);
+    expect(response.headers()["location"], slug).toMatch(new RegExp(`/c/alice-durand/e/${mariage}$`));
+    expect(response.headers()["cache-control"], slug).toContain("no-store");
+  }
+  await page.goto(`/c/alice/e/${mariage}`);
+  await expect(page).toHaveURL(new RegExp(`/c/alice-durand/e/${mariage}$`));
+  await expect(page.getByTestId("event-form-title")).toHaveText(MARIAGE);
+});
+
+test("FRM-005 FRM-039 the form works with the keyboard alone", async ({ page, browserName }) => {
+  // Safari (WebKit) moves to every control with Option+Tab; a plain Tab reaches text fields only.
+  const next = browserName === "webkit" ? "Alt+Tab" : "Tab";
+  await page.goto(formUrl(DEMO));
+  const email = field(page, "answers.email");
+  await expect(email).toBeEnabled();
+  await email.focus();
+  await page.keyboard.type("clavier@example.test");
+  await page.keyboard.press(next);
+  // The trap field is out of the way.
+  await expect(page.getByTestId("consent-checkbox")).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(page.getByTestId("consent-checkbox")).toBeChecked();
+  await page.keyboard.press(next);
+  await expect(page.getByTestId("event-form-submit")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+});
+
+test("FRM-040 a reload keeps the answers", async ({ page }) => {
+  await page.goto(formUrl(MARIAGE));
+  await fillMariage(page, "Zoé");
+  await page.reload();
+  await expect(field(page, "answers.first_name")).toHaveValue("Zoé");
+  await expect(field(page, "answers.last_name")).toHaveValue("N’Guessan-Lefèvre ✨");
+  await expect(field(page, "answers.email")).toHaveValue("maelle@example.test");
+  // The consent is given again on what is shown now.
+  await expect(page.getByTestId("consent-checkbox")).not.toBeChecked();
+  await page.getByTestId("consent-checkbox").check();
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+});
+
+test("ABU-002 ABU-005 a filled honeypot shows the confirmation but stores nothing", async ({ page, api }) => {
+  const demo = idOf(DEMO);
+  await page.goto(formUrl(DEMO));
+  await fillEmailOnly(page, "robot@example.test");
+  await page.locator("[name=fax]").fill("01 02 03 04 05", { force: true });
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+  expect(await api.leads("seed-alice", demo)).toHaveLength(0);
+
+  // The ignored submission did not use up the device's one submission.
+  await page.goto(formUrl(DEMO));
+  await fillEmailOnly(page, "humain@example.test");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+  expect((await api.leads("seed-alice", demo)).map((lead) => lead.answers.email)).toEqual(["humain@example.test"]);
+});
+
+test("FRM-030 a form changed while filling reloads with the answers kept", async ({ page, api }) => {
+  const mariage = idOf(MARIAGE);
+  await page.goto(formUrl(MARIAGE));
+  await fillMariage(page);
+  await api.updateEvent("seed-alice", mariage, { title: "Salon du Mariage ✨ 2027" });
+
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-message")).toContainText("Le formulaire a été modifié");
+  await expect(page.getByTestId("event-form-title")).toHaveText("Salon du Mariage ✨ 2027");
+  await expect(page.getByTestId("consent-checkbox")).not.toBeChecked();
+  await expect(field(page, "answers.first_name")).toHaveValue("Maëlle");
+  await expect(field(page, "answers.email")).toHaveValue("maelle@example.test");
+  const consentText = await page.getByTestId("consent-text").textContent();
+  expect(consentText).toContain("« Salon du Mariage ✨ 2027 »");
+
+  await page.getByTestId("consent-checkbox").check();
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+  const lead = (await api.leads("seed-alice", mariage)).find((candidate) => candidate.answers.first_name === "Maëlle");
+  expect(lead?.consent_text).toBe(consentText);
+});

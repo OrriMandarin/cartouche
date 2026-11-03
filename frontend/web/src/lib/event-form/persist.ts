@@ -12,19 +12,23 @@ function storage(): Storage | undefined {
   }
 }
 
-function isStringRecord(value: unknown): value is Record<string, string> {
-  return typeof value === "object" && value !== null && Object.values(value).every((item) => typeof item === "string");
+const ANSWER_KEYS = ["first_name", "last_name", "birth_date", "email", "phone"] as const;
+const ADDRESS_KEYS = ["street", "postal_code", "city", "country"] as const;
+
+/** An object with a string under each of `keys`. */
+function hasStrings(value: unknown, keys: readonly string[]): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return keys.every((key) => typeof record[key] === "string");
 }
 
 function isDraft(value: unknown): value is LeadDraft {
   if (typeof value !== "object" || value === null) return false;
   const draft = value as Partial<Record<keyof LeadDraft, unknown>>;
   const { answers, custom } = draft;
-  if (typeof answers !== "object" || answers === null) return false;
-  const { address, ...texts } = answers as Record<string, unknown>;
   return (
-    isStringRecord(texts) &&
-    isStringRecord(address) &&
+    hasStrings(answers, ANSWER_KEYS) &&
+    hasStrings((answers as { address?: unknown }).address, ADDRESS_KEYS) &&
     typeof custom === "object" &&
     custom !== null &&
     Object.values(custom).every((item) => typeof item === "string" || typeof item === "boolean") &&

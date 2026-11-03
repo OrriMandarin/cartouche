@@ -38,6 +38,18 @@ describe("draft persistence", () => {
     expect(loadDraft(EVENT)).toBeNull();
   });
 
+  test("FRM-040 a draft missing an answer or a part of the address is no draft", () => {
+    const key = `cartouche.lead.${EVENT}`;
+    const withoutEmail: Record<string, unknown> = { ...draft.answers };
+    delete withoutEmail.email;
+    window.sessionStorage.setItem(key, JSON.stringify({ ...draft, answers: withoutEmail }));
+    expect(loadDraft(EVENT)).toBeNull();
+    const withoutCity: Record<string, unknown> = { ...draft.answers.address };
+    delete withoutCity.city;
+    window.sessionStorage.setItem(key, JSON.stringify({ ...draft, answers: { ...draft.answers, address: withoutCity } }));
+    expect(loadDraft(EVENT)).toBeNull();
+  });
+
   test("FRM-040 storage failures never throw", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota");

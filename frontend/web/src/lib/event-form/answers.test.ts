@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { checkLeadDraft, draftToSubmission, emptyLeadDraft, refreshDraft, type LeadDraft } from "./answers";
+import {
+  checkLeadDraft,
+  draftToSubmission,
+  editDraft,
+  emptyLeadDraft,
+  refreshDraft,
+  resumeDraft,
+  type LeadDraft,
+} from "./answers";
 import {
   CHECKBOX_ID,
   CHOICE_ID,
@@ -197,6 +205,13 @@ describe("draftToSubmission", () => {
     expect(body.answers.custom?.[NUMBER_ID]).toBe("12 abc");
   });
 
+  test("FRM-036 a number too large to be one is sent as typed", () => {
+    const form = publicEventForm();
+    const huge = "9".repeat(400);
+    const body = draftToSubmission(form, filled(form, (d) => (d.custom[NUMBER_ID] = huge)), DEVICE, null);
+    expect(body.answers.custom?.[NUMBER_ID]).toBe(huge);
+  });
+
   test("FRM-016 EVT-028 FRM-030 the body carries the device, the form version, the consent and the trap", () => {
     const form = publicEventForm();
     const body = draftToSubmission(
@@ -335,5 +350,55 @@ describe("refreshDraft", () => {
     const refreshed = refreshDraft(draft, form);
     expect(refreshed.custom[CHECKBOX_ID]).toBe(false);
     expect(refreshed.custom[TEXT_ID]).toBe("");
+  });
+});
+
+describe("resumeDraft", () => {
+  const form = publicEventForm();
+  const changed = publicEventForm({ form_version: "ffffffffffffffff" });
+
+  test("FRM-041 the draft typed for this very form is kept as is, consent included", () => {
+    const draft = filled(form);
+    expect(resumeDraft(form, { draft, formVersion: form.form_version }, null)).toBe(draft);
+  });
+
+  test("FRM-030 the draft typed for another version keeps what applies, consent unchecked", () => {
+    const draft = filled(form);
+    const resumed = resumeDraft(changed, { draft, formVersion: form.form_version }, null);
+    expect(resumed.answers.first_name).toBe("Éloïse");
+    expect(resumed.consent).toBe(false);
+  });
+
+  test("FRM-040 a draft kept for a reload is restored, consent unchecked", () => {
+    const stored = filled(form);
+    const resumed = resumeDraft(form, null, stored);
+    expect(resumed.answers.email).toBe("eloise@example.org");
+    expect(resumed.consent).toBe(false);
+  });
+
+  test("FRM-033 without any draft the form starts blank", () => {
+    expect(resumeDraft(form, null, null)).toEqual(emptyLeadDraft(form));
+  });
+});
+
+describe("editDraft", () => {
+  test("FRM-015 an edit changes one answer and keeps every other", () => {
+    const form = publicEventForm();
+    const draft = filled(form);
+    const edited = editDraft(
+      editDraft(editDraft(draft, { field: "email", value: "zoe@example.org" }), {
+        field: "address",
+        part: "city",
+        value: "Clermont-Ferrand",
+      }),
+      { field: "custom", id: CHECKBOX_ID, value: true },
+    );
+    expect(edited.answers.email).toBe("zoe@example.org");
+    expect(edited.answers.address).toEqual({ street: "", postal_code: "", city: "Clermont-Ferrand", country: "France" });
+    expect(edited.custom[CHECKBOX_ID]).toBe(true);
+    expect(edited.answers.first_name).toBe("Éloïse");
+    expect(draft.answers.email).toBe("eloise@example.org");
+    expect(editDraft(draft, { field: "consent", value: false }).consent).toBe(false);
+    expect(editDraft(draft, { field: "fax", value: "robot" }).fax).toBe("robot");
   });
 });

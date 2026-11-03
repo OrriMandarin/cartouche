@@ -47,10 +47,22 @@ describe("public card page", () => {
     expect(screen.getByTestId("save-contact")).toHaveTextContent("Enregistrer le contact");
   });
 
-  test("PUB-010 no event is shown before plan 3 supplies them", async () => {
+  test("PUB-010 a card without a running event shows no button", async () => {
     fetchPublicCard.mockResolvedValue({ state: "active", card: sampleCard });
     await renderPage("eloise-daubigne");
     expect(screen.queryAllByTestId(/^event-button-/)).toHaveLength(0);
+  });
+
+  test("PUB-008 PUB-009 PUB-029 the running events of the card are its buttons, towards their forms", async () => {
+    const events = [
+      { id: "event-1", title: "Salon du Mariage ✨", starts_at: "2027-03-15T08:00:00Z" },
+      { id: "event-2", title: "Portes ouvertes de l’Atelier", starts_at: "2027-03-15T09:00:00Z" },
+    ];
+    fetchPublicCard.mockResolvedValue({ state: "active", card: { ...sampleCard, events } });
+    await renderPage("eloise-daubigne");
+    const buttons = screen.getAllByTestId(/^event-button-/);
+    expect(buttons.map((button) => button.textContent)).toEqual(["Salon du Mariage ✨", "Portes ouvertes de l’Atelier"]);
+    expect(buttons[0]).toHaveAttribute("href", `/c/${sampleCard.slug}/e/event-1`);
   });
 
   test("LNK-003 LNK-024 an old slug redirects permanently to the current one", async () => {

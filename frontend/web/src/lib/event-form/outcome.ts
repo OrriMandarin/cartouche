@@ -1,5 +1,5 @@
 import { ApiError } from "@cartouche/api-client";
-import { fieldErrorKey } from "./field-error";
+import { fieldErrorKeys } from "@/lib/field-errors";
 
 /** What a failed submission means for the form (FRM-015, FRM-040 to FRM-042). */
 export type SubmissionOutcome =
@@ -31,11 +31,7 @@ export function submissionOutcome(error: unknown): SubmissionOutcome {
   if (error instanceof TypeError) return { kind: "network" };
   if (!(error instanceof ApiError)) return { kind: "unknown" };
   if (error.code === "validation_failed" && error.fields.length > 0) {
-    const fields: Record<string, string> = {};
-    for (const { field, code } of error.fields) {
-      if (!Object.hasOwn(fields, field)) fields[field] = fieldErrorKey(code);
-    }
-    return { kind: "fields", fields };
+    return { kind: "fields", fields: fieldErrorKeys(error.fields) };
   }
   return (Object.hasOwn(BY_CODE, error.code) ? BY_CODE[error.code] : undefined) ?? { kind: "unknown" };
 }

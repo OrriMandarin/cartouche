@@ -1,4 +1,4 @@
-import { fieldErrorKey } from "./field-error";
+import { fieldErrorKey } from "@/lib/field-errors";
 import type { LeadSubmission, PublicCustomField, PublicEventForm } from "./types";
 
 /** What the prospect types while the form is open: every text is a string, empty when absent. */
@@ -28,8 +28,9 @@ const MAX_POSTAL_CODE = 20;
 const MAX_TEXT = 500;
 const MAX_LONG_TEXT = 5_000;
 
-type StandardAnswerKey = "first_name" | "last_name" | "birth_date" | "email" | "phone";
+export type StandardAnswerKey = "first_name" | "last_name" | "birth_date" | "email" | "phone";
 const ADDRESS_PARTS = ["street", "postal_code", "city", "country"] as const;
+export type AddressPart = (typeof ADDRESS_PARTS)[number];
 const ADDRESS_LIMITS = { street: MAX_STREET, postal_code: MAX_POSTAL_CODE, city: MAX_NAME, country: MAX_NAME };
 
 /** Whether the form asks for a standard field, and whether it insists on it. */
@@ -85,6 +86,46 @@ export function refreshDraft(draft: LeadDraft, form: PublicEventForm): LeadDraft
     }
   }
   return next;
+}
+
+/** One change the prospect makes to the draft. */
+export type DraftEdit =
+  | { field: StandardAnswerKey; value: string }
+  | { field: "address"; part: AddressPart; value: string }
+  | { field: "custom"; id: string; value: string | boolean }
+  | { field: "consent"; value: boolean }
+  | { field: "fax"; value: string };
+
+/** The draft with that one change, as a new value (the given draft is left untouched). */
+export function editDraft(draft: LeadDraft, edit: DraftEdit): LeadDraft {
+  switch (edit.field) {
+    case "address":
+      return { ...draft, answers: { ...draft.answers, address: { ...draft.answers.address, [edit.part]: edit.value } } };
+    case "custom":
+      return { ...draft, custom: { ...draft.custom, [edit.id]: edit.value } };
+    case "consent":
+      return { ...draft, consent: edit.value };
+    case "fax":
+      return { ...draft, fax: edit.value };
+    default:
+      return { ...draft, answers: { ...draft.answers, [edit.field]: edit.value } };
+  }
+}
+
+/** A draft and the version of the form it was typed for. */
+export interface TypedDraft {
+  draft: LeadDraft;
+  formVersion: string;
+}
+
+/**
+ * The draft to show with a form: the one being typed when it was typed for this very form (FRM-041), else what
+ * still applies of it or of the draft kept for a reload, consent unchecked (FRM-030, FRM-040), else a blank one.
+ */
+export function resumeDraft(form: PublicEventForm, current: TypedDraft | null, stored: LeadDraft | null): LeadDraft {
+  if (current?.formVersion === form.form_version) return current.draft;
+  const previous = current?.draft ?? stored;
+  return previous ? refreshDraft(previous, form) : emptyLeadDraft(form);
 }
 
 const EMAIL_WHITESPACE = /\s/u;
@@ -194,9 +235,14 @@ function present(value: string): string | undefined {
   return normalized === "" ? undefined : normalized;
 }
 
-/** A number typed with a point or a comma becomes a JSON number (FRM-036); anything else is left to the server. */
+/**
+ * A number typed with a point or a comma becomes a JSON number (FRM-036); anything else, or one too large to be
+ * a finite number, is left to the server as typed.
+ */
 function numberAnswer(value: string): number | string {
-  return DECIMAL.test(value) ? Number(value.replace(",", ".")) : value;
+  if (!DECIMAL.test(value)) return value;
+  const number = Number(value.replace(",", "."));
+  return Number.isFinite(number) ? number : value;
 }
 
 function customAnswer(field: PublicCustomField, answer: string | boolean | undefined): string | number | boolean | undefined {

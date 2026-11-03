@@ -1,4 +1,5 @@
-import { expect, test, type TestApi } from "../fixtures";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures";
 
 let aliceCardId: string;
 let archiveCardId: string;
@@ -25,14 +26,11 @@ test.beforeEach(async ({ api, loginAs }) => {
   await loginAs("seed-alice");
 });
 
-/**
- * The event buttons the public API gives for the card (PUB-029). The public page does not render them yet,
- * so the tests read what the server serves to it.
- */
-async function publicEvents(api: TestApi, slug: string): Promise<{ id: string; title: string }[]> {
-  const response = await api.get(`/api/public/cards/${slug}`);
-  const body = (await response.json()) as { card: { events: { id: string; title: string }[] } };
-  return body.card.events;
+/** The event button of the public page of alice-durand for that event (PUB-029). */
+async function eventButton(page: Page, eventId: string) {
+  await page.goto("/c/alice-durand");
+  await expect(page.getByTestId("card-name")).toHaveText("Alice Durand");
+  return page.getByTestId(`event-button-${eventId}`);
 }
 
 const eventsUrl = () => `/dashboard/cards/${aliceCardId}/events`;
@@ -121,9 +119,9 @@ test("EVT-004 EVT-018 a fourth simultaneous event is refused", async ({ page, ap
   expect(((await response.json()) as { events: unknown[] }).events).toHaveLength(6);
 });
 
-test("EVT-006 EVT-021 PUB-029 end an event now", async ({ page, api }) => {
+test("EVT-006 EVT-021 PUB-029 end an event now", async ({ page }) => {
   const demo = idOf(DEMO);
-  expect((await publicEvents(api, "alice-durand")).map((event) => event.id)).toContain(demo);
+  await expect(await eventButton(page, demo)).toHaveText(DEMO);
 
   await page.goto(eventsUrl());
   await page.getByTestId(`event-end-now-${demo}`).click();
@@ -131,10 +129,11 @@ test("EVT-006 EVT-021 PUB-029 end an event now", async ({ page, api }) => {
   await expect(page.getByTestId("events-group-running").getByTestId(`event-row-${demo}`)).toHaveCount(0);
   await expect(page.getByTestId(`event-end-now-${demo}`)).toHaveCount(0);
 
-  expect((await publicEvents(api, "alice-durand")).map((event) => event.id)).not.toContain(demo);
+  await expect(await eventButton(page, demo)).toHaveCount(0);
+  await expect(page.getByTestId(`event-button-${idOf(MARIAGE)}`)).toHaveText(MARIAGE);
 });
 
-test("EVT-009 EVT-010 EDI-019 edit an event", async ({ page, api }) => {
+test("EVT-009 EVT-010 EDI-019 edit an event", async ({ page }) => {
   const portes = idOf(PORTES);
   await page.goto(eventsUrl());
   await page.getByTestId(`event-edit-${portes}`).click();
@@ -153,8 +152,7 @@ test("EVT-009 EVT-010 EDI-019 edit an event", async ({ page, api }) => {
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(page.getByTestId(`event-title-${portes}`)).toHaveText("Portes ouvertes ✨");
 
-  const buttons = await publicEvents(api, "alice-durand");
-  expect(buttons.find((event) => event.id === portes)?.title).toBe("Portes ouvertes ✨");
+  await expect(await eventButton(page, portes)).toHaveText("Portes ouvertes ✨");
 });
 
 test("FRM-029 R-PF6 the default consent text is the server's, and follows the title", async ({ page }) => {
