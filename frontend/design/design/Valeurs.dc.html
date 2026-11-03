@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche — valeurs des thèmes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&amp;family=Fraunces:opsz,wght@9..144,400..700&amp;family=Instrument+Sans:wght@400..700&amp;family=Inter:wght@400..800&amp;family=JetBrains+Mono:wght@400..600&amp;family=Nunito+Sans:wght@400..800&amp;family=Playfair+Display:wght@400..800&amp;family=Source+Sans+3:wght@400..800&amp;display=swap">
+<style>
+body{margin:0}
+.t-craie{--c-accent:#2F55D4;--c-bg:#F7F6F2;--c-bg-2:#F7F6F2;--bg-angle:180deg;--c-text:#1B1A17}
+.t-ivoire{--c-accent:#7A5C2E;--c-bg:#F4EFE6;--c-bg-2:#F4EFE6;--bg-angle:180deg;--c-text:#2A241C}
+.t-terracotta{--c-accent:#B3441E;--c-bg:#FBF0E4;--c-bg-2:#F4DCCA;--bg-angle:160deg;--c-text:#3B2117}
+.t-sauge{--c-accent:#3D6B4C;--c-bg:#E9EFE6;--c-bg-2:#E9EFE6;--bg-angle:180deg;--c-text:#1E2A21}
+.t-bonbon{--c-accent:#C02662;--c-bg:#FFE4EE;--c-bg-2:#E6E0FF;--bg-angle:135deg;--c-text:#2B1240}
+.t-lagon{--c-accent:#0A6E6A;--c-bg:#E3F5F2;--c-bg-2:#D8ECF5;--bg-angle:200deg;--c-text:#0D2E35}
+.t-encre{--c-accent:#C8F04D;--c-bg:#121316;--c-bg-2:#121316;--bg-angle:180deg;--c-text:#F1F0EC}
+.t-minuit{--c-accent:#E9C988;--c-bg:#0D1A2C;--c-bg-2:#1B2A44;--bg-angle:180deg;--c-text:#EEF1F6}
+.f-sobre{--font-title:'Inter',system-ui,sans-serif;--title-weight:700;--title-tracking:-0.025em}
+.f-editoriale{--font-title:'Playfair Display',Georgia,serif;--title-weight:600;--title-tracking:-0.005em}
+.f-douce{--font-title:'Fraunces',Georgia,serif;--title-weight:600;--title-tracking:-0.015em}
+.f-graphique{--font-title:'Bricolage Grotesque',system-ui,sans-serif;--title-weight:700;--title-tracking:-0.03em}
+.sw{display:inline-block;width:22px;height:22px;border-radius:999px;box-shadow:inset 0 0 0 1px rgb(0 0 0 / .16);flex:none}
+.sw-accent{background:var(--c-accent)}
+.sw-bg{background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2))}
+.sw-text{background:var(--c-text)}
+.tf{font-family:var(--font-title);font-weight:var(--title-weight);letter-spacing:var(--title-tracking)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;line-height:1.4}
+.tbl th{text-align:left;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#55534E;padding:0 14px 12px;border-bottom:2px solid #1B1A17;vertical-align:bottom}
+.tbl td{padding:14px;border-bottom:1px solid #DAD8D2;vertical-align:middle}
+.tbl tr > :first-child{padding-left:0}
+.mono{font-family:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px}
+.cell{display:flex;align-items:center;gap:10px}
+.muted{color:#55534E}
+.ratio{display:inline-flex;flex-direction:column;align-items:flex-start;min-width:64px}
+.ratio b{font-size:15px;font-variant-numeric:tabular-nums}
+.ratio span{font-size:11px;color:#55534E}
+</style>
+</helmet>
+
+<div style="width: 1796px; min-height: 2000px; box-sizing: border-box; padding: 64px; background: #FBFAF8; color: #1B1A17; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; gap: 64px">
+
+<section style="display: flex; flex-direction: column; gap: 24px">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 980px">
+    <h2 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: -0.02em">Les 8 thèmes prêts à l’emploi</h2>
+    <p style="margin: 0; font-size: 16px; line-height: 1.5" class="muted">Un thème = accent, fond (uni ou dégradé), texte, fondu de l’en-tête, forme des boutons, paire de polices. Les contrastes sont calculés sur le cas le plus défavorable : les deux couleurs du dégradé, et les rangées au survol pour le texte atténué. Seuil AA : 4,5:1 pour le texte, 3:1 pour l’accent utilisé en icône ou en contour.</p>
+  </div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th style="width: 210px">Thème</th>
+        <th>Accent</th>
+        <th>Fond</th>
+        <th>Texte</th>
+        <th>Fondu</th>
+        <th>Forme</th>
+        <th>Polices</th>
+        <th style="width: 340px">Contrastes (pire cas)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <sc-for list="{{themes}}" as="t" hint-placeholder-count="8">
+      <tr>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span class="tf {{t.fCls}}" style="font-size: 22px; line-height: 1.15">{{t.name}}</span>
+            <span class="muted" style="font-size: 13px">{{t.mood}}</span>
+          </div>
+        </td>
+        <td><div class="cell"><span class="sw sw-accent {{t.tCls}}"></span><span class="mono">{{t.accent}}</span></div></td>
+        <td><div class="cell"><span class="sw sw-bg {{t.tCls}}"></span><span class="mono">{{t.bgText}}</span></div></td>
+        <td><div class="cell"><span class="sw sw-text {{t.tCls}}"></span><span class="mono">{{t.text}}</span></div></td>
+        <td class="mono">{{t.fade}}</td>
+        <td>{{t.shape}}</td>
+        <td>{{t.pair}}</td>
+        <td>
+          <div style="display: flex; gap: 14px">
+            <span class="ratio"><b>{{t.r1}}</b><span>texte</span></span>
+            <span class="ratio"><b>{{t.r2}}</b><span>atténué</span></span>
+            <span class="ratio"><b>{{t.r3}}</b><span>sur accent</span></span>
+            <span class="ratio"><b>{{t.r4}}</b><span>accent/fond</span></span>
+          </div>
+        </td>
+      </tr>
+      </sc-for>
+    </tbody>
+  </table>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; align-items: start">
+
+<section style="display: flex; flex-direction: column; gap: 20px">
+  <h2 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.015em">Variables CSS du template</h2>
+  <p style="margin: 0; font-size: 15px; line-height: 1.5" class="muted">Posées sur l’élément racine de la carte. Le composant n’utilise que ces variables : aucune couleur en dur.</p>
+  <table class="tbl">
+    <thead><tr><th>Variable</th><th>Valeur</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td colspan="3" style="font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding-top: 18px">Stockées dans le thème</td></tr>
+      <tr><td class="mono">--c-accent</td><td>accent</td><td>boutons d’événement, icônes des liens, initiales</td></tr>
+      <tr><td class="mono">--c-bg</td><td>fond, couleur 1</td><td>fond, anneau de la photo, libellé du bouton final</td></tr>
+      <tr><td class="mono">--c-bg-2</td><td>fond, couleur 2 (= <span class="mono">--c-bg</span> si uni)</td><td>fin du dégradé</td></tr>
+      <tr><td class="mono">--bg-angle</td><td>angle du dégradé (180deg si uni)</td><td><span class="mono">linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2))</span></td></tr>
+      <tr><td class="mono">--c-text</td><td>texte</td><td>texte, fond du bouton « Enregistrer le contact »</td></tr>
+      <tr><td class="mono">--fade</td><td>0 à 100</td><td><span class="mono">mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade) * 1%), transparent)</span> sur le média</td></tr>
+      <tr><td class="mono">--radius-btn</td><td>carrée 2px · arrondie 12px · pilule 999px</td><td>boutons, rangées, icônes</td></tr>
+      <tr><td class="mono">--font-title, --font-body, --title-weight, --title-tracking</td><td>paire de polices</td><td>nom, titres ; tout le reste</td></tr>
+      <tr><td colspan="3" style="font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding-top: 22px">Dérivées</td></tr>
+      <tr><td class="mono">--c-on-accent</td><td><span class="mono">#FFFFFF</span> ou <span class="mono">#111111</span>, le plus contrasté (calculé à l’enregistrement)</td><td>texte des boutons d’événement et des initiales</td></tr>
+      <tr><td class="mono">--c-muted</td><td class="mono">color-mix(in oklab, var(--c-text) 78%, var(--c-bg))</td><td>entreprise, sous-libellés</td></tr>
+      <tr><td class="mono">--c-surface</td><td class="mono">color-mix(in oklab, var(--c-text) 7%, transparent)</td><td>rangées et icônes (12 % au survol)</td></tr>
+      <tr><td class="mono">--c-focus</td><td class="mono">var(--c-text)</td><td>contour de focus 3px, décalage 3px</td></tr>
+      <tr><td class="mono">--c-scrim, --c-on-scrim</td><td>constantes <span class="mono">rgb(0 0 0 / .5)</span>, <span class="mono">#FFFFFF</span></td><td>bouton pause posé sur la vidéo</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 56px">
+<section style="display: flex; flex-direction: column; gap: 20px">
+  <h2 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.015em">Paires de polices</h2>
+  <p style="margin: 0; font-size: 15px; line-height: 1.5" class="muted">Toutes sous licence SIL OFL 1.1, auto-hébergées via les paquets Fontsource (fichiers woff2 servis par l’application). Le sous-ensemble latin couvre déjà é è ê à ù ç œ Œ « » ’ et l’espace fine insécable ; ajouter latin-ext pour les noms étrangers (Łukasz, Dvořák).</p>
+  <table class="tbl">
+    <thead><tr><th>Paire</th><th>Titre</th><th>Texte</th><th>Paquets</th></tr></thead>
+    <tbody>
+      <tr><td class="tf f-sobre" style="font-size: 20px">Sobre</td><td>Inter 700</td><td>Inter</td><td class="mono">@fontsource-variable/inter</td></tr>
+      <tr><td class="tf f-editoriale" style="font-size: 20px">Éditoriale</td><td>Playfair Display 600</td><td>Source Sans 3</td><td class="mono">@fontsource-variable/playfair-display<br>@fontsource-variable/source-sans-3</td></tr>
+      <tr><td class="tf f-douce" style="font-size: 20px">Douce</td><td>Fraunces 600</td><td>Nunito Sans</td><td class="mono">@fontsource-variable/fraunces<br>@fontsource-variable/nunito-sans</td></tr>
+      <tr><td class="tf f-graphique" style="font-size: 20px">Graphique <span style="font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #55534E">nouvelle</span></td><td>Bricolage Grotesque 700</td><td>Instrument Sans</td><td class="mono">@fontsource-variable/bricolage-grotesque<br>@fontsource-variable/instrument-sans</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 16px">
+  <h2 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.015em">Règles quand l’utilisateur ajuste un thème</h2>
+  <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.5">
+    <li>Texte / fond ≥ 4,5:1 sur les deux couleurs du dégradé, et texte atténué ≥ 4,5:1 sur une rangée survolée. Sinon, enregistrement bloqué et teinte conforme la plus proche proposée.</li>
+    <li><span class="mono">--c-on-accent</span> est choisi automatiquement ; si ni le blanc ni <span class="mono">#111111</span> n’atteint 4,5:1 sur l’accent, l’accent est refusé.</li>
+    <li>Accent / fond ≥ 3:1 (icônes des liens, repérage des boutons d’événement).</li>
+    <li>Aucun texte n’est posé sur le média : le fondu ne crée pas de contrainte de contraste. Le bouton pause a son propre voile.</li>
+    <li><span class="mono">prefers-reduced-motion</span> : reflet, pulsation et chatoiement coupés ; la vidéo ne démarre pas seule, l’image d’attente reste affichée.</li>
+    <li>Cibles tactiles : rangées 56 px, icônes 48 px, bouton pause 44 px.</li>
+  </ol>
+</section>
+</div>
+</div>
+
+<section style="display: flex; flex-direction: column; gap: 16px">
+  <h2 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.015em">Les mêmes valeurs en JSON</h2>
+  <pre class="mono" style="margin: 0; padding: 24px 28px; background: #1B1A17; color: #F1F0EC; border-radius: 12px; font-size: 13px; line-height: 1.7; white-space: pre; overflow-x: auto"><sc-for list="{{json}}" as="j" hint-placeholder-count="8">{{j.line}}
+</sc-for></pre>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1796,"height":2000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var PAIRS = { sobre: 'Inter', editoriale: 'Playfair Display + Source Sans 3', douce: 'Fraunces + Nunito Sans', graphique: 'Bricolage Grotesque + Instrument Sans' };
+    var PAIR_ID = { sobre: 'inter', editoriale: 'playfair', douce: 'fraunces', graphique: 'bricolage' };
+    var SHAPES = { carree: 'carrée', arrondie: 'arrondie', pilule: 'pilule' };
+    var SHAPE_ID = { carree: 'square', arrondie: 'rounded', pilule: 'pill' };
+    var T = [
+      { id: 'craie', name: 'Craie', mood: 'Clair, neutre', accent: '#2F55D4', bg: ['#F7F6F2'], text: '#1B1A17', fade: 45, shape: 'arrondie', pair: 'sobre', r: ['16,0', '7,1', '6,2', '4,5'] },
+      { id: 'ivoire', name: 'Ivoire', mood: 'Élégant', accent: '#7A5C2E', bg: ['#F4EFE6'], text: '#2A241C', fade: 60, shape: 'carree', pair: 'editoriale', r: ['13,4', '6,0', '6,1', '4,3'] },
+      { id: 'terracotta', name: 'Terracotta', mood: 'Chaleureux', accent: '#B3441E', bg: ['#FBF0E4', '#F4DCCA', 160], text: '#3B2117', fade: 55, shape: 'arrondie', pair: 'douce', r: ['11,2', '5,0', '5,5', '3,4'] },
+      { id: 'sauge', name: 'Sauge', mood: 'Naturel', accent: '#3D6B4C', bg: ['#E9EFE6'], text: '#1E2A21', fade: 50, shape: 'pilule', pair: 'douce', r: ['12,7', '5,7', '6,1', '4,2'] },
+      { id: 'bonbon', name: 'Bonbon', mood: 'Coloré', accent: '#C02662', bg: ['#FFE4EE', '#E6E0FF', 135], text: '#2B1240', fade: 40, shape: 'pilule', pair: 'graphique', r: ['13,0', '5,9', '5,6', '3,5'] },
+      { id: 'lagon', name: 'Lagon', mood: 'Frais', accent: '#0A6E6A', bg: ['#E3F5F2', '#D8ECF5', 200], text: '#0D2E35', fade: 50, shape: 'arrondie', pair: 'graphique', r: ['11,8', '5,2', '6,0', '4,0'] },
+      { id: 'encre', name: 'Encre', mood: 'Sombre, contemporain', accent: '#C8F04D', bg: ['#121316'], text: '#F1F0EC', fade: 75, shape: 'pilule', pair: 'sobre', r: ['16,2', '6,9', '14,4', '10,4'] },
+      { id: 'minuit', name: 'Minuit', mood: 'Sombre, élégant', accent: '#E9C988', bg: ['#0D1A2C', '#1B2A44', 180], text: '#EEF1F6', fade: 70, shape: 'carree', pair: 'editoriale', r: ['12,6', '5,3', '11,8', '6,3'] }
+    ];
+    var ONACC = { encre: '#111111', minuit: '#111111' };
+    return {
+      themes: T.map(function (t) {
+        return {
+          name: t.name, mood: t.mood, tCls: 't-' + t.id, fCls: 'f-' + t.pair,
+          accent: t.accent, text: t.text, fade: t.fade, shape: SHAPES[t.shape], pair: PAIRS[t.pair],
+          bgText: t.bg.length === 1 ? 'uni ' + t.bg[0] : t.bg[0] + ' → ' + t.bg[1] + ' · ' + t.bg[2] + '°',
+          r1: t.r[0], r2: t.r[1], r3: t.r[2], r4: t.r[3]
+        };
+      }),
+      json: T.map(function (t) {
+        var bg = t.bg.length === 1 ? { type: 'solid', color: t.bg[0] } : { type: 'gradient', from: t.bg[0], to: t.bg[1], angle: t.bg[2] };
+        return { line: JSON.stringify({ id: t.id, name: t.name, accent: t.accent, onAccent: ONACC[t.id] || '#FFFFFF', background: bg, text: t.text, headerFade: t.fade, buttonShape: SHAPE_ID[t.shape], fontPair: PAIR_ID[t.pair] }) };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

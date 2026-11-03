@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche app — mes cartes et création</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..800&amp;family=JetBrains+Mono:wght@400..600&amp;display=swap">
+<style>
+body{margin:0}
+.app{--app-bg:#F5F4F1;--app-surface:#FFFFFF;--app-surface-2:#EFEDE8;--app-border:#DEDAD3;--app-border-strong:#8C877E;--app-text:#1C1B19;--app-muted:#5C5850;--app-primary:#1C1B19;--app-primary-hover:#3A3834;--app-on-primary:#FFFFFF;--app-brand:#9A5B13;--app-ring:#1C1B19;--app-success:#1D6B43;--app-success-soft:#E2F0E7;--app-neutral:#4F4B44;--app-neutral-soft:#ECEAE5;--app-warning:#8A4500;--app-warning-soft:#FBEBD3;--app-danger:#B3261E;--app-danger-soft:#FBE5E2;--app-on-danger:#FFFFFF;--app-info:#1D4CA8;--app-info-soft:#E4EBFB;--app-on-dark-ok:#8FD5AE;--app-scrim:rgb(28 27 25 / .5);--app-radius-sm:6px;--app-radius:10px;--app-radius-lg:14px;--app-radius-xl:20px;--app-shadow-sm:0 1px 2px rgb(28 27 25 / .06);--app-shadow:0 1px 2px rgb(28 27 25 / .06),0 12px 32px -16px rgb(28 27 25 / .22);--app-shadow-lg:0 32px 80px -20px rgb(28 27 25 / .45);--app-font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--app-font-display:'Fraunces',Georgia,'Times New Roman',serif;--app-font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  box-sizing:border-box;position:relative;overflow:hidden;background:var(--app-bg);color:var(--app-text);font-family:var(--app-font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app *,.app *::before,.app *::after{box-sizing:border-box}
+.app a{color:inherit;text-decoration:none}
+.app h1,.app h2,.app h3,.app p,.app ul{margin:0}
+.app svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app :focus-visible,.app .is-focus{outline:2px solid var(--app-ring);outline-offset:2px}
+.a-mark{width:28px;height:28px;flex:none}.a-mark .m1{fill:var(--app-brand)}.a-mark .m2{fill:none;stroke:var(--app-on-primary);stroke-width:2.4;stroke-linecap:round}
+.a-logo{display:inline-flex;align-items:center;gap:10px;font-family:var(--app-font-display);font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1}
+.a-display{font-family:var(--app-font-display);font-weight:600;letter-spacing:-.015em}
+.a-h1{font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
+.a-h2{font-size:20px;line-height:1.3;font-weight:650;letter-spacing:-.01em}
+.a-muted{color:var(--app-muted)}
+.a-small{font-size:13px;line-height:1.4}
+.a-mono{font-family:var(--app-font-mono);font-size:13px}
+.a-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:var(--app-radius);background:transparent;color:var(--app-text);font:inherit;font-size:15px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer}
+.a-btn--primary{background:var(--app-primary);color:var(--app-on-primary)}
+.a-btn--secondary{background:var(--app-surface);border-color:var(--app-border);box-shadow:var(--app-shadow-sm)}
+.a-btn--danger{background:var(--app-danger);color:var(--app-on-danger)}
+.a-btn--block{width:100%}
+.a-btn.is-disabled{opacity:.45;cursor:not-allowed}
+.a-iconbtn{display:inline-grid;place-items:center;width:44px;height:44px;flex:none;border:0;border-radius:var(--app-radius);background:transparent;color:var(--app-text);cursor:pointer}
+.a-iconbtn.is-active{background:var(--app-surface-2)}
+.a-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.a-label{font-size:14px;font-weight:600;line-height:1.3}
+.a-hint{font-size:13px;line-height:1.4;color:var(--app-muted)}
+.a-input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);color:var(--app-text);font:inherit;font-size:15px;line-height:1.35}
+.a-error{display:flex;gap:6px;align-items:flex-start;font-size:13px;font-weight:600;line-height:1.4;color:var(--app-danger)}
+.a-ok{display:flex;gap:6px;align-items:flex-start;font-size:13px;font-weight:600;line-height:1.4;color:var(--app-success)}
+.a-error svg.i,.a-ok svg.i{width:16px;height:16px;margin-top:1px}
+.a-affix{display:flex;align-items:stretch;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);overflow:hidden}
+.a-affix > span{display:flex;align-items:center;padding:0 10px 0 12px;background:var(--app-surface-2);color:var(--app-muted);font-size:14px;white-space:nowrap;border-right:1px solid var(--app-border)}
+.a-affix .a-input{border:0;border-radius:0;min-width:0;font-family:var(--app-font-mono);font-size:14px}
+.a-affix.is-invalid{border:2px solid var(--app-danger)}
+.a-chip{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--app-border);border-radius:999px;background:var(--app-surface);font-family:var(--app-font-mono);font-size:13px;cursor:pointer;color:var(--app-text)}
+.a-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;white-space:nowrap}
+.a-badge::before{content:"";width:7px;height:7px;border-radius:999px;background:currentColor;flex:none}
+.a-badge--success{background:var(--app-success-soft);color:var(--app-success)}
+.a-badge--neutral{background:var(--app-neutral-soft);color:var(--app-neutral)}
+.a-badge--warning{background:var(--app-warning-soft);color:var(--app-warning)}
+.a-card{background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius-lg);box-shadow:var(--app-shadow-sm)}
+.a-dialog{width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px;padding:24px;background:var(--app-surface);border-radius:var(--app-radius-xl);box-shadow:var(--app-shadow-lg)}
+.a-dialog-icon{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;background:var(--app-danger-soft);color:var(--app-danger)}
+.a-dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:4px}
+.a-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--app-scrim)}
+.a-toast{display:flex;align-items:center;gap:12px;min-height:52px;padding:6px 20px 6px 16px;border-radius:var(--app-radius-lg);background:var(--app-primary);color:var(--app-on-primary);box-shadow:var(--app-shadow);font-size:14px;font-weight:500}
+.a-toast > svg.i{color:var(--app-on-dark-ok)}
+.a-menu{display:flex;flex-direction:column;min-width:230px;padding:6px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius-lg);box-shadow:var(--app-shadow)}
+.a-menu button{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--app-text);font:inherit;font-size:14px;font-weight:500;text-align:left;cursor:pointer}
+.a-menu button.is-hover{background:var(--app-surface-2)}
+.a-menu .is-danger{color:var(--app-danger)}
+.a-menu hr{border:0;height:1px;background:var(--app-border);margin:6px 0}
+.a-skel{border-radius:var(--app-radius-sm);background:linear-gradient(90deg,var(--app-surface-2) 30%,var(--app-bg) 50%,var(--app-surface-2) 70%);background-size:220% 100%;animation:a-shimmer 1.4s linear infinite}
+@keyframes a-shimmer{from{background-position:150% 0}to{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.a-skel{animation:none}}
+/* Coquille */
+.a-shell{display:grid;grid-template-columns:248px minmax(0,1fr);height:100%}
+.a-side{display:flex;flex-direction:column;gap:28px;padding:20px 14px;background:var(--app-surface);border-right:1px solid var(--app-border)}
+.a-side .a-logo{padding:6px 10px}
+.a-nav{display:flex;flex-direction:column;gap:2px}
+.a-nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:var(--app-radius);color:var(--app-muted);font-weight:500}
+.a-nav a[aria-current="page"]{background:var(--app-surface-2);color:var(--app-text);font-weight:650}
+.a-nav a[aria-current="page"] svg.i{color:var(--app-brand)}
+.a-me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:14px 10px 4px;border-top:1px solid var(--app-border);font-size:14px;line-height:1.3}
+.a-avatar{width:36px;height:36px;border-radius:999px;overflow:hidden;flex:none;background:var(--app-surface-2)}
+.a-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.a-main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.a-top{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px;padding:0 40px;border-bottom:1px solid var(--app-border)}
+.a-crumbs{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--app-muted)}
+.a-crumbs a{text-decoration:underline;text-underline-offset:3px}
+.a-crumbs [aria-current]{color:var(--app-text);font-weight:600}
+.a-crumbs svg.i{width:16px;height:16px}
+.a-content{width:100%;max-width:1160px;padding:32px 40px 48px;display:flex;flex-direction:column;gap:24px}
+.a-pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.a-mbar{display:flex;align-items:center;gap:4px;min-height:56px;padding:0 6px 0 8px;background:var(--app-surface);border-bottom:1px solid var(--app-border)}
+.a-mbar-title{flex:1;min-width:0;padding:0 6px;font-size:17px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a-mbody{flex:1;min-height:0;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:12px}
+.a-tabbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:6px 8px 10px;background:var(--app-surface);border-top:1px solid var(--app-border)}
+.a-tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;font-size:12px;font-weight:600;color:var(--app-muted)}
+.a-tabpill{display:grid;place-items:center;width:56px;height:30px;border-radius:999px}
+.a-tabbar a[aria-current="page"]{color:var(--app-text)}
+.a-tabbar a[aria-current="page"] .a-tabpill{background:var(--app-surface-2)}
+.a-tabbar a[aria-current="page"] svg.i{color:var(--app-brand)}
+/* Vignette de carte : variables de carte, isolées des tokens --app- */
+.t-terracotta{--c-accent:#B3441E;--c-bg:#FBF0E4;--c-bg-2:#F4DCCA;--bg-angle:160deg;--c-text:#3B2117}
+.t-ivoire{--c-accent:#7A5C2E;--c-bg:#F4EFE6;--c-bg-2:#F4EFE6;--bg-angle:180deg;--c-text:#2A241C}
+.t-sauge{--c-accent:#3D6B4C;--c-bg:#E9EFE6;--c-bg-2:#E9EFE6;--bg-angle:180deg;--c-text:#1E2A21}
+.t-minuit{--c-accent:#E9C988;--c-bg:#0D1A2C;--c-bg-2:#1B2A44;--bg-angle:180deg;--c-text:#EEF1F6}
+.a-thumb{position:relative;width:56px;height:76px;flex:none;border-radius:8px;overflow:hidden;background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2));box-shadow:0 0 0 1px rgb(28 27 25 / .12)}
+.a-thumb .h{display:block;width:100%;height:34px;object-fit:cover}
+.a-thumb .p{position:absolute;left:50%;top:22px;width:22px;height:22px;margin-left:-11px;border-radius:999px;border:2px solid var(--c-bg);object-fit:cover}
+.a-thumb i{display:block;height:3px;width:60%;margin:14px auto 0;border-radius:2px;background:var(--c-text)}
+.a-thumb b{display:block;height:6px;width:70%;margin:5px auto 0;border-radius:3px;background:var(--c-accent)}
+/* Liste des cartes */
+.cl-head,.cl-row{display:grid;grid-template-columns:56px minmax(0,1.3fr) minmax(0,1.5fr) 200px 160px 150px;gap:20px;align-items:center;padding:0 20px}
+.cl-head{min-height:44px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-muted);border-bottom:1px solid var(--app-border)}
+.cl-row{min-height:104px;border-bottom:1px solid var(--app-border)}
+.cl-row:last-child{border-bottom:0}
+.cl-link{display:flex;align-items:center;gap:2px;min-width:0}
+.cl-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl-actions{position:relative;display:flex;gap:6px;justify-content:flex-end}
+.cl-ev{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:14px;font-weight:600;text-decoration:underline !important;text-underline-offset:3px}
+.cl-ev svg.i{width:18px;height:18px}
+.mc{display:flex;flex-direction:column;gap:10px;padding:14px}
+/* Planche */
+.b{width:2038px;min-height:4300px;box-sizing:border-box;padding:64px;background:#E4E2DD;color:#1C1B19;font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;gap:96px}
+.b-row{display:flex;flex-direction:column;gap:20px}
+.b-cap{display:flex;flex-direction:column;gap:4px}
+.b-cap h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.b-cap p{margin:0;font-size:15px;line-height:1.45;color:#4E4C47;max-width:110ch}
+.b-frames{display:flex;gap:80px;align-items:flex-start}
+.f-d{position:relative;width:1440px;flex:none;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35)}
+.f-m{position:relative;width:390px;flex:none;border-radius:40px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35)}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position: absolute; overflow: hidden" aria-hidden="true">
+<defs>
+<symbol id="i-cards" viewBox="0 0 24 24"><path d="M16 2v2"></path><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path><path d="M8 2v2"></path><circle cx="12" cy="11" r="3"></circle><rect x="3" y="4" width="18" height="18" rx="2"></rect></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></symbol>
+<symbol id="i-dup" viewBox="0 0 24 24"><path d="M15 12v6"></path><path d="M12 15h6"></path><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></symbol>
+<symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10"></path><path d="M18.4 6.6a9 9 0 1 1-12.77.04"></path></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></symbol>
+<symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+<symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></symbol>
+</defs>
+</svg>
+
+<div class="b">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+<section class="b-row">
+  <div class="b-cap"><h2>{{r.cap}}</h2><p>{{r.note}}</p></div>
+  <div class="b-frames">
+
+    <!-- ================= ORDINATEUR ================= -->
+    <div class="f-d">
+      <div class="app" style="height: 960px">
+        <div class="a-shell">
+          <aside class="a-side">
+            <span class="a-logo"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg>Cartouche</span>
+            <nav class="a-nav" aria-label="Navigation principale">
+              <a href="#" aria-current="page"><svg class="i" aria-hidden="true"><use href="#i-cards"></use></svg>Mes cartes</a>
+              <a href="#"><svg class="i" aria-hidden="true"><use href="#i-users"></use></svg>Contacts</a>
+              <a href="#"><svg class="i" aria-hidden="true"><use href="#i-user"></use></svg>Mon compte</a>
+            </nav>
+            <div class="a-me"><span class="a-avatar"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></span><span style="min-width: 0"><b style="display: block; font-weight: 600">Camille Roche</b><span class="a-small a-muted">camille@studiobasalte.fr</span></span></div>
+          </aside>
+          <main class="a-main">
+
+            <sc-if value="{{r.dList}}" hint-placeholder-val="{{true}}">
+            <div class="a-content">
+              <div class="a-pagehead">
+                <div style="display: flex; flex-direction: column; gap: 4px"><h1 class="a-h1">Mes cartes</h1><p class="a-muted">4 cartes · 2 actives</p></div>
+                <a class="a-btn a-btn--primary" href="#"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg>Créer une carte</a>
+              </div>
+              <div class="a-card">
+                <div class="cl-head" aria-hidden="true"><span></span><span>Carte</span><span>Lien public</span><span>État</span><span>Événements</span><span></span></div>
+                <sc-for list="{{r.cards}}" as="c" hint-placeholder-count="4">
+                <div class="cl-row">
+                  <div class="a-thumb {{c.theme}}" aria-hidden="true"><img class="h" src="{{c.header}}" alt=""><img class="p" src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""><i></i><b></b></div>
+                  <div style="min-width: 0"><a href="#" style="display: block; font-size: 16px; font-weight: 650">{{c.name}}</a><span class="a-small a-muted">{{c.role}}</span></div>
+                  <div class="cl-link"><span class="a-mono">cartouche.jicorp.fr/c/{{c.slug}}</span><button class="a-iconbtn" type="button" aria-label="Copier le lien de {{c.slug}}"><svg class="i" aria-hidden="true"><use href="#i-copy"></use></svg></button></div>
+                  <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start"><span class="a-badge {{c.badgeCls}}">{{c.status}}</span><sc-if value="{{c.supportNote}}" hint-placeholder-val="{{false}}"><a class="a-small a-muted" href="#" style="text-decoration: underline">Contacter le support</a></sc-if></div>
+                  <a class="cl-ev" href="#"><svg class="i" aria-hidden="true"><use href="#i-calendar"></use></svg>{{c.events}}</a>
+                  <div class="cl-actions">
+                    <a class="a-btn a-btn--secondary {{c.editCls}}" href="#"><svg class="i" aria-hidden="true"><use href="#i-pencil"></use></svg>Modifier</a>
+                    <button class="a-iconbtn {{c.moreCls}}" type="button" aria-label="Plus d’actions pour {{c.slug}}" aria-haspopup="menu" aria-expanded="{{c.menu}}"><svg class="i" aria-hidden="true"><use href="#i-more"></use></svg></button>
+                    <sc-if value="{{c.showMenu}}" hint-placeholder-val="{{false}}">
+                    <div class="a-menu" role="menu" aria-label="Actions de la carte" style="position: absolute; top: 50px; right: 0; z-index: 10">
+                      <button type="button" role="menuitem"><svg class="i" aria-hidden="true"><use href="#i-external"></use></svg>Ouvrir la page publique</button>
+                      <button type="button" role="menuitem" class="is-hover"><svg class="i" aria-hidden="true"><use href="#i-dup"></use></svg>Dupliquer</button>
+                      <button type="button" role="menuitem"><svg class="i" aria-hidden="true"><use href="#i-power"></use></svg>Désactiver</button>
+                      <hr>
+                      <button type="button" role="menuitem" class="is-danger"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg>Supprimer…</button>
+                    </div>
+                    </sc-if>
+                  </div>
+                </div>
+                </sc-for>
+              </div>
+              <p class="a-small a-muted">Une carte désactivée affiche la page «&nbsp;Cette carte n’est pas disponible&nbsp;» ; tu peux la réactiver à tout moment.</p>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{r.dEmpty}}" hint-placeholder-val="{{false}}">
+            <div class="a-content" style="flex: 1">
+              <div class="a-pagehead"><h1 class="a-h1">Mes cartes</h1></div>
+              <div class="a-card" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 72px 40px">
+                <div style="width: 84px; height: 112px; border-radius: 12px; border: 2px dashed var(--app-border-strong); display: grid; place-items: center; color: var(--app-muted)"><svg class="i" aria-hidden="true" style="width: 28px; height: 28px"><use href="#i-plus"></use></svg></div>
+                <h2 class="a-display" style="font-size: 30px; line-height: 1.15">Crée ta première carte</h2>
+                <p class="a-muted" style="max-width: 52ch; font-size: 16px">Ta carte, c’est ta page publique&nbsp;: tes coordonnées, tes liens, et un bouton pour t’enregistrer en un geste. Ton prénom et ton nom suffisent pour commencer.</p>
+                <a class="a-btn a-btn--primary" href="#" style="margin-top: 8px"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg>Créer une carte</a>
+              </div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{r.dCreate}}" hint-placeholder-val="{{false}}">
+            <div class="a-top"><nav class="a-crumbs" aria-label="Fil d’Ariane"><a href="#">Mes cartes</a><svg class="i" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span aria-current="page">Nouvelle carte</span></nav></div>
+            <div class="a-content" style="align-items: center">
+              <form class="a-card" style="width: 620px; padding: 32px; display: flex; flex-direction: column; gap: 22px" novalidate="">
+                <div style="display: flex; flex-direction: column; gap: 6px"><h1 class="a-h1">Nouvelle carte</h1><p class="a-muted">Commence par l’essentiel&nbsp;: tu compléteras le reste dans l’éditeur.</p></div>
+                <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+                  <div class="a-field"><label class="a-label" for="cr-p">Prénom</label><input class="a-input" id="cr-p" type="text" value="Camille" readOnly="{{true}}"></div>
+                  <div class="a-field"><label class="a-label" for="cr-n">Nom</label><input class="a-input" id="cr-n" type="text" value="Roche" readOnly="{{true}}"></div>
+                </div>
+                <div class="a-field">
+                  <label class="a-label" for="cr-l">Lien de la carte</label>
+                  <p class="a-hint" id="cr-lh">Proposé à partir de ton nom. Choisis-le bien&nbsp;: il sera inscrit dans tes tags NFC et tes QR codes. Lettres minuscules, chiffres et tirets.</p>
+                  <div class="a-affix is-invalid"><span>cartouche.jicorp.fr/c/</span><input class="a-input" id="cr-l" type="text" value="camille-roche" readOnly="{{true}}" aria-invalid="true" aria-describedby="cr-lh cr-le"></div>
+                  <p class="a-error" id="cr-le"><svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>Ce lien est déjà pris. Choisis-en un autre ou prends une suggestion&nbsp;:</p>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap"><button class="a-chip" type="button">camille-roche-photo</button><button class="a-chip" type="button">camille-roche-clermont</button><button class="a-chip" type="button">camille-roche-2</button></div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 6px; border-top: 1px solid var(--app-border)"><a class="a-btn a-btn--secondary" href="#">Annuler</a><button class="a-btn a-btn--primary" type="button">Créer la carte</button></div>
+              </form>
+            </div>
+            </sc-if>
+
+          </main>
+        </div>
+        <sc-if value="{{r.dToast}}" hint-placeholder-val="{{false}}">
+          <div class="a-toast" role="status" style="position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%)"><svg class="i" aria-hidden="true"><use href="#i-check-circle"></use></svg>Lien copié&nbsp;: cartouche.jicorp.fr/c/camille-roche</div>
+        </sc-if>
+        <sc-if value="{{r.dDialog}}" hint-placeholder-val="{{false}}">
+          <div class="a-overlay">
+            <div class="a-dialog" role="dialog" aria-modal="true" aria-labelledby="del-t" aria-describedby="del-d">
+              <div class="a-dialog-icon"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></div>
+              <h2 class="a-h2" id="del-t">Supprimer cette carte&nbsp;?</h2>
+              <p class="a-muted" id="del-d">La carte <b style="color: var(--app-text)">camille-roche-2026</b>, ses 2 événements et ses 57 contacts seront supprimés définitivement. Les tags NFC et QR codes qui pointent vers ce lien afficheront «&nbsp;Cette carte n’est pas disponible&nbsp;».</p>
+              <div class="a-dialog-actions"><button class="a-btn a-btn--secondary" type="button">Annuler</button><button class="a-btn a-btn--danger" type="button"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg>Supprimer définitivement</button></div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <!-- ================= MOBILE ================= -->
+    <div class="f-m">
+      <div class="app" style="height: 844px; display: flex; flex-direction: column">
+
+        <sc-if value="{{r.mCreate}}" hint-placeholder-val="{{false}}">
+          <div class="a-mbar"><a class="a-iconbtn" href="#" aria-label="Retour à Mes cartes"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"></use></svg></a><span class="a-mbar-title">Nouvelle carte</span></div>
+          <div class="a-mbody" style="gap: 18px; padding: 20px 16px">
+            <p class="a-muted">Commence par l’essentiel&nbsp;: tu compléteras le reste dans l’éditeur.</p>
+            <div class="a-field"><label class="a-label" for="crm-p">Prénom</label><input class="a-input" id="crm-p" type="text" value="Camille" readOnly="{{true}}"></div>
+            <div class="a-field"><label class="a-label" for="crm-n">Nom</label><input class="a-input" id="crm-n" type="text" value="Roche" readOnly="{{true}}"></div>
+            <div class="a-field">
+              <label class="a-label" for="crm-l">Lien de la carte</label>
+              <p class="a-hint">Il sera inscrit dans tes tags NFC et tes QR codes.</p>
+              <div class="a-affix"><span>…/c/</span><input class="a-input is-focus" id="crm-l" type="text" value="camille-roche-photo" readOnly="{{true}}"></div>
+              <p class="a-ok"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Ce lien est disponible.</p>
+            </div>
+          </div>
+          <div style="padding: 12px 16px 20px; background: var(--app-surface); border-top: 1px solid var(--app-border)"><button class="a-btn a-btn--primary a-btn--block" type="button">Créer la carte</button></div>
+        </sc-if>
+
+        <sc-if value="{{r.mMain}}" hint-placeholder-val="{{true}}">
+          <div class="a-mbar"><span class="a-logo" style="padding-left: 6px; font-size: 20px"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true" style="width: 26px; height: 26px"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg></span><span class="a-mbar-title">Mes cartes</span><a class="a-iconbtn" href="#" aria-label="Créer une carte"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg></a></div>
+          <div class="a-mbody">
+
+            <sc-if value="{{r.mList}}" hint-placeholder-val="{{true}}">
+              <sc-for list="{{r.cards}}" as="c" hint-placeholder-count="4">
+              <div class="a-card mc">
+                <div style="display: flex; gap: 12px; align-items: center">
+                  <div class="a-thumb {{c.theme}}" aria-hidden="true" style="width: 44px; height: 60px"><img class="h" src="{{c.header}}" alt="" style="height: 26px"><img class="p" src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt="" style="top: 16px; width: 18px; height: 18px; margin-left: -9px"><i style="margin-top: 12px"></i></div>
+                  <div style="min-width: 0; flex: 1"><b style="display: block; font-size: 16px; font-weight: 650">{{c.name}}</b><span class="a-small a-muted">{{c.role}}</span></div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px"><span class="a-badge {{c.badgeCls}}">{{c.status}}</span><a class="cl-ev" href="#" style="font-size: 13px"><svg class="i" aria-hidden="true"><use href="#i-calendar"></use></svg>{{c.events}}</a></div>
+                <div class="cl-link" style="background: var(--app-surface-2); border-radius: 10px; padding-left: 12px"><span class="a-mono" style="flex: 1">…/c/{{c.slug}}</span><button class="a-iconbtn" type="button" aria-label="Copier le lien de {{c.slug}}"><svg class="i" aria-hidden="true"><use href="#i-copy"></use></svg></button></div>
+                <div style="display: flex; gap: 8px"><a class="a-btn a-btn--secondary {{c.editCls}}" href="#" style="flex: 1"><svg class="i" aria-hidden="true"><use href="#i-pencil"></use></svg>Modifier</a><button class="a-iconbtn" type="button" aria-label="Plus d’actions pour {{c.slug}}" style="border: 1px solid var(--app-border)"><svg class="i" aria-hidden="true"><use href="#i-more"></use></svg></button></div>
+              </div>
+              </sc-for>
+            </sc-if>
+
+            <sc-if value="{{r.mEmpty}}" hint-placeholder-val="{{false}}">
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 14px; padding: 0 12px">
+                <div style="width: 72px; height: 96px; border-radius: 12px; border: 2px dashed var(--app-border-strong); display: grid; place-items: center; color: var(--app-muted)"><svg class="i" aria-hidden="true" style="width: 26px; height: 26px"><use href="#i-plus"></use></svg></div>
+                <h2 class="a-display" style="font-size: 26px; line-height: 1.15">Crée ta première carte</h2>
+                <p class="a-muted">Ton prénom et ton nom suffisent pour commencer.</p>
+                <a class="a-btn a-btn--primary a-btn--block" href="#" style="margin-top: 6px"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg>Créer une carte</a>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{r.mLoading}}" hint-placeholder-val="{{false}}">
+              <div aria-busy="true" aria-label="Chargement des cartes" style="display: flex; flex-direction: column; gap: 12px">
+                <sc-for list="{{r.skels}}" as="k" hint-placeholder-count="3">
+                <div class="a-card mc">
+                  <div style="display: flex; gap: 12px; align-items: center"><div class="a-skel" style="width: 44px; height: 60px; border-radius: 8px"></div><div style="flex: 1; display: flex; flex-direction: column; gap: 8px"><div class="a-skel" style="height: 14px; width: 55%"></div><div class="a-skel" style="height: 12px; width: 80%"></div></div></div>
+                  <div class="a-skel" style="height: 44px; border-radius: 10px"></div>
+                  <div class="a-skel" style="height: 44px; border-radius: 10px"></div>
+                </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+          </div>
+          <nav class="a-tabbar" aria-label="Navigation principale">
+            <a href="#" aria-current="page"><span class="a-tabpill"><svg class="i" aria-hidden="true"><use href="#i-cards"></use></svg></span>Mes cartes</a>
+            <a href="#"><span class="a-tabpill"><svg class="i" aria-hidden="true"><use href="#i-users"></use></svg></span>Contacts</a>
+            <a href="#"><span class="a-tabpill"><svg class="i" aria-hidden="true"><use href="#i-user"></use></svg></span>Mon compte</a>
+          </nav>
+        </sc-if>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2038,"height":4300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var POSTER = '/_blob/a3d7106fa21a2a52f1f0b545b8d21d77';
+    var ETREINTE = '/_blob/d98446eca22326561da51761f886b142';
+    var CHAMP = '/_blob/b45c43e722da3cbf54ace1f857023a51';
+    var LAC = '/_blob/b6e3760d2e7384ed8c6d78eefc4e3276';
+    var cards = function (menu) {
+      return [
+        { theme: 't-terracotta', header: POSTER, name: 'Camille Roche', role: 'Photographe de mariage · Studio Basalte', slug: 'camille-roche', status: 'Active', badgeCls: 'a-badge--success', events: '1 en cours · 1 à venir', supportNote: false, editCls: '', showMenu: menu, menu: menu, moreCls: menu ? 'is-active' : '' },
+        { theme: 't-minuit', header: ETREINTE, name: 'Camille Roche', role: 'Vidéaste · Studio Basalte Films', slug: 'camille-roche-films', status: 'Active', badgeCls: 'a-badge--success', events: 'Aucun événement', supportNote: false, editCls: '', showMenu: false, menu: false, moreCls: '' },
+        { theme: 't-ivoire', header: CHAMP, name: 'Camille Roche', role: 'Photographe · Salon 2026', slug: 'camille-roche-2026', status: 'Désactivée', badgeCls: 'a-badge--neutral', events: '2 passés', supportNote: false, editCls: '', showMenu: false, menu: false, moreCls: '' },
+        { theme: 't-sauge', header: LAC, name: 'Studio Basalte', role: 'Studio photo · Clermont-Ferrand', slug: 'studio-basalte', status: 'Désactivée par le support', badgeCls: 'a-badge--warning', events: 'Aucun événement', supportNote: true, editCls: 'is-disabled', showMenu: false, menu: false, moreCls: '' }
+      ];
+    };
+    var R = function (o) {
+      return Object.assign({ dList: false, dEmpty: false, dCreate: false, dToast: false, dDialog: false, mMain: true, mList: false, mEmpty: false, mLoading: false, mCreate: false, cards: cards(false), skels: [{ k: 1 }, { k: 2 }, { k: 3 }] }, o);
+    };
+    return {
+      rows: [
+        R({ cap: 'Mes cartes', note: 'Vignette dans les couleurs de chaque carte, lien copiable, état en toutes lettres. Menu d’actions ouvert sur la première carte, toast après la copie du lien. Une carte désactivée par le support ne peut pas être réactivée ni modifiée par l’utilisateur.', dList: true, dToast: true, mList: true, cards: cards(true) }),
+        R({ cap: 'Mes cartes — aucune carte', note: 'État vide : une seule action, et la promesse de ce qu’est une carte.', dEmpty: true, mEmpty: true }),
+        R({ cap: 'Suppression · chargement', note: 'Ordinateur : confirmation en vraie boîte de dialogue, qui annonce ce qui disparaît (événements, contacts, tags NFC). Mobile : chargement de la liste.', dList: true, dDialog: true, mLoading: true }),
+        R({ cap: 'Création d’une carte', note: 'Le lien est proposé à partir du nom. Ordinateur : lien déjà pris, avec suggestions. Mobile : lien modifié et disponible.', dCreate: true, mCreate: true, mMain: false })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

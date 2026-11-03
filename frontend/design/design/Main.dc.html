@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche — page publique</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&amp;family=Fraunces:opsz,wght@9..144,400..700&amp;family=Instrument+Sans:wght@400..700&amp;family=Inter:wght@400..800&amp;family=Nunito+Sans:wght@400..800&amp;family=Playfair+Display:wght@400..800&amp;family=Source+Sans+3:wght@400..800&amp;display=swap">
+<style>
+body{margin:0}
+/* ---------- Thèmes : les seules valeurs en dur ---------- */
+.t-craie{--c-accent:#2F55D4;--c-on-accent:#FFFFFF;--c-bg:#F7F6F2;--c-bg-2:#F7F6F2;--bg-angle:180deg;--c-text:#1B1A17}
+.t-ivoire{--c-accent:#7A5C2E;--c-on-accent:#FFFFFF;--c-bg:#F4EFE6;--c-bg-2:#F4EFE6;--bg-angle:180deg;--c-text:#2A241C}
+.t-terracotta{--c-accent:#B3441E;--c-on-accent:#FFFFFF;--c-bg:#FBF0E4;--c-bg-2:#F4DCCA;--bg-angle:160deg;--c-text:#3B2117}
+.t-sauge{--c-accent:#3D6B4C;--c-on-accent:#FFFFFF;--c-bg:#E9EFE6;--c-bg-2:#E9EFE6;--bg-angle:180deg;--c-text:#1E2A21}
+.t-bonbon{--c-accent:#C02662;--c-on-accent:#FFFFFF;--c-bg:#FFE4EE;--c-bg-2:#E6E0FF;--bg-angle:135deg;--c-text:#2B1240}
+.t-lagon{--c-accent:#0A6E6A;--c-on-accent:#FFFFFF;--c-bg:#E3F5F2;--c-bg-2:#D8ECF5;--bg-angle:200deg;--c-text:#0D2E35}
+.t-encre{--c-accent:#C8F04D;--c-on-accent:#111111;--c-bg:#121316;--c-bg-2:#121316;--bg-angle:180deg;--c-text:#F1F0EC}
+.t-minuit{--c-accent:#E9C988;--c-on-accent:#111111;--c-bg:#0D1A2C;--c-bg-2:#1B2A44;--bg-angle:180deg;--c-text:#EEF1F6}
+.t-neutre{--c-accent:#1C1C1A;--c-on-accent:#FFFFFF;--c-bg:#F5F5F3;--c-bg-2:#F5F5F3;--bg-angle:180deg;--c-text:#1C1C1A}
+.f-sobre{--font-title:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--font-body:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--title-weight:700;--title-tracking:-0.025em}
+.f-editoriale{--font-title:'Playfair Display',Georgia,'Times New Roman',serif;--font-body:'Source Sans 3',system-ui,-apple-system,'Segoe UI',sans-serif;--title-weight:600;--title-tracking:-0.005em}
+.f-douce{--font-title:'Fraunces',Georgia,'Times New Roman',serif;--font-body:'Nunito Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--title-weight:600;--title-tracking:-0.015em}
+.f-graphique{--font-title:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;--font-body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--title-weight:700;--title-tracking:-0.03em}
+.s-carree{--radius-btn:2px}.s-arrondie{--radius-btn:12px}.s-pilule{--radius-btn:999px}
+.i-0{--fade:0}.i-5{--fade:5}.i-10{--fade:10}.i-15{--fade:15}.i-20{--fade:20}.i-25{--fade:25}.i-30{--fade:30}.i-35{--fade:35}.i-40{--fade:40}.i-45{--fade:45}.i-50{--fade:50}.i-55{--fade:55}.i-60{--fade:60}.i-65{--fade:65}.i-70{--fade:70}.i-75{--fade:75}.i-80{--fade:80}.i-85{--fade:85}.i-90{--fade:90}.i-95{--fade:95}.i-100{--fade:100}
+
+/* ---------- Template Classique : uniquement des variables ---------- */
+.cc{
+  --c-muted:color-mix(in oklab,var(--c-text) 78%,var(--c-bg));
+  --c-surface:color-mix(in oklab,var(--c-text) 7%,transparent);
+  --c-surface-hover:color-mix(in oklab,var(--c-text) 12%,transparent);
+  --c-focus:var(--c-text);
+  --c-scrim:rgb(0 0 0 / .5);
+  --c-on-scrim:#FFFFFF;
+  position:relative;box-sizing:border-box;width:100%;max-width:28rem;margin:0 auto;overflow:hidden;
+  background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2));
+  color:var(--c-text);font-family:var(--font-body);font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.cc *,.cc *::before,.cc *::after{box-sizing:border-box}
+.cc a{text-decoration:none}
+.cc svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cc a:focus-visible,.cc button:focus-visible,.cc .is-focus{outline:3px solid var(--c-focus);outline-offset:3px}
+
+.cc-head{position:relative}
+.cc-media{position:relative;aspect-ratio:4/3;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade) * 1%),transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade) * 1%),transparent 100%)}
+.cc-media.is-empty{aspect-ratio:auto;height:128px;background:color-mix(in oklab,var(--c-accent) 24%,transparent)}
+.cc-media.is-loading{background:var(--c-surface)}
+.cc-shimmer{position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,color-mix(in oklab,var(--c-bg) 50%,transparent) 50%,transparent 70%);background-size:220% 100%;animation:cc-shimmer 1.6s linear infinite}
+@keyframes cc-shimmer{from{background-position:120% 0}to{background-position:-120% 0}}
+.cc-pause{position:absolute;top:12px;right:12px;z-index:2;width:44px;height:44px;padding:0;border:0;border-radius:999px;display:grid;place-items:center;background:var(--c-scrim);color:var(--c-on-scrim);cursor:pointer}
+.cc-pause svg.ic{width:16px;height:16px}
+.cc-avatar{position:relative;z-index:1;width:112px;height:112px;margin:-64px auto 0;border-radius:999px;overflow:hidden;box-shadow:0 0 0 4px var(--c-bg);display:grid;place-items:center}
+.cc-avatar.is-initials{background:var(--c-accent);color:var(--c-on-accent);font-family:var(--font-title);font-weight:var(--title-weight);font-size:40px;letter-spacing:.02em;line-height:1}
+
+.cc-body{display:flex;flex-direction:column;gap:28px;padding:20px 20px 40px}
+.cc-events{display:flex;flex-direction:column;gap:10px}
+.cc-event{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;min-height:68px;padding:12px 18px 12px 20px;border-radius:var(--radius-btn);background:var(--c-accent);color:var(--c-on-accent);box-shadow:0 10px 24px -12px var(--c-accent)}
+.s-pilule .cc-event{padding-inline:26px 22px}
+.cc-event::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 35%,color-mix(in oklab,var(--c-on-accent) 24%,transparent) 50%,transparent 65%);transform:translateX(-100%);animation:cc-sheen 3.2s ease-in-out infinite}
+.cc-events > :nth-child(2) .cc-event::after,.cc-event:nth-of-type(2)::after{animation-delay:1.6s}
+@keyframes cc-sheen{0%,55%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.cc-event-txt{position:relative;z-index:1;flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.cc-event-live{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;line-height:1.2}
+.cc-dot{position:relative;width:8px;height:8px;border-radius:999px;background:currentColor;flex:none}
+.cc-dot::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid currentColor;animation:cc-ping 1.6s ease-out infinite}
+@keyframes cc-ping{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+.cc-event-name{font-size:17px;font-weight:700;line-height:1.25;text-wrap:balance}
+.cc-event svg.ic{position:relative;z-index:1}
+@media (prefers-reduced-motion:reduce){.cc-event::after{display:none;animation:none}.cc-dot::after,.cc-shimmer{animation:none}}
+
+.cc-id{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.cc-name{margin:0;font-family:var(--font-title);font-weight:var(--title-weight);letter-spacing:var(--title-tracking);font-size:32px;line-height:1.12;text-wrap:balance;overflow-wrap:anywhere}
+.cc-role{margin:4px 0 0;font-size:16px;font-weight:600;line-height:1.35;text-wrap:balance}
+.cc-company{margin:0;font-size:15px;line-height:1.35;color:var(--c-muted);text-wrap:balance}
+.cc-desc{margin:8px 0 0;max-width:34ch;font-size:15px;line-height:1.55;text-wrap:pretty}
+
+.cc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.cc-row{display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 16px;border-radius:var(--radius-btn);background:var(--c-surface);color:var(--c-text);transition:background-color .15s}
+.cc-row:hover{background:var(--c-surface-hover)}
+.s-pilule .cc-row{padding-inline:22px 20px}
+.cc-row > svg.ic:first-child{color:var(--c-accent)}
+.cc-row-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.cc-row-label{font-size:15px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.cc-row-sub{font-size:13px;line-height:1.3;color:var(--c-muted);overflow-wrap:anywhere}
+.cc svg.ic.cc-row-end{width:18px;height:18px;color:var(--c-muted)}
+.cc-iconset{display:flex;flex-direction:column;gap:12px}
+.cc-icons{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.cc-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:var(--radius-btn);background:var(--c-surface);color:var(--c-text);transition:background-color .15s}
+.cc-icon:hover{background:var(--c-surface-hover)}
+.cc-save{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:0 24px;border-radius:var(--radius-btn);background:var(--c-text);color:var(--c-bg);font-size:16px;font-weight:700}
+
+.cc-off{min-height:812px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:48px 32px;text-align:center}
+.cc-off-mark{width:64px;height:64px;border-radius:999px;display:grid;place-items:center;background:var(--c-surface);color:var(--c-muted);margin-bottom:8px}
+.cc-off-title{margin:0;font-family:var(--font-title);font-weight:var(--title-weight);letter-spacing:var(--title-tracking);font-size:22px;line-height:1.25;text-wrap:balance}
+.cc-off-text{margin:0;max-width:30ch;font-size:15px;color:var(--c-muted);text-wrap:pretty}
+
+/* Page : mobile = la carte remplit l'écran ; ordinateur = carte 28rem centrée */
+.cc-page{container-type:inline-size;--shadow-card:0 1px 2px rgb(0 0 0 / .08),0 28px 64px -28px rgb(0 0 0 / .45)}
+.cc-stage{min-height:inherit;background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2))}
+@container (min-width:40rem){
+  .cc-stage{padding:56px 24px 80px;background:color-mix(in oklab,var(--c-bg) 86%,var(--c-text))}
+  .cc-stage .cc{border-radius:28px;box-shadow:var(--shadow-card)}
+}
+
+.cc-media-el{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cc-media-el.is-blur{filter:blur(16px) saturate(.8);transform:scale(1.2)}
+.cc-avatar-img{width:100%;height:100%;object-fit:cover;display:block}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position: absolute; overflow: hidden" aria-hidden="true">
+<defs>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></symbol>
+<symbol id="i-linkedin" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect width="4" height="12" x="2" y="9"></rect><circle cx="4" cy="4" r="2"></circle></symbol>
+<symbol id="i-instagram" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><path d="M17.5 6.5h.01"></path></symbol>
+<symbol id="i-facebook" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></symbol>
+<symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M21 7.917v4.034a9.948 9.948 0 0 1-5-1.951v4.5a6.5 6.5 0 1 1-8-6.326v4.326a2.5 2.5 0 1 0 4 2v-11.5h4.083a6.005 6.005 0 0 0 4.917 4.917z"></path></symbol>
+<symbol id="i-youtube" viewBox="0 0 24 24"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"></path><path d="m10 15 5-3-5-3z"></path></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M4 4l11.733 16h4.267l-11.733-16z"></path><path d="M4 20l6.768-6.768m2.46-2.46L20 4"></path></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+<symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6"></path><path d="M22 11h-6"></path></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"></rect><rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none"></rect></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"></path></symbol>
+<symbol id="i-linkoff" viewBox="0 0 24 24"><path d="M9 17H7A5 5 0 0 1 7 7"></path><path d="M15 7h2a5 5 0 0 1 4 8"></path><path d="M8 12h4"></path><path d="m2 2 20 20"></path></symbol>
+</defs>
+</svg>
+
+<div class="cc-page {{pageCls}}" style="min-height: 100vh">
+<div class="cc-stage">
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="1">
+<article class="cc {{c.cls}}">
+  <sc-if value="{{c.unavailable}}" hint-placeholder-val="{{false}}">
+    <div class="cc-off">
+      <div class="cc-off-mark"><svg class="ic" aria-hidden="true"><use href="#i-linkoff"></use></svg></div>
+      <h1 class="cc-off-title">Cette carte n’est pas disponible</h1>
+      <p class="cc-off-text">Le lien est peut-être incorrect, ou la carte n’est plus active.</p>
+    </div>
+  </sc-if>
+  <sc-if value="{{c.available}}" hint-placeholder-val="{{true}}">
+    <header class="cc-head">
+      <sc-if value="{{c.mediaVideo}}" hint-placeholder-val="{{true}}">
+        <div class="cc-media">
+          <video class="cc-media-el" src="/_blob/efc134be5d7a4cd9c5734ed7ce583889" poster="/_blob/a3d7106fa21a2a52f1f0b545b8d21d77" muted="{{true}}" autoPlay="{{true}}" loop="{{true}}" playsInline="{{true}}" preload="auto" aria-hidden="true" ref="{{c.videoRef}}"></video>
+          <button class="cc-pause" type="button" aria-label="{{c.pauseLabel}}" onClick="{{c.togglePause}}"><svg class="ic" aria-hidden="true"><use href="{{c.pauseIcon}}"></use></svg></button>
+        </div>
+      </sc-if>
+      <sc-if value="{{c.mediaPhoto}}" hint-placeholder-val="{{false}}">
+        <div class="cc-media"><img class="cc-media-el" src="{{c.photo}}" alt=""></div>
+      </sc-if>
+      <sc-if value="{{c.mediaLoading}}" hint-placeholder-val="{{false}}">
+        <div class="cc-media is-loading" aria-busy="true">
+          <img class="cc-media-el is-blur" src="/_blob/a3d7106fa21a2a52f1f0b545b8d21d77" alt="">
+          <div class="cc-shimmer" aria-hidden="true"></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{c.mediaNone}}" hint-placeholder-val="{{false}}">
+        <div class="cc-media is-empty" aria-hidden="true"></div>
+      </sc-if>
+      <sc-if value="{{c.hasAvatar}}" hint-placeholder-val="{{true}}">
+        <div class="cc-avatar"><img class="cc-avatar-img" src="{{c.portrait}}" alt=""></div>
+      </sc-if>
+      <sc-if value="{{c.noAvatar}}" hint-placeholder-val="{{false}}">
+        <div class="cc-avatar is-initials" aria-hidden="true">{{c.initials}}</div>
+      </sc-if>
+    </header>
+    <div class="cc-body">
+      <sc-if value="{{c.hasEvents}}" hint-placeholder-val="{{true}}">
+        <div class="cc-events">
+          <sc-for list="{{c.events}}" as="e" hint-placeholder-count="1">
+            <a class="cc-event" href="Formulaire.dc.html">
+              <span class="cc-event-txt">
+                <span class="cc-event-live"><span class="cc-dot" aria-hidden="true"></span>Événement en cours</span>
+                <span class="cc-event-name">{{e.name}}</span>
+              </span>
+              <svg class="ic" aria-hidden="true"><use href="#i-chevron"></use></svg>
+            </a>
+          </sc-for>
+        </div>
+      </sc-if>
+      <div class="cc-id">
+        <h1 class="cc-name">{{c.name}}</h1>
+        <p class="cc-role">{{c.role}}</p>
+        <p class="cc-company">{{c.company}}</p>
+        <p class="cc-desc">{{c.desc}}</p>
+      </div>
+      <a class="cc-save {{c.saveCls}}" href="#"><svg class="ic" aria-hidden="true"><use href="#i-userplus"></use></svg>Enregistrer le contact</a>
+      <ul class="cc-list" aria-label="Coordonnées">
+        <li><a class="cc-row" href="#"><svg class="ic" aria-hidden="true"><use href="#i-mail"></use></svg><span class="cc-row-txt"><span class="cc-row-label">{{c.email}}</span><span class="cc-row-sub">E-mail</span></span></a></li>
+        <li><a class="cc-row" href="#"><svg class="ic" aria-hidden="true"><use href="#i-phone"></use></svg><span class="cc-row-txt"><span class="cc-row-label">{{c.phone}}</span><span class="cc-row-sub">Téléphone</span></span></a></li>
+      </ul>
+      <sc-if value="{{c.listLayout}}" hint-placeholder-val="{{true}}">
+        <ul class="cc-list" aria-label="Liens">
+          <sc-for list="{{c.links}}" as="l" hint-placeholder-count="4">
+            <li><a class="cc-row" href="#"><svg class="ic" aria-hidden="true"><use href="{{l.icon}}"></use></svg><span class="cc-row-txt"><span class="cc-row-label">{{l.label}}</span><span class="cc-row-sub">{{l.sub}}</span></span><svg class="ic cc-row-end" aria-hidden="true"><use href="#i-arrow"></use></svg></a></li>
+          </sc-for>
+        </ul>
+      </sc-if>
+      <sc-if value="{{c.iconLayout}}" hint-placeholder-val="{{false}}">
+        <div class="cc-iconset">
+          <ul class="cc-icons" aria-label="Réseaux">
+            <sc-for list="{{c.nets}}" as="l" hint-placeholder-count="6">
+              <li><a class="cc-icon" href="#" aria-label="{{l.aria}}"><svg class="ic" aria-hidden="true"><use href="{{l.icon}}"></use></svg></a></li>
+            </sc-for>
+          </ul>
+          <sc-if value="{{c.hasFree}}" hint-placeholder-val="{{true}}">
+            <ul class="cc-list" aria-label="Liens">
+              <sc-for list="{{c.free}}" as="l" hint-placeholder-count="1">
+                <li><a class="cc-row" href="#"><svg class="ic" aria-hidden="true"><use href="{{l.icon}}"></use></svg><span class="cc-row-txt"><span class="cc-row-label">{{l.label}}</span><span class="cc-row-sub">{{l.sub}}</span></span><svg class="ic cc-row-end" aria-hidden="true"><use href="#i-arrow"></use></svg></a></li>
+              </sc-for>
+            </ul>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</article>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["craie","ivoire","terracotta","sauge","bonbon","lagon","encre","minuit"],"default":"craie","section":"Thème"},"forme":{"editor":"enum","options":["thème","carree","arrondie","pilule"],"default":"thème","section":"Ajustements"},"polices":{"editor":"enum","options":["thème","sobre","editoriale","douce","graphique"],"default":"thème","section":"Ajustements"},"fondu":{"editor":"enum","options":["thème","0","25","50","75","100"],"default":"thème","section":"Ajustements"},"evenements":{"editor":"enum","options":["0","1","2"],"default":"1","section":"Contenu"},"media":{"editor":"enum","options":["video","photo","chargement","aucun"],"default":"video","section":"Contenu"},"photo":{"editor":"boolean","default":true,"section":"Contenu"},"nomLong":{"editor":"boolean","default":false,"section":"Contenu"},"liens":{"editor":"enum","options":["icones","liste"],"default":"icones","section":"Contenu"},"$preview":{"width":375,"height":1660}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { paused: false };
+    var self = this;
+    this.vid = null;
+    this.videoRef = function (el) {
+      self.vid = el;
+      if (!el) return;
+      el.muted = true;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) { el.pause(); return; }
+      var p = el.play && el.play();
+      if (p && p.catch) p.catch(function () {});
+    };
+  }
+  linkDefs() {
+    return {
+      site: { icon: 'i-globe', label: 'Site web', sub: 'studiobasalte.fr', kind: 'net' },
+      instagram: { icon: 'i-instagram', label: 'Instagram', sub: '@studio.basalte', kind: 'net' },
+      facebook: { icon: 'i-facebook', label: 'Facebook', sub: 'Studio Basalte', kind: 'net' },
+      tiktok: { icon: 'i-tiktok', label: 'TikTok', sub: '@studio.basalte', kind: 'net' },
+      youtube: { icon: 'i-youtube', label: 'YouTube', sub: 'Films de mariage', kind: 'net' },
+      linkedin: { icon: 'i-linkedin', label: 'LinkedIn', sub: 'Camille Roche', kind: 'net' },
+      x: { icon: 'i-x', label: 'X', sub: '@studiobasalte', kind: 'net' },
+      tarifs: { icon: 'i-link', label: 'Brochure tarifs 2027', sub: 'studiobasalte.fr/tarifs', kind: 'free' },
+      rdv: { icon: 'i-link', label: 'Réserver un appel découverte', sub: 'studiobasalte.fr/rendez-vous', kind: 'free' }
+    };
+  }
+  build(o) {
+    var L = this.linkDefs();
+    var c = Object.assign({
+      theme: 'craie', pair: 'sobre', shape: 'arrondie', fade: 45, media: 'video', avatar: true,
+      events: ['Salon du Mariage Clermont 2027'], long: false, layout: 'list',
+      links: ['site', 'instagram', 'tiktok', 'tarifs'], focusSave: false, unavailable: false,
+      paused: false, togglePause: null
+    }, o);
+    var who = c.long ? {
+      name: 'Marie-Charlotte Delacroix-Montferrand', initials: 'MD',
+      role: 'Photographe et vidéaste de mariage, spécialiste des cérémonies laïques en plein air',
+      company: 'Les Ateliers du Puy — Photographie & Films',
+      desc: 'J’accompagne les couples de la Haute-Loire au Puy-de-Dôme, des cérémonies laïques aux grandes fêtes de famille.',
+      email: 'marie-charlotte.delacroix-montferrand@lesateliersdupuy.fr', phone: '06 39 98 42 17'
+    } : {
+      name: 'Camille Roche', initials: 'CR', role: 'Photographe de mariage', company: 'Studio Basalte · Clermont-Ferrand',
+      desc: 'Je photographie les mariages en Auvergne et partout en France : des images douces et naturelles, des préparatifs à la dernière danse.',
+      email: 'bonjour@studiobasalte.fr', phone: '06 39 98 42 17'
+    };
+    var items = c.links.map(function (k) {
+      var l = L[k];
+      return { icon: '#' + l.icon, label: l.label, sub: l.sub, aria: l.label + ' — ' + l.sub, kind: l.kind };
+    });
+    var free = items.filter(function (l) { return l.kind === 'free'; });
+    return {
+      cls: 't-' + c.theme + ' f-' + c.pair + ' s-' + c.shape + ' i-' + c.fade,
+      available: !c.unavailable, unavailable: !!c.unavailable,
+      mediaVideo: c.media === 'video', mediaPhoto: c.media === 'photo', mediaLoading: c.media === 'loading', mediaNone: c.media === 'none',
+      photo: c.photo || '/_blob/b45c43e722da3cbf54ace1f857023a51',
+      portrait: c.long ? '/_blob/730b9d8ed1daaeaf78c359661fe71476' : '/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da',
+      videoRef: c.videoRef || null,
+      hasAvatar: !!c.avatar, noAvatar: !c.avatar, initials: who.initials,
+      hasEvents: c.events.length > 0, events: c.events.map(function (n) { return { name: n }; }),
+      name: who.name, role: who.role, company: who.company, desc: who.desc, email: who.email, phone: who.phone,
+      listLayout: c.layout === 'list', iconLayout: c.layout === 'icons',
+      links: items, nets: items.filter(function (l) { return l.kind === 'net'; }), free: free, hasFree: free.length > 0,
+      saveCls: c.focusSave ? 'is-focus' : '',
+      pauseLabel: c.paused ? 'Lire la vidéo' : 'Mettre la vidéo en pause',
+      pauseIcon: c.paused ? '#i-play' : '#i-pause',
+      togglePause: c.togglePause || function () {}
+    };
+  }
+  renderVals() {
+    var p = this.props;
+    var self = this;
+    var DEF = {
+      craie: ['sobre', 'arrondie', 45], ivoire: ['editoriale', 'carree', 60], terracotta: ['douce', 'arrondie', 55],
+      sauge: ['douce', 'pilule', 50], bonbon: ['graphique', 'pilule', 40], lagon: ['graphique', 'arrondie', 50],
+      encre: ['sobre', 'pilule', 75], minuit: ['editoriale', 'carree', 70]
+    };
+    var theme = DEF[p.theme] ? p.theme : 'craie';
+    var d = DEF[theme];
+    var pair = (p.polices && p.polices !== 'thème') ? p.polices : d[0];
+    var shape = (p.forme && p.forme !== 'thème') ? p.forme : d[1];
+    var fade = (p.fondu && p.fondu !== 'thème') ? p.fondu : d[2];
+    var EV = {
+      '0': [],
+      '1': ['Salon du Mariage Clermont 2027'],
+      '2': ['Salon du Mariage Clermont 2027', 'Portes ouvertes du studio']
+    };
+    var MEDIA = { video: 'video', photo: 'photo', chargement: 'loading', aucun: 'none' };
+    var card = this.build({
+      theme: theme, pair: pair, shape: shape, fade: fade,
+      media: MEDIA[p.media] || 'video',
+      avatar: p.photo ?? true,
+      long: p.nomLong ?? false,
+      layout: (p.liens ?? 'icones') === 'liste' ? 'list' : 'icons',
+      events: EV[p.evenements ?? '1'] || EV['1'],
+      links: ['site', 'instagram', 'facebook', 'tiktok', 'youtube', 'linkedin', 'x', 'tarifs', 'rdv'],
+      paused: this.state.paused,
+      videoRef: this.videoRef,
+      togglePause: function () {
+        var v = self.vid;
+        if (v) { if (self.state.paused) { var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } else { v.pause(); } }
+        self.setState({ paused: !self.state.paused });
+      }
+    });
+    return { cards: [card], pageCls: card.cls };
+  }
+}
+</script>
+</body>
+</html>

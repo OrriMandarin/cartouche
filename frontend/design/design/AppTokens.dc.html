@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche app — tokens et composants</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..800&amp;family=JetBrains+Mono:wght@400..600&amp;display=swap">
+<style>
+body{margin:0}
+.app{--app-bg:#F5F4F1;--app-surface:#FFFFFF;--app-surface-2:#EFEDE8;--app-border:#DEDAD3;--app-border-strong:#8C877E;--app-text:#1C1B19;--app-muted:#5C5850;--app-primary:#1C1B19;--app-primary-hover:#3A3834;--app-on-primary:#FFFFFF;--app-brand:#9A5B13;--app-ring:#1C1B19;--app-success:#1D6B43;--app-success-soft:#E2F0E7;--app-neutral:#4F4B44;--app-neutral-soft:#ECEAE5;--app-warning:#8A4500;--app-warning-soft:#FBEBD3;--app-danger:#B3261E;--app-danger-soft:#FBE5E2;--app-on-danger:#FFFFFF;--app-info:#1D4CA8;--app-info-soft:#E4EBFB;--app-on-dark-ok:#8FD5AE;--app-scrim:rgb(28 27 25 / .5);--app-radius-sm:6px;--app-radius:10px;--app-radius-lg:14px;--app-radius-xl:20px;--app-shadow-sm:0 1px 2px rgb(28 27 25 / .06);--app-shadow:0 1px 2px rgb(28 27 25 / .06),0 12px 32px -16px rgb(28 27 25 / .22);--app-shadow-lg:0 32px 80px -20px rgb(28 27 25 / .45);--app-font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--app-font-display:'Fraunces',Georgia,'Times New Roman',serif;--app-font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  box-sizing:border-box;position:relative;background:var(--app-bg);color:var(--app-text);font-family:var(--app-font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app *,.app *::before,.app *::after{box-sizing:border-box}
+.app a{color:inherit;text-decoration:none}
+.app h1,.app h2,.app h3,.app p,.app ul{margin:0}
+.app svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app :focus-visible,.app .is-focus{outline:2px solid var(--app-ring);outline-offset:2px}
+.a-mark{width:28px;height:28px;flex:none}.a-mark .m1{fill:var(--app-brand)}.a-mark .m2{fill:none;stroke:var(--app-on-primary);stroke-width:2.4;stroke-linecap:round}
+.a-logo{display:inline-flex;align-items:center;gap:10px;font-family:var(--app-font-display);font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1}
+.a-display{font-family:var(--app-font-display);font-weight:600;letter-spacing:-.015em}
+.a-h1{font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
+.a-h2{font-size:20px;line-height:1.3;font-weight:650;letter-spacing:-.01em}
+.a-h3{font-size:16px;line-height:1.35;font-weight:650}
+.a-muted{color:var(--app-muted)}
+.a-small{font-size:13px;line-height:1.4}
+.a-mono{font-family:var(--app-font-mono);font-size:13px}
+.a-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:var(--app-radius);background:transparent;color:var(--app-text);font:inherit;font-size:15px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer}
+.a-btn--primary{background:var(--app-primary);color:var(--app-on-primary)}
+.a-btn--primary:hover{background:var(--app-primary-hover)}
+.a-btn--secondary{background:var(--app-surface);border-color:var(--app-border);box-shadow:var(--app-shadow-sm)}
+.a-btn--secondary:hover,.a-btn--ghost:hover{background:var(--app-surface-2)}
+.a-btn--danger{background:var(--app-danger);color:var(--app-on-danger)}
+.a-btn--danger-ghost{color:var(--app-danger)}
+.a-btn--block{width:100%}
+.a-btn.is-disabled{opacity:.45;cursor:not-allowed}
+.a-iconbtn{display:inline-grid;place-items:center;width:44px;height:44px;flex:none;border:0;border-radius:var(--app-radius);background:transparent;color:var(--app-text);cursor:pointer}
+.a-iconbtn:hover{background:var(--app-surface-2)}
+.a-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.a-label{font-size:14px;font-weight:600;line-height:1.3}
+.a-opt{font-weight:400;color:var(--app-muted)}
+.a-hint{font-size:13px;line-height:1.4;color:var(--app-muted)}
+.a-input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);color:var(--app-text);font:inherit;font-size:15px;line-height:1.35}
+textarea.a-input{min-height:96px;resize:vertical}
+.a-input[aria-invalid="true"]{border:2px solid var(--app-danger);padding:9px 11px}
+.a-error{display:flex;gap:6px;align-items:flex-start;font-size:13px;font-weight:600;line-height:1.4;color:var(--app-danger)}
+.a-ok{display:flex;gap:6px;align-items:flex-start;font-size:13px;font-weight:600;line-height:1.4;color:var(--app-success)}
+.a-error svg.i,.a-ok svg.i{width:16px;height:16px;margin-top:1px}
+.a-affix{display:flex;align-items:stretch;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);overflow:hidden}
+.a-affix > span{display:flex;align-items:center;padding:0 10px 0 12px;background:var(--app-surface-2);color:var(--app-muted);font-size:14px;white-space:nowrap;border-right:1px solid var(--app-border)}
+.a-affix .a-input{border:0;border-radius:0;min-width:0}
+.a-affix.is-invalid{border:2px solid var(--app-danger)}
+.a-select{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:0 10px 0 12px;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);color:var(--app-text);font:inherit;font-size:15px;cursor:pointer;text-align:left}
+.a-check{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding-top:10px;font-size:15px;line-height:1.4}
+.a-check input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--app-primary)}
+.a-switch{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0;border:0;background:transparent;color:var(--app-text);font:inherit;font-size:15px;cursor:pointer;text-align:left}
+.a-switch-track{position:relative;width:40px;height:24px;border-radius:999px;background:var(--app-border-strong);flex:none}
+.a-switch-track::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:999px;background:var(--app-surface);box-shadow:var(--app-shadow-sm)}
+.a-switch[aria-checked="true"] .a-switch-track{background:var(--app-primary)}
+.a-switch[aria-checked="true"] .a-switch-track::after{left:18px}
+.a-seg{display:inline-flex;padding:3px;gap:2px;background:var(--app-surface-2);border-radius:var(--app-radius)}
+.a-seg button{min-height:38px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--app-muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.a-seg button[aria-selected="true"]{background:var(--app-surface);color:var(--app-text);box-shadow:var(--app-shadow-sm)}
+.a-tabs{display:flex;gap:4px;border-bottom:1px solid var(--app-border)}
+.a-tabs button{min-height:44px;padding:0 12px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;color:var(--app-muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.a-tabs button[aria-selected="true"]{color:var(--app-text);border-bottom-color:var(--app-text)}
+.a-slider{position:relative;display:flex;align-items:center;height:44px;flex:1}
+.a-slider-track{position:relative;flex:1;height:6px;border-radius:999px;background:var(--app-surface-2);box-shadow:inset 0 0 0 1px var(--app-border)}
+.a-slider-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--app-primary)}
+.a-slider-thumb{position:absolute;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:999px;background:var(--app-surface);border:2px solid var(--app-primary);box-shadow:var(--app-shadow-sm)}
+.a-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;white-space:nowrap}
+.a-badge::before{content:"";width:7px;height:7px;border-radius:999px;background:currentColor;flex:none}
+.a-badge--success{background:var(--app-success-soft);color:var(--app-success)}
+.a-badge--neutral{background:var(--app-neutral-soft);color:var(--app-neutral)}
+.a-badge--warning{background:var(--app-warning-soft);color:var(--app-warning)}
+.a-badge--danger{background:var(--app-danger-soft);color:var(--app-danger)}
+.a-badge--info{background:var(--app-info-soft);color:var(--app-info)}
+.a-card{background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius-lg);box-shadow:var(--app-shadow-sm)}
+.a-alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:var(--app-radius);font-size:14px;line-height:1.45}
+.a-alert--warning{background:var(--app-warning-soft);color:var(--app-text)}.a-alert--warning > svg.i{color:var(--app-warning)}
+.a-alert--danger{background:var(--app-danger-soft);color:var(--app-text)}.a-alert--danger > svg.i{color:var(--app-danger)}
+.a-alert--info{background:var(--app-info-soft);color:var(--app-text)}.a-alert--info > svg.i{color:var(--app-info)}
+.a-dialog{width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px;padding:24px;background:var(--app-surface);border-radius:var(--app-radius-xl);box-shadow:var(--app-shadow-lg)}
+.a-dialog-icon{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;background:var(--app-danger-soft);color:var(--app-danger)}
+.a-dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:4px}
+.a-toast{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 6px 6px 16px;border-radius:var(--app-radius-lg);background:var(--app-primary);color:var(--app-on-primary);box-shadow:var(--app-shadow);font-size:14px;font-weight:500}
+.a-toast > svg.i{color:var(--app-on-dark-ok)}
+.a-toast .a-btn{color:var(--app-on-primary);margin-left:auto}
+.a-menu{display:flex;flex-direction:column;min-width:220px;padding:6px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius-lg);box-shadow:var(--app-shadow)}
+.a-menu button{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--app-text);font:inherit;font-size:14px;font-weight:500;text-align:left;cursor:pointer}
+.a-menu button:hover,.a-menu button.is-hover{background:var(--app-surface-2)}
+.a-menu .is-danger{color:var(--app-danger)}
+.a-menu hr{border:0;height:1px;background:var(--app-border);margin:6px 0}
+.a-skel{border-radius:var(--app-radius-sm);background:linear-gradient(90deg,var(--app-surface-2) 30%,var(--app-bg) 50%,var(--app-surface-2) 70%);background-size:220% 100%;animation:a-shimmer 1.4s linear infinite}
+@keyframes a-shimmer{from{background-position:150% 0}to{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.a-skel{animation:none}}
+/* Planche */
+.b{width:2038px;min-height:2400px;box-sizing:border-box;padding:64px;background:#E4E2DD;color:#1C1B19;font-family:'Inter',system-ui,sans-serif}
+.p{display:flex;flex-direction:column;gap:20px;padding:32px;border-radius:20px}
+.p-title{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--app-muted)}
+.sw{display:flex;flex-direction:column;gap:8px;min-width:0}
+.sw-chip{height:64px;border-radius:12px;box-shadow:inset 0 0 0 1px rgb(28 27 25 / .12)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-muted);padding:0 12px 10px 0;border-bottom:1px solid var(--app-border)}
+.tbl td{padding:9px 12px 9px 0;border-bottom:1px solid var(--app-border);vertical-align:top}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position: absolute; overflow: hidden" aria-hidden="true">
+<defs>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></symbol>
+<symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></symbol>
+<symbol id="i-dup" viewBox="0 0 24 24"><path d="M15 12v6"></path><path d="M12 15h6"></path><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></symbol>
+<symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10"></path><path d="M18.4 6.6a9 9 0 1 1-12.77.04"></path></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><path d="M4 22v-7"></path></symbol>
+</defs>
+</svg>
+
+<div class="b">
+<div class="app" style="background: transparent; display: flex; flex-direction: column; gap: 40px">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px">
+    <div style="display: flex; flex-direction: column; gap: 14px; max-width: 980px">
+      <span class="a-logo"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg>Cartouche</span>
+      <h1 class="a-display" style="font-size: 48px; line-height: 1.05">L’atelier : tokens et composants</h1>
+      <p style="font-size: 17px; line-height: 1.5; color: var(--app-muted)">Une identité « Atelier » : papier chaud, encre presque noire, une seule couleur de marque (ocre) réservée au logo et à la navigation active. Les couleurs vives appartiennent aux cartes. Tous les tokens sont préfixés <span class="a-mono">--app-</span> et ne partagent aucun nom avec les variables des cartes (<span class="a-mono">--c-</span>) : changer le thème d’une carte ne touche jamais au tableau de bord.</p>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; align-items: start">
+
+  <!-- Couleurs -->
+  <section class="p a-card">
+    <h2 class="p-title">Couleurs</h2>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+      <div class="sw"><div class="sw-chip" style="background: #F5F4F1"></div><b class="a-small">Fond</b><span class="a-mono a-muted">--app-bg #F5F4F1</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #FFFFFF"></div><b class="a-small">Surface</b><span class="a-mono a-muted">--app-surface #FFFFFF</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #EFEDE8"></div><b class="a-small">Surface 2</b><span class="a-mono a-muted">--app-surface-2 #EFEDE8</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #DEDAD3"></div><b class="a-small">Bordure</b><span class="a-mono a-muted">--app-border #DEDAD3</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #8C877E"></div><b class="a-small">Bordure de champ</b><span class="a-mono a-muted">--app-border-strong #8C877E · 3,6:1</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #1C1B19"></div><b class="a-small">Encre (texte, primaire, focus)</b><span class="a-mono a-muted">--app-text #1C1B19 · 15,7:1</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #5C5850"></div><b class="a-small">Texte secondaire</b><span class="a-mono a-muted">--app-muted #5C5850 · 6,0:1</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #9A5B13"></div><b class="a-small">Marque (ocre)</b><span class="a-mono a-muted">--app-brand #9A5B13 · 4,9:1</span></div>
+      <div class="sw"><div class="sw-chip" style="background: #B3261E"></div><b class="a-small">Danger</b><span class="a-mono a-muted">--app-danger #B3261E · 6,5:1</span></div>
+      <div class="sw"><div class="sw-chip" style="background: rgb(28 27 25 / .5)"></div><b class="a-small">Voile des dialogues</b><span class="a-mono a-muted">--app-scrim 50 %</span></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+      <div class="sw"><span class="a-badge a-badge--success" style="align-self: flex-start">Succès</span><span class="a-mono a-muted">#1D6B43 / #E2F0E7 · 5,5:1</span></div>
+      <div class="sw"><span class="a-badge a-badge--neutral" style="align-self: flex-start">Neutre</span><span class="a-mono a-muted">#4F4B44 / #ECEAE5 · 7,2:1</span></div>
+      <div class="sw"><span class="a-badge a-badge--warning" style="align-self: flex-start">Attention</span><span class="a-mono a-muted">#8A4500 / #FBEBD3 · 6,1:1</span></div>
+      <div class="sw"><span class="a-badge a-badge--danger" style="align-self: flex-start">Danger</span><span class="a-mono a-muted">#B3261E / #FBE5E2 · 5,4:1</span></div>
+      <div class="sw"><span class="a-badge a-badge--info" style="align-self: flex-start">Info</span><span class="a-mono a-muted">#1D4CA8 / #E4EBFB · 6,6:1</span></div>
+    </div>
+  </section>
+
+  <!-- Typographie -->
+  <section class="p a-card">
+    <h2 class="p-title">Typographie · Inter (interface), Fraunces (titres d’accueil), JetBrains Mono (liens, codes)</h2>
+    <div style="display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: baseline; gap: 24px"><span class="a-mono a-muted" style="width: 150px; flex: none">Display 40/600</span><span class="a-display" style="font-size: 40px; line-height: 1.1">Ta carte, toujours à jour</span></div>
+      <div style="display: flex; align-items: baseline; gap: 24px"><span class="a-mono a-muted" style="width: 150px; flex: none">H1 28/700</span><span class="a-h1">Mes cartes</span></div>
+      <div style="display: flex; align-items: baseline; gap: 24px"><span class="a-mono a-muted" style="width: 150px; flex: none">H2 20/650</span><span class="a-h2">Événements à venir</span></div>
+      <div style="display: flex; align-items: baseline; gap: 24px"><span class="a-mono a-muted" style="width: 150px; flex: none">H3 16/650</span><span class="a-h3">Champs personnalisés</span></div>
+      <div style="display: flex; align-items: baseline; gap: 24px"><span class="a-mono a-muted" style="width: 150px; flex: none">Texte 15/400</span><span>Les personnes rencontrées au Salon du Mariage apparaissent ici, de la plus récente à la plus ancienne.</span></div>
+      <div style="display: flex; align-items: baseline; gap: 24px"><span class="a-mono a-muted" style="width: 150px; flex: none">Petit 13/400</span><span class="a-small a-muted">Créée le 12 janv. 2027 · modifiée il y a 3 min</span></div>
+      <div style="display: flex; align-items: baseline; gap: 24px"><span class="a-mono a-muted" style="width: 150px; flex: none">Mono 13/400</span><span class="a-mono">cartouche.jicorp.fr/c/camille-roche</span></div>
+    </div>
+    <div style="display: flex; gap: 32px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--app-border)">
+      <div class="sw"><b class="a-small">Rayons</b>
+        <div style="display: flex; gap: 12px; align-items: flex-end">
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><div style="width: 56px; height: 56px; background: var(--app-surface-2); border: 1px solid var(--app-border-strong); border-radius: 6px"></div><span class="a-mono a-muted">sm 6</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><div style="width: 56px; height: 56px; background: var(--app-surface-2); border: 1px solid var(--app-border-strong); border-radius: 10px"></div><span class="a-mono a-muted">md 10</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><div style="width: 56px; height: 56px; background: var(--app-surface-2); border: 1px solid var(--app-border-strong); border-radius: 14px"></div><span class="a-mono a-muted">lg 14</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><div style="width: 56px; height: 56px; background: var(--app-surface-2); border: 1px solid var(--app-border-strong); border-radius: 20px"></div><span class="a-mono a-muted">xl 20</span></div>
+        </div>
+      </div>
+      <div class="sw"><b class="a-small">Ombres</b>
+        <div style="display: flex; gap: 20px; align-items: flex-end">
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><div style="width: 72px; height: 56px; background: #FFFFFF; border-radius: 10px; box-shadow: var(--app-shadow-sm)"></div><span class="a-mono a-muted">sm</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><div style="width: 72px; height: 56px; background: #FFFFFF; border-radius: 10px; box-shadow: var(--app-shadow)"></div><span class="a-mono a-muted">md</span></div>
+          <div style="display: flex; flex-direction: column; gap: 6px; align-items: center"><div style="width: 72px; height: 56px; background: #FFFFFF; border-radius: 10px; box-shadow: var(--app-shadow-lg)"></div><span class="a-mono a-muted">lg</span></div>
+        </div>
+      </div>
+      <div class="sw"><b class="a-small">Focus</b>
+        <button class="a-btn a-btn--secondary is-focus" type="button">Contour 2 px, décalage 2 px</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Boutons -->
+  <section class="p a-card">
+    <h2 class="p-title">Boutons · 44 px de haut minimum</h2>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center">
+      <button class="a-btn a-btn--primary" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg>Créer une carte</button>
+      <button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-pencil"></use></svg>Modifier</button>
+      <button class="a-btn a-btn--ghost" type="button">Annuler</button>
+      <button class="a-btn a-btn--danger" type="button"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg>Supprimer</button>
+      <button class="a-btn a-btn--danger-ghost" type="button">Supprimer le contact</button>
+      <button class="a-btn a-btn--primary is-disabled" type="button" aria-disabled="true">Enregistrer</button>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center">
+      <button class="a-iconbtn" type="button" aria-label="Copier le lien"><svg class="i" aria-hidden="true"><use href="#i-copy"></use></svg></button>
+      <button class="a-iconbtn" type="button" aria-label="Plus d’actions"><svg class="i" aria-hidden="true"><use href="#i-more"></use></svg></button>
+      <button class="a-iconbtn" type="button" aria-label="Supprimer"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></button>
+      <span class="a-small a-muted">Boutons icône : 44 × 44, toujours avec un aria-label.</span>
+    </div>
+    <div style="display: flex; gap: 20px; align-items: flex-start">
+      <div class="a-menu" role="menu" aria-label="Actions de la carte">
+        <button type="button" role="menuitem"><svg class="i" aria-hidden="true"><use href="#i-pencil"></use></svg>Modifier</button>
+        <button type="button" role="menuitem" class="is-hover"><svg class="i" aria-hidden="true"><use href="#i-dup"></use></svg>Dupliquer</button>
+        <button type="button" role="menuitem"><svg class="i" aria-hidden="true"><use href="#i-calendar"></use></svg>Voir les événements</button>
+        <button type="button" role="menuitem"><svg class="i" aria-hidden="true"><use href="#i-power"></use></svg>Désactiver</button>
+        <hr>
+        <button type="button" role="menuitem" class="is-danger"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg>Supprimer…</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; flex: 1">
+        <b class="a-small">Badges d’état</b>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <span class="a-badge a-badge--success">Active</span>
+          <span class="a-badge a-badge--neutral">Désactivée</span>
+          <span class="a-badge a-badge--warning">Désactivée par le support</span>
+          <span class="a-badge a-badge--success">En cours</span>
+          <span class="a-badge a-badge--info">À venir</span>
+          <span class="a-badge a-badge--neutral">Terminé</span>
+          <span class="a-badge a-badge--danger">Spam</span>
+          <span class="a-badge a-badge--warning">En attente</span>
+        </div>
+        <p class="a-small a-muted">Le texte porte toujours l’état : la couleur ne fait que le souligner.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Champs -->
+  <section class="p a-card">
+    <h2 class="p-title">Champs</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+      <div class="a-field"><label class="a-label" for="t1">Poste</label><input class="a-input" id="t1" type="text" value="Photographe de mariage"></div>
+      <div class="a-field"><label class="a-label" for="t2">Entreprise</label><input class="a-input is-focus" id="t2" type="text" value="Studio Basalte"></div>
+      <div class="a-field"><label class="a-label" for="t3">E-mail</label><input class="a-input" id="t3" type="email" value="bonjour@studiobasalte" aria-invalid="true" aria-describedby="t3e"><p class="a-error" id="t3e"><svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>Vérifie l’adresse e-mail (exemple : nom@domaine.fr).</p></div>
+      <div class="a-field"><span class="a-label">Paire de polices</span><button class="a-select" type="button" aria-haspopup="listbox"><span>Douce — Fraunces + Nunito Sans</span><svg class="i" aria-hidden="true"><use href="#i-chevron-down"></use></svg></button></div>
+      <div class="a-field" style="grid-column: 1 / -1"><label class="a-label" for="t4">Lien de la carte</label><div class="a-affix"><span>cartouche.jicorp.fr/c/</span><input class="a-input" id="t4" type="text" value="camille-roche"></div><p class="a-ok"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Ce lien est disponible.</p></div>
+    </div>
+    <div style="display: flex; gap: 32px; flex-wrap: wrap; align-items: center">
+      <button class="a-switch" type="button" role="switch" aria-checked="true"><span class="a-switch-track"></span>Simuler un événement en cours</button>
+      <button class="a-switch" type="button" role="switch" aria-checked="false"><span class="a-switch-track"></span>Sans fin</button>
+      <label class="a-check" style="padding-top: 0; align-items: center"><input type="checkbox" checked="{{true}}" readOnly="{{true}}">Inclure le spam</label>
+    </div>
+    <div style="display: flex; gap: 32px; flex-wrap: wrap; align-items: center">
+      <div class="a-seg" role="tablist" aria-label="Forme des boutons"><button type="button" role="tab" aria-selected="false">Carrée</button><button type="button" role="tab" aria-selected="true">Arrondie</button><button type="button" role="tab" aria-selected="false">Pilule</button></div>
+      <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 280px"><span class="a-label" style="flex: none">Intensité</span><div class="a-slider" role="slider" aria-label="Intensité du dégradé" aria-valuenow="55" aria-valuemin="0" aria-valuemax="100" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 55%"></div></div><div class="a-slider-thumb" style="left: 55%"></div></div><span class="a-mono" style="width: 28px">55</span></div>
+    </div>
+    <div class="a-tabs" role="tablist"><button type="button" role="tab" aria-selected="true">Toute la carte</button><button type="button" role="tab" aria-selected="false">Salon du Mariage Clermont 2027</button><button type="button" role="tab" aria-selected="false">Portes ouvertes</button></div>
+  </section>
+
+  <!-- Dialogues & retours -->
+  <section class="p a-card" style="background: var(--app-surface-2)">
+    <h2 class="p-title">Boîte de dialogue · toasts · alertes · chargement</h2>
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start">
+      <div class="a-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t">
+        <div class="a-dialog-icon"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></div>
+        <h2 class="a-h2" id="dlg-t">Supprimer cette carte&nbsp;?</h2>
+        <p class="a-muted">La carte «&nbsp;Camille Roche — Salon 2026&nbsp;», ses 2 événements et ses 57 contacts seront supprimés définitivement.</p>
+        <div class="a-dialog-actions"><button class="a-btn a-btn--secondary" type="button">Annuler</button><button class="a-btn a-btn--danger" type="button">Supprimer la carte</button></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div class="a-toast" role="status"><svg class="i" aria-hidden="true"><use href="#i-check-circle"></use></svg>Lien copié</div>
+        <div class="a-toast" role="status"><svg class="i" aria-hidden="true"><use href="#i-check-circle"></use></svg>Carte enregistrée et publiée</div>
+        <div class="a-toast" role="status"><svg class="i" aria-hidden="true"><use href="#i-flag"></use></svg>Contact marqué comme spam<button class="a-btn a-btn--ghost" type="button">Annuler</button></div>
+        <div class="a-alert a-alert--warning" role="alert"><svg class="i" aria-hidden="true"><use href="#i-warn"></use></svg><span><b>Contraste insuffisant.</b> Le texte est difficile à lire sur ce fond.</span></div>
+        <div class="a-alert a-alert--info"><svg class="i" aria-hidden="true"><use href="#i-info"></use></svg><span>3 événements en cours au maximum par carte.</span></div>
+        <div style="display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--app-surface); border-radius: 14px"><div class="a-skel" style="width: 56px; height: 76px; border-radius: 8px"></div><div style="display: flex; flex-direction: column; gap: 8px; flex: 1"><div class="a-skel" style="height: 14px; width: 60%"></div><div class="a-skel" style="height: 12px; width: 40%"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Clerk -->
+  <section class="p a-card">
+    <h2 class="p-title">Habillage Clerk · appearance.variables</h2>
+    <table class="tbl">
+      <thead><tr><th>Variable</th><th>Valeur</th><th>Remarque</th></tr></thead>
+      <tbody>
+        <tr><td class="a-mono">colorPrimary</td><td class="a-mono">#1C1B19</td><td>boutons principaux</td></tr>
+        <tr><td class="a-mono">colorPrimaryForeground</td><td class="a-mono">#FFFFFF</td><td></td></tr>
+        <tr><td class="a-mono">colorForeground</td><td class="a-mono">#1C1B19</td><td>texte</td></tr>
+        <tr><td class="a-mono">colorMutedForeground</td><td class="a-mono">#5C5850</td><td>texte secondaire</td></tr>
+        <tr><td class="a-mono">colorBackground</td><td class="a-mono">#FFFFFF</td><td>fond du bloc</td></tr>
+        <tr><td class="a-mono">colorInput / colorInputForeground</td><td class="a-mono">#FFFFFF / #1C1B19</td><td></td></tr>
+        <tr><td class="a-mono">colorBorder</td><td class="a-mono">#8C877E</td><td>bord des champs à 3:1 ; vérifier que les séparateurs restent discrets</td></tr>
+        <tr><td class="a-mono">colorNeutral · colorRing · colorShadow</td><td class="a-mono">#1C1B19</td><td></td></tr>
+        <tr><td class="a-mono">colorDanger · colorSuccess · colorWarning</td><td class="a-mono">#B3261E · #1D6B43 · #8A4500</td><td></td></tr>
+        <tr><td class="a-mono">colorModalBackdrop</td><td class="a-mono">rgb(28 27 25 / .5)</td><td></td></tr>
+        <tr><td class="a-mono">borderRadius</td><td class="a-mono">0.625rem</td><td>= 10 px, comme nos champs et boutons</td></tr>
+        <tr><td class="a-mono">fontFamily · fontFamilyButtons</td><td class="a-mono">Inter, system-ui, sans-serif</td><td>police auto-hébergée, chargée par l’app</td></tr>
+        <tr><td class="a-mono">fontSize</td><td class="a-mono">0.9375rem</td><td>15 px (défaut Clerk : 13 px)</td></tr>
+        <tr><td class="a-mono">fontWeight</td><td class="a-mono">{ normal: 400, medium: 500, semibold: 600, bold: 700 }</td><td></td></tr>
+      </tbody>
+    </table>
+    <p class="a-small a-muted">Noms valables depuis juillet 2025 ; les anciens (colorText, colorTextSecondary, colorInputBackground…) sont dépréciés. Hauteur des champs et boutons à régler via <span class="a-mono">appearance.elements</span> (min-height 44 px).</p>
+  </section>
+
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2038,"height":2400}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche app — éditeur de carte</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&amp;family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..800&amp;family=JetBrains+Mono:wght@400..600&amp;family=Nunito+Sans:wght@400..800&amp;family=Playfair+Display:wght@400..800&amp;display=swap">
+<style>
+body{margin:0}
+.app{--app-bg:#F5F4F1;--app-surface:#FFFFFF;--app-surface-2:#EFEDE8;--app-border:#DEDAD3;--app-border-strong:#8C877E;--app-text:#1C1B19;--app-muted:#5C5850;--app-primary:#1C1B19;--app-primary-hover:#3A3834;--app-on-primary:#FFFFFF;--app-brand:#9A5B13;--app-ring:#1C1B19;--app-success:#1D6B43;--app-success-soft:#E2F0E7;--app-neutral:#4F4B44;--app-neutral-soft:#ECEAE5;--app-warning:#8A4500;--app-warning-soft:#FBEBD3;--app-danger:#B3261E;--app-danger-soft:#FBE5E2;--app-on-danger:#FFFFFF;--app-info:#1D4CA8;--app-info-soft:#E4EBFB;--app-scrim:rgb(28 27 25 / .5);--app-radius-sm:6px;--app-radius:10px;--app-radius-lg:14px;--app-radius-xl:20px;--app-shadow-sm:0 1px 2px rgb(28 27 25 / .06);--app-shadow:0 1px 2px rgb(28 27 25 / .06),0 12px 32px -16px rgb(28 27 25 / .22);--app-shadow-lg:0 32px 80px -20px rgb(28 27 25 / .45);--app-font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--app-font-display:'Fraunces',Georgia,'Times New Roman',serif;--app-font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  box-sizing:border-box;position:relative;overflow:hidden;background:var(--app-bg);color:var(--app-text);font-family:var(--app-font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app *,.app *::before,.app *::after{box-sizing:border-box}
+.app a{color:inherit;text-decoration:none}
+.app h1,.app h2,.app h3,.app p,.app ul{margin:0}
+.app svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app :focus-visible,.app .is-focus{outline:2px solid var(--app-ring);outline-offset:2px}
+.a-mark{width:28px;height:28px;flex:none}.a-mark .m1{fill:var(--app-brand)}.a-mark .m2{fill:none;stroke:var(--app-on-primary);stroke-width:2.4;stroke-linecap:round}
+.a-logo{display:inline-flex;align-items:center;gap:10px;font-family:var(--app-font-display);font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1}
+.a-h2{font-size:20px;line-height:1.3;font-weight:650;letter-spacing:-.01em}
+.a-h3{font-size:16px;line-height:1.35;font-weight:650}
+.a-muted{color:var(--app-muted)}
+.a-small{font-size:13px;line-height:1.4}
+.a-mono{font-family:var(--app-font-mono);font-size:13px}
+.a-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:var(--app-radius);background:transparent;color:var(--app-text);font:inherit;font-size:15px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer}
+.a-btn--primary{background:var(--app-primary);color:var(--app-on-primary)}
+.a-btn--secondary{background:var(--app-surface);border-color:var(--app-border);box-shadow:var(--app-shadow-sm)}
+.a-btn--danger{background:var(--app-danger);color:var(--app-on-danger)}
+.a-btn--block{width:100%}
+.a-iconbtn{display:inline-grid;place-items:center;width:44px;height:44px;flex:none;border:0;border-radius:var(--app-radius);background:transparent;color:var(--app-text);cursor:pointer}
+.a-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.a-label{font-size:14px;font-weight:600;line-height:1.3}
+.a-opt{font-weight:400;color:var(--app-muted)}
+.a-hint{font-size:13px;line-height:1.4;color:var(--app-muted)}
+.a-input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);color:var(--app-text);font:inherit;font-size:15px;line-height:1.35}
+textarea.a-input{min-height:88px;resize:vertical}
+.a-input[aria-invalid="true"]{border:2px solid var(--app-danger);padding:9px 11px}
+.a-error{display:flex;gap:6px;align-items:flex-start;font-size:13px;font-weight:600;line-height:1.4;color:var(--app-danger)}
+.a-ok{display:flex;gap:6px;align-items:flex-start;font-size:13px;font-weight:600;line-height:1.4;color:var(--app-success)}
+.a-error svg.i,.a-ok svg.i{width:16px;height:16px;margin-top:1px}
+.a-select{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:0 10px 0 12px;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);color:var(--app-text);font:inherit;font-size:15px;cursor:pointer;text-align:left}
+.a-switch{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:0;border:0;background:transparent;color:var(--app-text);font:inherit;font-size:15px;font-weight:600;cursor:pointer;text-align:left}
+.a-switch-track{position:relative;width:40px;height:24px;border-radius:999px;background:var(--app-border-strong);flex:none}
+.a-switch-track::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:999px;background:var(--app-surface);box-shadow:var(--app-shadow-sm)}
+.a-switch[aria-checked="true"] .a-switch-track{background:var(--app-primary)}
+.a-switch[aria-checked="true"] .a-switch-track::after{left:18px}
+.a-seg{display:inline-flex;padding:3px;gap:2px;background:var(--app-surface-2);border-radius:var(--app-radius)}
+.a-seg button{min-height:38px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--app-muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.a-seg button[aria-selected="true"],.a-seg button[aria-checked="true"]{background:var(--app-surface);color:var(--app-text);box-shadow:var(--app-shadow-sm)}
+.a-seg--block{display:flex}.a-seg--block button{flex:1}
+.a-tabs{display:flex;gap:4px;border-bottom:1px solid var(--app-border);overflow:hidden}
+.a-tabs a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--app-muted);font-size:14px;font-weight:600;white-space:nowrap}
+.a-tabs a[aria-current="true"]{color:var(--app-text);border-bottom-color:var(--app-text)}
+.a-slider{position:relative;display:flex;align-items:center;height:44px;flex:1}
+.a-slider-track{position:relative;flex:1;height:6px;border-radius:999px;background:var(--app-surface-2);box-shadow:inset 0 0 0 1px var(--app-border)}
+.a-slider-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--app-primary)}
+.a-slider-thumb{position:absolute;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:999px;background:var(--app-surface);border:2px solid var(--app-primary);box-shadow:var(--app-shadow-sm)}
+.a-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;white-space:nowrap}
+.a-badge::before{content:"";width:7px;height:7px;border-radius:999px;background:currentColor;flex:none}
+.a-badge--success{background:var(--app-success-soft);color:var(--app-success)}
+.a-badge--warning{background:var(--app-warning-soft);color:var(--app-warning)}
+.a-badge--danger{background:var(--app-danger-soft);color:var(--app-danger)}
+.a-card{background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius-lg);box-shadow:var(--app-shadow-sm)}
+.a-alert{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:var(--app-radius);font-size:14px;line-height:1.45}
+.a-alert--warning{background:var(--app-warning-soft)}.a-alert--warning > svg.i{color:var(--app-warning)}
+.a-alert--danger{background:var(--app-danger-soft)}.a-alert--danger > svg.i{color:var(--app-danger)}
+.a-alert a{text-decoration:underline !important;font-weight:600}
+.a-dialog{width:100%;max-width:520px;display:flex;flex-direction:column;gap:16px;padding:24px;background:var(--app-surface);border-radius:var(--app-radius-xl);box-shadow:var(--app-shadow-lg)}
+.a-dialog-icon{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;background:var(--app-warning-soft);color:var(--app-warning)}
+.a-dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:4px}
+.a-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--app-scrim)}
+.a-overlay--sheet{align-items:flex-end;padding:0}
+.a-overlay--sheet .a-dialog{max-width:none;border-radius:var(--app-radius-xl) var(--app-radius-xl) 0 0;padding:24px 20px 28px}
+.a-overlay--sheet .a-dialog-actions{flex-direction:column}
+.a-overlay--sheet .a-dialog-actions .a-btn{width:100%}
+.a-skel{border-radius:var(--app-radius-sm);background:linear-gradient(90deg,var(--app-surface-2) 30%,var(--app-bg) 50%,var(--app-surface-2) 70%);background-size:220% 100%;animation:a-shimmer 1.4s linear infinite}
+@keyframes a-shimmer{from{background-position:150% 0}to{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.a-skel{animation:none}}
+.a-shell{display:grid;grid-template-columns:248px minmax(0,1fr);height:100%}
+.a-side{display:flex;flex-direction:column;gap:28px;padding:20px 14px;background:var(--app-surface);border-right:1px solid var(--app-border)}
+.a-side .a-logo{padding:6px 10px}
+.a-nav{display:flex;flex-direction:column;gap:2px}
+.a-nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:var(--app-radius);color:var(--app-muted);font-weight:500}
+.a-nav a[aria-current="page"]{background:var(--app-surface-2);color:var(--app-text);font-weight:650}
+.a-nav a[aria-current="page"] svg.i{color:var(--app-brand)}
+.a-me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:14px 10px 4px;border-top:1px solid var(--app-border);font-size:14px;line-height:1.3}
+.a-avatar{width:36px;height:36px;border-radius:999px;overflow:hidden;flex:none;background:var(--app-surface-2)}
+.a-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.a-main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.a-top{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px;padding:0 24px 0 40px;border-bottom:1px solid var(--app-border);background:var(--app-bg)}
+.a-crumbs{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--app-muted);min-width:0}
+.a-crumbs a{text-decoration:underline;text-underline-offset:3px}
+.a-crumbs [aria-current]{color:var(--app-text);font-weight:600}
+.a-crumbs svg.i{width:16px;height:16px}
+.a-mbar{display:flex;align-items:center;gap:4px;min-height:56px;padding:0 6px 0 8px;background:var(--app-surface);border-bottom:1px solid var(--app-border)}
+.a-mbar-title{flex:1;min-width:0;padding:0 6px;font-size:17px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Éditeur */
+.ed{display:grid;grid-template-columns:minmax(0,1fr) 440px;flex:1;min-height:0}
+.ed-form{display:flex;flex-direction:column;gap:20px;padding:24px 40px 48px;min-width:0}
+.ed-sec{display:flex;flex-direction:column;gap:18px;padding:24px}
+.ed-sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.ed-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ed-aside{display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 32px;background:var(--app-surface-2);border-left:1px solid var(--app-border)}
+.phone{width:356px;border:8px solid #1C1B19;border-radius:44px;overflow:hidden;background:#1C1B19;box-shadow:var(--app-shadow)}
+.lk{display:grid;grid-template-columns:44px 44px minmax(0,1fr) 44px;gap:8px;align-items:end}
+.lk-tile{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--app-radius);background:var(--app-surface-2)}
+.lk-grip{cursor:grab;color:var(--app-muted)}
+.lk-two{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:8px}
+.th-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.th{display:flex;flex-direction:column;gap:6px;padding:0;border:0;background:transparent;font:inherit;color:var(--app-text);cursor:pointer;text-align:left}
+.th-box{position:relative;display:flex;flex-direction:column;justify-content:space-between;height:84px;padding:10px;border-radius:12px;background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2));box-shadow:inset 0 0 0 1px rgb(28 27 25 / .14)}
+.th-aa{font-family:var(--font-title);font-weight:var(--title-weight);font-size:24px;line-height:1;color:var(--c-text)}
+.th-pill{display:block;height:12px;width:70%;border-radius:var(--radius-btn);background:var(--c-accent)}
+.th-name{font-size:13px;font-weight:600}
+.th[aria-pressed="true"] .th-box{outline:2px solid var(--app-text);outline-offset:2px}
+.th-check{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:999px;display:grid;place-items:center;background:var(--app-primary);color:var(--app-on-primary)}
+.cw{display:flex;align-items:center;gap:8px}
+.cw-sw{width:44px;height:44px;flex:none;border-radius:var(--app-radius);box-shadow:inset 0 0 0 1px rgb(28 27 25 / .2);border:0;cursor:pointer}
+.crop{position:relative;width:132px;height:132px;flex:none;border-radius:12px;overflow:hidden}
+.crop img{width:100%;height:100%;object-fit:cover;transform:scale(1.15)}
+.crop::after{content:"";position:absolute;inset:10px;border-radius:999px;box-shadow:0 0 0 60px rgb(28 27 25 / .55);border:2px solid #FFFFFF}
+.acc{display:flex;align-items:center;gap:12px;min-height:64px;padding:10px 12px 10px 16px;border-top:1px solid var(--app-border)}
+.acc-t{flex:1;min-width:0;display:flex;flex-direction:column}
+/* Carte (variables --c-, isolées) */
+.t-craie{--c-accent:#2F55D4;--c-bg:#F7F6F2;--c-bg-2:#F7F6F2;--bg-angle:180deg;--c-text:#1B1A17;--font-title:'Inter',sans-serif;--title-weight:700;--radius-btn:12px}
+.t-ivoire{--c-accent:#7A5C2E;--c-bg:#F4EFE6;--c-bg-2:#F4EFE6;--bg-angle:180deg;--c-text:#2A241C;--font-title:'Playfair Display',serif;--title-weight:600;--radius-btn:2px}
+.t-terracotta{--c-accent:#B3441E;--c-on-accent:#FFFFFF;--c-bg:#FBF0E4;--c-bg-2:#F4DCCA;--bg-angle:160deg;--c-text:#3B2117;--font-title:'Fraunces',serif;--font-body:'Nunito Sans',system-ui,sans-serif;--title-weight:600;--title-tracking:-0.015em;--radius-btn:12px;--fade:55}
+.t-sauge{--c-accent:#3D6B4C;--c-bg:#E9EFE6;--c-bg-2:#E9EFE6;--bg-angle:180deg;--c-text:#1E2A21;--font-title:'Fraunces',serif;--title-weight:600;--radius-btn:999px}
+.t-bonbon{--c-accent:#C02662;--c-bg:#FFE4EE;--c-bg-2:#E6E0FF;--bg-angle:135deg;--c-text:#2B1240;--font-title:'Bricolage Grotesque',sans-serif;--title-weight:700;--radius-btn:999px}
+.t-lagon{--c-accent:#0A6E6A;--c-bg:#E3F5F2;--c-bg-2:#D8ECF5;--bg-angle:200deg;--c-text:#0D2E35;--font-title:'Bricolage Grotesque',sans-serif;--title-weight:700;--radius-btn:12px}
+.t-encre{--c-accent:#C8F04D;--c-bg:#121316;--c-bg-2:#121316;--bg-angle:180deg;--c-text:#F1F0EC;--font-title:'Inter',sans-serif;--title-weight:700;--radius-btn:999px}
+.t-minuit{--c-accent:#E9C988;--c-bg:#0D1A2C;--c-bg-2:#1B2A44;--bg-angle:180deg;--c-text:#EEF1F6;--font-title:'Playfair Display',serif;--title-weight:600;--radius-btn:2px}
+.cc.is-badtext{--c-text:#B89580}
+.cc{--c-muted:color-mix(in oklab,var(--c-text) 78%,var(--c-bg));--c-surface:color-mix(in oklab,var(--c-text) 7%,transparent);position:relative;box-sizing:border-box;width:100%;overflow:hidden;background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2));color:var(--c-text);font-family:var(--font-body);font-size:16px;line-height:1.5}
+.cc *{box-sizing:border-box}
+.cc svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cc-media{position:relative;aspect-ratio:4/3;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade) * 1%),transparent 100%);mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade) * 1%),transparent 100%)}
+.cc-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cc-avatar{position:relative;z-index:1;width:104px;height:104px;margin:-60px auto 0;border-radius:999px;overflow:hidden;box-shadow:0 0 0 4px var(--c-bg)}
+.cc-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.cc-body{display:flex;flex-direction:column;gap:22px;padding:18px 18px 32px}
+.cc-event{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 18px;border-radius:var(--radius-btn);background:var(--c-accent);color:var(--c-on-accent)}
+.cc-event-txt{flex:1;display:flex;flex-direction:column;gap:2px}
+.cc-event-live{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.cc-dot{width:8px;height:8px;border-radius:999px;background:currentColor}
+.cc-event-name{font-size:16px;font-weight:700;line-height:1.25}
+.cc-id{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
+.cc-name{margin:0;font-family:var(--font-title);font-weight:var(--title-weight);letter-spacing:var(--title-tracking);font-size:30px;line-height:1.12}
+.cc-role{margin:2px 0 0;font-size:15px;font-weight:600}
+.cc-company{margin:0;font-size:14px;color:var(--c-muted)}
+.cc-desc{margin:6px 0 0;font-size:14px;line-height:1.5}
+.cc-save{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border-radius:var(--radius-btn);background:var(--c-text);color:var(--c-bg);font-size:15px;font-weight:700}
+.cc-icons{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.cc-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:var(--radius-btn);background:var(--c-surface);color:var(--c-text)}
+/* Hauteurs des cadres */
+.h-2700{height:2700px}.h-1000{height:1000px}.h-900{height:900px}.h-1560{height:1560px}.h-844{height:844px}
+/* Planche */
+.b{width:2476px;min-height:5200px;box-sizing:border-box;padding:64px;background:#E4E2DD;color:#1C1B19;font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;gap:96px}
+.b-row{display:flex;flex-direction:column;gap:20px}
+.b-cap{display:flex;flex-direction:column;gap:4px}
+.b-cap h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.b-cap p{margin:0;font-size:15px;line-height:1.45;color:#4E4C47;max-width:120ch}
+.b-frames{display:flex;gap:48px;align-items:flex-start}
+.f-d{position:relative;width:1440px;flex:none;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35);margin-right:32px}
+.f-m{position:relative;width:390px;flex:none;border-radius:40px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35)}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position: absolute; overflow: hidden" aria-hidden="true">
+<defs>
+<symbol id="i-cards" viewBox="0 0 24 24"><path d="M16 2v2"></path><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path><path d="M8 2v2"></path><circle cx="12" cy="11" r="3"></circle><rect x="3" y="4" width="18" height="18" rx="2"></rect></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
+<symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></symbol>
+<symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"></path><path d="M18 22V8a2 2 0 0 0-2-2H2"></path></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m17 8-5-5-5 5"></path><path d="M12 3v12"></path></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></symbol>
+<symbol id="i-instagram" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><path d="M17.5 6.5h.01"></path></symbol>
+<symbol id="i-facebook" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></symbol>
+<symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M21 7.917v4.034a9.948 9.948 0 0 1-5-1.951v4.5a6.5 6.5 0 1 1-8-6.326v4.326a2.5 2.5 0 1 0 4 2v-11.5h4.083a6.005 6.005 0 0 0 4.917 4.917z"></path></symbol>
+<symbol id="i-youtube" viewBox="0 0 24 24"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"></path><path d="m10 15 5-3-5-3z"></path></symbol>
+<symbol id="i-linkedin" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect width="4" height="12" x="2" y="9"></rect><circle cx="4" cy="4" r="2"></circle></symbol>
+<symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6"></path><path d="M22 11h-6"></path></symbol>
+</defs>
+</svg>
+
+<div class="b">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+<section class="b-row">
+  <div class="b-cap"><h2>{{r.cap}}</h2><p>{{r.note}}</p></div>
+  <div class="b-frames">
+
+  <!-- ===================== ORDINATEUR ===================== -->
+  <div class="f-d">
+  <div class="app {{r.dh}}">
+  <div class="a-shell">
+    <aside class="a-side">
+      <span class="a-logo"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg>Cartouche</span>
+      <nav class="a-nav" aria-label="Navigation principale">
+        <a href="#" aria-current="page"><svg class="i" aria-hidden="true"><use href="#i-cards"></use></svg>Mes cartes</a>
+        <a href="#"><svg class="i" aria-hidden="true"><use href="#i-users"></use></svg>Contacts</a>
+        <a href="#"><svg class="i" aria-hidden="true"><use href="#i-user"></use></svg>Mon compte</a>
+      </nav>
+      <div class="a-me"><span class="a-avatar"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></span><span style="min-width: 0"><b style="display: block; font-weight: 600">Camille Roche</b><span class="a-small a-muted">camille@studiobasalte.fr</span></span></div>
+    </aside>
+    <main class="a-main">
+      <div class="a-top">
+        <nav class="a-crumbs" aria-label="Fil d’Ariane"><a href="#">Mes cartes</a><svg class="i" aria-hidden="true"><use href="#i-chevron-right"></use></svg><span aria-current="page">Camille Roche</span><span class="a-mono" style="margin-left: 6px">/c/camille-roche</span></nav>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <sc-if value="{{r.dirty}}" hint-placeholder-val="{{true}}"><span class="a-badge a-badge--warning" role="status">Modifications non enregistrées</span></sc-if>
+          <sc-if value="{{r.errors}}" hint-placeholder-val="{{false}}"><span class="a-badge a-badge--danger" role="status">2 erreurs à corriger</span></sc-if>
+          <a class="a-btn a-btn--secondary" href="#"><svg class="i" aria-hidden="true"><use href="#i-external"></use></svg>Page publique</a>
+          <button class="a-btn a-btn--primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+      <div class="ed">
+        <form class="ed-form" novalidate="" aria-label="Modifier la carte">
+          <nav class="a-tabs" aria-label="Sections"><a href="#" aria-current="{{r.tabIdentite}}">Identité</a><a href="#">Coordonnées</a><a href="#">Liens</a><a href="#">Médias</a><a href="#" aria-current="{{r.tabApparence}}">Apparence</a></nav>
+
+          <sc-if value="{{r.errors}}" hint-placeholder-val="{{false}}">
+            <div class="a-alert a-alert--danger" role="alert"><svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg><span><b>Rien n’a été enregistré&nbsp;: 2 points à corriger.</b> <a href="#">E-mail</a> · <a href="#">Couleur du texte</a></span></div>
+          </sc-if>
+
+          <sc-if value="{{r.full}}" hint-placeholder-val="{{true}}">
+          <section class="a-card ed-sec" aria-labelledby="s-id">
+            <h2 class="a-h3" id="s-id">Identité</h2>
+            <div class="ed-row">
+              <div class="a-field"><label class="a-label" for="e-p">Prénom</label><input class="a-input" id="e-p" type="text" value="Camille" readOnly="{{true}}"></div>
+              <div class="a-field"><label class="a-label" for="e-n">Nom</label><input class="a-input" id="e-n" type="text" value="Roche" readOnly="{{true}}"></div>
+              <div class="a-field"><label class="a-label" for="e-j">Poste <span class="a-opt">(facultatif)</span></label><input class="a-input" id="e-j" type="text" value="Photographe de mariage" readOnly="{{true}}"></div>
+              <div class="a-field"><label class="a-label" for="e-c">Entreprise <span class="a-opt">(facultatif)</span></label><input class="a-input is-focus" id="e-c" type="text" value="Studio Basalte · Clermont-Ferrand" readOnly="{{true}}"></div>
+            </div>
+            <div class="a-field"><label class="a-label" for="e-d">Description <span class="a-opt">(facultatif)</span></label><textarea class="a-input" id="e-d" rows="3" readOnly="{{true}}" value="Je photographie les mariages en Auvergne et partout en France : des images douces et naturelles, des préparatifs à la dernière danse."></textarea><p class="a-hint">Deux ou trois lignes s’affichent le mieux.</p></div>
+          </section>
+          </sc-if>
+
+          <section class="a-card ed-sec" aria-labelledby="s-co">
+            <h2 class="a-h3" id="s-co">Coordonnées</h2>
+            <div class="ed-row">
+              <div class="a-field"><label class="a-label" for="e-m">E-mail <span class="a-opt">(facultatif)</span></label><input class="a-input" id="e-m" type="email" value="{{r.email}}" readOnly="{{true}}" aria-invalid="{{r.errors}}" aria-describedby="e-m-err"><sc-if value="{{r.errors}}" hint-placeholder-val="{{false}}"><p class="a-error" id="e-m-err"><svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>Vérifie l’adresse e-mail (exemple&nbsp;: nom@domaine.fr).</p></sc-if></div>
+              <div class="a-field"><label class="a-label" for="e-t">Téléphone <span class="a-opt">(facultatif)</span></label><input class="a-input" id="e-t" type="tel" value="06 39 98 42 17" readOnly="{{true}}"></div>
+            </div>
+          </section>
+
+          <sc-if value="{{r.full}}" hint-placeholder-val="{{true}}">
+          <section class="a-card ed-sec" aria-labelledby="s-lk">
+            <div class="ed-sec-head"><h2 class="a-h3" id="s-lk">Liens</h2><span class="a-small a-muted">Glisse la poignée, ou utilise les flèches du clavier, pour changer l’ordre.</span></div>
+            <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px">
+              <sc-for list="{{r.nets}}" as="n" hint-placeholder-count="6">
+              <li class="lk">
+                <button class="a-iconbtn lk-grip" type="button" aria-label="Déplacer {{n.label}}"><svg class="i" aria-hidden="true"><use href="#i-grip"></use></svg></button>
+                <span class="lk-tile" aria-hidden="true"><svg class="i"><use href="{{n.icon}}"></use></svg></span>
+                <div class="a-field"><label class="a-label" for="lk-{{n.id}}">{{n.label}}</label><input class="a-input" id="lk-{{n.id}}" type="url" value="{{n.url}}" readOnly="{{true}}"></div>
+                <button class="a-iconbtn" type="button" aria-label="Retirer {{n.label}}"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></button>
+              </li>
+              </sc-for>
+              <li class="lk">
+                <button class="a-iconbtn lk-grip" type="button" aria-label="Déplacer Brochure tarifs 2027"><svg class="i" aria-hidden="true"><use href="#i-grip"></use></svg></button>
+                <span class="lk-tile" aria-hidden="true"><svg class="i"><use href="#i-link"></use></svg></span>
+                <div class="lk-two">
+                  <div class="a-field"><label class="a-label" for="lk-f1">Intitulé</label><input class="a-input" id="lk-f1" type="text" value="Brochure tarifs 2027" readOnly="{{true}}"></div>
+                  <div class="a-field"><label class="a-label" for="lk-f1u">Adresse</label><input class="a-input" id="lk-f1u" type="url" value="studiobasalte.fr/tarifs" readOnly="{{true}}"></div>
+                </div>
+                <button class="a-iconbtn" type="button" aria-label="Retirer Brochure tarifs 2027"><svg class="i" aria-hidden="true"><use href="#i-trash"></use></svg></button>
+              </li>
+            </ul>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap"><button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg>Ajouter un réseau<svg class="i" aria-hidden="true"><use href="#i-chevron-down"></use></svg></button><button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-plus"></use></svg>Ajouter un lien libre</button></div>
+          </section>
+
+          <section class="a-card ed-sec" aria-labelledby="s-me">
+            <h2 class="a-h3" id="s-me">Médias</h2>
+            <div style="display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px">
+              <div class="a-field">
+                <span class="a-label">En-tête</span>
+                <div style="position: relative; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; background: var(--app-surface-2)"><img src="/_blob/a3d7106fa21a2a52f1f0b545b8d21d77" alt="Aperçu de la vidéo d’en-tête : sortie de cérémonie sous les pétales" style="width: 100%; height: 100%; object-fit: cover; display: block"><span class="a-badge" style="position: absolute; left: 10px; top: 10px; background: rgb(28 27 25 / .78); color: #FFFFFF">Vidéo · 9 s</span></div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap"><button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-crop"></use></svg>Recadrer</button><button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-upload"></use></svg>Remplacer</button><button class="a-btn" type="button">Retirer</button></div>
+                <p class="a-hint">Image ou courte vidéo (lue sans le son). Format 4:3 conseillé ; garde le sujet dans la moitié haute.</p>
+              </div>
+              <div class="a-field">
+                <span class="a-label">Photo de profil</span>
+                <div style="display: flex; gap: 16px; align-items: center"><div class="crop"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt="Photo de profil, recadrage en cercle"></div><div style="display: flex; flex-direction: column; gap: 4px; flex: 1"><span class="a-small a-muted">Zoom</span><div class="a-slider" role="slider" aria-label="Zoom de la photo" aria-valuenow="115" aria-valuemin="100" aria-valuemax="300" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 8%"></div></div><div class="a-slider-thumb" style="left: 8%"></div></div></div></div>
+                <p class="a-hint">Fais glisser la photo pour la centrer, ou ouvre « Recadrer » pour plus de précision.</p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap"><button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-crop"></use></svg>Recadrer</button><button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-upload"></use></svg>Remplacer</button><button class="a-btn" type="button">Retirer</button></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="a-card ed-sec" aria-labelledby="s-tp">
+            <h2 class="a-h3" id="s-tp">Template</h2>
+            <div style="display: flex; gap: 16px; align-items: center; padding: 14px; border: 2px solid var(--app-text); border-radius: 12px" role="radio" aria-checked="true" tabindex="0">
+              <div class="t-terracotta" style="width: 52px; height: 70px; border-radius: 8px; overflow: hidden; background: linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2)); box-shadow: 0 0 0 1px rgb(28 27 25 / .12); flex: none"><img src="/_blob/a3d7106fa21a2a52f1f0b545b8d21d77" alt="" style="width: 100%; height: 30px; object-fit: cover; display: block"></div>
+              <div style="flex: 1"><b>Classique</b><p class="a-small a-muted">En-tête plein cadre, photo ronde à cheval, boutons d’événement, liens.</p></div>
+              <span style="width: 24px; height: 24px; border-radius: 999px; background: var(--app-primary); color: var(--app-on-primary); display: grid; place-items: center"><svg class="i" aria-hidden="true" style="width: 16px; height: 16px"><use href="#i-check"></use></svg></span>
+            </div>
+            <div class="a-field"><span class="a-label" id="lay">Disposition des liens <span class="a-opt">· réglage du template Classique</span></span><div class="a-seg" role="radiogroup" aria-labelledby="lay"><button type="button" role="radio" aria-checked="true">Icônes</button><button type="button" role="radio" aria-checked="false">Liste</button></div></div>
+          </section>
+          </sc-if>
+
+          <section class="a-card ed-sec" aria-labelledby="s-th">
+            <div class="ed-sec-head"><h2 class="a-h3" id="s-th">Thème</h2><span class="a-small a-muted">Terracotta, personnalisé</span></div>
+            <sc-if value="{{r.full}}" hint-placeholder-val="{{true}}">
+            <div class="th-grid" role="group" aria-label="Thèmes prêts à l’emploi">
+              <sc-for list="{{r.themes}}" as="t" hint-placeholder-count="8">
+              <button class="th" type="button" aria-pressed="{{t.on}}"><span class="th-box {{t.cls}}"><span class="th-aa">Aa</span><span class="th-pill"></span><sc-if value="{{t.on}}" hint-placeholder-val="{{false}}"><span class="th-check"><svg class="i" aria-hidden="true" style="width: 14px; height: 14px"><use href="#i-check"></use></svg></span></sc-if></span><span class="th-name">{{t.name}}</span></button>
+              </sc-for>
+            </div>
+            </sc-if>
+            <div class="ed-row" style="padding-top: 6px; border-top: 1px solid var(--app-border)">
+              <div class="a-field"><label class="a-label" for="c-acc">Couleur d’accent</label><div class="cw"><button class="cw-sw" type="button" aria-label="Choisir la couleur d’accent" style="background: #B3441E"></button><input class="a-input a-mono" id="c-acc" type="text" value="#B3441E" readOnly="{{true}}"></div></div>
+              <div class="a-field"><label class="a-label" for="c-txt">Couleur du texte</label><div class="cw"><button class="cw-sw" type="button" aria-label="Choisir la couleur du texte" style="background: {{r.textHex}}"></button><input class="a-input a-mono" id="c-txt" type="text" value="{{r.textHex}}" readOnly="{{true}}" aria-invalid="{{r.errors}}" aria-describedby="c-txt-msg"></div></div>
+            </div>
+            <div class="a-field"><span class="a-label" id="bgk">Fond</span><div class="a-seg" role="radiogroup" aria-labelledby="bgk" style="align-self: flex-start"><button type="button" role="radio" aria-checked="false">Uni</button><button type="button" role="radio" aria-checked="true">Dégradé</button></div>
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; align-items: end; margin-top: 6px">
+                <div class="a-field"><label class="a-label" for="bg1" style="font-weight: 500">Couleur 1</label><div class="cw"><button class="cw-sw" type="button" aria-label="Choisir la couleur 1" style="background: #FBF0E4"></button><input class="a-input a-mono" id="bg1" type="text" value="#FBF0E4" readOnly="{{true}}"></div></div>
+                <div class="a-field"><label class="a-label" for="bg2" style="font-weight: 500">Couleur 2</label><div class="cw"><button class="cw-sw" type="button" aria-label="Choisir la couleur 2" style="background: #F4DCCA"></button><input class="a-input a-mono" id="bg2" type="text" value="#F4DCCA" readOnly="{{true}}"></div></div>
+                <div class="a-field"><span class="a-label" style="font-weight: 500">Angle</span><div style="display: flex; align-items: center; gap: 10px"><div class="a-slider" role="slider" aria-label="Angle du dégradé" aria-valuenow="160" aria-valuemin="0" aria-valuemax="360" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 44%"></div></div><div class="a-slider-thumb" style="left: 44%"></div></div><span class="a-mono" style="width: 36px">160°</span></div></div>
+              </div>
+            </div>
+            <sc-if value="{{r.errors}}" hint-placeholder-val="{{false}}">
+              <div class="a-alert a-alert--warning" role="alert" id="c-txt-msg"><svg class="i" aria-hidden="true"><use href="#i-warn"></use></svg><span style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start"><span><b>Texte illisible sur ce fond.</b> Contraste 2,0:1, il faut au moins 4,5:1. La carte ne peut pas être enregistrée ainsi.</span><button class="a-btn a-btn--secondary" type="button">Utiliser une couleur lisible (#3B2117)</button></span></div>
+            </sc-if>
+            <sc-if value="{{r.contrastOk}}" hint-placeholder-val="{{true}}">
+              <p class="a-ok" id="c-txt-msg"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Lisible&nbsp;: contraste du texte 11,2:1, des boutons 5,5:1.</p>
+            </sc-if>
+            <div class="a-field"><span class="a-label">Intensité du dégradé de l’en-tête</span><div style="display: flex; align-items: center; gap: 12px"><div class="a-slider" role="slider" aria-label="Intensité du dégradé de l’en-tête" aria-valuenow="55" aria-valuemin="0" aria-valuemax="100" tabindex="0"><div class="a-slider-track"><div class="a-slider-fill" style="width: 55%"></div></div><div class="a-slider-thumb" style="left: 55%"></div></div><span class="a-mono" style="width: 28px">55</span></div></div>
+            <div class="ed-row">
+              <div class="a-field"><span class="a-label" id="shp">Forme des boutons</span><div class="a-seg a-seg--block" role="radiogroup" aria-labelledby="shp"><button type="button" role="radio" aria-checked="false">Carrée</button><button type="button" role="radio" aria-checked="true">Arrondie</button><button type="button" role="radio" aria-checked="false">Pilule</button></div></div>
+              <div class="a-field"><span class="a-label">Paire de polices</span><button class="a-select" type="button" aria-haspopup="listbox"><span>Douce · Fraunces + Nunito Sans</span><svg class="i" aria-hidden="true"><use href="#i-chevron-down"></use></svg></button></div>
+            </div>
+          </section>
+        </form>
+
+        <aside class="ed-aside" aria-label="Aperçu en direct">
+          <div style="width: 100%; display: flex; align-items: center; justify-content: space-between"><div><h2 class="a-h3">Aperçu</h2><p class="a-small a-muted">Brouillon, non publié</p></div></div>
+          <button class="a-switch" type="button" role="switch" aria-checked="true" style="align-self: stretch; justify-content: space-between; padding: 0 4px 0 14px; background: var(--app-surface); border-radius: 12px; border: 1px solid var(--app-border)">Simuler un événement en cours<span class="a-switch-track"></span></button>
+          <div class="phone">
+            <article class="cc t-terracotta {{r.badCls}}" aria-label="Aperçu de la page publique" style="height: 700px">
+              <div class="cc-media"><img src="/_blob/a3d7106fa21a2a52f1f0b545b8d21d77" alt=""></div>
+              <div class="cc-avatar"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></div>
+              <div class="cc-body">
+                <div class="cc-event"><span class="cc-event-txt"><span class="cc-event-live"><span class="cc-dot"></span>Événement en cours</span><span class="cc-event-name">Salon du Mariage Clermont 2027</span></span><svg class="ic"><use href="#i-chevron-right"></use></svg></div>
+                <div class="cc-id"><p class="cc-name">Camille Roche</p><p class="cc-role">Photographe de mariage</p><p class="cc-company">Studio Basalte · Clermont-Ferrand</p><p class="cc-desc">Je photographie les mariages en Auvergne et partout en France&nbsp;: des images douces et naturelles.</p></div>
+                <div class="cc-save"><svg class="ic"><use href="#i-userplus"></use></svg>Enregistrer le contact</div>
+                <div class="cc-icons"><span class="cc-icon"><svg class="ic"><use href="#i-globe"></use></svg></span><span class="cc-icon"><svg class="ic"><use href="#i-instagram"></use></svg></span><span class="cc-icon"><svg class="ic"><use href="#i-facebook"></use></svg></span><span class="cc-icon"><svg class="ic"><use href="#i-tiktok"></use></svg></span><span class="cc-icon"><svg class="ic"><use href="#i-youtube"></use></svg></span><span class="cc-icon"><svg class="ic"><use href="#i-linkedin"></use></svg></span></div>
+              </div>
+            </article>
+          </div>
+          <p class="a-small a-muted" style="text-align: center">L’aperçu suit chaque frappe. Rien n’est publié avant «&nbsp;Enregistrer&nbsp;».</p>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <sc-if value="{{r.dialog}}" hint-placeholder-val="{{false}}">
+    <div class="a-overlay">
+      <div class="a-dialog" role="alertdialog" aria-modal="true" aria-labelledby="lv-t" aria-describedby="lv-d">
+        <div class="a-dialog-icon"><svg class="i" aria-hidden="true"><use href="#i-warn"></use></svg></div>
+        <h2 class="a-h2" id="lv-t">Quitter sans enregistrer&nbsp;?</h2>
+        <p class="a-muted" id="lv-d">Tu as modifié la carte de Camille Roche. Si tu quittes maintenant, ces modifications seront perdues&nbsp;; la page publique reste telle qu’elle était.</p>
+        <div class="a-dialog-actions"><button class="a-btn a-btn--secondary" type="button">Rester</button><button class="a-btn a-btn--secondary" type="button" style="color: var(--app-danger)">Quitter sans enregistrer</button><button class="a-btn a-btn--primary" type="button">Enregistrer et quitter</button></div>
+      </div>
+    </div>
+  </sc-if>
+  </div>
+  </div>
+
+  <!-- ===================== MOBILE : MODIFIER ===================== -->
+  <sc-if value="{{r.mEdit}}" hint-placeholder-val="{{true}}">
+  <div class="f-m">
+    <div class="app {{r.mh}}" style="display: flex; flex-direction: column">
+      <div class="a-mbar"><a class="a-iconbtn" href="#" aria-label="Retour à Mes cartes"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"></use></svg></a><span class="a-mbar-title">Camille Roche</span><a class="a-iconbtn" href="#" aria-label="Ouvrir la page publique"><svg class="i" aria-hidden="true"><use href="#i-external"></use></svg></a></div>
+      <div style="padding: 12px 16px; background: var(--app-surface); border-bottom: 1px solid var(--app-border); display: flex; flex-direction: column; gap: 10px">
+        <div class="a-seg a-seg--block" role="tablist" aria-label="Mode"><button type="button" role="tab" aria-selected="true">Modifier</button><button type="button" role="tab" aria-selected="false">Aperçu</button></div>
+        <span class="a-badge a-badge--warning" role="status" style="align-self: flex-start">Modifications non enregistrées</span>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: hidden; background: var(--app-surface)">
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px; border-bottom: 1px solid var(--app-border)">
+          <button class="a-btn" type="button" aria-expanded="true" style="justify-content: space-between; padding: 0; width: 100%"><span class="a-h3">Identité</span><svg class="i" aria-hidden="true" style="transform: rotate(180deg)"><use href="#i-chevron-down"></use></svg></button>
+          <div class="a-field"><label class="a-label" for="m-p">Prénom</label><input class="a-input" id="m-p" type="text" value="Camille" readOnly="{{true}}"></div>
+          <div class="a-field"><label class="a-label" for="m-n">Nom</label><input class="a-input" id="m-n" type="text" value="Roche" readOnly="{{true}}"></div>
+          <div class="a-field"><label class="a-label" for="m-j">Poste <span class="a-opt">(facultatif)</span></label><input class="a-input" id="m-j" type="text" value="Photographe de mariage" readOnly="{{true}}"></div>
+          <div class="a-field"><label class="a-label" for="m-c">Entreprise <span class="a-opt">(facultatif)</span></label><input class="a-input is-focus" id="m-c" type="text" value="Studio Basalte · Clermont-Ferrand" readOnly="{{true}}"></div>
+          <div class="a-field"><label class="a-label" for="m-d">Description <span class="a-opt">(facultatif)</span></label><textarea class="a-input" id="m-d" rows="4" readOnly="{{true}}" value="Je photographie les mariages en Auvergne et partout en France : des images douces et naturelles, des préparatifs à la dernière danse."></textarea></div>
+        </div>
+        <sc-for list="{{r.acc}}" as="a" hint-placeholder-count="5">
+        <button class="acc" type="button" aria-expanded="false" style="width: 100%; border: 0; border-top: 1px solid var(--app-border); background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer"><span class="acc-t"><b class="a-h3">{{a.title}}</b><span class="a-small a-muted">{{a.sum}}</span></span><svg class="i" aria-hidden="true"><use href="#i-chevron-down"></use></svg></button>
+        </sc-for>
+      </div>
+      <div style="padding: 12px 16px 20px; background: var(--app-surface); border-top: 1px solid var(--app-border)"><button class="a-btn a-btn--primary a-btn--block" type="button">Enregistrer</button></div>
+      <sc-if value="{{r.mSheet}}" hint-placeholder-val="{{false}}">
+        <div class="a-overlay a-overlay--sheet">
+          <div class="a-dialog" role="alertdialog" aria-modal="true" aria-labelledby="lvm-t">
+            <h2 class="a-h2" id="lvm-t">Quitter sans enregistrer&nbsp;?</h2>
+            <p class="a-muted">Tes modifications seront perdues&nbsp;; la page publique reste telle qu’elle était.</p>
+            <div class="a-dialog-actions"><button class="a-btn a-btn--primary" type="button">Enregistrer et quitter</button><button class="a-btn a-btn--secondary" type="button" style="color: var(--app-danger)">Quitter sans enregistrer</button><button class="a-btn a-btn--secondary" type="button">Rester</button></div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ===================== MOBILE : APERÇU ===================== -->
+  <sc-if value="{{r.mPreview}}" hint-placeholder-val="{{false}}">
+  <div class="f-m">
+    <div class="app h-844" style="display: flex; flex-direction: column">
+      <div class="a-mbar"><a class="a-iconbtn" href="#" aria-label="Retour à Mes cartes"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"></use></svg></a><span class="a-mbar-title">Camille Roche</span><a class="a-iconbtn" href="#" aria-label="Ouvrir la page publique"><svg class="i" aria-hidden="true"><use href="#i-external"></use></svg></a></div>
+      <div style="padding: 12px 16px; background: var(--app-surface); border-bottom: 1px solid var(--app-border); display: flex; flex-direction: column; gap: 6px">
+        <div class="a-seg a-seg--block" role="tablist" aria-label="Mode"><button type="button" role="tab" aria-selected="false">Modifier</button><button type="button" role="tab" aria-selected="true">Aperçu</button></div>
+        <button class="a-switch" type="button" role="switch" aria-checked="true" style="justify-content: space-between; width: 100%">Simuler un événement en cours<span class="a-switch-track"></span></button>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: hidden">
+        <article class="cc t-terracotta" aria-label="Aperçu de la page publique">
+          <div class="cc-media"><img src="/_blob/a3d7106fa21a2a52f1f0b545b8d21d77" alt=""></div>
+          <div class="cc-avatar"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></div>
+          <div class="cc-body">
+            <div class="cc-event"><span class="cc-event-txt"><span class="cc-event-live"><span class="cc-dot"></span>Événement en cours</span><span class="cc-event-name">Salon du Mariage Clermont 2027</span></span><svg class="ic"><use href="#i-chevron-right"></use></svg></div>
+            <div class="cc-id"><p class="cc-name">Camille Roche</p><p class="cc-role">Photographe de mariage</p><p class="cc-company">Studio Basalte · Clermont-Ferrand</p></div>
+            <div class="cc-save"><svg class="ic"><use href="#i-userplus"></use></svg>Enregistrer le contact</div>
+          </div>
+        </article>
+      </div>
+      <div style="padding: 12px 16px 20px; background: var(--app-surface); border-top: 1px solid var(--app-border)"><button class="a-btn a-btn--primary a-btn--block" type="button">Enregistrer</button></div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ===================== MOBILE : CHARGEMENT ===================== -->
+  <sc-if value="{{r.mLoading}}" hint-placeholder-val="{{false}}">
+  <div class="f-m">
+    <div class="app h-844" style="display: flex; flex-direction: column" aria-busy="true">
+      <div class="a-mbar"><a class="a-iconbtn" href="#" aria-label="Retour à Mes cartes"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"></use></svg></a><span class="a-mbar-title"><span class="a-skel" style="display: block; width: 140px; height: 16px"></span></span></div>
+      <div style="padding: 12px 16px; background: var(--app-surface); border-bottom: 1px solid var(--app-border)"><div class="a-seg a-seg--block" role="tablist" aria-label="Mode"><button type="button" role="tab" aria-selected="true">Modifier</button><button type="button" role="tab" aria-selected="false">Aperçu</button></div></div>
+      <div style="flex: 1; padding: 20px 16px; display: flex; flex-direction: column; gap: 18px; background: var(--app-surface)">
+        <div class="a-skel" style="height: 18px; width: 40%"></div>
+        <div style="display: flex; flex-direction: column; gap: 8px"><div class="a-skel" style="height: 12px; width: 25%"></div><div class="a-skel" style="height: 44px; border-radius: 10px"></div></div>
+        <div style="display: flex; flex-direction: column; gap: 8px"><div class="a-skel" style="height: 12px; width: 20%"></div><div class="a-skel" style="height: 44px; border-radius: 10px"></div></div>
+        <div style="display: flex; flex-direction: column; gap: 8px"><div class="a-skel" style="height: 12px; width: 30%"></div><div class="a-skel" style="height: 44px; border-radius: 10px"></div></div>
+        <div style="display: flex; flex-direction: column; gap: 8px"><div class="a-skel" style="height: 12px; width: 35%"></div><div class="a-skel" style="height: 88px; border-radius: 10px"></div></div>
+        <div class="a-skel" style="height: 64px; border-radius: 10px"></div>
+        <div class="a-skel" style="height: 64px; border-radius: 10px"></div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  </div>
+</section>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2476,"height":5200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var D = {
+      nets: [
+        { id: 'site', label: 'Site web', icon: '#i-globe', url: 'https://studiobasalte.fr' },
+        { id: 'ig', label: 'Instagram', icon: '#i-instagram', url: 'https://instagram.com/studio.basalte' },
+        { id: 'fb', label: 'Facebook', icon: '#i-facebook', url: 'https://facebook.com/studiobasalte' },
+        { id: 'tt', label: 'TikTok', icon: '#i-tiktok', url: 'https://tiktok.com/@studio.basalte' },
+        { id: 'yt', label: 'YouTube', icon: '#i-youtube', url: 'https://youtube.com/@studiobasalte' },
+        { id: 'li', label: 'LinkedIn', icon: '#i-linkedin', url: 'https://linkedin.com/in/camille-roche' }
+      ],
+      themes: [
+        { cls: 't-craie', name: 'Craie', on: false }, { cls: 't-ivoire', name: 'Ivoire', on: false },
+        { cls: 't-terracotta', name: 'Terracotta', on: true }, { cls: 't-sauge', name: 'Sauge', on: false },
+        { cls: 't-bonbon', name: 'Bonbon', on: false }, { cls: 't-lagon', name: 'Lagon', on: false },
+        { cls: 't-encre', name: 'Encre', on: false }, { cls: 't-minuit', name: 'Minuit', on: false }
+      ],
+      acc: [
+        { title: 'Coordonnées', sum: 'bonjour@studiobasalte.fr · 06 39 98 42 17' },
+        { title: 'Liens', sum: '6 réseaux · 1 lien libre' },
+        { title: 'Médias', sum: 'Vidéo d’en-tête · photo de profil' },
+        { title: 'Template', sum: 'Classique · liens en icônes' },
+        { title: 'Thème', sum: 'Terracotta, personnalisé' }
+      ]
+    };
+    var R = function (o) {
+      return Object.assign({
+        dh: 'h-2700', mh: 'h-1560', full: true, errors: false, contrastOk: true, dirty: true, dialog: false,
+        email: 'bonjour@studiobasalte.fr', textHex: '#3B2117', badCls: '', tabIdentite: 'true', tabApparence: 'false',
+        mEdit: true, mPreview: false, mLoading: false, mSheet: false,
+        nets: D.nets, themes: D.themes, acc: D.acc
+      }, o);
+    };
+    return {
+      rows: [
+        R({ cap: 'Éditeur de carte', note: 'Formulaire à gauche, aperçu en direct à droite dans un cadre de téléphone (la vraie page Classique). Modifications non enregistrées signalées en haut ; rien n’est publié avant « Enregistrer ». Mobile : onglets Modifier / Aperçu, sections repliables, bouton Enregistrer toujours visible.', mPreview: true }),
+        R({ cap: 'Erreurs et contraste', note: 'Après un clic sur Enregistrer : récapitulatif avec liens vers les champs, message sous l’e-mail, alerte de contraste avec correction en un clic. L’aperçu montre le problème tel qu’il serait publié. Mobile : chargement de l’éditeur.', dh: 'h-1000', full: false, errors: true, contrastOk: false, dirty: false, email: 'bonjour@studiobasalte', textHex: '#B89580', badCls: 'is-badtext', tabIdentite: 'false', tabApparence: 'true', mEdit: false, mLoading: true }),
+        R({ cap: 'Quitter avec des modifications', note: 'Boîte de dialogue à trois choix, l’action sûre par défaut. Mobile : la même, en feuille du bas.', dh: 'h-900', dialog: true, mh: 'h-844', mSheet: true })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

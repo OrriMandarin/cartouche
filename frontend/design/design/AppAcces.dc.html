@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche app — connexion et états du compte</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&amp;family=Inter:wght@400..800&amp;family=JetBrains+Mono:wght@400..600&amp;family=Nunito+Sans:wght@400..800&amp;display=swap">
+<style>
+body{margin:0}
+.app{--app-bg:#F5F4F1;--app-surface:#FFFFFF;--app-surface-2:#EFEDE8;--app-border:#DEDAD3;--app-border-strong:#8C877E;--app-text:#1C1B19;--app-muted:#5C5850;--app-primary:#1C1B19;--app-primary-hover:#3A3834;--app-on-primary:#FFFFFF;--app-brand:#9A5B13;--app-ring:#1C1B19;--app-success:#1D6B43;--app-success-soft:#E2F0E7;--app-neutral:#4F4B44;--app-neutral-soft:#ECEAE5;--app-warning:#8A4500;--app-warning-soft:#FBEBD3;--app-danger:#B3261E;--app-danger-soft:#FBE5E2;--app-on-danger:#FFFFFF;--app-info:#1D4CA8;--app-info-soft:#E4EBFB;--app-scrim:rgb(28 27 25 / .5);--app-radius-sm:6px;--app-radius:10px;--app-radius-lg:14px;--app-radius-xl:20px;--app-shadow-sm:0 1px 2px rgb(28 27 25 / .06);--app-shadow:0 1px 2px rgb(28 27 25 / .06),0 12px 32px -16px rgb(28 27 25 / .22);--app-shadow-lg:0 32px 80px -20px rgb(28 27 25 / .45);--app-font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--app-font-display:'Fraunces',Georgia,'Times New Roman',serif;--app-font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  box-sizing:border-box;position:relative;overflow:hidden;background:var(--app-bg);color:var(--app-text);font-family:var(--app-font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app *,.app *::before,.app *::after{box-sizing:border-box}
+.app a{color:inherit;text-decoration:none}
+.app h1,.app h2,.app h3,.app p,.app ul{margin:0}
+.app svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app :focus-visible,.app .is-focus{outline:2px solid var(--app-ring);outline-offset:2px}
+.a-mark{width:28px;height:28px;flex:none}.a-mark .m1{fill:var(--app-brand)}.a-mark .m2{fill:none;stroke:var(--app-on-primary);stroke-width:2.4;stroke-linecap:round}
+.a-logo{display:inline-flex;align-items:center;gap:10px;font-family:var(--app-font-display);font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1}
+.a-display{font-family:var(--app-font-display);font-weight:600;letter-spacing:-.015em}
+.a-muted{color:var(--app-muted)}
+.a-small{font-size:13px;line-height:1.4}
+.a-link{text-decoration:underline !important;text-underline-offset:3px;font-weight:600}
+.a-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:var(--app-radius);background:transparent;color:var(--app-text);font:inherit;font-size:15px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer}
+.a-btn--primary{background:var(--app-primary);color:var(--app-on-primary)}
+.a-btn--secondary{background:var(--app-surface);border-color:var(--app-border);box-shadow:var(--app-shadow-sm)}
+.a-btn--block{width:100%}
+.a-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.a-label{font-size:14px;font-weight:600;line-height:1.3}
+.a-input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--app-border-strong);border-radius:var(--app-radius);background:var(--app-surface);color:var(--app-text);font:inherit;font-size:15px;line-height:1.35}
+.a-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;white-space:nowrap}
+.a-badge::before{content:"";width:7px;height:7px;border-radius:999px;background:currentColor;flex:none}
+.a-badge--warning{background:var(--app-warning-soft);color:var(--app-warning)}
+.a-badge--danger{background:var(--app-danger-soft);color:var(--app-danger)}
+.a-badge--neutral{background:var(--app-neutral-soft);color:var(--app-neutral)}
+.a-card{background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius-lg);box-shadow:var(--app-shadow-sm)}
+/* Bloc Clerk (simulé avec l'apparence proposée) */
+.clerk{display:flex;flex-direction:column;gap:20px;padding:32px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius-xl);box-shadow:var(--app-shadow)}
+.clerk-sep{display:flex;align-items:center;gap:12px;color:var(--app-muted);font-size:13px}
+.clerk-sep::before,.clerk-sep::after{content:"";flex:1;height:1px;background:var(--app-border)}
+.clerk-g{display:grid;place-items:center;width:20px;height:20px;border-radius:4px;background:var(--app-surface-2);font-size:12px;font-weight:700;color:var(--app-muted)}
+.clerk-foot{text-align:center;font-size:14px;color:var(--app-muted)}
+/* États du compte */
+.st{display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px}
+.st-icon{width:64px;height:64px;border-radius:999px;display:grid;place-items:center}
+.st-icon svg.i{width:28px;height:28px}
+.st-icon.is-warning{background:var(--app-warning-soft);color:var(--app-warning)}
+.st-icon.is-danger{background:var(--app-danger-soft);color:var(--app-danger)}
+.st-icon.is-neutral{background:var(--app-neutral-soft);color:var(--app-neutral)}
+.st-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+/* Aperçu de carte (variables de carte, isolées) */
+.t-terracotta{--c-accent:#B3441E;--c-on-accent:#FFFFFF;--c-bg:#FBF0E4;--c-bg-2:#F4DCCA;--bg-angle:160deg;--c-text:#3B2117;--font-title:'Fraunces',Georgia,serif;--font-body:'Nunito Sans',system-ui,sans-serif;--title-weight:600;--title-tracking:-0.015em;--radius-btn:12px;--fade:55}
+.cc{--c-muted:color-mix(in oklab,var(--c-text) 78%,var(--c-bg));--c-surface:color-mix(in oklab,var(--c-text) 7%,transparent);position:relative;box-sizing:border-box;width:100%;overflow:hidden;background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2));color:var(--c-text);font-family:var(--font-body);font-size:16px;line-height:1.5}
+.cc *{box-sizing:border-box}
+.cc svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cc-media{position:relative;aspect-ratio:4/3;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade) * 1%),transparent 100%);mask-image:linear-gradient(to bottom,#000 calc(100% - var(--fade) * 1%),transparent 100%)}
+.cc-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cc-avatar{position:relative;z-index:1;width:104px;height:104px;margin:-60px auto 0;border-radius:999px;overflow:hidden;box-shadow:0 0 0 4px var(--c-bg)}
+.cc-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.cc-body{display:flex;flex-direction:column;gap:22px;padding:18px 20px 32px}
+.cc-event{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 18px;border-radius:var(--radius-btn);background:var(--c-accent);color:var(--c-on-accent)}
+.cc-event-txt{flex:1;display:flex;flex-direction:column;gap:2px}
+.cc-event-live{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.cc-dot{width:8px;height:8px;border-radius:999px;background:currentColor}
+.cc-event-name{font-size:16px;font-weight:700;line-height:1.25}
+.cc-id{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
+.cc-name{margin:0;font-family:var(--font-title);font-weight:var(--title-weight);letter-spacing:var(--title-tracking);font-size:30px;line-height:1.12}
+.cc-role{margin:2px 0 0;font-size:15px;font-weight:600}
+.cc-company{margin:0;font-size:14px;color:var(--c-muted)}
+.cc-save{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border-radius:var(--radius-btn);background:var(--c-text);color:var(--c-bg);font-size:15px;font-weight:700}
+/* Planche */
+.b{width:2038px;min-height:3560px;box-sizing:border-box;padding:64px;background:#E4E2DD;color:#1C1B19;font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;gap:96px}
+.b-row{display:flex;flex-direction:column;gap:20px}
+.b-cap{display:flex;flex-direction:column;gap:4px}
+.b-cap h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.b-cap p{margin:0;font-size:15px;line-height:1.45;color:#4E4C47;max-width:110ch}
+.b-frames{display:flex;gap:80px;align-items:flex-start}
+.f-d{position:relative;width:1440px;flex:none;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35)}
+.f-m{position:relative;width:390px;flex:none;border-radius:40px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .1),0 30px 60px -30px rgb(0 0 0 / .35)}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position: absolute; overflow: hidden" aria-hidden="true">
+<defs>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></symbol>
+<symbol id="i-xcircle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+<symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6"></path><path d="M22 11h-6"></path></symbol>
+<symbol id="i-nfc" viewBox="0 0 24 24"><path d="M6 8.32a7.43 7.43 0 0 1 0 7.36"></path><path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58"></path><path d="M12.91 4.1a15.91 15.91 0 0 1 .01 15.8"></path><path d="M16.37 2a20.16 20.16 0 0 1 0 20"></path></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"></path><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle></symbol>
+</defs>
+</svg>
+
+<div class="b">
+
+<!-- ============ Connexion ============ -->
+<section class="b-row">
+  <div class="b-cap"><h2>Connexion / inscription</h2><p>Le bloc central est le composant Clerk (SignIn / SignUp), dessiné ici avec l’apparence proposée. Tout le reste est l’habillage de Cartouche. À gauche, la vraie carte de Camille : on montre ce qu’on va fabriquer.</p></div>
+  <div class="b-frames">
+    <div class="f-d">
+      <div class="app" style="height: 900px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)">
+        <div style="position: relative; overflow: hidden; background: var(--app-surface-2); padding: 48px 56px; display: flex; flex-direction: column; gap: 28px; border-right: 1px solid var(--app-border)">
+          <span class="a-logo"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg>Cartouche</span>
+          <h1 class="a-display" style="font-size: 46px; line-height: 1.05; max-width: 13ch; margin-top: 24px">Ta carte de visite, toujours à jour.</h1>
+          <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 16px; max-width: 28ch">
+            <li style="display: flex; gap: 12px; align-items: center"><svg class="i" aria-hidden="true" style="color: var(--app-brand)"><use href="#i-nfc"></use></svg>Un tag NFC ou un QR code</li>
+            <li style="display: flex; gap: 12px; align-items: center"><svg class="i" aria-hidden="true" style="color: var(--app-brand)"><use href="#i-palette"></use></svg>Une page à ton image</li>
+            <li style="display: flex; gap: 12px; align-items: center"><svg class="i" aria-hidden="true" style="color: var(--app-brand)"><use href="#i-users"></use></svg>Les contacts de tes salons, au même endroit</li>
+          </ul>
+          <div style="position: absolute; right: 56px; top: 250px; width: 320px; border-radius: 36px; overflow: hidden; border: 8px solid #1C1B19; box-shadow: var(--app-shadow-lg)" aria-hidden="true">
+            <article class="cc t-terracotta">
+              <div class="cc-media"><img src="/_blob/a3d7106fa21a2a52f1f0b545b8d21d77" alt=""></div>
+              <div class="cc-avatar"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></div>
+              <div class="cc-body">
+                <div class="cc-event"><span class="cc-event-txt"><span class="cc-event-live"><span class="cc-dot"></span>Événement en cours</span><span class="cc-event-name">Salon du Mariage Clermont 2027</span></span><svg class="ic"><use href="#i-chevron"></use></svg></div>
+                <div class="cc-id"><p class="cc-name">Camille Roche</p><p class="cc-role">Photographe de mariage</p><p class="cc-company">Studio Basalte · Clermont-Ferrand</p></div>
+                <div class="cc-save"><svg class="ic"><use href="#i-userplus"></use></svg>Enregistrer le contact</div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; gap: 20px">
+          <div class="clerk" style="width: 420px" role="region" aria-label="Connexion">
+            <div style="display: flex; flex-direction: column; gap: 6px; text-align: center">
+              <h2 style="font-size: 20px; font-weight: 700">Se connecter à Cartouche</h2>
+              <p class="a-muted">Bon retour&nbsp;! Connecte-toi pour gérer tes cartes.</p>
+            </div>
+            <button class="a-btn a-btn--secondary a-btn--block" type="button"><span class="clerk-g" aria-hidden="true">G</span>Continuer avec Google</button>
+            <div class="clerk-sep">ou</div>
+            <div class="a-field"><label class="a-label" for="lg-mail">Adresse e-mail</label><input class="a-input" id="lg-mail" type="email" autoComplete="email" placeholder="toi@exemple.fr"></div>
+            <button class="a-btn a-btn--primary a-btn--block" type="button">Continuer</button>
+            <p class="clerk-foot">Pas encore de compte&nbsp;? <a class="a-link" href="#" style="color: var(--app-text)">S’inscrire</a></p>
+          </div>
+          <p class="a-small a-muted" style="max-width: 420px; text-align: center">En continuant, tu acceptes les <a class="a-link" href="#" style="color: var(--app-text)">Conditions générales d’utilisation</a> et la <a class="a-link" href="#" style="color: var(--app-text)">Politique de confidentialité</a>.</p>
+        </div>
+      </div>
+    </div>
+    <div class="f-m">
+      <div class="app" style="height: 844px; display: flex; flex-direction: column; gap: 24px; padding: 28px 20px 24px">
+        <span class="a-logo"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg>Cartouche</span>
+        <h1 class="a-display" style="font-size: 32px; line-height: 1.08">Ta carte de visite, toujours à jour.</h1>
+        <div class="clerk" style="padding: 24px 20px" role="region" aria-label="Connexion">
+          <div style="display: flex; flex-direction: column; gap: 6px; text-align: center">
+            <h2 style="font-size: 19px; font-weight: 700">Se connecter à Cartouche</h2>
+            <p class="a-muted">Bon retour&nbsp;! Connecte-toi pour gérer tes cartes.</p>
+          </div>
+          <button class="a-btn a-btn--secondary a-btn--block" type="button"><span class="clerk-g" aria-hidden="true">G</span>Continuer avec Google</button>
+          <div class="clerk-sep">ou</div>
+          <div class="a-field"><label class="a-label" for="lgm-mail">Adresse e-mail</label><input class="a-input" id="lgm-mail" type="email" autoComplete="email" placeholder="toi@exemple.fr"></div>
+          <button class="a-btn a-btn--primary a-btn--block" type="button">Continuer</button>
+          <p class="clerk-foot">Pas encore de compte&nbsp;? <a class="a-link" href="#" style="color: var(--app-text)">S’inscrire</a></p>
+        </div>
+        <p class="a-small a-muted" style="text-align: center; margin-top: auto">En continuant, tu acceptes les <a class="a-link" href="#" style="color: var(--app-text)">CGU</a> et la <a class="a-link" href="#" style="color: var(--app-text)">Politique de confidentialité</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ États du compte ============ -->
+<sc-for list="{{states}}" as="s" hint-placeholder-count="3">
+<section class="b-row">
+  <div class="b-cap"><h2>{{s.cap}}</h2><p>{{s.capNote}}</p></div>
+  <div class="b-frames">
+    <div class="f-d">
+      <div class="app" style="height: 680px; display: flex; flex-direction: column">
+        <header style="display: flex; align-items: center; justify-content: space-between; padding: 20px 40px; border-bottom: 1px solid var(--app-border)">
+          <span class="a-logo"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg>Cartouche</span>
+          <span class="a-small a-muted">camille@studiobasalte.fr</span>
+        </header>
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px">
+          <div class="a-card st" style="width: 560px; padding: 48px 48px 40px">
+            <div class="st-icon {{s.iconCls}}"><svg class="i" aria-hidden="true"><use href="{{s.icon}}"></use></svg></div>
+            <span class="a-badge {{s.badgeCls}}">{{s.badge}}</span>
+            <h1 class="a-display" style="font-size: 32px; line-height: 1.12; max-width: 18ch">{{s.title}}</h1>
+            <p style="font-size: 16px; line-height: 1.55; max-width: 44ch" class="a-muted">{{s.text}}</p>
+            <div class="st-actions">
+              <button class="a-btn a-btn--secondary" type="button"><svg class="i" aria-hidden="true"><use href="#i-logout"></use></svg>Se déconnecter</button>
+              <sc-if value="{{s.support}}" hint-placeholder-val="{{true}}"><a class="a-btn a-btn--primary" href="#"><svg class="i" aria-hidden="true"><use href="#i-mail"></use></svg>Contacter le support</a></sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="f-m">
+      <div class="app" style="height: 720px; display: flex; flex-direction: column; padding: 24px 20px">
+        <span class="a-logo"><svg class="a-mark" viewBox="0 0 28 28" aria-hidden="true"><path class="m1" d="M7 2h14a5 5 0 0 0 5 5v14a5 5 0 0 0-5 5H7a5 5 0 0 0-5-5V7a5 5 0 0 0 5-5z"></path><path class="m2" d="M17.5 10.5a4.5 4.5 0 1 0 0 7"></path></svg>Cartouche</span>
+        <div class="st" style="flex: 1; justify-content: center">
+          <div class="st-icon {{s.iconCls}}"><svg class="i" aria-hidden="true"><use href="{{s.icon}}"></use></svg></div>
+          <span class="a-badge {{s.badgeCls}}">{{s.badge}}</span>
+          <h1 class="a-display" style="font-size: 27px; line-height: 1.15">{{s.title}}</h1>
+          <p style="font-size: 15px; line-height: 1.55" class="a-muted">{{s.text}}</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <sc-if value="{{s.support}}" hint-placeholder-val="{{true}}"><a class="a-btn a-btn--primary a-btn--block" href="#"><svg class="i" aria-hidden="true"><use href="#i-mail"></use></svg>Contacter le support</a></sc-if>
+          <button class="a-btn a-btn--secondary a-btn--block" type="button"><svg class="i" aria-hidden="true"><use href="#i-logout"></use></svg>Se déconnecter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</sc-for>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2038,"height":3560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      states: [
+        {
+          cap: 'Compte en attente de validation', capNote: 'Juste après l’inscription. Ton rassurant : rien à faire, un e-mail arrivera.',
+          icon: '#i-clock', iconCls: 'is-warning', badge: 'En attente', badgeCls: 'a-badge--warning',
+          title: 'Ton compte est en attente de validation',
+          text: 'Merci pour ton inscription, Camille. Nous validons chaque nouveau compte à la main. Tu recevras un e-mail à camille@studiobasalte.fr dès que le tien sera activé.',
+          support: false
+        },
+        {
+          cap: 'Compte refusé', capNote: 'Sobre, sans jugement, avec une voie de recours.',
+          icon: '#i-xcircle', iconCls: 'is-danger', badge: 'Inscription refusée', badgeCls: 'a-badge--danger',
+          title: 'Ton inscription n’a pas été acceptée',
+          text: 'Ce compte ne peut pas utiliser Cartouche. Si tu penses qu’il s’agit d’une erreur, écris-nous : nous reverrons ta demande.',
+          support: true
+        },
+        {
+          cap: 'Compte suspendu', capNote: 'On dit ce qui est bloqué et à qui s’adresser, sans détailler de motif ici.',
+          icon: '#i-lock', iconCls: 'is-neutral', badge: 'Suspendu', badgeCls: 'a-badge--neutral',
+          title: 'Ton compte est suspendu',
+          text: 'Tu ne peux plus modifier tes cartes pour le moment. Contacte le support pour connaître la raison et la marche à suivre.',
+          support: true
+        }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
