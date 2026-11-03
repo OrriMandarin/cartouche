@@ -157,6 +157,21 @@
       "backToSupport": "Retour au support",
       "userNotFound": "Utilisateur introuvable",
       "cardNotFound": "Carte introuvable"
+    },
+    "events": {
+      "open": "Événements",
+      "title": "Événements",
+      "backToCard": "Retour à la carte",
+      "empty": "Aucun événement",
+      "leads": "Contacts",
+      "allLeads": "Tous les contacts de la carte"
+    },
+    "leads": {
+      "title": "Contacts",
+      "cardTitle": "Contacts — toute la carte",
+      "notice": "Consultation en lecture seule, enregistrée dans le journal d'audit",
+      "backToEvents": "Retour aux événements",
+      "eventNotFound": "Événement introuvable"
     }
   },
   "themes": {

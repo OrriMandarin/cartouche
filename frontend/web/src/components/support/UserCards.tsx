@@ -13,7 +13,7 @@ import { STATUS_VARIANT } from "./UserModerationTable";
 type AdminUser = components["schemas"]["AdminUserView"];
 
 /**
- * spec: ADM-006, ADM-013. An account's profile and all its cards, whatever their state, each one opening
+ * spec: ADM-006, ADM-013, ADM-016. An account's profile and all its cards, whatever their state, each one opening
  * read-only.
  */
 export function UserCards({ user, cards }: { user: AdminUser; cards: CardView[] }) {
@@ -58,6 +58,11 @@ export function UserCards({ user, cards }: { user: AdminUser; cards: CardView[] 
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/support/cards/${card.id}`} data-testid={`support-card-view-${card.slug}`}>
                     {t("cards.view")}
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/support/cards/${card.id}/events`} data-testid={`support-card-events-${card.slug}`}>
+                    {t("events.open")}
                   </Link>
                 </Button>
               </div>
