@@ -14,6 +14,8 @@
       "signOut": "Se déconnecter",
       "loading": "Chargement…",
       "redirecting": "Redirection vers le fournisseur d'identité…",
+      "toDashboard": "Redirection vers ton tableau de bord…",
+      "dashboardLink": "Y aller maintenant",
       "error": "La connexion a échoué. Réessaie dans un instant."
     },
     "test": {

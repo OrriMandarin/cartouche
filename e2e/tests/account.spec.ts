@@ -49,9 +49,6 @@ test("ACC-001: brand-new subject lands on pending notice", async ({ page, loginA
 test("ACC-001: login page lets a seed user sign in", async ({ page }) => {
   await page.goto("/login");
   await page.getByTestId("login-as-seed-alice").click();
-  await expect(page.getByTestId("login-signed-in")).toBeVisible();
-  // The session lives in sessionStorage, so it survives the navigation.
-  await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByTestId("dashboard-empty")).toBeVisible();
 });

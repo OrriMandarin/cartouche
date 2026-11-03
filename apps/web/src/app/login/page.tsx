@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, type ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
@@ -22,7 +24,7 @@ const ClerkSignIn: ComponentType | null =
         import("@clerk/nextjs").then((m) => {
           const SignIn = m.SignIn;
           return function ClerkSignInWidget() {
-            return <SignIn routing="hash" fallbackRedirectUrl="/" />;
+            return <SignIn routing="hash" fallbackRedirectUrl="/dashboard" />;
           };
         }),
       );
@@ -39,6 +41,12 @@ function OidcRedirect() {
 export default function LoginPage() {
   const t = useTranslations("auth");
   const { status, user, signOut } = useAuth();
+  const router = useRouter();
+
+  // spec: ACC-001. A signed-in visitor goes straight to the dashboard.
+  useEffect(() => {
+    if (status === "signed-in") router.replace("/dashboard");
+  }, [status, router]);
 
   let body;
   if (status === "loading") {
@@ -47,6 +55,12 @@ export default function LoginPage() {
     body = (
       <div className="flex flex-col items-center gap-4" data-testid="login-signed-in">
         <p>{t("login.signedInAs", { name: user?.name ?? user?.email ?? user?.subject ?? "" })}</p>
+        <p>
+          {t("login.toDashboard")}{" "}
+          <Link href="/dashboard" className="underline" data-testid="login-to-dashboard">
+            {t("login.dashboardLink")}
+          </Link>
+        </p>
         <Button variant="outline" data-testid="sign-out" onClick={() => void signOut()}>
           {t("login.signOut")}
         </Button>

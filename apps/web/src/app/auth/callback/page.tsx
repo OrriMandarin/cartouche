@@ -17,7 +17,7 @@ export default function AuthCallbackPage() {
     import("@/lib/auth/adapters/oidc")
       .then((m) => m.completeOidcSignIn())
       // Full navigation so the auth provider in the layout reloads the stored user.
-      .then(() => window.location.replace("/"))
+      .then(() => window.location.replace("/dashboard"))
       .catch(() => setFailed(true));
   }, []);
 
