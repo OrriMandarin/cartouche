@@ -480,6 +480,15 @@ impl SeedAnswer {
     }
 }
 
+/// The answer of a seeded contact to a custom field its event no longer has (FRM-023).
+struct SeedDeletedAnswer {
+    /// Fixed like the ids of the fields; it matches no field of the event.
+    field_id: Uuid,
+    label: &'static str,
+    kind: CustomFieldKind,
+    answer: SeedAnswer,
+}
+
 struct SeedLead {
     id: Uuid,
     device_id: Uuid,
@@ -492,6 +501,8 @@ struct SeedLead {
     /// One answer per custom field of the event, in order.
     custom: &'static [SeedAnswer],
     spam: bool,
+    /// Answers to fields the owner has since removed from the event, kept with the contact.
+    deleted: &'static [SeedDeletedAnswer],
 }
 
 struct SeedEvent {
@@ -546,6 +557,7 @@ const EVENTS: &[SeedEvent] = &[
                     SeedAnswer::Flag(true),
                 ],
                 spam: false,
+                deleted: &[],
             },
             SeedLead {
                 id: uuid::uuid!("0198c8a3-0000-7000-8000-000000000002"),
@@ -562,6 +574,7 @@ const EVENTS: &[SeedEvent] = &[
                     SeedAnswer::Flag(false),
                 ],
                 spam: false,
+                deleted: &[],
             },
             SeedLead {
                 id: uuid::uuid!("0198c8a3-0000-7000-8000-000000000003"),
@@ -578,6 +591,7 @@ const EVENTS: &[SeedEvent] = &[
                     SeedAnswer::Flag(false),
                 ],
                 spam: true,
+                deleted: &[],
             },
         ],
     },
@@ -656,6 +670,12 @@ const EVENTS: &[SeedEvent] = &[
             phone: None,
             custom: &[],
             spam: false,
+            deleted: &[SeedDeletedAnswer {
+                field_id: uuid::uuid!("0198c8a1-0000-7000-8000-000000000005"),
+                label: "Entreprise",
+                kind: CustomFieldKind::Text,
+                answer: SeedAnswer::Text("Hébert & Fils"),
+            }],
         }],
     },
     SeedEvent {
@@ -781,6 +801,16 @@ fn seed_card_content(slug: &str) -> CardContent {
     }
 }
 
+/// The text a real submission records: the owner's custom text, or the default one built with
+/// the normalized title (FRM-008).
+fn seeded_consent_text(event: &SeedEvent, card_content: &CardContent) -> String {
+    consent_text(
+        event.consent_text.map(normalize).as_deref(),
+        card_content,
+        &normalize(event.title),
+    )
+}
+
 async fn seed_lead(
     pool: &PgPool,
     event: &SeedEvent,
@@ -791,6 +821,7 @@ async fn seed_lead(
 ) -> Result<(), sqlx::Error> {
     let submitted_at = t0 + TimeDelta::minutes(lead.submitted_minutes);
     let spam_at = lead.spam.then_some(submitted_at + TimeDelta::minutes(5));
+    // The snapshots of the current fields, then those of the removed ones.
     let answers: Vec<AnswerSnapshot> = custom_fields
         .iter()
         .zip(lead.custom)
@@ -800,13 +831,14 @@ async fn seed_lead(
             kind: field.kind,
             value: answer.to_json(),
         })
+        .chain(lead.deleted.iter().map(|deleted| AnswerSnapshot {
+            field_id: deleted.field_id,
+            label: normalize(deleted.label),
+            kind: deleted.kind,
+            value: deleted.answer.to_json(),
+        }))
         .collect();
-    // The text a real submission records: the owner's custom text, or the default one.
-    let consent_text = consent_text(
-        event.consent_text.map(normalize).as_deref(),
-        card_content,
-        event.title,
-    );
+    let consent_text = seeded_consent_text(event, card_content);
     sqlx::query!(
         "insert into leads (id, event_id, device_id, submitted_at, first_name, last_name, email, \
              phone, custom_answers, consent_at, consent_text, spam_at) \
@@ -917,6 +949,12 @@ mod tests {
                         .into_iter()
                         .chain(lead.last_name)
                         .chain(lead.phone)
+                        .chain(lead.deleted.iter().flat_map(|deleted| {
+                            [deleted.label].into_iter().chain(match deleted.answer {
+                                SeedAnswer::Text(text) => Some(text),
+                                _ => None,
+                            })
+                        }))
                 }))
             {
                 assert_eq!(normalize(text), text);
@@ -924,6 +962,7 @@ mod tests {
         }
     }
 
+    // spec: FRM-022, FRM-038
     #[test]
     fn seeded_leads_answer_every_custom_field() {
         for event in EVENTS {
@@ -931,6 +970,55 @@ mod tests {
                 assert_eq!(lead.custom.len(), event.custom.len(), "{}", event.title);
             }
         }
+    }
+
+    // spec: FRM-023
+    #[test]
+    fn seeded_deleted_answers_are_not_fields_of_their_event() {
+        let mut count = 0;
+        for event in EVENTS {
+            for lead in event.leads {
+                for deleted in lead.deleted {
+                    count += 1;
+                    assert!(
+                        event
+                            .custom
+                            .iter()
+                            .all(|field| field.id != deleted.field_id),
+                        "{}",
+                        event.title
+                    );
+                    assert_eq!(normalize(deleted.label), deleted.label);
+                }
+            }
+        }
+        assert_eq!(count, 1, "only Jean-Michel's lead keeps a deleted answer");
+    }
+
+    // spec: FRM-008
+    #[test]
+    fn a_custom_consent_text_is_recorded_as_is() {
+        let event = EVENTS
+            .iter()
+            .find(|event| event.title == "Portes ouvertes de l'Atelier")
+            .unwrap();
+        let card = seed_card_content(event.card_slug);
+        assert_eq!(
+            seeded_consent_text(event, &card),
+            event.consent_text.unwrap()
+        );
+    }
+
+    // spec: FRM-008
+    #[test]
+    fn the_default_consent_text_names_the_event_and_the_card() {
+        let event = EVENTS
+            .iter()
+            .find(|event| event.title == "Salon de Paris 2026")
+            .unwrap();
+        let text = seeded_consent_text(event, &seed_card_content(event.card_slug));
+        assert!(text.contains("« Salon de Paris 2026 »"));
+        assert!(text.contains("Alice Durand"));
     }
 
     #[test]

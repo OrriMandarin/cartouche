@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { test as base, expect, request, type APIRequestContext } from "@playwright/test";
+import { test as base, expect, request, type APIRequestContext, type Download } from "@playwright/test";
 import { API_URL, EVENTS_NOW } from "./env";
 
 const execFileAsync = promisify(execFile);
@@ -79,6 +79,8 @@ export interface EventView {
 export interface LeadView {
   id: string;
   event_id: string;
+  /** The title the event has now. */
+  event_title: string;
   submitted_at: string;
   spam: boolean;
   answers: {
@@ -170,6 +172,8 @@ export type TestApi = APIRequestContext & {
   updateEvent(subject: string, id: string, patch: Record<string, unknown>): Promise<EventView>;
   /** The contacts of an event as its owner sees them, newest first, spam ones included. */
   leads(subject: string, eventId: string): Promise<LeadView[]>;
+  /** The contacts of all the events of a card as its owner sees them, newest first, spam ones included. */
+  cardLeads(subject: string, cardId: string): Promise<LeadView[]>;
   /** Uploads a header or avatar media (with `poster` for a video); the card shows it once saved with its id. */
   uploadMedia(
     subject: string,
@@ -179,6 +183,17 @@ export type TestApi = APIRequestContext & {
     poster?: UploadFile,
   ): Promise<MediaView>;
 };
+
+/** The file a download saved, as bytes. */
+export async function downloadedBytes(download: Download): Promise<Buffer> {
+  const path = await download.path();
+  return readFile(path);
+}
+
+/** The file a download saved, read as UTF-8 text. */
+export async function downloadedText(download: Download): Promise<string> {
+  return (await downloadedBytes(download)).toString("utf8");
+}
 
 async function ensureOk(label: string, response: { ok(): boolean; status(): number; text(): Promise<string> }) {
   if (!response.ok()) {
@@ -248,6 +263,13 @@ async function createApi(): Promise<TestApi> {
         headers: await authHeaders(subject),
       });
       await ensureOk(`GET /api/events/${eventId}/leads`, response);
+      return ((await response.json()) as { leads: LeadView[] }).leads;
+    },
+    async cardLeads(subject: string, cardId: string) {
+      const response = await context.get(`/api/cards/${cardId}/leads`, {
+        headers: await authHeaders(subject),
+      });
+      await ensureOk(`GET /api/cards/${cardId}/leads`, response);
       return ((await response.json()) as { leads: LeadView[] }).leads;
     },
     async updateCard(subject: string, id: string, patch: Record<string, unknown>) {
