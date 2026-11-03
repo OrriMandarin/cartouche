@@ -443,4 +443,12 @@ describe("EventEditor", () => {
     await screen.findByTestId("event-error-summary");
     expect(closesTheTab()).toBe(false);
   });
+
+  test("EDI-021 a date the browser accepts but no instant stands for does not crash the editor", () => {
+    renderEditor(eventView());
+    // A datetime-local input accepts a five-digit year after one extra keystroke.
+    type("event-starts-at", "20277-03-15T10:00");
+    expect(screen.getByTestId("event-status")).toHaveTextContent("Modifications non enregistrées");
+    expect(closesTheTab()).toBe(false);
+  });
 });

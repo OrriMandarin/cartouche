@@ -58,7 +58,7 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<unknown>(null);
   const listHref = `/dashboard/cards/${cardId}/events`;
-  const dirty = isEventDraftDirty(saved, draft, zone);
+  const dirty = isEventDraftDirty(saved, draft);
   useLeaveGuard(dirty, t("events.editor.leaveConfirm"));
 
   const message = (key: string | undefined) => (key ? (t.has(key) ? t(key) : t("events.editor.invalid")) : undefined);
