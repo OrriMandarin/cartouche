@@ -208,6 +208,10 @@ async fn reset_empties_tables(pool: PgPool) {
     .execute(&pool)
     .await
     .unwrap();
+    sqlx::query("insert into blocked_slugs (slug_hash) values (sha256('ancien-lien'::bytea))")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let response = app.request("POST", "/api/test/reset", None, None).await;
     assert_eq!(response.status, StatusCode::NO_CONTENT);
@@ -217,6 +221,11 @@ async fn reset_empties_tables(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(audits, 0);
+    let blocked: i64 = sqlx::query_scalar("select count(*) from blocked_slugs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(blocked, 0);
 }
 
 // spec: ABU-006

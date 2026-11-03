@@ -130,11 +130,17 @@ pub enum SlugClaimError {
 }
 
 /// Decides whether `owner_id` may claim a slug for `card_id` (`None` for a card being created).
+/// `blocked` tells that the slug belongs to a deleted account (LNK-015): nobody may claim it
+/// (LNK-032).
 pub fn decide_claim(
     existing: Option<&SlugRecord>,
+    blocked: bool,
     owner_id: Uuid,
     card_id: Option<Uuid>,
 ) -> Result<SlugClaim, SlugClaimError> {
+    if blocked {
+        return Err(SlugClaimError::Taken);
+    }
     let Some(record) = existing else {
         return Ok(SlugClaim::New);
     };
@@ -266,6 +272,26 @@ mod tests {
         assert_eq!(with_suffix(&base, 2).as_str(), "alice-durand-2");
     }
 
+    // spec: LNK-032
+    #[test]
+    fn a_blocked_slug_is_taken_for_everyone() {
+        let me = id(1);
+        for card in [None, Some(id(10))] {
+            assert_eq!(
+                decide_claim(None, true, me, card),
+                Err(SlugClaimError::Taken)
+            );
+            // Whatever the store knows about it: blocked wins.
+            for existing in [record(1, Some(10), true), record(1, None, false)] {
+                assert_eq!(
+                    decide_claim(Some(&existing), true, me, card),
+                    Err(SlugClaimError::Taken)
+                );
+            }
+            assert_eq!(decide_claim(None, false, me, card), Ok(SlugClaim::New));
+        }
+    }
+
     fn id(n: u128) -> Uuid {
         Uuid::from_u128(n)
     }
@@ -285,38 +311,38 @@ mod tests {
         let card = Some(id(10));
 
         // Free slug.
-        assert_eq!(decide_claim(None, me, card), Ok(SlugClaim::New));
-        assert_eq!(decide_claim(None, me, None), Ok(SlugClaim::New));
+        assert_eq!(decide_claim(None, false, me, card), Ok(SlugClaim::New));
+        assert_eq!(decide_claim(None, false, me, None), Ok(SlugClaim::New));
 
         // Current slug of this very card.
         assert_eq!(
-            decide_claim(Some(&record(1, Some(10), true)), me, card),
+            decide_claim(Some(&record(1, Some(10), true)), false, me, card),
             Ok(SlugClaim::AlreadyCurrent)
         );
         // Old slug of this very card.
         assert_eq!(
-            decide_claim(Some(&record(1, Some(10), false)), me, card),
+            decide_claim(Some(&record(1, Some(10), false)), false, me, card),
             Ok(SlugClaim::ReclaimOwn)
         );
 
         // Mine, card deleted: reserved slug can be attached to another or new card.
         assert_eq!(
-            decide_claim(Some(&record(1, None, false)), me, card),
+            decide_claim(Some(&record(1, None, false)), false, me, card),
             Ok(SlugClaim::AttachReserved)
         );
         assert_eq!(
-            decide_claim(Some(&record(1, None, false)), me, None),
+            decide_claim(Some(&record(1, None, false)), false, me, None),
             Ok(SlugClaim::AttachReserved)
         );
 
         // Mine, but held by another live card (old or current slug), or by a card being created.
         for is_current in [false, true] {
             assert_eq!(
-                decide_claim(Some(&record(1, Some(11), is_current)), me, card),
+                decide_claim(Some(&record(1, Some(11), is_current)), false, me, card),
                 Err(SlugClaimError::Reserved)
             );
             assert_eq!(
-                decide_claim(Some(&record(1, Some(11), is_current)), me, None),
+                decide_claim(Some(&record(1, Some(11), is_current)), false, me, None),
                 Err(SlugClaimError::Reserved)
             );
         }
@@ -328,11 +354,11 @@ mod tests {
             record(2, None, false),
         ] {
             assert_eq!(
-                decide_claim(Some(&existing), me, card),
+                decide_claim(Some(&existing), false, me, card),
                 Err(SlugClaimError::Taken)
             );
             assert_eq!(
-                decide_claim(Some(&existing), me, None),
+                decide_claim(Some(&existing), false, me, None),
                 Err(SlugClaimError::Taken)
             );
         }

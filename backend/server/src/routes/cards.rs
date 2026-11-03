@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use crate::auth::ApprovedUser;
 use crate::db::media::{MediaRecord, StoredVariant};
-use crate::db::{cards, media, slugs};
+use crate::db::{blocked_slugs, cards, media, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
 use crate::media::MediaService;
@@ -75,8 +75,13 @@ async fn claim_slug(
     card_id: Option<Uuid>,
     slug: &Slug,
 ) -> Result<SlugClaim, ApiError> {
-    let existing = slugs::find_for_update(tx, slug.as_str()).await?;
-    decide_claim(existing.as_ref(), owner_id, card_id).map_err(|e| match e {
+    // Order matters (LNK-032). The slug row is read first: if a deletion of the account holding
+    // it is in progress, its row is locked and we wait until that transaction ends. The blocked
+    // hashes are read afterwards, in a new statement, so that they include the ones the
+    // deletion has just committed. The other order could miss them.
+    let existing = slugs::find_for_update(&mut *tx, slug.as_str()).await?;
+    let blocked = blocked_slugs::is_blocked(&mut *tx, slug.as_str()).await?;
+    decide_claim(existing.as_ref(), blocked, owner_id, card_id).map_err(|e| match e {
         SlugClaimError::Taken => ApiError::SlugTaken,
         SlugClaimError::Reserved => ApiError::SlugReserved,
     })

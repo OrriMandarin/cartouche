@@ -26,6 +26,7 @@ pub const RESET_TABLES: &[&str] = &[
     "events",
     "media",
     "card_slugs",
+    "blocked_slugs",
     "cards",
     "users",
 ];
