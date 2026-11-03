@@ -1,6 +1,6 @@
 # Formulaire d'événement
 
-> Statut : spécifié, non implémenté (plan 3)
+> Statut : implémenté (plan 3)
 
 ## Parcours du prospect
 

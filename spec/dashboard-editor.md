@@ -1,6 +1,6 @@
 # Tableau de bord et éditeur de carte
 
-> Statut : implémenté (plan 2) ; EDI-009 : plan 3 ; EDI-010 : plan 4
+> Statut : implémenté (plans 2 et 3) ; EDI-010 : plan 4
 
 ## Cartes
 

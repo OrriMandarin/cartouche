@@ -1,6 +1,6 @@
 # Contacts collectés et exports
 
-> Statut : spécifié, non implémenté (plan 4)
+> Statut : spécifié, non implémenté (plan 4) ; la liste des contacts d'un événement, avec marquage spam et suppression, existe depuis le plan 3 (EDI-020)
 
 ## Consultation
 

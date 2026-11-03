@@ -35,7 +35,7 @@ Dates relatives à T0, l'heure de l'horloge de l'API au moment du chargement. To
 
 | Événement (carte) | Début / fin (minutes depuis T0) | Particularités |
 |---|---|---|
-| Salon du Mariage Clermont 2027 (`alice-durand`) | −2 h / +6 h | en cours, 4 champs personnalisés (un de chaque type), 3 contacts dont un spam |
+| Salon du Mariage Clermont 2027 (`alice-durand`) | −2 h / +6 h | en cours, 4 champs personnalisés (date, nombre, choix unique, case à cocher), 3 contacts dont un spam |
 | Portes ouvertes de l'Atelier (`alice-durand`) | −1 h / sans fin | en cours, code d'accès « Château », 2 envois par appareil, consentement personnalisé |
 | Démonstration en boutique (`alice-durand`) | −5 min / +2 h | en cours (le troisième simultané : la limite est atteinte) |
 | Atelier découverte (`alice-durand`) | −3 h / −10 min | terminé depuis 10 min, accepte encore les envois (grâce de 15 min) |

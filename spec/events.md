@@ -1,6 +1,6 @@
 # Événements
 
-> Statut : spécifié, non implémenté (plan 3)
+> Statut : implémenté (plan 3)
 
 ## Période
 

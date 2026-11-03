@@ -1,6 +1,6 @@
 # Templates et thèmes
 
-> Statut : implémenté (plan 2) ; TPL-003 : formulaire et consentement vérifiés sur chaque template au plan 3
+> Statut : implémenté (plans 2 et 3)
 
 ## Templates
 

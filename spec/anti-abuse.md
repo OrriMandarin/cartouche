@@ -1,6 +1,6 @@
 # Protections anti-abus
 
-> Statut : spécifié, non implémenté (plan 3)
+> Statut : implémenté (plan 3)
 
 Ces protections sont toujours actives.
 

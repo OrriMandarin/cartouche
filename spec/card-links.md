@@ -1,6 +1,6 @@
 # Lien public d'une carte
 
-> Statut : implémenté (plan 2) ; LNK-015 et LNK-016 : plan 4
+> Statut : implémenté (plans 2 et 3) ; LNK-015 et LNK-016 : plan 4
 
 ## Format et unicité
 

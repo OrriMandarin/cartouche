@@ -1,6 +1,6 @@
 # Médias
 
-> Statut : implémenté (plan 2)
+> Statut : implémenté (plans 2 et 3)
 
 ## Fonds d'en-tête et photo de profil
 
