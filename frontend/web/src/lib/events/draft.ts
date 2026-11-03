@@ -120,6 +120,14 @@ export function draftToBody(draft: EventDraft, zone: string): EventInput {
 }
 
 /**
+ * spec: EDI-021. Whether `draft` differs from the `saved` one as the server would read them (the bodies they
+ * send, so an empty text is an absent one): undoing an edit makes the draft clean again.
+ */
+export function isEventDraftDirty(saved: EventDraft, draft: EventDraft, zone: string): boolean {
+  return JSON.stringify(draftToBody(saved, zone)) !== JSON.stringify(draftToBody(draft, zone));
+}
+
+/**
  * Adds an empty custom field of `kind` at the end, with a fresh stable id (FRM-032). A single choice
  * field starts with its two empty options (FRM-021).
  */

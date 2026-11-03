@@ -1,6 +1,6 @@
 import { ApiError } from "@cartouche/api-client";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { cardView } from "@/components/cards/card-view.fixture";
 import { chooseOption, renderWithIntl } from "@/components/editor/test-helpers";
 import { eventView } from "@/lib/events/event-view.fixture";
@@ -24,7 +24,15 @@ const withEmail = cardView({ id: CARD_ID, content: { first_name: "Alice", last_n
 const withoutEmail = cardView({ id: CARD_ID, content: { first_name: "Alice", last_name: "Durand" } });
 
 function renderEditor(event?: EventView, card = withEmail) {
-  renderWithIntl(<EventEditor cardId={CARD_ID} card={card} {...(event ? { event } : {})} />);
+  // The page header (« Mon compte ») is rendered by the page around the editor, not by the editor.
+  renderWithIntl(
+    <>
+      <a href="/account" data-testid="account-link">
+        Mon compte
+      </a>
+      <EventEditor cardId={CARD_ID} card={card} {...(event ? { event } : {})} />
+    </>,
+  );
 }
 
 function type(testId: string, value: string) {
@@ -56,6 +64,27 @@ beforeEach(() => {
   );
   put.mockResolvedValue({ data: eventView() });
 });
+
+afterEach(() => vi.restoreAllMocks());
+
+/** Clicks the link and tells whether the guard let the navigation go; the navigation itself is stopped. */
+function linkNavigates(testId: string): boolean {
+  let allowed = false;
+  const stop = (event: Event) => {
+    allowed = !event.defaultPrevented;
+    event.preventDefault();
+  };
+  document.addEventListener("click", stop);
+  fireEvent.click(screen.getByTestId(testId));
+  document.removeEventListener("click", stop);
+  return allowed;
+}
+
+function closesTheTab(): boolean {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return !event.defaultPrevented;
+}
 
 describe("EventEditor", () => {
   test("EVT-022 the time zone is shown next to the dates", () => {
@@ -353,5 +382,65 @@ describe("EventEditor", () => {
       "href",
       `/dashboard/cards/${CARD_ID}/events`,
     );
+  });
+
+  test("EDI-021 leaving the event editor with unsaved changes asks first", () => {
+    renderEditor(eventView());
+    expect(closesTheTab()).toBe(true);
+
+    type("event-title", "Salon de l’Artisanat 2028 ✨");
+    expect(closesTheTab()).toBe(false);
+    expect(screen.getByTestId("event-status")).toHaveTextContent("Modifications non enregistrées");
+  });
+
+  test("EDI-021 every link of the page asks only when there are unsaved changes", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderEditor(eventView());
+    expect(screen.getByTestId("event-back")).toHaveAttribute("href", `/dashboard/cards/${CARD_ID}/events`);
+    expect(linkNavigates("event-back")).toBe(true);
+    expect(linkNavigates("account-link")).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+
+    type("event-title", "Salon de l’Artisanat 2028 ✨");
+    expect(linkNavigates("event-back")).toBe(false);
+    expect(linkNavigates("account-link")).toBe(false);
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("modifications non enregistrées"));
+
+    confirm.mockReturnValue(true);
+    expect(linkNavigates("event-back")).toBe(true);
+    expect(linkNavigates("account-link")).toBe(true);
+  });
+
+  test("EDI-021 undoing the changes leaves the editor clean", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const stored = eventView();
+    renderEditor(stored);
+    type("event-title", "Autre titre");
+    type("event-title", stored.title);
+    expect(screen.getByTestId("event-status")).toBeEmptyDOMElement();
+    expect(closesTheTab()).toBe(true);
+    expect(linkNavigates("event-back")).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  test("EDI-021 after a save nothing is asked", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderEditor(eventView());
+    type("event-title", "Salon de l’Artisanat 2028 ✨");
+    fireEvent.click(screen.getByTestId("event-save"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`/dashboard/cards/${CARD_ID}/events`));
+    expect(closesTheTab()).toBe(true);
+    expect(linkNavigates("account-link")).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  test("EDI-021 a refused save keeps the changes unsaved", async () => {
+    put.mockRejectedValue(rejectWith(400, "validation_failed", [{ field: "title", code: "required" }]));
+    renderEditor(eventView());
+    type("event-title", "");
+    fireEvent.click(screen.getByTestId("event-save"));
+    await screen.findByTestId("event-error-summary");
+    expect(closesTheTab()).toBe(false);
   });
 });

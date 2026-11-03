@@ -444,6 +444,8 @@
       "formLabel": "Formulaire de l'événement",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
+      "unsaved": "Modifications non enregistrées",
+      "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
       "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
       "sections": {
         "general": "Événement",
