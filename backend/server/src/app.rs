@@ -14,6 +14,10 @@ use tracing::{Span, field};
 
 use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
+use crate::routes::admin_cards::{
+    get_card as admin_get_card, get_user as admin_get_user, support_disable_card,
+    support_enable_card,
+};
 use crate::routes::admin_users::{list_users, set_user_status};
 use crate::routes::card_media::{UPLOAD_BODY_LIMIT, upload_media};
 use crate::routes::cards::{
@@ -49,7 +53,17 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/public/cards/{slug}", get(get_public_card))
         .route("/api/public/cards/{slug}/vcard", get(get_public_vcard))
         .route("/api/admin/users", get(list_users))
-        .route("/api/admin/users/{id}/status", post(set_user_status));
+        .route("/api/admin/users/{id}", get(admin_get_user))
+        .route("/api/admin/users/{id}/status", post(set_user_status))
+        .route("/api/admin/cards/{id}", get(admin_get_card))
+        .route(
+            "/api/admin/cards/{id}/support-disable",
+            post(support_disable_card),
+        )
+        .route(
+            "/api/admin/cards/{id}/support-enable",
+            post(support_enable_card),
+        );
     // In S3 mode the bucket serves the files.
     let router = if state.media.serves_locally() {
         router.route("/media/{*key}", get(get_media_file))

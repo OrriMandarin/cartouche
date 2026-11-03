@@ -1,3 +1,4 @@
+pub mod admin_cards;
 pub mod admin_users;
 pub mod card_media;
 pub mod cards;
