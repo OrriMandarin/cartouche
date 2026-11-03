@@ -322,6 +322,10 @@ pub async fn delete_card(
     ApiPath(id): ApiPath<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let mut tx = state.db.begin().await?;
+    // Lock the card row first, like a save does, so both take the card then its slugs.
+    cards::lock_for_owner(&mut tx, me.user.id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
     if !cards::delete_for_owner(&mut tx, me.user.id, id).await? {
         return Err(ApiError::NotFound);
     }

@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
-use common::cards::{cards_app, create_card, put_card, token};
+use common::cards::{cards_app, create_card, put_card, save_body, token};
 use common::{TestApp, TestResponse, test_app_with};
 use futures_util::future::join_all;
 use serde_json::{Value, json};
@@ -94,6 +94,36 @@ async fn concurrent_creations_of_one_slug(pool: PgPool) {
         "{:?}",
         responses.iter().map(|r| r.status).collect::<Vec<_>>()
     );
+}
+
+// spec: LNK-003, LNK-013
+#[sqlx::test(migrations = "./migrations")]
+async fn delete_racing_a_slug_change_never_fails_with_a_server_error(pool: PgPool) {
+    let app = cards_app(pool).await;
+    for i in 0..30 {
+        let card = create_card(&app, "alice", &format!("race-{i}")).await;
+        let id = card["id"].as_str().unwrap().to_string();
+        let body = save_body(&card, json!({ "slug": format!("renamed-{i}") }));
+        let path = format!("/api/cards/{id}");
+        let token = token("alice");
+        let (saved, deleted) = futures_util::future::join(
+            app.request("PUT", &path, Some(&token), Some(body)),
+            app.request("DELETE", &path, Some(&token), None),
+        )
+        .await;
+        assert!(
+            [StatusCode::OK, StatusCode::NOT_FOUND].contains(&saved.status),
+            "round {i}: save {} {}",
+            saved.status,
+            saved.json
+        );
+        assert!(
+            [StatusCode::NO_CONTENT, StatusCode::NOT_FOUND].contains(&deleted.status),
+            "round {i}: delete {} {}",
+            deleted.status,
+            deleted.json
+        );
+    }
 }
 
 // spec: LNK-018

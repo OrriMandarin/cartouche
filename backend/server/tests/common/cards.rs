@@ -64,7 +64,13 @@ pub async fn put_card(app: &TestApp, sub: &str, id: &str, patch: Value) -> TestR
         "read {id}: {}",
         current.json
     );
-    let card = current.json;
+    let body = save_body(&current.json, patch);
+    app.request("PUT", &path, Some(&token(sub)), Some(body))
+        .await
+}
+
+/// The `PUT` body that saves `card` as it is, with `patch` merged into its editable fields.
+pub fn save_body(card: &Value, patch: Value) -> Value {
     let mut content = card["content"].clone();
     content
         .as_object_mut()
@@ -82,6 +88,5 @@ pub async fn put_card(app: &TestApp, sub: &str, id: &str, patch: Value) -> TestR
         "avatar_media_id": card["avatar"]["id"],
     });
     merge(&mut body, patch);
-    app.request("PUT", &path, Some(&token(sub)), Some(body))
-        .await
+    body
 }
