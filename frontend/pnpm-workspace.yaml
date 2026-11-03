@@ -1,0 +1,7 @@
+packages:
+  - "web"
+  - "api-client"
+  - "e2e"
+allowBuilds:
+  '@parcel/watcher': false
+  '@swc/core': false

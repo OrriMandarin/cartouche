@@ -1,0 +1,95 @@
+{
+  "testMode": {
+    "banner": "MODE TEST — données fictives"
+  },
+  "landing": {
+    "title": "Cartouche",
+    "tagline": "Votre carte de visite numérique, simple et ouverte.",
+    "signIn": "Se connecter"
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "signedInAs": "Connecté en tant que {name}",
+      "signOut": "Se déconnecter",
+      "loading": "Chargement…",
+      "redirecting": "Redirection vers le fournisseur d'identité…",
+      "toDashboard": "Redirection vers ton tableau de bord…",
+      "dashboardLink": "Y aller maintenant",
+      "error": "La connexion a échoué. Réessaie dans un instant."
+    },
+    "test": {
+      "heading": "Connexion de test",
+      "description": "Choisis un utilisateur du jeu de données de test.",
+      "freeSubject": "Sujet libre",
+      "freeSubjectPlaceholder": "ex. seed-zoe",
+      "submit": "Se connecter"
+    },
+    "callback": {
+      "pending": "Connexion en cours…",
+      "error": "La connexion a échoué.",
+      "retry": "Réessayer"
+    }
+  },
+  "account": {
+    "loading": "Chargement…",
+    "header": {
+      "signedInAs": "Connecté en tant que {name}",
+      "signOut": "Se déconnecter"
+    },
+    "pending": {
+      "title": "Ton compte est en attente de validation",
+      "description": "Un administrateur doit valider ton compte avant que tu puisses créer des cartes. Reviens un peu plus tard."
+    },
+    "rejected": {
+      "title": "Ton compte a été refusé",
+      "description": "Ton inscription n'a pas été retenue. Contacte le support si tu penses que c'est une erreur."
+    },
+    "suspended": {
+      "title": "Ton compte est suspendu",
+      "description": "L'accès à ton compte est suspendu. Contacte le support pour en savoir plus."
+    },
+    "signupClosed": {
+      "title": "Les inscriptions sont fermées",
+      "description": "Cette instance n'accepte pas de nouveaux comptes pour l'instant."
+    },
+    "error": {
+      "title": "Une erreur est survenue",
+      "message": "Réessaie dans un instant. Si le problème persiste, communique l'identifiant ci-dessous au support.",
+      "requestId": "Identifiant de requête :"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "empty": "Aucune carte pour l'instant",
+    "support": "Support"
+  },
+  "support": {
+    "title": "Support",
+    "backToDashboard": "Retour au tableau de bord",
+    "forbidden": "Accès réservé",
+    "loading": "Chargement…",
+    "empty": "Aucun compte dans ce statut.",
+    "admin": "Admin",
+    "status": {
+      "pending": "En attente",
+      "approved": "Validé",
+      "rejected": "Refusé",
+      "suspended": "Suspendu"
+    },
+    "actions": {
+      "approve": "Valider",
+      "reject": "Refuser",
+      "suspend": "Suspendre",
+      "reactivate": "Réactiver"
+    },
+    "columns": {
+      "name": "Nom",
+      "email": "Email",
+      "subject": "Identifiant",
+      "status": "Statut",
+      "createdAt": "Créé le",
+      "actions": "Actions"
+    }
+  }
+}

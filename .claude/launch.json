@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "source ~/.cargo/env && make dev-db && make api"],
+      "port": 8080
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "export PATH=\"$HOME/.local/bin:$PATH\" && make web"],
+      "port": 3000
+    }
+  ]
+}

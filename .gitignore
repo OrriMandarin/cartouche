@@ -1,0 +1,13 @@
+target/
+node_modules/
+.next/
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/
+.env
+.env.local
+.superpowers/
+next-env.d.ts
+# Written by `next dev`.
+frontend/web/AGENTS.md
+*.tsbuildinfo
+coverage/
