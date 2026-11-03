@@ -10,3 +10,6 @@ export type StandardFields = Schemas["StandardFields"];
 export type CustomField = Schemas["CustomField"];
 export type CustomFieldKind = Schemas["CustomFieldKind"];
 export type FieldMode = Schemas["FieldMode"];
+
+/** A contact collected by an event, as its owner sees it. */
+export type LeadView = Schemas["LeadView"];

@@ -430,6 +430,23 @@
       }
     }
   },
+  "leads": {
+    "title": "Contacts",
+    "loading": "Chargement des contacts…",
+    "empty": "Aucun contact pour l'instant.",
+    "unnamed": "Contact sans nom",
+    "spamBadge": "Spam",
+    "markSpam": "Marquer comme spam",
+    "unmarkSpam": "Ce n'est pas un spam",
+    "delete": "Supprimer",
+    "deleteDialog": {
+      "title": "Supprimer ce contact ?",
+      "description": "Ce contact sera supprimé définitivement.",
+      "confirm": "Supprimer définitivement",
+      "cancel": "Annuler",
+      "close": "Fermer"
+    }
+  },
   "fieldErrors": {
     "required": "Ce champ est obligatoire.",
     "too_long": "Ce texte est trop long.",
