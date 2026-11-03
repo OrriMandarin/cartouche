@@ -2,6 +2,7 @@ use std::any::Any;
 use std::time::Duration;
 
 use axum::Router;
+use axum::extract::DefaultBodyLimit;
 use axum::http::{Request, Response};
 use axum::middleware::from_fn;
 use axum::response::IntoResponse;
@@ -14,9 +15,11 @@ use tracing::{Span, field};
 use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
 use crate::routes::admin_users::{list_users, set_user_status};
+use crate::routes::card_media::{UPLOAD_BODY_LIMIT, upload_media};
 use crate::routes::cards::{create_card, delete_card, get_card, list_cards, update_card};
 use crate::routes::health::health;
 use crate::routes::me::me;
+use crate::routes::media_files::get_media_file;
 use crate::routes::slugs::{slug_availability, suggest_slug};
 use crate::state::AppState;
 
@@ -30,10 +33,20 @@ pub fn build_router(state: AppState) -> Router {
             "/api/cards/{id}",
             get(get_card).put(update_card).delete(delete_card),
         )
+        .route(
+            "/api/cards/{id}/media",
+            post(upload_media).layer(DefaultBodyLimit::max(UPLOAD_BODY_LIMIT)),
+        )
         .route("/api/slugs/suggestion", get(suggest_slug))
         .route("/api/slugs/availability", get(slug_availability))
         .route("/api/admin/users", get(list_users))
         .route("/api/admin/users/{id}/status", post(set_user_status));
+    // In S3 mode the bucket serves the files.
+    let router = if state.media.serves_locally() {
+        router.route("/media/{*key}", get(get_media_file))
+    } else {
+        router
+    };
     // Every `/api/test/*` route lives in `test_support::routes`; one guard mounts them.
     #[cfg(feature = "test-support")]
     let router = if crate::startup::test_routes_enabled(&state.config) {

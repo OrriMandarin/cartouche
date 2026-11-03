@@ -5,6 +5,9 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
+
+use crate::validation::FieldError;
 
 /// Where a media is shown on a card.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -174,6 +177,59 @@ fn read_u64(data: &[u8], at: usize) -> Result<u64, Mp4Error> {
     Ok(u64::from_be_bytes(raw.try_into().expect("8 bytes")))
 }
 
+/// Why an uploaded file is refused before any processing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UploadRejection {
+    /// Not a JPEG, PNG, WebP or usable MP4 file, or a video for a slot that takes images only.
+    Unsupported,
+    /// Heavier than the limit of its kind.
+    TooLarge,
+    /// A video longer than [`MAX_VIDEO_DURATION`].
+    VideoTooLong,
+}
+
+/// Decides what an uploaded file is for `slot` from its content alone (MED-002, MED-008,
+/// MED-012, MED-013). An `ftyp` file is a video only if it has a readable movie header: HEIC
+/// and AVIF photos share the `ftyp` box but have none.
+pub fn classify_upload(bytes: &[u8], slot: Slot) -> Result<MediaKind, UploadRejection> {
+    match sniff(bytes) {
+        Some(MediaFormat::Jpeg | MediaFormat::Png | MediaFormat::Webp) => {
+            if bytes.len() > MAX_IMAGE_BYTES {
+                return Err(UploadRejection::TooLarge);
+            }
+            Ok(MediaKind::Image)
+        }
+        Some(MediaFormat::Mp4) if slot == Slot::Header => {
+            let duration = mp4_duration(bytes).map_err(|_| UploadRejection::Unsupported)?;
+            if bytes.len() > MAX_VIDEO_BYTES {
+                Err(UploadRejection::TooLarge)
+            } else if duration > MAX_VIDEO_DURATION {
+                Err(UploadRejection::VideoTooLong)
+            } else {
+                Ok(MediaKind::Video)
+            }
+        }
+        _ => Err(UploadRejection::Unsupported),
+    }
+}
+
+/// Field errors (`invalid_media`) for a header or avatar that is not one of the card's own
+/// media in the matching slot (MED-018, MED-020). `card_media` lists the card's media.
+pub fn invalid_media_refs(
+    header: Option<Uuid>,
+    avatar: Option<Uuid>,
+    card_media: &[(Uuid, Slot)],
+) -> Vec<FieldError> {
+    [
+        ("header_media_id", header, Slot::Header),
+        ("avatar_media_id", avatar, Slot::Avatar),
+    ]
+    .into_iter()
+    .filter(|(_, id, slot)| id.is_some_and(|id| !card_media.contains(&(id, *slot))))
+    .map(|(field, _, _)| FieldError::new(field, "invalid_media"))
+    .collect()
+}
+
 /// One image file to produce from an upload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlannedVariant {
@@ -247,6 +303,89 @@ mod tests {
         payload.extend_from_slice(&duration.to_be_bytes());
         payload.resize(112, 0);
         boxed(b"mvhd", &payload)
+    }
+
+    fn mp4_of(duration_ms: u32) -> Vec<u8> {
+        let mut mvhd = vec![0, 0, 0, 0];
+        mvhd.extend_from_slice(&[0; 8]);
+        mvhd.extend_from_slice(&1000u32.to_be_bytes());
+        mvhd.extend_from_slice(&duration_ms.to_be_bytes());
+        mvhd.resize(100, 0);
+        let mut file = boxed(b"ftyp", b"isom\0\0\0\0isom");
+        file.extend(boxed(b"moov", &boxed(b"mvhd", &mvhd)));
+        file
+    }
+
+    // spec: MED-002, MED-008, MED-012, MED-013
+    #[test]
+    fn uploads_are_classified_from_their_content() {
+        let jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0, 0];
+        assert_eq!(classify_upload(&jpeg, Slot::Avatar), Ok(MediaKind::Image));
+        assert_eq!(classify_upload(&jpeg, Slot::Header), Ok(MediaKind::Image));
+        assert_eq!(
+            classify_upload(b"plain text", Slot::Header),
+            Err(UploadRejection::Unsupported)
+        );
+
+        let clip = mp4_of(30_100);
+        assert_eq!(classify_upload(&clip, Slot::Header), Ok(MediaKind::Video));
+        assert_eq!(
+            classify_upload(&clip, Slot::Avatar),
+            Err(UploadRejection::Unsupported)
+        );
+        assert_eq!(
+            classify_upload(&mp4_of(30_101), Slot::Header),
+            Err(UploadRejection::VideoTooLong)
+        );
+        // `ftyp` without a movie header: a HEIC photo, not a video.
+        let heic = boxed(b"ftyp", b"heic\0\0\0\0mif1");
+        assert_eq!(
+            classify_upload(&heic, Slot::Header),
+            Err(UploadRejection::Unsupported)
+        );
+    }
+
+    // spec: MED-002, MED-012
+    #[test]
+    fn upload_size_limits_depend_on_the_kind() {
+        let mut image = vec![0xFF, 0xD8, 0xFF];
+        image.resize(MAX_IMAGE_BYTES, 0);
+        assert_eq!(classify_upload(&image, Slot::Header), Ok(MediaKind::Image));
+        image.push(0);
+        assert_eq!(
+            classify_upload(&image, Slot::Header),
+            Err(UploadRejection::TooLarge)
+        );
+
+        let mut clip = mp4_of(1_000);
+        clip.resize(MAX_VIDEO_BYTES, 0);
+        assert_eq!(classify_upload(&clip, Slot::Header), Ok(MediaKind::Video));
+        clip.push(0);
+        assert_eq!(
+            classify_upload(&clip, Slot::Header),
+            Err(UploadRejection::TooLarge)
+        );
+    }
+
+    // spec: MED-018, MED-020
+    #[test]
+    fn media_refs_must_be_the_cards_own_in_the_right_slot() {
+        let (header, avatar, stranger) =
+            (Uuid::from_u128(1), Uuid::from_u128(2), Uuid::from_u128(3));
+        let media = [(header, Slot::Header), (avatar, Slot::Avatar)];
+        assert!(invalid_media_refs(Some(header), Some(avatar), &media).is_empty());
+        assert!(invalid_media_refs(None, None, &media).is_empty());
+        assert_eq!(
+            invalid_media_refs(Some(avatar), Some(header), &media),
+            vec![
+                FieldError::new("header_media_id", "invalid_media"),
+                FieldError::new("avatar_media_id", "invalid_media"),
+            ]
+        );
+        assert_eq!(
+            invalid_media_refs(Some(stranger), None, &media),
+            vec![FieldError::new("header_media_id", "invalid_media")]
+        );
     }
 
     // spec: MED-013

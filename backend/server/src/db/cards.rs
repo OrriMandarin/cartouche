@@ -178,6 +178,23 @@ pub async fn insert(
     row.try_into()
 }
 
+/// Locks the owner's card until the transaction ends, so a save cannot race a deletion or
+/// an upload. `false` when the owner has no such card.
+pub async fn lock_for_owner(
+    tx: &mut PgConnection,
+    owner_id: Uuid,
+    card_id: Uuid,
+) -> Result<bool, sqlx::Error> {
+    let locked = sqlx::query!(
+        "select id from cards where id = $1 and owner_id = $2 for update",
+        card_id,
+        owner_id,
+    )
+    .fetch_optional(tx)
+    .await?;
+    Ok(locked.is_some())
+}
+
 /// Overwrites the content of the owner's card and its two media. `None` when the owner has
 /// no such card, or when a media is not one of this card's, in the matching slot. The returned `slug` is the current one at that moment: apply a slug claim
 /// first if the save changes it.

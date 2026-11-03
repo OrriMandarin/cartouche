@@ -140,6 +140,11 @@ impl MediaService {
         Ok(())
     }
 
+    /// Size in bytes of the file stored under `key`.
+    pub async fn size(&self, key: &str) -> Result<u64, MediaError> {
+        Ok(self.store.head(&Path::parse(key)?).await?.size)
+    }
+
     /// The whole file, or the bytes of `range` when given (an end past the file is cut short).
     pub async fn get(
         &self,

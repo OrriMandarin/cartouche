@@ -482,7 +482,7 @@
           "cards"
         ],
         "summary": "Update a card",
-        "description": "Replaces the card's slug, template, settings, theme, content and links. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available.",
+        "description": "Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted.",
         "operationId": "update_card",
         "parameters": [
           {
@@ -649,6 +649,135 @@
           },
           "404": {
             "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/cards/{id}/media": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Upload a media",
+        "description": "Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar.",
+        "operationId": "upload_media",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadMediaBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The stored media.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request or form (`invalid_request`) or refused file (`validation_failed`: `file` is `required`, `image_too_large` or `video_too_long`; `slot` is `required`; `poster` is `poster_required` or `image_too_large`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is too heavy: 10 MB for an image, 25 MB for a video (`payload_too_large`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The content is not a supported image or video (`unsupported_media_type`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1140,12 +1269,34 @@
           "updated_at"
         ],
         "properties": {
+          "avatar": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MediaView",
+                "description": "The profile photo, once attached by a save (MED-018)."
+              }
+            ]
+          },
           "content": {
             "$ref": "#/components/schemas/ContentView"
           },
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "header": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MediaView",
+                "description": "The header background, once attached by a save (MED-018)."
+              }
+            ]
           },
           "id": {
             "type": "string",
@@ -1396,6 +1547,24 @@
           }
         }
       },
+      "ImageVariantView": {
+        "type": "object",
+        "required": [
+          "width",
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Width in pixels (the side, for a profile photo).",
+            "minimum": 0
+          }
+        }
+      },
       "LinkInput": {
         "type": "object",
         "required": [
@@ -1485,6 +1654,52 @@
           }
         }
       },
+      "MediaKind": {
+        "type": "string",
+        "enum": [
+          "image",
+          "video"
+        ]
+      },
+      "MediaView": {
+        "type": "object",
+        "description": "An uploaded image or video and the addresses of its files.",
+        "required": [
+          "id",
+          "kind",
+          "images"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageVariantView"
+            },
+            "description": "The WebP variants, narrowest first; for a video, the waiting image."
+          },
+          "jpeg_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The largest JPEG variant, for a profile photo (vCard and link previews)."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "video_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The MP4 file, for a video."
+          }
+        }
+      },
       "SetStatusBody": {
         "type": "object",
         "description": "The status to move an account to.",
@@ -1496,6 +1711,14 @@
             "$ref": "#/components/schemas/UserStatus"
           }
         }
+      },
+      "Slot": {
+        "type": "string",
+        "description": "Where a media is shown on a card.",
+        "enum": [
+          "header",
+          "avatar"
+        ]
       },
       "SlugAvailability": {
         "type": "object",
@@ -1646,8 +1869,24 @@
           "links"
         ],
         "properties": {
+          "avatar_media_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The profile photo: one of this card's uploads in the `avatar` slot. Absent or null\nremoves it."
+          },
           "content": {
             "$ref": "#/components/schemas/ContentInput"
+          },
+          "header_media_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The header media: one of this card's uploads in the `header` slot. Absent or null\nremoves it."
           },
           "links": {
             "type": "array",
@@ -1668,6 +1907,33 @@
           "theme": {
             "$ref": "#/components/schemas/Theme",
             "description": "Received as raw JSON so that an invalid theme is a field error (`invalid_theme`)."
+          }
+        }
+      },
+      "UploadMediaBody": {
+        "type": "object",
+        "description": "Shape of the multipart form, for the API description only.",
+        "required": [
+          "slot",
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "A JPEG, PNG or WebP image (10 MB, 40 million pixels at most), or in `header` an MP4\nvideo (25 MB, 30 s at most). The type is read from the content."
+          },
+          "poster": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "The waiting image of a video, captured in the browser. Required for a video."
+          },
+          "slot": {
+            "$ref": "#/components/schemas/Slot",
+            "description": "Where the media is shown. A video is only accepted in `header`."
           }
         }
       },

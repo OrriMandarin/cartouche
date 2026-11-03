@@ -3,7 +3,7 @@
 
 use cartouche_domain::{MediaKind, Slot, VariantFormat};
 use serde::{Deserialize, Serialize};
-use sqlx::{PgConnection, PgPool};
+use sqlx::{PgConnection, PgExecutor, PgPool};
 use uuid::Uuid;
 
 /// One stored file of a media: `name` is the last segment of its storage key.
@@ -106,7 +106,7 @@ pub async fn find_for_owner(
 }
 
 pub async fn list_for_card(
-    pool: &PgPool,
+    db: impl PgExecutor<'_>,
     owner_id: Uuid,
     card_id: Uuid,
 ) -> Result<Vec<MediaRecord>, sqlx::Error> {
@@ -119,7 +119,29 @@ pub async fn list_for_card(
         card_id,
         owner_id,
     )
-    .fetch_all(pool)
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .map(MediaRecord::try_from)
+    .collect()
+}
+
+/// The media currently shown on the owner's cards `card_ids`: their header and avatar.
+pub async fn list_attached(
+    db: impl PgExecutor<'_>,
+    owner_id: Uuid,
+    card_ids: &[Uuid],
+) -> Result<Vec<MediaRecord>, sqlx::Error> {
+    sqlx::query_as!(
+        MediaRow,
+        "select m.id, m.card_id, m.slot, m.kind, m.variants \
+         from media m join cards c on c.id = m.card_id \
+         where c.owner_id = $1 and c.id = any($2) \
+           and (c.header_media_id = m.id or c.avatar_media_id = m.id)",
+        owner_id,
+        card_ids,
+    )
+    .fetch_all(db)
     .await?
     .into_iter()
     .map(MediaRecord::try_from)

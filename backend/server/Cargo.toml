@@ -17,7 +17,7 @@ required-features = ["test-support"]
 
 [dependencies]
 async-trait = "0.1.92"
-axum = "0.8.9"
+axum = { version = "0.8.9", features = ["multipart"] }
 bytes = "1"
 cartouche-domain = { workspace = true, features = ["utoipa"] }
 chrono.workspace = true

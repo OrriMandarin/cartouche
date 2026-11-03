@@ -54,7 +54,7 @@ fn merge(base: &mut Value, patch: Value) {
     }
 }
 
-/// Reads the card, merges `patch` into its editable fields and sends the `PUT`.
+/// Reads the card, merges `patch` into its editable fields (media included) and sends the `PUT`.
 pub async fn put_card(app: &TestApp, sub: &str, id: &str, patch: Value) -> TestResponse {
     let path = format!("/api/cards/{id}");
     let current = app.request("GET", &path, Some(&token(sub)), None).await;
@@ -77,6 +77,9 @@ pub async fn put_card(app: &TestApp, sub: &str, id: &str, patch: Value) -> TestR
         "theme": card["theme"],
         "content": content,
         "links": card["links"],
+        // The save replaces the card's media too: keep the ones it has.
+        "header_media_id": card["header"]["id"],
+        "avatar_media_id": card["avatar"]["id"],
     });
     merge(&mut body, patch);
     app.request("PUT", &path, Some(&token(sub)), Some(body))

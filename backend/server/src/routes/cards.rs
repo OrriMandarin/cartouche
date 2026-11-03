@@ -7,7 +7,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use cartouche_domain::{
     CardInput, ContentInput, LinkInput, Slug, SlugClaim, SlugClaimError, Theme, ValidCard,
-    decide_claim, validate_card,
+    decide_claim, invalid_media_refs, validate_card,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
@@ -15,9 +15,11 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::auth::ApprovedUser;
-use crate::db::{cards, slugs};
+use crate::db::media::MediaRecord;
+use crate::db::{cards, media, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
+use crate::media::MediaService;
 use crate::state::AppState;
 use crate::views::CardView;
 
@@ -47,10 +49,12 @@ pub async fn list_cards(
     ApprovedUser(me): ApprovedUser,
     State(state): State<AppState>,
 ) -> Result<Json<CardList>, ApiError> {
-    let cards = cards::list_for_owner(&state.db, me.user.id)
-        .await?
+    let owned = cards::list_for_owner(&state.db, me.user.id).await?;
+    let ids: Vec<Uuid> = owned.iter().map(|card| card.id).collect();
+    let attached = media::list_attached(&state.db, me.user.id, &ids).await?;
+    let cards = owned
         .into_iter()
-        .map(|card| CardView::new(card, &state.config))
+        .map(|card| CardView::new(card, &attached, &state.config, &state.media))
         .collect::<Result<_, _>>()?;
     Ok(Json(CardList { cards }))
 }
@@ -131,7 +135,7 @@ pub async fn create_card(
     tx.commit().await.map_err(slug_race)?;
     Ok((
         StatusCode::CREATED,
-        Json(CardView::new(card, &state.config)?),
+        Json(CardView::new(card, &[], &state.config, &state.media)?),
     ))
 }
 
@@ -162,7 +166,13 @@ pub async fn get_card(
     let card = cards::find_for_owner(&state.db, me.user.id, id)
         .await?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(CardView::new(card, &state.config)?))
+    let attached = media::list_attached(&state.db, me.user.id, &[id]).await?;
+    Ok(Json(CardView::new(
+        card,
+        &attached,
+        &state.config,
+        &state.media,
+    )?))
 }
 
 /// The whole editable content of a card; it replaces what is stored.
@@ -178,16 +188,23 @@ pub struct UpdateCardBody {
     pub theme: serde_json::Value,
     pub content: ContentInput,
     pub links: Vec<LinkInput>,
+    /// The header media: one of this card's uploads in the `header` slot. Absent or null
+    /// removes it.
+    pub header_media_id: Option<Uuid>,
+    /// The profile photo: one of this card's uploads in the `avatar` slot. Absent or null
+    /// removes it.
+    pub avatar_media_id: Option<Uuid>,
 }
 
 /// Saves a card in one transaction: all validation errors first, then the slug claim (a
-/// slug change keeps the old slug reserved), then the content. Anything rejected leaves
-/// the card as it was (EDI-015).
+/// slug change keeps the old slug reserved), then the content and its media. Uploads that
+/// are not kept are deleted with their files once the save is committed (MED-018). Anything
+/// rejected leaves the card as it was (EDI-015).
 #[utoipa::path(
     put,
     path = "/api/cards/{id}",
     summary = "Update a card",
-    description = "Replaces the card's slug, template, settings, theme, content and links. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available.",
+    description = "Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted.",
     tag = "cards",
     security(("bearer" = [])),
     params(("id" = Uuid, Path, description = "Id of the card.")),
@@ -209,39 +226,72 @@ pub async fn update_card(
     ApiPath(id): ApiPath<Uuid>,
     ApiJson(body): ApiJson<UpdateCardBody>,
 ) -> Result<Json<CardView>, ApiError> {
-    let valid = validate_card(CardInput {
+    let (header_media_id, avatar_media_id) = (body.header_media_id, body.avatar_media_id);
+    let validated = validate_card(CardInput {
         slug: body.slug,
         template: body.template,
         settings: body.settings,
         theme: body.theme,
         content: body.content,
         links: body.links,
-    })
-    .map_err(ApiError::Validation)?;
+    });
 
     let owner_id = me.user.id;
-    let current = cards::find_for_owner(&state.db, owner_id, id)
-        .await?
-        .ok_or(ApiError::NotFound)?;
     let mut tx = state.db.begin().await?;
+    // The lock keeps a concurrent deletion or upload out until this save is committed.
+    if !cards::lock_for_owner(&mut tx, owner_id, id).await? {
+        return Err(ApiError::NotFound);
+    }
+    let card_media: Vec<_> = media::list_for_card(&mut *tx, owner_id, id)
+        .await?
+        .into_iter()
+        .map(|m| (m.id, m.slot))
+        .collect();
+    let media_errors = invalid_media_refs(header_media_id, avatar_media_id, &card_media);
+    let valid = match validated {
+        Ok(valid) if media_errors.is_empty() => valid,
+        Ok(_) => return Err(ApiError::Validation(media_errors)),
+        Err(mut errors) => {
+            errors.extend(media_errors);
+            return Err(ApiError::Validation(errors));
+        }
+    };
+
     let claim = claim_slug(&mut tx, owner_id, Some(id), &valid.slug).await?;
     // Before the update, which re-reads the current slug.
     slugs::apply_claim(&mut tx, owner_id, id, &valid.slug, claim)
         .await
         .map_err(slug_race)?;
-    // Media are not part of this body yet: keep the card's own.
     let card = cards::update(
         &mut tx,
         owner_id,
         id,
         &valid,
-        current.header_media_id,
-        current.avatar_media_id,
+        header_media_id,
+        avatar_media_id,
     )
     .await?
     .ok_or(ApiError::NotFound)?;
+    let removed = media::delete_unreferenced(&mut tx, owner_id, id).await?;
+    let attached = media::list_attached(&mut *tx, owner_id, &[id]).await?;
     tx.commit().await?;
-    Ok(Json(CardView::new(card, &state.config)?))
+    remove_media_files(&state.media, &removed).await;
+    Ok(Json(CardView::new(
+        card,
+        &attached,
+        &state.config,
+        &state.media,
+    )?))
+}
+
+/// Deletes the files of media whose rows are gone. Rows are authoritative: a file that
+/// cannot be removed is logged and left behind, the request still succeeds.
+async fn remove_media_files(storage: &MediaService, removed: &[MediaRecord]) {
+    for record in removed {
+        if let Err(error) = storage.delete_media(record.card_id, record.id).await {
+            tracing::warn!(media_id = %record.id, card_id = %record.card_id, %error, "cannot delete media files");
+        }
+    }
 }
 
 /// Deletes a card; its slugs stay reserved to the caller.
@@ -273,5 +323,9 @@ pub async fn delete_card(
         return Err(ApiError::NotFound);
     }
     tx.commit().await?;
+    // MED-019. The card is gone whatever happens to its files.
+    if let Err(error) = state.media.delete_card(id).await {
+        tracing::warn!(card_id = %id, %error, "cannot delete card media files");
+    }
     Ok(StatusCode::NO_CONTENT)
 }

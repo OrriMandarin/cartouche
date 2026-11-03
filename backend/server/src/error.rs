@@ -6,6 +6,7 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use crate::auth::AuthError;
+use crate::media::MediaError;
 use crate::request_id;
 
 pub use crate::request_id::RequestId;
@@ -157,6 +158,15 @@ impl ApiError {
 impl From<sqlx::Error> for ApiError {
     fn from(e: sqlx::Error) -> Self {
         ApiError::Internal(format!("database error: {e}"))
+    }
+}
+
+impl From<MediaError> for ApiError {
+    fn from(e: MediaError) -> Self {
+        match e {
+            MediaError::NotFound => ApiError::NotFound,
+            MediaError::Storage(detail) => ApiError::Internal(format!("media storage: {detail}")),
+        }
     }
 }
 

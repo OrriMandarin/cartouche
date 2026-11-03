@@ -82,7 +82,7 @@ export interface paths {
         get: operations["get_card"];
         /**
          * Update a card
-         * @description Replaces the card's slug, template, settings, theme, content and links. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available.
+         * @description Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted.
          */
         put: operations["update_card"];
         post?: never;
@@ -91,6 +91,26 @@ export interface paths {
          * @description Deletes the card and its media. Its slugs stay reserved to the caller and can be reclaimed by them only.
          */
         delete: operations["delete_card"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cards/{id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a media
+         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar.
+         */
+        post: operations["upload_media"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -219,9 +239,11 @@ export interface components {
         CardStatus: "active" | "disabled" | "disabled_by_support";
         /** @description A card as its owner sees it. */
         CardView: {
+            avatar?: null | components["schemas"]["MediaView"];
             content: components["schemas"]["ContentView"];
             /** Format: date-time */
             created_at: string;
+            header?: null | components["schemas"]["MediaView"];
             /** Format: uuid */
             id: string;
             links: components["schemas"]["LinkView"][];
@@ -305,6 +327,14 @@ export interface components {
              */
             status: string;
         };
+        ImageVariantView: {
+            url: string;
+            /**
+             * Format: int32
+             * @description Width in pixels (the side, for a profile photo).
+             */
+            width: number;
+        };
         LinkInput: {
             kind: components["schemas"]["LinkKind"];
             label?: string | null;
@@ -327,10 +357,29 @@ export interface components {
             is_admin: boolean;
             status: components["schemas"]["UserStatus"];
         };
+        /** @enum {string} */
+        MediaKind: "image" | "video";
+        /** @description An uploaded image or video and the addresses of its files. */
+        MediaView: {
+            /** Format: uuid */
+            id: string;
+            /** @description The WebP variants, narrowest first; for a video, the waiting image. */
+            images: components["schemas"]["ImageVariantView"][];
+            /** @description The largest JPEG variant, for a profile photo (vCard and link previews). */
+            jpeg_url?: string | null;
+            kind: components["schemas"]["MediaKind"];
+            /** @description The MP4 file, for a video. */
+            video_url?: string | null;
+        };
         /** @description The status to move an account to. */
         SetStatusBody: {
             status: components["schemas"]["UserStatus"];
         };
+        /**
+         * @description Where a media is shown on a card.
+         * @enum {string}
+         */
+        Slot: "header" | "avatar";
         SlugAvailability: {
             /** @description The slug as normalized; `null` when it is invalid. */
             slug?: string | null;
@@ -370,7 +419,19 @@ export interface components {
         };
         /** @description The whole editable content of a card; it replaces what is stored. */
         UpdateCardBody: {
+            /**
+             * Format: uuid
+             * @description The profile photo: one of this card's uploads in the `avatar` slot. Absent or null
+             *     removes it.
+             */
+            avatar_media_id?: string | null;
             content: components["schemas"]["ContentInput"];
+            /**
+             * Format: uuid
+             * @description The header media: one of this card's uploads in the `header` slot. Absent or null
+             *     removes it.
+             */
+            header_media_id?: string | null;
             links: components["schemas"]["LinkInput"][];
             /** @description Template-specific settings: a JSON object of at most 8 192 bytes. */
             settings: Record<string, never>;
@@ -378,6 +439,22 @@ export interface components {
             template: string;
             /** @description Received as raw JSON so that an invalid theme is a field error (`invalid_theme`). */
             theme: components["schemas"]["Theme"];
+        };
+        /** @description Shape of the multipart form, for the API description only. */
+        UploadMediaBody: {
+            /**
+             * Format: binary
+             * @description A JPEG, PNG or WebP image (10 MB, 40 million pixels at most), or in `header` an MP4
+             *     video (25 MB, 30 s at most). The type is read from the content.
+             */
+            file: string;
+            /**
+             * Format: binary
+             * @description The waiting image of a video, captured in the browser. Required for a video.
+             */
+            poster?: string | null;
+            /** @description Where the media is shown. A video is only accepted in `header`. */
+            slot: components["schemas"]["Slot"];
         };
         /** @enum {string} */
         UserStatus: "pending" | "approved" | "rejected" | "suspended";
@@ -897,6 +974,105 @@ export interface operations {
             };
             /** @description No such card for the caller (`not_found`). */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    upload_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadMediaBody"];
+            };
+        };
+        responses: {
+            /** @description The stored media. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaView"];
+                };
+            };
+            /** @description Malformed request or form (`invalid_request`) or refused file (`validation_failed`: `file` is `required`, `image_too_large` or `video_too_long`; `slot` is `required`; `poster` is `poster_required` or `image_too_large`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The file is too heavy: 10 MB for an image, 25 MB for a video (`payload_too_large`). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The content is not a supported image or video (`unsupported_media_type`). */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

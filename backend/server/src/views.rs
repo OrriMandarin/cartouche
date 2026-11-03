@@ -1,6 +1,9 @@
 //! JSON shapes of the API that are shared by several routes.
 
-use cartouche_domain::{CardContent, CardStatus, Link, LinkKind, Theme, format_international};
+use cartouche_domain::{
+    CardContent, CardStatus, Link, LinkKind, MediaKind, Theme, VariantFormat, format_international,
+    storage_key,
+};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -8,7 +11,9 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::db::cards::Card;
+use crate::db::media::MediaRecord;
 use crate::error::ApiError;
+use crate::media::MediaService;
 
 /// A card as its owner sees it.
 #[derive(Debug, Serialize, ToSchema)]
@@ -27,6 +32,10 @@ pub struct CardView {
     pub theme: Theme,
     pub content: ContentView,
     pub links: Vec<LinkView>,
+    /// The header background, once attached by a save (MED-018).
+    pub header: Option<MediaView>,
+    /// The profile photo, once attached by a save (MED-018).
+    pub avatar: Option<MediaView>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -50,6 +59,56 @@ pub struct LinkView {
     pub kind: LinkKind,
     pub url: String,
     pub label: Option<String>,
+}
+
+/// An uploaded image or video and the addresses of its files.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+pub struct MediaView {
+    pub id: Uuid,
+    pub kind: MediaKind,
+    /// The WebP variants, narrowest first; for a video, the waiting image.
+    pub images: Vec<ImageVariantView>,
+    /// The MP4 file, for a video.
+    pub video_url: Option<String>,
+    /// The largest JPEG variant, for a profile photo (vCard and link previews).
+    pub jpeg_url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+pub struct ImageVariantView {
+    /// Width in pixels (the side, for a profile photo).
+    pub width: u32,
+    pub url: String,
+}
+
+impl MediaView {
+    pub fn new(record: &MediaRecord, media: &MediaService) -> MediaView {
+        let url_of = |name: &str| media.url(&storage_key(record.card_id, record.id, name));
+        let mut images: Vec<ImageVariantView> = record
+            .variants
+            .iter()
+            .filter(|v| v.format == VariantFormat::Webp)
+            .map(|v| ImageVariantView {
+                width: v.width,
+                url: url_of(&v.name),
+            })
+            .collect();
+        images.sort_by_key(|image| image.width);
+        let named = |format: VariantFormat| {
+            record
+                .variants
+                .iter()
+                .filter(move |v| v.format == format)
+                .max_by_key(|v| v.width)
+        };
+        MediaView {
+            id: record.id,
+            kind: record.kind,
+            images,
+            video_url: named(VariantFormat::Mp4).map(|v| url_of(&v.name)),
+            jpeg_url: named(VariantFormat::Jpeg).map(|v| url_of(&v.name)),
+        }
+    }
 }
 
 /// `{PUBLIC_BASE_URL}/c/{slug}`, with a single slash whether or not the base ends with one.
@@ -86,12 +145,24 @@ impl From<Link> for LinkView {
 }
 
 impl CardView {
-    /// Fails only if the stored theme is no longer valid, which is a bug of ours.
-    pub fn new(card: Card, config: &Config) -> Result<CardView, ApiError> {
+    /// `attached` holds the card's header and avatar records (others are ignored). Fails only
+    /// if the stored theme is no longer valid, which is a bug of ours.
+    pub fn new(
+        card: Card,
+        attached: &[MediaRecord],
+        config: &Config,
+        media: &MediaService,
+    ) -> Result<CardView, ApiError> {
         let status = card.status();
         let theme = Theme::parse(&card.theme)
             .map_err(|_| ApiError::Internal(format!("card {} has an invalid theme", card.id)))?;
+        let view_of = |id: Option<Uuid>| {
+            let record = attached.iter().find(|m| Some(m.id) == id);
+            record.map(|record| MediaView::new(record, media))
+        };
         Ok(CardView {
+            header: view_of(card.header_media_id),
+            avatar: view_of(card.avatar_media_id),
             public_url: public_url(config, &card.slug),
             id: card.id,
             slug: card.slug,
