@@ -1,9 +1,12 @@
 //! Pure business rules for Cartouche. No I/O.
 
+pub mod access_code;
 pub mod card;
 pub mod card_status;
 pub mod clock;
 pub mod email;
+pub mod event;
+pub mod form;
 pub mod media;
 pub mod media_files;
 pub mod phone;
@@ -15,6 +18,7 @@ pub mod user;
 pub mod validation;
 pub mod vcard;
 
+pub use access_code::{access_code_matches, fold_access_code};
 pub use card::{
     CardContent, CardInput, ContentInput, DEFAULT_TEMPLATE, DEFAULT_THEME_PRESET, Link, LinkInput,
     LinkKind, MAX_LINKS, MAX_SETTINGS_BYTES, ValidCard, validate_card,
@@ -22,6 +26,17 @@ pub use card::{
 pub use card_status::{CardStatus, SupportBlockUnchanged, check_support_block, is_served};
 pub use clock::{Clock, ManualClock, OverridableClock, SystemClock};
 pub use email::is_valid_email;
+pub use event::{
+    DEFAULT_DEVICE_LIMIT, EventInput, EventNotRunning, EventPhase, MAX_ACCESS_CODE_CHARS,
+    MAX_CONSENT_TEXT_CHARS, MAX_DEVICE_LIMIT, MAX_EVENT_DESCRIPTION_CHARS, MAX_EVENT_TITLE_CHARS,
+    MIN_DEVICE_LIMIT, Period, TooManySimultaneousEvents, ValidEvent, check_simultaneous_limit,
+    max_simultaneous, submission_grace, validate_event,
+};
+pub use form::{
+    CustomField, CustomFieldKind, FieldMode, FormDefinition, MAX_CHOICE_OPTIONS, MAX_CUSTOM_FIELDS,
+    MAX_FIELD_HELP_CHARS, MAX_FIELD_LABEL_CHARS, MAX_OPTION_CHARS, MIN_CHOICE_OPTIONS,
+    StandardField, StandardFields,
+};
 pub use media::{
     MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, MAX_VIDEO_BYTES, MAX_VIDEO_DURATION, MediaFormat, MediaKind,
     Mp4Error, ParseMediaError, PlannedVariant, Slot, UploadRejection, VariantFormat,
