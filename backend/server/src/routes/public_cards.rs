@@ -6,7 +6,9 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
-use cartouche_domain::{VCard, is_served, render_vcard, storage_key};
+use cartouche_domain::{
+    PublicAccess, SlugMatch, VCard, is_served, public_access, render_vcard, storage_key,
+};
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -41,23 +43,31 @@ enum Lookup {
     Redirect(String),
 }
 
-/// Looks up the slug as typed in the address: stored slugs are lowercase, so a differing
-/// input or an old slug is a redirect. A card that is not served is neutral from every
-/// address, so that nothing tells why, nor where its current slug is (LNK-027).
+/// Looks up the slug as typed in the address; the domain decides what the visitor gets
+/// (stored slugs are lowercase, LNK-003, LNK-021, LNK-026, LNK-027).
 async fn lookup(state: &AppState, input: &str) -> Result<Lookup, ApiError> {
     let lowered = input.to_lowercase();
-    let (card, owner, moved) = match public_cards::resolve(&state.db, &lowered).await? {
+    let typed_as_stored = lowered == input;
+    let (found, card) = match public_cards::resolve(&state.db, &lowered).await? {
         None => return Err(ApiError::NotFound),
-        Some(Resolution::Deleted) => return Ok(Lookup::Inactive),
-        Some(Resolution::Old { card, owner }) => (card, owner, true),
-        Some(Resolution::Current(card, owner)) => (card, owner, lowered != input),
+        Some(Resolution::Deleted) => (SlugMatch::Deleted, None),
+        Some(Resolution::Old { card, owner }) => (
+            SlugMatch::Old {
+                served: is_served(card.status(), owner),
+            },
+            Some(card),
+        ),
+        Some(Resolution::Current(card, owner)) => (
+            SlugMatch::Current {
+                served: is_served(card.status(), owner),
+            },
+            Some(card),
+        ),
     };
-    Ok(if !is_served(card.status(), owner) {
-        Lookup::Inactive
-    } else if moved {
-        Lookup::Redirect(card.slug)
-    } else {
-        Lookup::Serve(Box::new(card))
+    Ok(match (public_access(found, typed_as_stored), card) {
+        (PublicAccess::Serve, Some(card)) => Lookup::Serve(Box::new(card)),
+        (PublicAccess::Redirect, Some(card)) => Lookup::Redirect(card.slug),
+        _ => Lookup::Inactive,
     })
 }
 
@@ -137,9 +147,9 @@ pub async fn get_public_vcard(
     let card = match lookup(&state, &slug).await? {
         Lookup::Inactive => return Err(ApiError::CardInactive),
         Lookup::Redirect(current) => {
-            return Ok(
-                Redirect::permanent(&format!("/api/public/cards/{current}/vcard")).into_response(),
-            );
+            let redirect = Redirect::permanent(&format!("/api/public/cards/{current}/vcard"));
+            // The current slug can change again: a cached 308 would keep sending to the old one.
+            return Ok(([(header::CACHE_CONTROL, "no-store")], redirect).into_response());
         }
         Lookup::Serve(card) => card,
     };

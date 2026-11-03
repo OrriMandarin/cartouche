@@ -2,7 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use common::cards::{cards_app, create_card, put_card, token};
-use common::media_fixtures::{jpeg, mp4, png, png_claiming};
+use common::media_fixtures::{jpeg, mp4, mp4_with_brands, png, png_claiming};
 use common::{Part, TestApp, TestResponse, test_state_with};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -169,6 +169,42 @@ async fn type_is_checked_from_content(pool: PgPool) {
     .await;
     assert_eq!(res.status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     assert_eq!(error_code(&res), "unsupported_media_type");
+}
+
+// spec: MED-022
+#[sqlx::test(migrations = "./migrations")]
+async fn quicktime_3gp_and_heic_are_refused(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card_id(&card);
+    let header_upload = |bytes: Vec<u8>| {
+        [
+            Part::text("slot", "header"),
+            Part::file("file", "clip.mp4", "video/mp4", bytes),
+            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
+        ]
+    };
+
+    for major in [b"qt  ", b"3gp4", b"heic"] {
+        let res = upload(
+            &app,
+            "alice",
+            id,
+            &header_upload(mp4_with_brands(major, &[b"isom"], 2_000)),
+        )
+        .await;
+        assert_eq!(res.status, StatusCode::UNSUPPORTED_MEDIA_TYPE, "{major:?}");
+        assert_eq!(error_code(&res), "unsupported_media_type");
+    }
+
+    let res = upload(
+        &app,
+        "alice",
+        id,
+        &header_upload(mp4_with_brands(b"mp42", &[b"mp42", b"isom"], 2_000)),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
 }
 
 // spec: MED-012, Review Focus 5

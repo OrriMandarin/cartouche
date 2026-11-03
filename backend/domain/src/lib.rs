@@ -7,6 +7,7 @@ pub mod email;
 pub mod media;
 pub mod media_files;
 pub mod phone;
+pub mod public_access;
 pub mod slug;
 pub mod text;
 pub mod theme;
@@ -18,18 +19,19 @@ pub use card::{
     CardContent, CardInput, ContentInput, DEFAULT_TEMPLATE, DEFAULT_THEME_PRESET, Link, LinkInput,
     LinkKind, MAX_LINKS, MAX_SETTINGS_BYTES, ValidCard, validate_card,
 };
-pub use card_status::{CardStatus, is_served};
+pub use card_status::{CardStatus, SupportBlockUnchanged, check_support_block, is_served};
 pub use clock::{Clock, ManualClock, OverridableClock, SystemClock};
 pub use email::is_valid_email;
 pub use media::{
     MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, MAX_VIDEO_BYTES, MAX_VIDEO_DURATION, MediaFormat, MediaKind,
     Mp4Error, ParseMediaError, PlannedVariant, Slot, UploadRejection, VariantFormat,
-    classify_upload, invalid_media_refs, mp4_duration, plan_image_variants, sniff,
+    classify_upload, invalid_media_refs, is_mp4_ftyp, mp4_duration, plan_image_variants, sniff,
 };
 pub use media_files::{
     ByteRange, RangeNotSatisfiable, parse_range, served_content_type, storage_key,
 };
 pub use phone::{InvalidPhone, format_international, normalize_phone};
+pub use public_access::{PublicAccess, SlugMatch, public_access};
 pub use slug::{
     InvalidSlug, Slug, SlugClaim, SlugClaimError, SlugRecord, decide_claim, suggest_base,
     with_suffix,

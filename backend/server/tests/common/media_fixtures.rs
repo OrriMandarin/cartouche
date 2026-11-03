@@ -111,6 +111,11 @@ fn crc32(data: &[u8]) -> u32 {
 
 /// An `ftyp` + `moov`/`mvhd` (version 0, timescale 1000) skeleton declaring `duration_ms`.
 pub fn mp4(duration_ms: u32) -> Vec<u8> {
+    mp4_with_brands(b"isom", &[b"isom", b"mp41"], duration_ms)
+}
+
+/// Like [`mp4`], with the given major and compatible brands in the `ftyp` box.
+pub fn mp4_with_brands(major: &[u8; 4], compatible: &[&[u8; 4]], duration_ms: u32) -> Vec<u8> {
     let mut mvhd = Vec::new();
     mvhd.extend_from_slice(&[0, 0, 0, 0]); // version 0, flags
     mvhd.extend_from_slice(&0u32.to_be_bytes()); // creation time
@@ -120,10 +125,13 @@ pub fn mp4(duration_ms: u32) -> Vec<u8> {
     mvhd.resize(100, 0); // rate, volume, matrix, next track id: unused
 
     let mut out = Vec::new();
-    out.extend_from_slice(&20u32.to_be_bytes());
-    out.extend_from_slice(b"ftypisom");
-    out.extend_from_slice(&0u32.to_be_bytes());
-    out.extend_from_slice(b"isom");
+    out.extend_from_slice(&((16 + 4 * compatible.len()) as u32).to_be_bytes());
+    out.extend_from_slice(b"ftyp");
+    out.extend_from_slice(major);
+    out.extend_from_slice(&0u32.to_be_bytes()); // minor version
+    for brand in compatible {
+        out.extend_from_slice(*brand);
+    }
     out.extend_from_slice(&((8 + 8 + mvhd.len()) as u32).to_be_bytes());
     out.extend_from_slice(b"moov");
     out.extend_from_slice(&((8 + mvhd.len()) as u32).to_be_bytes());

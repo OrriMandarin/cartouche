@@ -23,6 +23,10 @@ use crate::config::MediaStorageConfig;
 /// Files never change under their name (MED-016).
 pub const CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 
+/// A processing job panicked (a decoder bug on a hostile file).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Panicked;
+
 /// Images processed at the same time: decoding and resizing are CPU and memory heavy.
 const IMAGE_PROCESSING_PERMITS: usize = 2;
 
@@ -215,13 +219,24 @@ impl MediaService {
         bytes: Bytes,
         slot: Slot,
     ) -> Result<Vec<EncodedVariant>, ProcessError> {
-        self.run_limited(move || process_image(&bytes, slot)).await
+        match self.run_limited(move || process_image(&bytes, slot)).await {
+            Ok(result) => result,
+            Err(Panicked) => {
+                tracing::error!("image processing panicked, refusing the file as corrupt");
+                Err(ProcessError::Corrupt)
+            }
+        }
     }
 
     /// Runs `work` on a blocking thread under a processing permit. The permit travels with the
     /// work: if the caller is dropped (client disconnect), the work still holds its permit
-    /// until it ends, so the limit counts running threads, not waiting callers.
-    async fn run_limited<T: Send + 'static>(&self, work: impl FnOnce() -> T + Send + 'static) -> T {
+    /// until it ends, so the limit counts running threads, not waiting callers. A panic in
+    /// `work` is reported as [`Panicked`] (the permit is still given back) instead of
+    /// propagating to the request.
+    async fn run_limited<T: Send + 'static>(
+        &self,
+        work: impl FnOnce() -> T + Send + 'static,
+    ) -> Result<T, Panicked> {
         let permit = Arc::clone(&self.image_permits)
             .acquire_owned()
             .await
@@ -231,7 +246,7 @@ impl MediaService {
             work()
         })
         .await
-        .expect("image processing does not panic")
+        .map_err(|_| Panicked)
     }
 
     async fn delete_prefix(&self, prefix: &str) -> Result<(), MediaError> {
@@ -309,6 +324,20 @@ mod tests {
         })
         .await
         .expect("permit released after the work ended");
+    }
+
+    // spec: MED-012
+    #[tokio::test]
+    async fn a_panicking_job_is_reported_not_propagated() {
+        let media = service();
+        let result = media.run_limited(|| -> u32 { panic!("decoder") }).await;
+        assert_eq!(result, Err(Panicked));
+        // The permit went back: another job runs.
+        assert_eq!(media.run_limited(|| 7).await, Ok(7));
+        assert_eq!(
+            media.image_permits.available_permits(),
+            IMAGE_PROCESSING_PERMITS
+        );
     }
 
     const CARD: &str = "0198a1b2-0000-7000-8000-000000000001";

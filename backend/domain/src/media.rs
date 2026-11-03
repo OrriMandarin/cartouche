@@ -109,11 +109,50 @@ pub fn sniff(bytes: &[u8]) -> Option<MediaFormat> {
         Some(MediaFormat::Png)
     } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
         Some(MediaFormat::Webp)
-    } else if bytes.len() >= 8 && &bytes[4..8] == b"ftyp" {
+    } else if is_mp4_ftyp(bytes) {
         Some(MediaFormat::Mp4)
     } else {
         None
     }
+}
+
+/// Brands of the `ftyp` box that mark an MP4 video (MED-022).
+const MP4_BRANDS: [&[u8; 4]; 11] = [
+    b"isom", b"iso2", b"iso3", b"iso4", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1", b"M4V ",
+    b"dash",
+];
+
+/// Whether a main brand belongs to another format that shares the `ftyp` box: QuickTime, 3GP,
+/// audio-only MP4, HEIF images (MED-022).
+fn is_other_format_brand(brand: &[u8; 4]) -> bool {
+    brand.starts_with(b"3gp")
+        || brand.starts_with(b"3g2")
+        || [
+            b"qt  ", b"M4A ", b"M4B ", b"heic", b"heix", b"mif1", b"msf1", b"avif",
+        ]
+        .contains(&brand)
+}
+
+/// Reads the leading `ftyp` box: true when its main brand or one of its compatible brands is an
+/// MP4 one and its main brand is not that of another format (MED-022).
+pub fn is_mp4_ftyp(bytes: &[u8]) -> bool {
+    let Some(size) = bytes
+        .get(..4)
+        .map(|raw| u32::from_be_bytes(raw.try_into().expect("4 bytes")) as usize)
+    else {
+        return false;
+    };
+    if bytes.get(4..8) != Some(b"ftyp") || size < 16 || size > bytes.len() {
+        return false;
+    }
+    let major: &[u8; 4] = bytes[8..12].try_into().expect("4 bytes");
+    if is_other_format_brand(major) {
+        return false;
+    }
+    let (compatible, _) = bytes[16..size].as_chunks::<4>();
+    std::iter::once(major)
+        .chain(compatible)
+        .any(|brand| MP4_BRANDS.contains(&brand))
 }
 
 /// Why the duration of an MP4 file could not be read.
@@ -314,6 +353,43 @@ mod tests {
         let mut file = boxed(b"ftyp", b"isom\0\0\0\0isom");
         file.extend(boxed(b"moov", &boxed(b"mvhd", &mvhd)));
         file
+    }
+
+    fn ftyp(major: &[u8; 4], compatible: &[&[u8; 4]]) -> Vec<u8> {
+        let mut payload = major.to_vec();
+        payload.extend_from_slice(&[0; 4]);
+        for brand in compatible {
+            payload.extend_from_slice(*brand);
+        }
+        boxed(b"ftyp", &payload)
+    }
+
+    // spec: MED-008, MED-022
+    #[test]
+    fn only_mp4_brands_are_videos() {
+        for major in [b"isom", b"mp42", b"M4V ", b"dash", b"iso6", b"avc1"] {
+            assert_eq!(
+                sniff(&ftyp(major, &[])),
+                Some(MediaFormat::Mp4),
+                "{major:?}"
+            );
+        }
+        // An unknown major brand is fine when a compatible brand is an MP4 one.
+        assert_eq!(
+            sniff(&ftyp(b"abcd", &[b"zzzz", b"mp41"])),
+            Some(MediaFormat::Mp4)
+        );
+        assert_eq!(sniff(&ftyp(b"abcd", &[b"zzzz"])), None);
+        // Other formats are refused, even when they list an MP4 brand as compatible.
+        for major in [
+            b"qt  ", b"3gp4", b"3g2a", b"M4A ", b"M4B ", b"heic", b"mif1", b"avif",
+        ] {
+            assert_eq!(sniff(&ftyp(major, &[b"isom"])), None, "{major:?}");
+        }
+        // A truncated box: the declared size exceeds the file.
+        let whole = ftyp(b"isom", &[b"mp41"]);
+        assert_eq!(sniff(&whole[..whole.len() - 2]), None);
+        assert_eq!(sniff(&whole[..10]), None);
     }
 
     // spec: MED-002, MED-008, MED-012, MED-013

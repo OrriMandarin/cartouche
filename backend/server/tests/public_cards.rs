@@ -359,6 +359,27 @@ async fn vcard_of_old_slug_redirects_308(pool: PgPool) {
     }
 }
 
+// spec: LNK-024, LNK-030
+#[sqlx::test(migrations = "./migrations")]
+async fn vcard_redirects_are_not_cached(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice").await;
+    let saved = put_card(
+        &app,
+        "alice",
+        card["id"].as_str().unwrap(),
+        json!({ "slug": "alice-durand" }),
+    )
+    .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.json);
+
+    for path in ["alice", "Alice-Durand"] {
+        let res = public(&app, &format!("/api/public/cards/{path}/vcard")).await;
+        assert_eq!(res.status, StatusCode::PERMANENT_REDIRECT, "{path}");
+        assert_eq!(header(&res, "cache-control"), "no-store", "{path}");
+    }
+}
+
 // spec: LNK-007, LNK-026
 #[sqlx::test(migrations = "./migrations")]
 async fn vcard_of_unserved_card_is_410(pool: PgPool) {

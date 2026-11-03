@@ -4,6 +4,7 @@
 
 use axum::Json;
 use axum::extract::State;
+use cartouche_domain::check_support_block;
 use serde::Serialize;
 use serde_json::json;
 use utoipa::ToSchema;
@@ -125,9 +126,8 @@ async fn set_support_block(
     let card = admin_cards::find_for_update(&mut tx, id)
         .await?
         .ok_or(ApiError::NotFound)?;
-    if card.support_disabled_at.is_some() == blocked {
-        return Err(ApiError::InvalidTransition);
-    }
+    check_support_block(card.support_disabled_at.is_some(), blocked)
+        .map_err(|_| ApiError::InvalidTransition)?;
     let at = blocked.then(|| state.clock.now());
     let updated = admin_cards::set_support_disabled(&mut tx, id, at).await?;
     audit::record(
