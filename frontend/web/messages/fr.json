@@ -104,5 +104,29 @@
     "moderne": "Moderne",
     "editorial": "Éditorial",
     "chaleureux": "Chaleureux"
+  },
+  "templates": {
+    "classique": {
+      "name": "Classique",
+      "settings": {
+        "links_layout": "Affichage des liens",
+        "links_layout_list": "Liste",
+        "links_layout_icons": "Icônes seules",
+        "animate_events": "Animer les boutons d'événement"
+      }
+    }
+  },
+  "publicCard": {
+    "saveContact": "Enregistrer le contact",
+    "links": {
+      "website": "Site web",
+      "linkedin": "LinkedIn",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "tiktok": "TikTok",
+      "youtube": "YouTube",
+      "x": "X",
+      "custom": "Lien"
+    }
   }
 }
