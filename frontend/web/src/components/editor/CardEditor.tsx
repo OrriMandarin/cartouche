@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SlugField } from "@/components/cards/SlugField";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/cards/draft";
 import { useSlugAvailability } from "@/lib/cards/slug-availability";
 import type { CardView } from "@/lib/cards/types";
+import type { UploadMedia } from "@/lib/media/upload";
 import { getTemplate } from "@/templates/registry";
 import { parseSettings } from "@/templates/settings-schema";
 import { ContentFields } from "./ContentFields";
@@ -49,7 +50,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function CardEditor({ card }: { card: CardView }) {
   const t = useTranslations();
   const api = useApi();
-  const uploadMedia = useUploadMedia(card.id);
+  const sendMedia = useUploadMedia(card.id);
+  // Uploads in flight. A save landing meanwhile would delete the upload as unreferenced (MED-018) and leave
+  // the draft pointing at a dead media id, so saving waits for them.
+  const [uploading, setUploading] = useState(0);
+  const uploadMedia = useCallback<UploadMedia>(
+    async (slot, file, poster) => {
+      setUploading((count) => count + 1);
+      try {
+        return await sendMedia(slot, file, poster);
+      } finally {
+        setUploading((count) => count - 1);
+      }
+    },
+    [sendMedia],
+  );
   const [saved, setSaved] = useState(() => draftFromCard(card));
   const [draft, setDraft] = useState(saved);
   const [simulateEvent, setSimulateEvent] = useState(false);
@@ -87,7 +102,7 @@ export function CardEditor({ card }: { card: CardView }) {
   }
 
   async function save() {
-    if (busy) return;
+    if (busy || uploading > 0) return;
     setBusy(true);
     setFailure(null);
     setErrors({});
@@ -142,7 +157,7 @@ export function CardEditor({ card }: { card: CardView }) {
             <p data-testid="editor-status" role="status" className="text-muted-foreground text-sm">
               {dirty ? t("editor.unsaved") : justSaved ? t("editor.saved") : null}
             </p>
-            <Button type="submit" data-testid="editor-save" disabled={busy || !dirty || slugRefused}>
+            <Button type="submit" data-testid="editor-save" disabled={busy || uploading > 0 || !dirty || slugRefused}>
               {busy ? t("editor.saving") : t("editor.save")}
             </Button>
           </div>

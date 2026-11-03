@@ -131,6 +131,42 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(screen.getByTestId("editor-save")).toBeDisabled();
   });
 
+  test("EDI-006 MED-018 save is refused while an upload is in flight, then allowed once it ends", async () => {
+    // A save landing after the upload committed would delete it as unreferenced and leave a dead media id.
+    let finish!: (media: typeof avatar) => void;
+    uploadMedia.mockReset().mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    put.mockResolvedValue({ data: card({ avatar }) });
+    renderEditor();
+    type("editor-job_title", "Directrice");
+    expect(screen.getByTestId("editor-save")).toBeEnabled();
+
+    fireEvent.change(screen.getByTestId("media-header-input"), {
+      target: { files: [new File(["jpeg"], "photo.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(() => expect(uploadMedia).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("editor-save")).toBeDisabled();
+    // Enter in a field submits the form without the button.
+    fireEvent.submit(screen.getByRole("form", { name: "Formulaire de la carte" }));
+    expect(put).not.toHaveBeenCalled();
+
+    finish(avatar);
+    await waitFor(() => expect(screen.getByTestId("editor-save")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("editor-save"));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+    expect(put.mock.calls[0]![1].body.header_media_id).toBe(avatar.id);
+  });
+
+  test("EDI-006 save is allowed again after a failed upload", async () => {
+    uploadMedia.mockReset().mockRejectedValue(new Error("boom"));
+    renderEditor();
+    type("editor-job_title", "Directrice");
+    fireEvent.change(screen.getByTestId("media-header-input"), {
+      target: { files: [new File(["jpeg"], "photo.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(() => expect(uploadMedia).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId("editor-save")).toBeEnabled());
+  });
+
   test("EDI-008 the saved card replaces the draft with what the server stored", async () => {
     const stored = card();
     put.mockResolvedValue({ data: { ...stored, content: { ...stored.content, job_title: "Directrice" } } });
