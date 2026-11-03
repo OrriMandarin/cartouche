@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { readVideoDuration, VIDEO_LOAD_TIMEOUT_MS, VideoLoadTimeout } from "./video";
+import { capturePoster, readVideoDuration, VIDEO_LOAD_TIMEOUT_MS, VideoLoadTimeout } from "./video";
 
 const revokeObjectURL = vi.fn();
 let element: HTMLVideoElement;
@@ -45,6 +45,18 @@ describe("video", () => {
     // Released once read, and the timer no longer fires.
     expect(revokeObjectURL).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(VIDEO_LOAD_TIMEOUT_MS);
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  test("MED-021 capturing the waiting image gives up when seeking takes over 15 seconds", async () => {
+    const outcome = capturePoster(mp4()).catch((error: unknown) => error);
+    element.dispatchEvent(new Event("loadeddata"));
+
+    await vi.advanceTimersByTimeAsync(VIDEO_LOAD_TIMEOUT_MS - 1);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(await outcome).toBeInstanceOf(VideoLoadTimeout);
     expect(revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 });

@@ -12,13 +12,30 @@ export class VideoLoadTimeout extends Error {
 }
 
 /**
- * spec: MED-021. A `<video>` outside the page, loaded with the file, and the means to release it. Rejects with
- * `VideoLoadTimeout` when neither `loadeddata` nor `error` comes within `timeoutMs`.
+ * spec: MED-021. Waits for `event` on `video` once `start` has run. Rejects when the video cannot be read, and
+ * with `VideoLoadTimeout` when neither `event` nor `error` comes within `timeoutMs`.
  */
-async function loadVideo(
-  file: File,
+async function waitFor(
+  video: HTMLVideoElement,
+  event: "loadeddata" | "seeked",
+  start: () => void,
   timeoutMs = VIDEO_LOAD_TIMEOUT_MS,
-): Promise<{ video: HTMLVideoElement; release: () => void }> {
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.addEventListener(event, () => resolve(), { once: true });
+      video.addEventListener("error", () => reject(new Error("The video cannot be read.")), { once: true });
+      timer = setTimeout(() => reject(new VideoLoadTimeout()), timeoutMs);
+      start();
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** spec: MED-021. A `<video>` outside the page, loaded with the file within the time limit, and the means to release it. */
+async function loadVideo(file: File): Promise<{ video: HTMLVideoElement; release: () => void }> {
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.muted = true;
@@ -29,19 +46,13 @@ async function loadVideo(
     video.load();
     URL.revokeObjectURL(url);
   };
-  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await new Promise<void>((resolve, reject) => {
-      video.addEventListener("loadeddata", () => resolve(), { once: true });
-      video.addEventListener("error", () => reject(new Error("The video cannot be read.")), { once: true });
-      timer = setTimeout(() => reject(new VideoLoadTimeout()), timeoutMs);
+    await waitFor(video, "loadeddata", () => {
       video.src = url;
     });
   } catch (error) {
     release();
     throw error;
-  } finally {
-    clearTimeout(timer);
   }
   return { video, release };
 }
@@ -60,15 +71,13 @@ export async function readVideoDuration(file: File): Promise<number> {
 const POSTER_MAX_WIDTH = 1920;
 
 /**
- * spec: MED-003. A still of the video, as a JPEG, to be shown while the video loads: the frame at
- * `atSeconds` (or the first one for a shorter video), drawn in a canvas.
+ * spec: MED-003, MED-021. A still of the video, as a JPEG, to be shown while the video loads: the frame at
+ * `atSeconds` (or the first one for a shorter video), drawn in a canvas. Loading and seeking each have the time limit.
  */
 export async function capturePoster(file: File, atSeconds = 0.1): Promise<Blob> {
   const { video, release } = await loadVideo(file);
   try {
-    await new Promise<void>((resolve, reject) => {
-      video.addEventListener("seeked", () => resolve(), { once: true });
-      video.addEventListener("error", () => reject(new Error("The video cannot be read.")), { once: true });
+    await waitFor(video, "seeked", () => {
       video.currentTime = video.duration > atSeconds ? atSeconds : 0;
     });
     const scale = Math.min(1, POSTER_MAX_WIDTH / video.videoWidth);
