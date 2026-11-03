@@ -28,6 +28,7 @@ use crate::routes::events::{
     consent_preview, create_event, delete_event, end_event, get_event, list_events, update_event,
 };
 use crate::routes::health::health;
+use crate::routes::lead_exports::{export_card_leads, export_event_leads};
 use crate::routes::leads::{delete_lead, list_card_leads, list_event_leads, set_lead_spam};
 use crate::routes::me::me;
 use crate::routes::media_files::get_media_file;
@@ -59,12 +60,14 @@ pub fn build_router(state: AppState) -> Router {
         )
         .route("/api/cards/{id}/consent-preview", post(consent_preview))
         .route("/api/cards/{id}/leads", get(list_card_leads))
+        .route("/api/cards/{id}/leads/export", get(export_card_leads))
         .route(
             "/api/events/{id}",
             get(get_event).put(update_event).delete(delete_event),
         )
         .route("/api/events/{id}/end", post(end_event))
         .route("/api/events/{id}/leads", get(list_event_leads))
+        .route("/api/events/{id}/leads/export", get(export_event_leads))
         .route("/api/leads/{id}/spam", put(set_lead_spam))
         .route("/api/leads/{id}", delete(delete_lead))
         .route("/api/slugs/suggestion", get(suggest_slug))

@@ -1862,6 +1862,142 @@
         ]
       }
     },
+    "/api/cards/{id}/leads/export": {
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Export the contacts of a card",
+        "description": "A file with the contacts of every event of the card, oldest first, each with its event, named `contacts-<card slug>-<date>.<extension>`. Contacts marked as spam are left out unless `include_spam` is true. Contacts of a disabled card are exported too.",
+        "operationId": "export_card_leads",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "The file format: `csv`, `xlsx` or `json`.",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "include_spam",
+            "in": "query",
+            "description": "Keep the contacts marked as spam, flagged in their own column (default: leave them out).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "description": "IANA time zone of the dates and of the day in the file name, e.g. `Europe/Paris`; an\nunknown or missing zone means `Europe/Paris`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, as an attachment.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportFileBody"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportFileBody"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportFileBody"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, unknown format or malformed parameter (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/cards/{id}/media": {
       "post": {
         "tags": [
@@ -2439,6 +2575,142 @@
           },
           "400": {
             "description": "Malformed id (`invalid_request`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/events/{id}/leads/export": {
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Export the contacts of an event",
+        "description": "A file with the event's contacts, oldest first, named `contacts-<card slug>-<event slug>-<date>.<extension>`. Contacts marked as spam are left out unless `include_spam` is true. The form's current fields come first, then the fields of earlier versions of the form that contacts answered. Contacts of an event of a disabled card are exported too.",
+        "operationId": "export_event_leads",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the event.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "The file format: `csv`, `xlsx` or `json`.",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "include_spam",
+            "in": "query",
+            "description": "Keep the contacts marked as spam, flagged in their own column (default: leave them out).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "description": "IANA time zone of the dates and of the day in the file name, e.g. `Europe/Paris`; an\nunknown or missing zone means `Europe/Paris`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, as an attachment.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportFileBody"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportFileBody"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportFileBody"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed id, unknown format or malformed parameter (`invalid_request`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -4266,6 +4538,19 @@
             "format": "date-time"
           }
         }
+      },
+      "ExportFileBody": {
+        "type": "string",
+        "format": "binary"
+      },
+      "ExportFormat": {
+        "type": "string",
+        "description": "The file formats of an export (LEA-006).",
+        "enum": [
+          "csv",
+          "xlsx",
+          "json"
+        ]
       },
       "FieldError": {
         "type": "object",

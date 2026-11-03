@@ -300,6 +300,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cards/{id}/leads/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the contacts of a card
+         * @description A file with the contacts of every event of the card, oldest first, each with its event, named `contacts-<card slug>-<date>.<extension>`. Contacts marked as spam are left out unless `include_spam` is true. Contacts of a disabled card are exported too.
+         */
+        get: operations["export_card_leads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cards/{id}/media": {
         parameters: {
             query?: never;
@@ -380,6 +400,26 @@ export interface paths {
          * @description The contacts collected by the event, from the most recent to the oldest, spam ones included and flagged. Contacts of an event of a disabled card are listed too.
          */
         get: operations["list_event_leads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{id}/leads/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the contacts of an event
+         * @description A file with the event's contacts, oldest first, named `contacts-<card slug>-<event slug>-<date>.<extension>`. Contacts marked as spam are left out unless `include_spam` is true. The form's current fields come first, then the fields of earlier versions of the form that contacts answered. Contacts of an event of a disabled card are exported too.
+         */
+        get: operations["export_event_leads"];
         put?: never;
         post?: never;
         delete?: never;
@@ -863,6 +903,13 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        /** Format: binary */
+        ExportFileBody: string;
+        /**
+         * @description The file formats of an export (LEA-006).
+         * @enum {string}
+         */
+        ExportFormat: "csv" | "xlsx" | "json";
         /** @description One invalid field of a request, reported with `400 validation_failed`. */
         FieldError: {
             /** @description Stable machine-readable code, snake_case (e.g. `invalid_email`). */
@@ -2644,6 +2691,95 @@ export interface operations {
             };
         };
     };
+    export_card_leads: {
+        parameters: {
+            query: {
+                /** @description The file format: `csv`, `xlsx` or `json`. */
+                format: components["schemas"]["ExportFormat"];
+                /** @description Keep the contacts marked as spam, flagged in their own column (default: leave them out). */
+                include_spam?: boolean;
+                /**
+                 * @description IANA time zone of the dates and of the day in the file name, e.g. `Europe/Paris`; an
+                 *     unknown or missing zone means `Europe/Paris`.
+                 */
+                tz?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file, as an attachment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": components["schemas"]["ExportFileBody"];
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": components["schemas"]["ExportFileBody"];
+                    "application/json": components["schemas"]["ExportFileBody"];
+                };
+            };
+            /** @description Malformed id, unknown format or malformed parameter (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     upload_media: {
         parameters: {
             query?: never;
@@ -3093,6 +3229,95 @@ export interface operations {
                 };
             };
             /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such event for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    export_event_leads: {
+        parameters: {
+            query: {
+                /** @description The file format: `csv`, `xlsx` or `json`. */
+                format: components["schemas"]["ExportFormat"];
+                /** @description Keep the contacts marked as spam, flagged in their own column (default: leave them out). */
+                include_spam?: boolean;
+                /**
+                 * @description IANA time zone of the dates and of the day in the file name, e.g. `Europe/Paris`; an
+                 *     unknown or missing zone means `Europe/Paris`.
+                 */
+                tz?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Id of the event. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file, as an attachment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": components["schemas"]["ExportFileBody"];
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": components["schemas"]["ExportFileBody"];
+                    "application/json": components["schemas"]["ExportFileBody"];
+                };
+            };
+            /** @description Malformed id, unknown format or malformed parameter (`invalid_request`). */
             400: {
                 headers: {
                     [name: string]: unknown;

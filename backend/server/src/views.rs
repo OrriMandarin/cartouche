@@ -1,5 +1,6 @@
 //! JSON shapes of the API that are shared by several routes.
 
+use cartouche_domain::export::{ExportEvent, ExportLead};
 use cartouche_domain::{
     AnswerSnapshot, CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind,
     PublicForm, StandardAnswers, StandardField, StandardFields, Theme, VariantFormat, consent_text,
@@ -131,6 +132,33 @@ impl From<Lead> for LeadView {
             custom: lead.custom,
             consent_at: lead.consent_at,
             consent_text: lead.consent_text,
+        }
+    }
+}
+
+impl From<Event> for ExportEvent {
+    fn from(event: Event) -> ExportEvent {
+        ExportEvent {
+            id: event.id,
+            title: event.title,
+            starts_at: event.period.starts_at,
+            standard: event.form.standard,
+            custom: event.form.custom,
+        }
+    }
+}
+
+impl From<Lead> for ExportLead {
+    fn from(lead: Lead) -> ExportLead {
+        ExportLead {
+            id: lead.id,
+            event_id: lead.event_id,
+            submitted_at: lead.submitted_at,
+            standard: lead.standard,
+            custom: lead.custom,
+            consent_at: lead.consent_at,
+            consent_text: lead.consent_text,
+            spam: lead.spam_at.is_some(),
         }
     }
 }
