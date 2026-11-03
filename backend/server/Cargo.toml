@@ -18,25 +18,29 @@ required-features = ["test-support"]
 [dependencies]
 async-trait = "0.1.92"
 axum = "0.8.9"
+bytes = "1"
 cartouche-domain = { workspace = true, features = ["utoipa"] }
 chrono.workspace = true
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 jsonwebtoken = { version = "11", features = ["aws_lc_rs"] }
+object_store = { version = "0.14", features = ["aws"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
 sentry = { version = "0.49.5", default-features = false, features = ["backtrace", "contexts", "panic", "tracing", "reqwest", "rustls"] }
 serde.workspace = true
 serde_json = "1.0.154"
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate", "macros"] }
 thiserror.workspace = true
-tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 tower-http = { version = "0.6", features = ["request-id", "trace", "catch-panic"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["json", "env-filter"] }
 url.workspace = true
 utoipa = { version = "5", features = ["chrono", "uuid"] }
 uuid.workspace = true
+webp = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 base64 = "0.23.1"
-futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http-body-util = "0.1.5"
 tower = { version = "0.5.3", features = ["util"] }

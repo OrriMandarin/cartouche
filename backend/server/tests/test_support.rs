@@ -239,9 +239,11 @@ async fn clock_controls_token_expiry(pool: PgPool) {
         verifier: test_verifier(&config, clock.clone()),
         config: Arc::new(config),
         clock: clock.clone(),
+        media: common::test_media(),
         test_clock: Some(clock),
     };
     let app = TestApp {
+        media: state.media.clone(),
         router: build_router(state),
         pool,
         // Unused here: time is driven through `/api/test/clock`.

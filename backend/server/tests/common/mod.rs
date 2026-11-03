@@ -3,6 +3,7 @@
 #![allow(dead_code)] // each test binary uses a different subset
 
 pub mod cards;
+pub mod media_fixtures;
 
 use std::sync::{Arc, Mutex};
 
@@ -12,6 +13,7 @@ use axum::http::{HeaderMap, Method, Request, StatusCode};
 use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwtVerifier, StaticKeySource, TokenVerifier};
 use cartouche_api::config::Config;
+use cartouche_api::media::MediaService;
 use cartouche_api::state::AppState;
 use cartouche_domain::{Clock, ManualClock};
 use chrono::{TimeZone, Utc};
@@ -24,6 +26,7 @@ pub struct TestApp {
     pub router: Router,
     pub pool: PgPool,
     pub clock: Arc<ManualClock>,
+    pub media: MediaService,
 }
 
 pub struct TestResponse {
@@ -103,6 +106,15 @@ pub fn test_verifier(config: &Config, clock: Arc<dyn Clock>) -> Arc<dyn TokenVer
     Arc::new(JwtVerifier::new(&config.auth, test_key_source(), clock))
 }
 
+/// An empty in-memory media store whose files are served by the API under `/media/`.
+pub fn test_media() -> MediaService {
+    MediaService::in_memory(
+        "http://localhost:3000/media/"
+            .parse()
+            .expect("valid base URL"),
+    )
+}
+
 /// Application state on a frozen clock. Tasks that add state fields extend this function
 /// (or add a second constructor) and feed the result to `TestApp::from_state`.
 pub fn test_state(pool: PgPool) -> (AppState, Arc<ManualClock>) {
@@ -120,6 +132,7 @@ pub fn test_state_with(pool: PgPool, overrides: &[(&str, &str)]) -> (AppState, A
         verifier: test_verifier(&config, clock.clone()),
         config: Arc::new(config),
         clock: clock.clone(),
+        media: test_media(),
         #[cfg(feature = "test-support")]
         test_clock: None,
     };
@@ -141,9 +154,15 @@ impl TestApp {
     pub fn from_state(state: AppState, clock: Arc<ManualClock>) -> TestApp {
         TestApp {
             pool: state.db.clone(),
+            media: state.media.clone(),
             router: build_router(state),
             clock,
         }
+    }
+
+    /// Every key currently in the media store.
+    pub async fn media_keys(&self) -> Vec<String> {
+        self.media.list_keys().await
     }
 
     /// Seeds the named scenario through `POST /api/test/seed` (needs the `test-support` feature).

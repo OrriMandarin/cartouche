@@ -20,7 +20,11 @@ pub use card::{
 pub use card_status::{CardStatus, is_served};
 pub use clock::{Clock, ManualClock, OverridableClock, SystemClock};
 pub use email::is_valid_email;
-pub use media::{MediaKind, ParseMediaError, Slot, VariantFormat};
+pub use media::{
+    MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, MAX_VIDEO_BYTES, MAX_VIDEO_DURATION, MediaFormat, MediaKind,
+    Mp4Error, ParseMediaError, PlannedVariant, Slot, VariantFormat, mp4_duration,
+    plan_image_variants, sniff,
+};
 pub use phone::{InvalidPhone, format_international, normalize_phone};
 pub use slug::{
     InvalidSlug, Slug, SlugClaim, SlugClaimError, SlugRecord, decide_claim, suggest_base,

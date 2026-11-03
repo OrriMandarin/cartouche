@@ -5,6 +5,7 @@ use std::time::Duration;
 use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwksKeySource, JwtVerifier};
 use cartouche_api::config::Config;
+use cartouche_api::media::MediaService;
 use cartouche_api::startup::{startup_summary, test_routes_enabled, validate};
 use cartouche_api::state::AppState;
 use cartouche_api::{db, telemetry};
@@ -38,6 +39,7 @@ async fn main() -> ExitCode {
         test_support_compiled = summary.test_support_compiled,
         test_routes_enabled = summary.test_routes_enabled,
         bind_addr = %summary.bind_addr,
+        media_storage = %summary.media_storage,
         "starting cartouche-api"
     );
 
@@ -64,11 +66,13 @@ async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
     let keys = JwksKeySource::new(config.auth.jwks_url.clone(), http, JWKS_TTL);
     let verifier = JwtVerifier::new(&config.auth, keys, clock.clone());
+    let media = MediaService::from_config(&config.media, &config.public_base_url)?;
     let state = AppState {
         db: pool,
         config: Arc::new(config),
         clock,
         verifier: Arc::new(verifier),
+        media,
         #[cfg(feature = "test-support")]
         test_clock: _test_clock,
     };
