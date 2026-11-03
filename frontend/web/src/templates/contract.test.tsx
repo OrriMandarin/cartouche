@@ -106,7 +106,8 @@ describe.each(listTemplates())("template $id", (template) => {
     render(element(template));
     const image = screen.getByTestId(IDS.headerImage);
     expect(image.tagName).toBe("IMG");
-    expect(image).toHaveAttribute("sizes", "100vw");
+    // The card is at most 28rem wide (max-w-md): a wide screen must not pick a larger file than that.
+    expect(image).toHaveAttribute("sizes", "(min-width: 28rem) 28rem, 100vw");
     expect(image.getAttribute("srcset")).toContain("w1920.webp 1920w");
     expect(screen.queryByTestId(IDS.headerVideo)).toBeNull();
   });

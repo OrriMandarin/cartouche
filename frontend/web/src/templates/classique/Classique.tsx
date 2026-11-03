@@ -73,7 +73,7 @@ function headerMedia(header: MediaView | null | undefined) {
       className="h-full w-full object-cover"
       src={src}
       srcSet={srcSet(header)}
-      sizes="100vw"
+      sizes="(min-width: 28rem) 28rem, 100vw"
       alt=""
     />
   );
