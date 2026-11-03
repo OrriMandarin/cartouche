@@ -77,6 +77,8 @@ pub async fn get_user(
 #[utoipa::path(
     get,
     path = "/api/admin/cards/{id}",
+    // Unique: the owner's `GET /api/cards/{id}` is `get_card`, and a clash breaks the generated client.
+    operation_id = "support_get_card",
     summary = "Get a card as support",
     description = "Any user's card with its full content and its owner, even disabled. Read-only: support cannot edit a card.",
     tag = "admin",

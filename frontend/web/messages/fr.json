@@ -184,5 +184,102 @@
       "x": "X",
       "custom": "Lien"
     }
+  },
+  "editor": {
+    "title": "Modifier la carte",
+    "loading": "Chargement de la carte…",
+    "back": "Retour",
+    "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
+    "formLabel": "Formulaire de la carte",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Modifications enregistrées",
+    "unsaved": "Modifications non enregistrées",
+    "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+    "sections": {
+      "identity": "Identité",
+      "links": "Liens",
+      "template": "Template",
+      "settings": "Réglages du template",
+      "theme": "Apparence",
+      "media": "Photo et en-tête"
+    },
+    "content": {
+      "first_name": "Prénom",
+      "last_name": "Nom",
+      "job_title": "Poste",
+      "company": "Entreprise",
+      "description": "Description",
+      "email": "E-mail",
+      "phone": "Téléphone"
+    },
+    "links": {
+      "empty": "Aucun lien pour l'instant.",
+      "add": "Ajouter un lien",
+      "max": "Une carte a au plus 20 liens.",
+      "item": "Lien {index}",
+      "kind": "Type",
+      "url": "Adresse",
+      "label": "Intitulé",
+      "remove": "Supprimer le lien {index}",
+      "moveUp": "Monter le lien {index}",
+      "moveDown": "Descendre le lien {index}"
+    },
+    "template": {
+      "beta": "bêta"
+    },
+    "settings": {
+      "none": "Ce template n'a pas de réglages."
+    },
+    "theme": {
+      "preset": "Thème",
+      "font": "Police",
+      "accent": "Couleur d'accent",
+      "text": "Couleur du texte",
+      "background": "Fond",
+      "backgroundSolid": "Couleur unie",
+      "backgroundGradient": "Dégradé",
+      "backgroundColor": "Couleur du fond",
+      "gradientFrom": "Début du dégradé",
+      "gradientTo": "Fin du dégradé",
+      "gradientAngle": "Angle du dégradé",
+      "headerGradient": "Intensité du dégradé de l'en-tête",
+      "buttonShape": "Forme des boutons",
+      "shapes": {
+        "square": "Carrée",
+        "rounded": "Arrondie",
+        "pill": "Pilule"
+      },
+      "contrastWarning": "Le texte est difficile à lire sur ce fond. Choisis des couleurs plus contrastées ; tu peux quand même enregistrer."
+    },
+    "media": {
+      "header": "En-tête",
+      "avatar": "Photo de profil",
+      "soon": "L'envoi de photo et de vidéo arrive bientôt."
+    },
+    "preview": {
+      "title": "Aperçu de la carte",
+      "frame": "Aperçu dans un téléphone",
+      "simulateEvent": "Simuler un événement en cours",
+      "event": "Événement de démonstration"
+    }
+  },
+  "fieldErrors": {
+    "required": "Ce champ est obligatoire.",
+    "too_long": "Ce texte est trop long.",
+    "invalid_slug": "Le lien ne peut contenir que des lettres minuscules, des chiffres et des tirets, entre 3 et 64 caractères.",
+    "slug_taken": "Ce lien est déjà pris.",
+    "slug_reserved": "Ce lien est réservé.",
+    "invalid_email": "Cette adresse e-mail n'est pas valide.",
+    "invalid_phone": "Ce numéro de téléphone n'est pas valide.",
+    "invalid_url": "Cette adresse n'est pas valide : elle doit commencer par https:// ou http://.",
+    "too_many_links": "Une carte a au plus 20 liens.",
+    "invalid_template": "Ce template n'existe pas.",
+    "invalid_theme": "Cette apparence n'est pas valide.",
+    "invalid_settings": "Ces réglages ne sont pas valides.",
+    "invalid_media": "Ce fichier n'est pas utilisable ici.",
+    "image_too_large": "Cette image est trop grande.",
+    "video_too_long": "Cette vidéo est trop longue.",
+    "poster_required": "Une image d'attente est nécessaire pour la vidéo."
   }
 }

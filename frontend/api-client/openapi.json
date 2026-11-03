@@ -17,7 +17,7 @@
         ],
         "summary": "Get a card as support",
         "description": "Any user's card with its full content and its owner, even disabled. Read-only: support cannot edit a card.",
-        "operationId": "get_card",
+        "operationId": "support_get_card",
         "parameters": [
           {
             "name": "id",

@@ -1,7 +1,9 @@
 import { ApiError, createApiClient, type components } from "@cartouche/api-client";
 import { cache } from "react";
-import type { PublicCard } from "@/templates/contract";
 import { serverApiBaseUrl } from "./server-api";
+
+// Lives in its own module so the editor (a client bundle) can use it without this one's server-only `cache`.
+export { buildCardUrls } from "./card-urls";
 
 export type PublicCardResponse = components["schemas"]["PublicCardResponse"];
 
@@ -24,12 +26,3 @@ export const fetchPublicCard = cache(async (slug: string): Promise<PublicCardRes
     throw error;
   }
 });
-
-/** Addresses the template links to; every variable part is percent-encoded. */
-export function buildCardUrls(card: PublicCard) {
-  return {
-    vcard: card.vcard_url,
-    eventForm: (eventId: string) =>
-      `/c/${encodeURIComponent(card.slug)}/e/${encodeURIComponent(eventId)}`,
-  };
-}

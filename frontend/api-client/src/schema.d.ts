@@ -15,7 +15,7 @@ export interface paths {
          * Get a card as support
          * @description Any user's card with its full content and its owner, even disabled. Read-only: support cannot edit a card.
          */
-        get: operations["get_card"];
+        get: operations["support_get_card"];
         put?: never;
         post?: never;
         delete?: never;
@@ -696,7 +696,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_card: {
+    support_get_card: {
         parameters: {
             query?: never;
             header?: never;
