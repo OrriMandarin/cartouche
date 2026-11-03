@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select exists (select 1 from cards where id = $1 and owner_id = $2) as \"owns!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owns!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "3997e861451ef8e5e32b6319dff5a62b4edebd3d230074ec4f2d1c2630b1373e"
+}

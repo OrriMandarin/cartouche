@@ -7,6 +7,15 @@ description: Use when you need to start, reset or inspect the local Cartouche de
 
 Without a `.env` file, everything works **without Clerk**: test tokens, JWKS served by the API. The default values are in the `Makefile` (overridden by a root `.env`, see `.env.example`, without quotes).
 
+Two API variables concern events; without a `.env`, the defaults apply:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `MAX_SIMULTANEOUS_EVENTS` | `3` (integer ≥ 1) | maximum number of events in progress at the same time on one card (EVT-019); beyond it, `409 too_many_simultaneous_events` |
+| `TRUSTED_PROXY_HOPS` | `1` (integer from 0 to 10) | number of trusted reverse proxies in front of the API: the per-IP limit (ABU-008) uses the n-th address of `X-Forwarded-For` from the right. `1` behind Caddy; `0` when the API is reached directly, in which case the header is ignored and the connection's address counts |
+
+An invalid value prevents the API from starting. Add them to the `.env` (uncomment them in `.env.example`), then restart `make api`.
+
 Local machine: `export PATH="$HOME/.local/bin:$PATH"` (pnpm) and `source ~/.cargo/env` (cargo) if "command not found".
 
 ## Start (three terminals, in this order)
@@ -38,6 +47,30 @@ curl -s -X POST localhost:8080/api/test/reset              # same thing, through
 The seed binary refuses to run if `APP_ENV` is not `development` or `test`.
 Start from scratch: `docker compose -f compose.dev.yml down -v && make dev-db`.
 
+### Events locally
+
+The `events` scenario extends `cards`, which extends `base`: `make seed SCENARIO=events` **alone fails** (cards and users not found). Load all three in order:
+
+```bash
+make seed && make seed SCENARIO=cards && make seed SCENARIO=events
+```
+
+The scenario's dates are relative to the loading time (T0): the "Salon du Mariage", the "Portes ouvertes" and the "Démonstration en boutique" of `alice-durand` are in progress, the "Atelier découverte" ended 10 minutes ago (submissions still accepted), the "Foire de Lyon" is upcoming. Sign in as `seed-alice` to see them in the dashboard (the card's events page, the leads list).
+
+Open a prospect form: `http://localhost:3000/c/alice-durand/e/<event ID>`, or click its button on `http://localhost:3000/c/alice-durand`. The identifiers are fixed: the "Portes ouvertes de l'Atelier" are `0198c8a2-0000-7000-8000-000000000002` and ask for the access code **Château** (case, spaces and accents do not matter). Beyond 120 submissions in 10 minutes, or 30 wrong codes, from the same address, the API answers `429` with `Retry-After`; locally the address is the connection's (`TRUSTED_PROXY_HOPS=1` without `X-Forwarded-For` falls back to it). `POST /api/test/reset` resets the counters, but also empties the database.
+
+**Watching an event start or end**: freeze the API's clock, load the scenarios **through the API** (it then uses the frozen clock, whereas `make seed` dates at the real time), then move the clock:
+
+```bash
+api() { curl -s -X POST "localhost:8080/api/test/$1" -H 'content-type: application/json' -d "$2"; }
+api reset '{}'; api clock '{"now":"2027-03-15T10:00:00Z"}'
+api seed '{"scenario":"base"}'; api seed '{"scenario":"cards"}'; api seed '{"scenario":"events"}'
+api clock '{"now":"2027-03-15T12:30:00Z"}'    # the "Démonstration" (ends at T0+2 h) is over, no more button on the next render
+api clock '{"now":null}'                       # back to real time
+```
+
+A sign-in token signed before moving the clock may be expired for the new time: sign in again (`/login`) after each change. See "Controlling the API clock" below. For the Playwright tests, `api.seedEvents()` does all of this (see `add-seed-scenario`).
+
 ## Signing in locally (`test` adapter)
 
 The site offers a test sign-in panel on `/login` (users `seed-admin`, `seed-alice`, …); a visitor who is already signed in and opens `/login` is redirected to `/dashboard`. For a token by hand:
@@ -57,7 +90,7 @@ curl -s -X POST localhost:8080/api/test/clock -H 'content-type: application/json
 curl -s -X POST localhost:8080/api/test/clock -H 'content-type: application/json' -d '{"now":null}'                       # goes back to real time
 ```
 
-`now` is required (RFC 3339 date or `null`). Tokens issued after freezing the clock are dated at that instant.
+`now` is required (RFC 3339 date or `null`). Tokens issued after freezing the clock are dated at that instant; **freeze the clock before signing a token**, otherwise it is expired (or not yet valid) for the new time. The clock also drives event periods, the 15-minute submission grace period, the per-IP limit and the validity of signed media URLs.
 
 ## Switching from the `test` adapter to Clerk (or OIDC)
 

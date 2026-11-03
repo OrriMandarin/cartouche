@@ -7,8 +7,9 @@ use std::sync::Arc;
 
 use axum::http::StatusCode;
 use cartouche_api::app::build_router;
+use cartouche_api::rate_limit::{Bucket, InMemoryRateLimiter, RateLimiter};
 use cartouche_api::state::AppState;
-use cartouche_domain::{Clock, ManualClock, OverridableClock};
+use cartouche_domain::{Clock, ManualClock, OverridableClock, Period, max_simultaneous};
 use chrono::{Duration, TimeZone, Utc};
 use common::{TestApp, test_app, test_app_with, test_config_with, test_verifier};
 use serde_json::{Value, json};
@@ -218,6 +219,25 @@ async fn reset_empties_tables(pool: PgPool) {
     assert_eq!(audits, 0);
 }
 
+// spec: ABU-006
+#[sqlx::test]
+async fn reset_clears_the_rate_limiter(pool: PgPool) {
+    let (mut state, clock) = common::test_state(pool);
+    let limiter = Arc::new(InMemoryRateLimiter::default());
+    state.rate_limiter = limiter.clone();
+    let app = TestApp::from_state(state, clock.clone());
+    let visitor = "203.0.113.7".parse().unwrap();
+    let bucket = Bucket::LeadSubmission;
+    for _ in 0..bucket.limit().max {
+        limiter.hit(bucket, visitor, clock.now()).unwrap();
+    }
+    assert!(limiter.hit(bucket, visitor, clock.now()).is_err());
+
+    let response = app.request("POST", "/api/test/reset", None, None).await;
+    assert_eq!(response.status, StatusCode::NO_CONTENT);
+    assert_eq!(limiter.hit(bucket, visitor, clock.now()), Ok(()));
+}
+
 // spec: ACC-008
 #[sqlx::test]
 async fn unknown_scenario_is_404(pool: PgPool) {
@@ -240,6 +260,7 @@ async fn clock_controls_token_expiry(pool: PgPool) {
         config: Arc::new(config),
         clock: clock.clone(),
         media: common::test_media(),
+        rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         test_clock: Some(clock),
     };
     let app = TestApp {
@@ -429,4 +450,255 @@ async fn cards_scenario_is_replayable(pool: PgPool) {
     let alice = public_card(&app, "alice-durand").await;
     assert_eq!(alice.json["state"], "active");
     assert_eq!(alice.json["card"]["content"]["first_name"], "Alice");
+}
+
+/// T0 of the `events` scenario: every date of the scenario is relative to it.
+fn events_now() -> chrono::DateTime<Utc> {
+    Utc.with_ymd_and_hms(2027, 3, 15, 10, 0, 0).unwrap()
+}
+
+/// Freezes the clock at T0, seeds `base`, `cards` and `events`, and returns the report of the
+/// `events` scenario.
+async fn seed_events_at_t0(app: &TestApp) -> Value {
+    app.clock.set(events_now());
+    let mut report = Value::Null;
+    for scenario in ["base", "cards", "events"] {
+        let response = app.seed(scenario).await;
+        assert_eq!(
+            response.status,
+            StatusCode::OK,
+            "{scenario}: {}",
+            response.json
+        );
+        report = response.json;
+    }
+    report
+}
+
+async fn public_event(app: &TestApp, slug: &str, event_id: &str) -> common::TestResponse {
+    app.request(
+        "GET",
+        &format!("/api/public/cards/{slug}/events/{event_id}"),
+        None,
+        None,
+    )
+    .await
+}
+
+fn event_id(report: &Value, title: &str) -> String {
+    report["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["title"] == title)
+        .unwrap_or_else(|| panic!("no seeded event titled {title}"))["id"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+// spec: EVT-004, PUB-029, EVT-008
+#[sqlx::test]
+async fn events_scenario_is_relative_to_the_clock(pool: PgPool) {
+    let app = test_app(pool.clone()).await;
+    let report = seed_events_at_t0(&app).await;
+
+    let mut titles: Vec<&str> = report["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["title"].as_str().unwrap())
+        .collect();
+    titles.sort();
+    let mut expected = [
+        "Salon du Mariage Clermont 2027",
+        "Portes ouvertes de l'Atelier",
+        "Démonstration en boutique",
+        "Atelier découverte",
+        "Foire de Lyon",
+        "Salon de Paris 2026",
+        "Événement archivé",
+        "Salon bloqué",
+    ];
+    expected.sort();
+    assert_eq!(titles, expected);
+    assert!(report["users"].as_array().unwrap().is_empty());
+    assert!(report["cards"].as_array().unwrap().is_empty());
+
+    // Exactly the three events running at T0 are on the public card, by start.
+    let card = public_card(&app, "alice-durand").await;
+    assert_eq!(card.status, StatusCode::OK, "{}", card.json);
+    let buttons: Vec<&str> = card.json["card"]["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        buttons,
+        [
+            "Salon du Mariage Clermont 2027",
+            "Portes ouvertes de l'Atelier",
+            "Démonstration en boutique",
+        ]
+    );
+
+    // An event ended 10 minutes ago still takes submissions; a future one does not.
+    let discovery = event_id(&report, "Atelier découverte");
+    let open = public_event(&app, "alice-durand", &discovery).await;
+    assert_eq!(open.json["state"], "open", "{}", open.json);
+    let lyon = event_id(&report, "Foire de Lyon");
+    let closed = public_event(&app, "alice-durand", &lyon).await;
+    assert_eq!(closed.json["state"], "closed", "{}", closed.json);
+    let open_house = event_id(&report, "Portes ouvertes de l'Atelier");
+    let coded = public_event(&app, "alice-durand", &open_house).await;
+    assert_eq!(coded.json["state"], "code_required", "{}", coded.json);
+
+    // The disabled card of Alice is gone for the public, whatever its events.
+    let archived = event_id(&report, "Événement archivé");
+    let gone = public_event(&app, "alice-archive", &archived).await;
+    assert_eq!(gone.status, StatusCode::GONE, "{}", gone.json);
+
+    // No instant has more than three of Alice's events at once (the EVT-004 limit).
+    let rows: Vec<(chrono::DateTime<Utc>, Option<chrono::DateTime<Utc>>)> = sqlx::query_as(
+        "select e.starts_at, e.ends_at from events e join cards c on c.id = e.card_id \
+         join users u on u.id = c.owner_id where u.subject = 'seed-alice' \
+         and c.id = (select card_id from card_slugs where slug = 'alice-durand') \
+         order by e.starts_at, e.title",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(rows.len(), 6);
+    let periods: Vec<Period> = rows
+        .iter()
+        .map(|(starts_at, ends_at)| Period {
+            starts_at: *starts_at,
+            ends_at: *ends_at,
+        })
+        .collect();
+    for (index, period) in periods.iter().enumerate() {
+        let others: Vec<Period> = periods
+            .iter()
+            .enumerate()
+            .filter(|(other, _)| *other != index)
+            .map(|(_, p)| *p)
+            .collect();
+        assert!(max_simultaneous(period, &others) <= 3, "event {index}");
+    }
+    let running = periods
+        .iter()
+        .filter(|p| p.is_running(events_now()))
+        .count();
+    assert_eq!(running, 3);
+
+    // Four contacts, one of them spam, with accents kept as typed.
+    let leads: Vec<(String, Option<String>, bool)> = sqlx::query_as(
+        "select first_name, last_name, spam_at is not null from leads order by submitted_at",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap()
+    .into_iter()
+    .map(|(f, l, s): (Option<String>, Option<String>, bool)| (f.unwrap_or_default(), l, s))
+    .collect();
+    assert_eq!(leads.len(), 4);
+    assert_eq!(leads.iter().filter(|(_, _, spam)| *spam).count(), 1);
+    assert!(leads.contains(&("Éloïse".into(), Some("D’Aubigné-Müller".into()), false)));
+    assert!(leads.contains(&("Zoé".into(), Some("Lefèvre ✨".into()), false)));
+    assert!(leads.contains(&("Bot".into(), Some("Spam".into()), true)));
+    assert!(leads.contains(&("Jean-Michel".into(), Some("Hébert".into()), false)));
+}
+
+// spec: EDI-020, ABU-003, FRM-026, FRM-027
+#[sqlx::test]
+async fn events_scenario_contacts_are_listed_for_their_owner(pool: PgPool) {
+    let app = test_app(pool).await;
+    let report = seed_events_at_t0(&app).await;
+    let token = token_for(&app, json!({"subject": "seed-alice"})).await;
+    let wedding = event_id(&report, "Salon du Mariage Clermont 2027");
+    let listed = app
+        .request(
+            "GET",
+            &format!("/api/events/{wedding}/leads"),
+            Some(&token),
+            None,
+        )
+        .await;
+    assert_eq!(listed.status, StatusCode::OK, "{}", listed.json);
+    let leads = listed.json["leads"].as_array().unwrap();
+    assert_eq!(leads.len(), 3);
+    assert_eq!(leads[0]["answers"]["first_name"], "Bot");
+    assert_eq!(leads[0]["spam"], true);
+    assert_eq!(leads[1]["answers"]["last_name"], "Lefèvre ✨");
+    assert_eq!(leads[2]["answers"]["first_name"], "Éloïse");
+    assert_eq!(leads[2]["answers"]["phone"], "+33612345678");
+    let custom = leads[2]["custom"].as_array().unwrap();
+    assert_eq!(custom.len(), 4);
+    assert_eq!(custom[2]["label"], "Formule");
+    assert_eq!(custom[2]["value"], "Prestige");
+
+    // The recorded consent is the text a real submission records: the one the owner's view
+    // gives as the default for this card and title.
+    let event = app
+        .request("GET", &format!("/api/events/{wedding}"), Some(&token), None)
+        .await;
+    assert_eq!(event.status, StatusCode::OK, "{}", event.json);
+    assert!(event.json["consent_text"].is_null());
+    let default_text = event.json["default_consent_text"].as_str().unwrap();
+    assert!(default_text.contains("« Salon du Mariage Clermont 2027 »"));
+    assert!(default_text.contains("est responsable de ce traitement"));
+    for lead in leads {
+        assert_eq!(lead["consent_text"], default_text);
+    }
+}
+
+// spec: ACC-008
+#[sqlx::test]
+async fn events_scenario_is_replayable(pool: PgPool) {
+    let app = test_app(pool.clone()).await;
+    let first = seed_events_at_t0(&app).await;
+    sqlx::query("update events set title = 'x', starts_at = starts_at + interval '1 day', ends_at = null, device_limit = 9")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("update leads set first_name = 'x', spam_at = null")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let second = app.seed("events").await;
+    assert_eq!(second.status, StatusCode::OK, "{}", second.json);
+    assert_eq!(first["events"], second.json["events"]);
+
+    let events: i64 = sqlx::query_scalar("select count(*) from events")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(events, 8);
+    let leads: i64 = sqlx::query_scalar("select count(*) from leads")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(leads, 4);
+    let spam: i64 = sqlx::query_scalar("select count(*) from leads where spam_at is not null")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(spam, 1);
+    let card = public_card(&app, "alice-durand").await;
+    assert_eq!(card.json["card"]["events"].as_array().unwrap().len(), 3);
+}
+
+// spec: ACC-008
+#[sqlx::test]
+async fn cards_scenario_dates_follow_the_clock(pool: PgPool) {
+    let app = test_app(pool.clone()).await;
+    seed_events_at_t0(&app).await;
+    let disabled_at: chrono::DateTime<Utc> = sqlx::query_scalar(
+        "select owner_disabled_at from cards where id = '0198c8a0-0000-7000-8000-000000000002'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(disabled_at, events_now());
 }

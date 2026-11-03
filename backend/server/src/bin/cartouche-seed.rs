@@ -43,10 +43,18 @@ async fn run(args: &[String]) -> Result<(), String> {
                 format!("unknown scenario `{name}` (known: {})", known.join(", "))
             })?;
             let pool = connect().await?;
-            let report = run(&pool).await.map_err(|e| format!("seed failed: {e}"))?;
+            let report = run(&pool, chrono::Utc::now())
+                .await
+                .map_err(|e| format!("seed failed: {e}"))?;
             println!("seeded `{name}`: {} users", report.users.len());
             for user in &report.users {
                 println!("  {} ({})", user.subject, user.status.as_str());
+            }
+            for card in &report.cards {
+                println!("  card {} ({})", card.slug, card.owner);
+            }
+            for event in &report.events {
+                println!("  event {} ({})", event.title, event.card_slug);
             }
             Ok(())
         }

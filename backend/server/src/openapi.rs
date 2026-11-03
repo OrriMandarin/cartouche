@@ -7,7 +7,10 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
-use crate::routes::{admin_cards, admin_users, card_media, cards, health, me, public_cards, slugs};
+use crate::routes::{
+    admin_cards, admin_users, card_media, cards, events, health, leads, me, public_cards,
+    public_events, slugs,
+};
 
 struct BearerAuth;
 
@@ -52,10 +55,23 @@ impl Modify for BearerAuth {
         cards::enable_card,
         cards::duplicate_card,
         card_media::upload_media,
+        events::list_events,
+        events::create_event,
+        events::get_event,
+        events::update_event,
+        events::end_event,
+        events::delete_event,
+        events::consent_preview,
+        leads::list_event_leads,
+        leads::set_lead_spam,
+        leads::delete_lead,
         slugs::suggest_slug,
         slugs::slug_availability,
         public_cards::get_public_card,
         public_cards::get_public_vcard,
+        public_events::get_public_event,
+        public_events::unlock_public_event,
+        public_events::submit_lead,
     ),
     components(schemas(crate::error::ErrorBody, crate::error::ErrorDetail)),
     modifiers(&BearerAuth),
@@ -63,7 +79,9 @@ impl Modify for BearerAuth {
         (name = "health", description = "Service health"),
         (name = "account", description = "The signed-in user's account"),
         (name = "cards", description = "The signed-in user's cards and their links"),
-        (name = "public", description = "A published card and its vCard, no sign-in"),
+        (name = "events", description = "The events of the signed-in user's cards"),
+        (name = "leads", description = "The contacts collected by the events of the signed-in user's cards"),
+        (name = "public", description = "A published card, its vCard, its running events and their forms, no sign-in"),
         (name = "admin", description = "Support tools, administrators only"),
     ),
 )]

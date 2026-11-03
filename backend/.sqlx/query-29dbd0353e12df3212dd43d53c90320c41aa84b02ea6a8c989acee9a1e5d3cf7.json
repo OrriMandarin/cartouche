@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update events e set title = $3, description = $4, starts_at = $5, ends_at = $6, access_code = $7, device_limit = $8, standard_fields = $9, custom_fields = $10, consent_text = $11, updated_at = now() from cards c where e.id = $1 and c.id = e.card_id and c.owner_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Int4",
+        "Jsonb",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "29dbd0353e12df3212dd43d53c90320c41aa84b02ea6a8c989acee9a1e5d3cf7"
+}

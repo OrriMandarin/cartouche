@@ -82,6 +82,7 @@ test("EDI-002 LNK-012 delete with confirmation", async ({ page }) => {
   await page.goto("/dashboard");
   await page.getByTestId("card-delete-alice-durand").click();
   await page.getByTestId("card-delete-cancel").click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByTestId("card-row-alice-durand")).toBeVisible();
 
   await page.getByTestId("card-delete-alice-durand").click();

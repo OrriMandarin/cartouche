@@ -27,7 +27,9 @@ where
         match axum::Json::<T>::from_request(req, state).await {
             Ok(axum::Json(value)) => Ok(ApiJson(value)),
             Err(rejection) => {
-                tracing::debug!(error = %rejection, "invalid JSON body");
+                // The rejection text can quote submitted values (answers, access code): only
+                // the status is logged.
+                tracing::debug!(status = %rejection.status(), "invalid JSON body");
                 Err(match rejection.status() {
                     StatusCode::PAYLOAD_TOO_LARGE => ApiError::PayloadTooLarge,
                     StatusCode::UNSUPPORTED_MEDIA_TYPE => ApiError::UnsupportedMediaType,

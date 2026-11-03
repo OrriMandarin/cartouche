@@ -19,6 +19,9 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    // Event dates are shown in the visitor's zone and language: pin both so that assertions are stable.
+    timezoneId: "Europe/Paris",
+    locale: "fr-FR",
   },
   projects: [
     { name: "mobile", use: { ...devices["iPhone 14"] } },

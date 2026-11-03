@@ -2,7 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use common::cards::{cards_app, create_card, put_card, token};
-use common::media_fixtures::{jpeg, mp4, png, png_claiming};
+use common::media_fixtures::{jpeg, mp4, mp4_with_brands, png, png_claiming};
 use common::{Part, TestApp, TestResponse, test_state_with};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -61,6 +61,11 @@ fn media_path(url: &Value) -> &str {
     url.as_str().unwrap().strip_prefix(BASE).unwrap()
 }
 
+/// A media address without its signature: the public address of the same file (MED-023).
+fn unsigned(url: &str) -> &str {
+    url.split_once('?').map_or(url, |(address, _)| address)
+}
+
 async fn get_file(app: &TestApp, path: &str, headers: &[(&str, &str)]) -> TestResponse {
     app.request_with_headers("GET", path, None, None, headers)
         .await
@@ -93,10 +98,10 @@ async fn avatar_upload_returns_variant_urls(pool: PgPool) {
     assert_eq!(media["video_url"], Value::Null);
     let prefix = format!("{BASE}/media/cards/{id}/{}/", media["id"].as_str().unwrap());
     for image in media["images"].as_array().unwrap() {
-        let url = image["url"].as_str().unwrap();
+        let url = unsigned(image["url"].as_str().unwrap());
         assert!(url.starts_with(&prefix) && url.ends_with(".webp"), "{url}");
     }
-    let jpeg_url = media["jpeg_url"].as_str().unwrap();
+    let jpeg_url = unsigned(media["jpeg_url"].as_str().unwrap());
     assert!(
         jpeg_url.starts_with(&prefix) && jpeg_url.ends_with("/s512.jpg"),
         "{jpeg_url}"
@@ -169,6 +174,42 @@ async fn type_is_checked_from_content(pool: PgPool) {
     .await;
     assert_eq!(res.status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
     assert_eq!(error_code(&res), "unsupported_media_type");
+}
+
+// spec: MED-022
+#[sqlx::test(migrations = "./migrations")]
+async fn quicktime_3gp_and_heic_are_refused(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card_id(&card);
+    let header_upload = |bytes: Vec<u8>| {
+        [
+            Part::text("slot", "header"),
+            Part::file("file", "clip.mp4", "video/mp4", bytes),
+            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
+        ]
+    };
+
+    for major in [b"qt  ", b"3gp4", b"heic"] {
+        let res = upload(
+            &app,
+            "alice",
+            id,
+            &header_upload(mp4_with_brands(major, &[b"isom"], 2_000)),
+        )
+        .await;
+        assert_eq!(res.status, StatusCode::UNSUPPORTED_MEDIA_TYPE, "{major:?}");
+        assert_eq!(error_code(&res), "unsupported_media_type");
+    }
+
+    let res = upload(
+        &app,
+        "alice",
+        id,
+        &header_upload(mp4_with_brands(b"mp42", &[b"mp42", b"isom"], 2_000)),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
 }
 
 // spec: MED-012, Review Focus 5
@@ -251,7 +292,7 @@ async fn video_rules(pool: PgPool) {
     assert_eq!(res.json["kind"], "video");
     // The poster is the waiting image, never larger than itself.
     assert_eq!(widths(&res.json), [640, 1080, 1280]);
-    let video_url = res.json["video_url"].as_str().unwrap();
+    let video_url = unsigned(res.json["video_url"].as_str().unwrap());
     assert!(video_url.ends_with("/video.mp4"), "{video_url}");
     let key = video_url.strip_prefix(&format!("{BASE}/media/")).unwrap();
     let stored = app.media.get(key, None).await.unwrap();
@@ -557,8 +598,13 @@ async fn media_files_are_served_with_long_cache(pool: PgPool) {
     let app = cards_app(pool).await;
     let card = create_card(&app, "alice", "alice-durand").await;
     let media = uploaded(&app, card_id(&card), "avatar", jpeg(800, 800)).await;
+    // The upload answers with signed addresses, cached by the owner's browser only (MED-023).
+    let signed = media_path(&media["images"][0]["url"]);
+    let res = get_file(&app, signed, &[]).await;
+    assert_eq!(res.status, StatusCode::OK);
+    assert_eq!(res.headers["cache-control"], "private, max-age=86400");
 
-    let res = get_file(&app, media_path(&media["images"][0]["url"]), &[]).await;
+    let res = get_file(&app, unsigned(signed), &[]).await;
     assert_eq!(res.status, StatusCode::OK);
     assert_eq!(res.headers["content-type"], "image/webp");
     assert_eq!(
@@ -570,16 +616,17 @@ async fn media_files_are_served_with_long_cache(pool: PgPool) {
     assert_eq!(res.body.len().to_string(), res.headers["content-length"]);
     assert_eq!(&res.body[..4], b"RIFF");
 
-    let res = get_file(&app, media_path(&media["jpeg_url"]), &[]).await;
+    let jpeg_path = unsigned(media_path(&media["jpeg_url"]));
+    let res = get_file(&app, jpeg_path, &[]).await;
     assert_eq!(res.headers["content-type"], "image/jpeg");
 
     // Unknown file in a well-formed key.
-    let missing = media_path(&media["jpeg_url"]).replace("s512.jpg", "s256.jpg.x");
+    let missing = jpeg_path.replace("s512.jpg", "s256.jpg.x");
     assert_eq!(
         get_file(&app, &missing, &[]).await.status,
         StatusCode::NOT_FOUND
     );
-    let absent = media_path(&media["jpeg_url"]).replace("s512.jpg", "s999.jpg");
+    let absent = jpeg_path.replace("s512.jpg", "s999.jpg");
     assert_eq!(
         get_file(&app, &absent, &[]).await.status,
         StatusCode::NOT_FOUND
@@ -604,7 +651,7 @@ async fn media_files_honour_range_requests(pool: PgPool) {
     )
     .await;
     assert_eq!(video.status, StatusCode::CREATED);
-    let path = media_path(&video.json["video_url"]);
+    let path = unsigned(media_path(&video.json["video_url"]));
     let n = clip.len();
 
     let whole = get_file(&app, path, &[]).await;
@@ -707,4 +754,251 @@ async fn s3_mode_does_not_mount_media_route(pool: PgPool) {
     let res = get_file(&app, &format!("/media/{key}"), &[]).await;
     assert_eq!(res.status, StatusCode::NOT_FOUND);
     assert_eq!(error_code(&res), "not_found");
+}
+
+/// Uploads an avatar for Alice's card, attaches it by a save and returns the card's id.
+async fn card_with_avatar(app: &TestApp) -> String {
+    let card = create_card(app, "alice", "alice-durand").await;
+    let id = card_id(&card).to_string();
+    let media = uploaded(app, &id, "avatar", jpeg(800, 800)).await;
+    let res = put_card(app, "alice", &id, json!({ "avatar_media_id": media["id"] })).await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.json);
+    id
+}
+
+/// The avatar's smallest image, as the public page lists it.
+async fn public_avatar_path(app: &TestApp) -> String {
+    let res = app
+        .request("GET", "/api/public/cards/alice-durand", None, None)
+        .await;
+    assert_eq!(res.json["state"], "active", "{}", res.json);
+    media_path(&res.json["card"]["avatar"]["images"][0]["url"]).to_string()
+}
+
+async fn owner_action(app: &TestApp, id: &str, action: &str) {
+    let res = app
+        .request(
+            "POST",
+            &format!("/api/cards/{id}/{action}"),
+            Some(&token("alice")),
+            None,
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::OK, "{action}: {}", res.json);
+}
+
+async fn support_action(app: &TestApp, id: &str, action: &str) {
+    let res = app
+        .request(
+            "POST",
+            &format!("/api/admin/cards/{id}/support-{action}"),
+            Some(&token("boss")),
+            None,
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::OK, "support-{action}: {}", res.json);
+}
+
+/// The `exp` and `sig` query parameters of a signed media address.
+fn signature_of(path: &str) -> (i64, String) {
+    let (_, query) = path
+        .split_once('?')
+        .unwrap_or_else(|| panic!("unsigned: {path}"));
+    let param = |name: &str| {
+        query
+            .split('&')
+            .find_map(|pair| pair.strip_prefix(&format!("{name}=")))
+            .unwrap_or_else(|| panic!("no {name} in {path}"))
+            .to_string()
+    };
+    (param("exp").parse().unwrap(), param("sig"))
+}
+
+// spec: MED-023, LNK-026, LNK-027
+#[sqlx::test(migrations = "./migrations")]
+async fn media_of_an_unserved_card_is_404_without_signature(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let id = card_with_avatar(&app).await;
+    let path = public_avatar_path(&app).await;
+    assert!(
+        !path.contains('?'),
+        "public addresses are not signed: {path}"
+    );
+    let served = get_file(&app, &path, &[]).await;
+    assert_eq!(served.status, StatusCode::OK);
+    assert_eq!(
+        served.headers["cache-control"],
+        "public, max-age=31536000, immutable"
+    );
+
+    owner_action(&app, &id, "disable").await;
+    let res = get_file(&app, &path, &[]).await;
+    assert_eq!(res.status, StatusCode::NOT_FOUND);
+    assert_eq!(error_code(&res), "not_found");
+    let res = get_file(&app, &path, &[("range", "bytes=0-1")]).await;
+    assert_eq!(res.status, StatusCode::NOT_FOUND, "a range is refused too");
+
+    owner_action(&app, &id, "enable").await;
+    assert_eq!(get_file(&app, &path, &[]).await.status, StatusCode::OK);
+
+    support_action(&app, &id, "disable").await;
+    assert_eq!(
+        get_file(&app, &path, &[]).await.status,
+        StatusCode::NOT_FOUND
+    );
+    support_action(&app, &id, "enable").await;
+    assert_eq!(get_file(&app, &path, &[]).await.status, StatusCode::OK);
+
+    sqlx::query("update users set status = 'suspended' where subject = 'alice'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        get_file(&app, &path, &[]).await.status,
+        StatusCode::NOT_FOUND
+    );
+}
+
+// spec: MED-023, LNK-008, ADM-013
+#[sqlx::test(migrations = "./migrations")]
+async fn dashboard_and_support_urls_stay_readable(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let id = card_with_avatar(&app).await;
+    let public = public_avatar_path(&app).await;
+    support_action(&app, &id, "disable").await;
+    assert_eq!(
+        get_file(&app, &public, &[]).await.status,
+        StatusCode::NOT_FOUND
+    );
+
+    let owner_view = get_card(&app, &id).await;
+    let owner_path = media_path(&owner_view["avatar"]["images"][0]["url"]).to_string();
+    let (exp, sig) = signature_of(&owner_path);
+    assert!(!sig.is_empty());
+    assert_eq!(unsigned(&owner_path), public);
+    // The test clock reads 2026-01-15 12:00 UTC: the next hour, plus 24 hours.
+    assert_eq!(exp, 1_768_482_000 + 24 * 3600);
+    let res = get_file(&app, &owner_path, &[]).await;
+    assert_eq!(res.status, StatusCode::OK);
+    assert_eq!(res.headers["cache-control"], "private, max-age=86400");
+    assert_eq!(res.headers["content-type"], "image/webp");
+    assert_eq!(&res.body[..4], b"RIFF");
+
+    let support_view = app
+        .request(
+            "GET",
+            &format!("/api/admin/cards/{id}"),
+            Some(&token("boss")),
+            None,
+        )
+        .await;
+    assert_eq!(support_view.status, StatusCode::OK);
+    let jpeg_path = media_path(&support_view.json["card"]["avatar"]["jpeg_url"]).to_string();
+    signature_of(&jpeg_path);
+    let res = get_file(&app, &jpeg_path, &[]).await;
+    assert_eq!(res.status, StatusCode::OK);
+    assert_eq!(res.headers["cache-control"], "private, max-age=86400");
+    assert_eq!(res.headers["content-type"], "image/jpeg");
+
+    let res = get_file(&app, &owner_path, &[("range", "bytes=0-1")]).await;
+    assert_eq!(res.status, StatusCode::PARTIAL_CONTENT);
+    assert_eq!(res.body.as_ref(), b"RI");
+    assert_eq!(res.headers["cache-control"], "private, max-age=86400");
+
+    // Addresses stay the same within the hour, so the browser can cache them.
+    app.clock.advance(chrono::Duration::minutes(59));
+    let again = get_card(&app, &id).await;
+    assert_eq!(again["avatar"], owner_view["avatar"]);
+}
+
+// spec: MED-023
+#[sqlx::test(migrations = "./migrations")]
+async fn forged_or_expired_signatures_are_ignored(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let id = card_with_avatar(&app).await;
+    owner_action(&app, &id, "disable").await;
+    let signed = media_path(&get_card(&app, &id).await["avatar"]["images"][0]["url"]).to_string();
+    let (exp, sig) = signature_of(&signed);
+    let public = unsigned(&signed);
+    assert_eq!(get_file(&app, &signed, &[]).await.status, StatusCode::OK);
+
+    let first = if sig.starts_with('A') { 'B' } else { 'A' };
+    let forged_sig = format!("{first}{}", &sig[1..]);
+    let other = media_path(&get_card(&app, &id).await["avatar"]["images"][1]["url"]).to_string();
+    let other_public = unsigned(&other);
+    for forged in [
+        format!("{public}?exp={exp}&sig={forged_sig}"),
+        format!("{public}?exp={}&sig={sig}", exp + 3600),
+        format!("{public}?exp={exp}"),
+        format!("{public}?sig={sig}"),
+        // The signature of one file does not open another.
+        format!("{other_public}?exp={exp}&sig={sig}"),
+    ] {
+        let res = get_file(&app, &forged, &[]).await;
+        assert_eq!(res.status, StatusCode::NOT_FOUND, "{forged}");
+        assert_eq!(error_code(&res), "not_found", "{forged}");
+    }
+
+    // Valid at least 24 hours, not 25.
+    app.clock.advance(chrono::Duration::hours(24));
+    assert_eq!(get_file(&app, &signed, &[]).await.status, StatusCode::OK);
+    app.clock.advance(chrono::Duration::hours(1));
+    assert_eq!(
+        get_file(&app, &signed, &[]).await.status,
+        StatusCode::NOT_FOUND
+    );
+}
+
+// spec: MED-024, MED-011
+#[sqlx::test(migrations = "./migrations")]
+async fn s3_urls_are_never_signed(pool: PgPool) {
+    let (mut state, clock) =
+        test_state_with(pool, &[("SIGNUP_MODE", "open"), ("ADMIN_USER_IDS", "boss")]);
+    state.media = cartouche_api::media::MediaService::in_memory_remote(
+        "https://cdn.example/bucket/".parse().unwrap(),
+    );
+    let app = TestApp::from_state(state, clock);
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card_id(&card);
+    let header = upload(
+        &app,
+        "alice",
+        id,
+        &[
+            Part::text("slot", "header"),
+            Part::file("file", "clip.mp4", "video/mp4", mp4(2_000)),
+            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
+        ],
+    )
+    .await;
+    assert_eq!(header.status, StatusCode::CREATED, "{}", header.json);
+    let avatar = uploaded(&app, id, "avatar", jpeg(800, 800)).await;
+    let res = put_card(
+        &app,
+        "alice",
+        id,
+        json!({ "header_media_id": header.json["id"], "avatar_media_id": avatar["id"] }),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.json);
+    owner_action(&app, id, "disable").await;
+
+    let support_view = app
+        .request(
+            "GET",
+            &format!("/api/admin/cards/{id}"),
+            Some(&token("boss")),
+            None,
+        )
+        .await;
+    for view in [
+        header.json.clone(),
+        avatar,
+        get_card(&app, id).await,
+        support_view.json["card"].clone(),
+    ] {
+        let text = view.to_string();
+        assert!(text.contains("https://cdn.example/bucket/cards/"), "{text}");
+        assert!(!text.contains('?'), "{text}");
+    }
 }

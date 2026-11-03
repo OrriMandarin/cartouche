@@ -1,6 +1,6 @@
 # Public page and vCard
 
-> Status: implemented (plan 2); PUB-008 to PUB-010: verified with a simulated event, fed by real events in plan 3
+> Status: implemented (plans 2 and 3)
 
 This page describes the behavior of the public page, whatever the template (see TPL-003). The visuals are those of the "Classique" ("Classic") template, the reference template.
 
@@ -22,6 +22,7 @@ This page describes the behavior of the public page, whatever the template (see 
 - **PUB-008** — When one or more events are in progress, each appears as a very visible, animated button carrying the event's name.
 - **PUB-009** — Event buttons are sorted by start date.
 - **PUB-010** — With no event in progress, nothing is shown where the event buttons would be.
+- **PUB-029** — The event buttons are the card's events in progress (EVT-002) at the moment the page is rendered, according to the server's clock (see EVT-020): an event that starts appears, and an event that has ended disappears, on the next render. For equal start dates, buttons are sorted by title.
 
 ## Information and links
 

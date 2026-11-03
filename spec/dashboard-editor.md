@@ -1,6 +1,6 @@
 # Dashboard and card editor
 
-> Status: implemented (plan 2); EDI-009: plan 3; EDI-010: plan 4
+> Status: implemented (plans 2 and 3); EDI-010: plan 4
 
 ## Cards
 
@@ -25,6 +25,9 @@
 ## Events and leads
 
 - **EDI-009** — A card's page lists its events in three groups (in progress, upcoming, past) and lets users create, edit, close and delete them (see EVT-009).
+- **EDI-018** — A card's event list shows, for each event, its title, its start, its end (or "Sans fin" ("No end")), its state (EVT-020) and its number of leads. It can be reached from the card list and from the card's editor.
+- **EDI-019** — The event editor sets the title, the description, the start, the end, the access code (shown in clear, see EVT-010), the per-device limit, the standard fields (not asked, optional or required), the custom fields (adding, order, type, label, help text, options, required or not) and the consent text (default or custom). Each error is shown next to its field, with no input lost (see EDI-015).
+- **EDI-020** — For each event, the dashboard lists its leads, from newest to oldest, with the submission date, the name, the email, the phone and the "Spam" label, and lets the owner mark or unmark a lead as spam and delete it (see ABU-003, ABU-004, ABU-009 and ABU-010). Search, the detailed view, the "toute la carte" ("whole card") view and exports come with EDI-010.
 - **EDI-010** — The dashboard gives access to the leads and their exports (see LEA-001 and LEA-006).
 
 ## Interface

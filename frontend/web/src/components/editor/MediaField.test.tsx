@@ -104,6 +104,18 @@ describe("MediaField", () => {
     expect(capturePoster).not.toHaveBeenCalled();
   });
 
+  test("MED-021 an unreadable video shows a message and the field is usable again", async () => {
+    readVideoDuration.mockRejectedValue(new Error("The video cannot be read."));
+    const upload = vi.fn();
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-header-input", mp4());
+
+    expect(await screen.findByTestId("media-header-error")).toHaveTextContent("Ce fichier ne peut pas être lu par le navigateur");
+    expect(upload).not.toHaveBeenCalled();
+    expect(screen.getByTestId("media-header-choose")).toBeEnabled();
+  });
+
   test("MED-012 a file of the wrong type or too heavy is refused before any upload", async () => {
     const upload = vi.fn();
     renderWithIntl(<Harness upload={upload} />);

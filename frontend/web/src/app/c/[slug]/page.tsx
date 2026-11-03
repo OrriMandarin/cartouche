@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { InactiveCard } from "@/components/public/InactiveCard";
-import { buildCardUrls, fetchPublicCard } from "@/lib/public-card";
+import { buildCardUrls, fetchPublicCard, toPublicEvents } from "@/lib/public-card";
 import { buildCardMetadata, INACTIVE_METADATA } from "@/lib/og";
 import { buildTemplateLabels } from "@/templates/contract";
 import { renderTemplate } from "@/templates/registry";
@@ -35,7 +35,7 @@ export default async function PublicCardPage({ params }: PageProps) {
     settings: card.settings,
     theme: card.theme,
     card,
-    events: [],
+    events: toPublicEvents(card),
     urls: buildCardUrls(card),
     labels: buildTemplateLabels(t),
     mode: "public",

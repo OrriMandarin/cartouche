@@ -14,6 +14,7 @@
   "dependencies": {
     "@cartouche/api-client": "workspace:*",
     "@clerk/nextjs": "^7.9.23",
+    "@date-fns/tz": "^1.5.0",
     "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/nunito-sans": "^5.3.0",
@@ -29,6 +30,7 @@
     "@sentry/nextjs": "^11.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "lucide-react": "^1.66.0",
     "next": "16.4.3",
     "next-intl": "^4.14.9",

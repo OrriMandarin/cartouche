@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update events e set ends_at = $3, updated_at = now() from cards c where e.id = $1 and c.id = e.card_id and c.owner_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "090026e93823d6143a59f322a345269beffb7ed9f04f1a329c7307b2e3557e62"
+}

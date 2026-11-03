@@ -1,6 +1,6 @@
 # Public card link
 
-> Status: implemented (plan 2); LNK-015 and LNK-016: plan 4
+> Status: implemented (plans 2 and 3); LNK-015 and LNK-016: plan 4
 
 ## Format and uniqueness
 
@@ -18,6 +18,7 @@
 - **LNK-003** — The link never breaks: when the user changes a card's slug, all former slugs of that card permanently redirect to the new one.
 - **LNK-004** — A former slug stays reserved for that card: nobody else can take it.
 - **LNK-024** — The permanent redirect of LNK-003 is an HTTP 308 redirect. It applies to all public addresses of the card: the page and the vCard.
+- **LNK-030** — The redirects of LNK-003 and LNK-021 (page, vCard and event form) carry the `Cache-Control: no-store` header: a former slug can become its card's current slug again (LNK-025) or be attached to a new card (LNK-014), so a redirect must not stay cached.
 - **LNK-025** — A card can take back one of its own former slugs, which becomes its current slug again. The former slug of a card that still exists cannot be given to another card, even one of the same owner (`409 slug_reserved`), because the first card's links would break.
 
 ## Disabling by the owner

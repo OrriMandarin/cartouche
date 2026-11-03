@@ -10,9 +10,9 @@ Cartouche is an open-source digital business card application (Rust backend, Nex
 | `docs/superpowers/` | Initial design (frozen) and implementation plans, in French. |
 | `backend/` | **All the Rust code**: Cargo workspace, `rust-toolchain.toml`, `Dockerfile`, SQLx cache `.sqlx/`. `domain/` (crate `cartouche-domain`): pure business logic. `server/` (crate `cartouche-api`): Axum, `config`, `auth/`, `db/` (SQLx queries), `routes/`, `test_support/` (feature `test-support`), `migrations/`, `tests/` (integration). |
 | `frontend/` | **All the TypeScript code**: pnpm workspace (`package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`). Run pnpm commands from this folder or with `pnpm -C frontend …`. |
-| `frontend/web/` | Next.js: `src/app/` (pages), `src/components/`, `src/lib/` (logic: auth, `api.ts`, build profile), `src/templates/` (card templates: contract, registry, settings schema, one folder per template), `messages/fr.json` (interface texts). |
+| `frontend/web/` | Next.js: `src/app/` (pages, including the public page `/c/<slug>` and the prospect form `/c/<slug>/e/<id>`), `src/components/` (including `events/`: dashboard for events and leads, and `event-form/`: prospect form shared by all templates), `src/lib/` (logic: auth, `api.ts`, build profile, `events/`: draft model, times, leads; `event-form/`: device, answers, local draft, submission outcomes), `src/templates/` (card templates: contract, registry, settings schema, one folder per template), `messages/fr.json` (interface texts). |
 | `frontend/api-client/` | TypeScript client **generated** from the OpenAPI document (`openapi.json`, `schema.d.ts` committed; never edit by hand). |
-| `frontend/e2e/` | Playwright end-to-end tests, on the full stack (`fixtures.ts`, `tests/*.spec.ts`). |
+| `frontend/e2e/` | Playwright end-to-end tests, on the full stack (`fixtures.ts` with the `api.setClock` and `api.seedEvents()` helpers, `env.ts`, `tests/*.spec.ts`). |
 | `scripts/` | `spec-lint.mjs` (spec linter), `check-prod-guard.sh`. |
 | `.claude/agents/` | Project agents. `.claude/skills/`: project skills. |
 | `compose.dev.yml`, `compose.test.yml` | Development database; full stack (db, api, web) for the e2e tests. |
@@ -25,15 +25,15 @@ Cartouche is an open-source digital business card application (Rust backend, Nex
 | `make setup` | Installs the dependencies (pnpm, `cargo fetch`, `sqlx-cli`). |
 | `make dev-db` | Starts the development PostgreSQL (port 54320). |
 | `make api` / `make web` | Runs the API (8080, with `test-support`) / the site (3000). |
-| `make seed [SCENARIO=base]` | Fills the database with a data scenario. |
+| `make seed [SCENARIO=base]` | Fills the database with a data scenario. `cards` extends `base` and `events` extends `cards`: load `base`, then `cards`, then `events` (see the `dev-env` skill). |
 | `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (linter tests) + `spec-lint`. |
 | `make sqlx-prepare` | After any query or migration addition or change: regenerates the `backend/.sqlx/` cache (to be committed). `make sqlx-check` checks that it is up to date (also in CI). |
 | `make lint` | `cargo fmt --check`, `clippy -D warnings`, pnpm lint and typecheck. |
-| `make openapi` | Regenerates `openapi.json`, then the TypeScript client. |
+| `make openapi` | Regenerates `openapi.json` (tests run with `--all-features`), then the TypeScript client. |
 | `make spec-lint [ARGS=--coverage]` | `node scripts/spec-lint.mjs`; `ARGS=--coverage` lists the rules without a test. |
 | `make e2e [ARGS="-g ACC-004"]` | Starts the test stack and runs Playwright. `make e2e-down` stops it. |
 
-Without a `.env` file, everything works locally **without Clerk** (test authentication provider, JWKS served by the API). See `.env.example`.
+Without a `.env` file, everything works locally **without Clerk** (test authentication provider, JWKS served by the API). See `.env.example`, which also documents `MAX_SIMULTANEOUS_EVENTS` (concurrent events per card, 3 by default) and `TRUSTED_PROXY_HOPS` (trusted reverse proxies for the per-IP limit, 1 by default).
 
 Note for the local development machine: `pnpm` is in `~/.local/bin` (Node 25 has no Corepack) and `cargo` is available after `source ~/.cargo/env`. On "command not found", export `PATH="$HOME/.local/bin:$PATH"` and source `~/.cargo/env` before running `make`.
 
@@ -51,9 +51,9 @@ Note for the local development machine: `pnpm` is in `~/.local/bin` (Node 25 has
 
 - **No business logic in handlers or components**: it goes in `cartouche-domain` (Rust) or in `frontend/web/src/lib` (TypeScript). A handler reads the request, calls the domain and `db/`, and formats the response.
 - **Every external dependency sits behind a trait or an interface** (clock, token verification, storage, email, Clerk…), so that tests can replace it.
-- **Every user query is filtered by owner in `db/`**: no function reads or writes user data without the owner's ID.
+- **Every user query is filtered by owner in `db/`**: no function reads or writes user data without the owner's ID. The exceptions (reads and writes of the public page and the prospect form, support) are listed at the top of the `db/` file concerned; see the `change-api` skill.
 - **Tests cite their rules**: `// spec: ACC-004` before a Rust test; `ACC-004` in the name of a TypeScript test. `node scripts/spec-lint.mjs --coverage` reports the rules without a test.
-- **No hard-coded interface text**: everything goes through `frontend/web/messages/fr.json`.
+- **No hard-coded interface text**: everything goes through `frontend/web/messages/fr.json`. The only exception: the default consent text of an event form, in `backend/domain/src/consent.rs`, because it is recorded as is with each lead (proof of the text the prospect saw).
 - Test code (`test-support`, `test` authentication adapter) must never be present in a production build.
 - Never edit the generated files (`openapi.json`, `schema.d.ts`) by hand: `make openapi`.
 - Readable code, explicit names, no dead code; do not add features outside the task.

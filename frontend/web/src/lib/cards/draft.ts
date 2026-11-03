@@ -1,5 +1,6 @@
 import { ApiError, type components } from "@cartouche/api-client";
 import type { LinkKind, MediaView, PublicCard } from "@/templates/contract";
+import { fieldErrorKey, fieldErrorKeys } from "@/lib/field-errors";
 import type { ThemeSettings } from "@/lib/theme/presets";
 import { getTemplate } from "@/templates/registry";
 import { parseSettings } from "@/templates/settings-schema";
@@ -108,6 +109,7 @@ export function draftToPublicCard(draft: CardDraft, publicBaseUrl: string): Publ
     header: draft.header,
     avatar: draft.avatar,
     vcard_url: `/api/public/cards/${encodeURIComponent(draft.slug)}/vcard`,
+    events: [],
   };
 }
 
@@ -159,21 +161,12 @@ export function applyTemplateChange(draft: CardDraft, templateId: string): CardD
   return { ...draft, template: templateId, settings: {} };
 }
 
-/** Message key of a field error code. */
-function errorKey(code: string): string {
-  return `fieldErrors.${code}`;
-}
-
 /**
  * Message keys by field path (`slug`, `content.email`, `links[0].url`…) for a failed save (EDI-015).
  * A slug that is taken or reserved is a `409` of its own, and belongs to the slug field too.
  */
 export function fieldErrors(error: unknown): Record<string, string> {
   if (!(error instanceof ApiError)) return {};
-  if (error.code === "slug_taken" || error.code === "slug_reserved") return { slug: errorKey(error.code) };
-  const errors: Record<string, string> = {};
-  for (const { field, code } of error.fields) {
-    if (!Object.hasOwn(errors, field)) errors[field] = errorKey(code);
-  }
-  return errors;
+  if (error.code === "slug_taken" || error.code === "slug_reserved") return { slug: fieldErrorKey(error.code) };
+  return fieldErrorKeys(error.fields);
 }

@@ -3,6 +3,7 @@
 #![allow(dead_code)] // each test binary uses a different subset
 
 pub mod cards;
+pub mod events;
 pub mod media_fixtures;
 
 use std::sync::{Arc, Mutex};
@@ -15,6 +16,7 @@ use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwtVerifier, StaticKeySource, TokenVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::media::MediaService;
+use cartouche_api::rate_limit::InMemoryRateLimiter;
 use cartouche_api::state::AppState;
 use cartouche_domain::{Clock, ManualClock};
 use chrono::{TimeZone, Utc};
@@ -189,6 +191,7 @@ pub fn test_state_with(pool: PgPool, overrides: &[(&str, &str)]) -> (AppState, A
         config: Arc::new(config),
         clock: clock.clone(),
         media: test_media(),
+        rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         #[cfg(feature = "test-support")]
         test_clock: None,
     };
@@ -254,6 +257,20 @@ impl TestApp {
     ) -> TestResponse {
         let body = json.map(|value| ("application/json", value.to_string().into_bytes()));
         self.send(method, path, token, body, headers).await
+    }
+
+    /// Like `request`, as seen by a reverse proxy that received it from `ip`
+    /// (`x-forwarded-for: <ip>`).
+    pub async fn request_from(
+        &self,
+        ip: &str,
+        method: &str,
+        path: &str,
+        token: Option<&str>,
+        json: Option<serde_json::Value>,
+    ) -> TestResponse {
+        self.request_with_headers(method, path, token, json, &[("x-forwarded-for", ip)])
+            .await
     }
 
     /// Sends a `multipart/form-data` body made of `parts`.
@@ -358,14 +375,64 @@ impl LogBuffer {
     }
 }
 
-/// Captures every event (down to `debug`) on the current thread until the guard is dropped.
-/// Use from a current-thread runtime (the default of `#[tokio::test]`).
-pub fn capture_logs() -> (LogBuffer, tracing::subscriber::DefaultGuard) {
+thread_local! {
+    /// Where the logs of the current thread go while a capture is active.
+    static CAPTURE: std::cell::RefCell<Option<LogBuffer>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Writes each log line to the buffer of the capture active on the writing thread, if any.
+struct ThreadCapture;
+
+impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for ThreadCapture {
+    type Writer = CaptureWriter;
+    fn make_writer(&'a self) -> Self::Writer {
+        CaptureWriter(CAPTURE.with(|capture| capture.borrow().clone()))
+    }
+}
+
+struct CaptureWriter(Option<LogBuffer>);
+
+impl std::io::Write for CaptureWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match &mut self.0 {
+            Some(logs) => logs.write(buf),
+            None => Ok(buf.len()),
+        }
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Ends the capture of the current thread when dropped.
+pub struct CaptureGuard;
+
+impl Drop for CaptureGuard {
+    fn drop(&mut self) {
+        CAPTURE.with(|capture| *capture.borrow_mut() = None);
+    }
+}
+
+/// Captures every event (down to `debug`) of the current thread until the guard is dropped.
+/// Use from a current-thread runtime (the default of `#[tokio::test]` and `#[sqlx::test]`).
+///
+/// One global subscriber serves every capture. A per-test `set_default` would lose lines:
+/// tracing caches whether each log statement is enabled, and a parallel test that runs the
+/// same statement first, with no subscriber, can leave it cached as disabled.
+pub fn capture_logs() -> (LogBuffer, CaptureGuard) {
+    static INSTALL: std::sync::Once = std::sync::Once::new();
+    INSTALL.call_once(|| {
+        let subscriber = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .with_ansi(false)
+            .with_writer(ThreadCapture)
+            .finish();
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("no other global subscriber in the integration tests");
+    });
+    // Statements first run by another thread while the subscriber was being installed.
+    tracing::callsite::rebuild_interest_cache();
     let logs = LogBuffer::default();
-    let subscriber = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .with_ansi(false)
-        .with_writer(logs.clone())
-        .finish();
-    (logs, tracing::subscriber::set_default(subscriber))
+    CAPTURE.with(|capture| *capture.borrow_mut() = Some(logs.clone()));
+    (logs, CaptureGuard)
 }

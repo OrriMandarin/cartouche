@@ -1,5 +1,6 @@
 import { ApiError, createApiClient, type components } from "@cartouche/api-client";
 import { cache } from "react";
+import type { PublicCard, PublicEvent } from "@/templates/contract";
 import { serverApiBaseUrl } from "./server-api";
 
 // Lives in its own module so the editor (a client bundle) can use it without this one's server-only `cache`.
@@ -26,3 +27,8 @@ export const fetchPublicCard = cache(async (slug: string): Promise<PublicCardRes
     throw error;
   }
 });
+
+/** The events running now, as the templates take them (PUB-008, PUB-029); the API already orders them. */
+export function toPublicEvents(card: PublicCard): PublicEvent[] {
+  return card.events.map((event) => ({ id: event.id, title: event.title, startsAt: event.starts_at }));
+}

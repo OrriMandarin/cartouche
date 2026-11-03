@@ -1,6 +1,7 @@
 //! Card status derived from the two disable switches (LNK-026, LNK-028).
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::UserStatus;
 
@@ -32,6 +33,21 @@ impl CardStatus {
 pub fn is_served(status: CardStatus, owner: UserStatus) -> bool {
     status == CardStatus::Active && owner == UserStatus::Approved
 }
+/// Support asked for a block state the card is already in (ADM-015).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("the card is already in the requested support state")]
+pub struct SupportBlockUnchanged;
+
+/// Blocking an already blocked card, or lifting a block that does not exist, is refused
+/// (ADM-015). `blocked_now` is the current state, `block` the requested one.
+pub fn check_support_block(blocked_now: bool, block: bool) -> Result<(), SupportBlockUnchanged> {
+    if blocked_now == block {
+        Err(SupportBlockUnchanged)
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -64,6 +80,18 @@ mod tests {
                 assert_eq!(is_served(status, owner), expected, "{status:?} / {owner:?}");
             }
         }
+    }
+
+    // spec: ADM-015
+    #[test]
+    fn support_block_must_change_state() {
+        assert!(check_support_block(false, true).is_ok());
+        assert!(check_support_block(true, false).is_ok());
+        assert_eq!(check_support_block(true, true), Err(SupportBlockUnchanged));
+        assert_eq!(
+            check_support_block(false, false),
+            Err(SupportBlockUnchanged)
+        );
     }
 
     #[test]

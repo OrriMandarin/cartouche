@@ -1,6 +1,6 @@
 # Templates and themes
 
-> Status: implemented (plan 2); TPL-003: form and consent verified on each template in plan 3
+> Status: implemented (plans 2 and 3)
 
 ## Templates
 
@@ -14,6 +14,7 @@
 - **TPL-008** — v1 ships the "Classique" ("Classic") template described in public-page.md, and the architecture makes it easy to add a second template.
 - **TPL-014** — The public page and the editor preview render the card with the same template component (see EDI-004).
 - **TPL-015** — A card whose template is unknown, for example because it was removed from the repository, is displayed with the Classique template.
+- **TPL-020** — The event form, its code screen and its confirmation screen do not depend on the template: they are rendered by a shared component, with the card's theme (colors and fonts, see TPL-010). A template only provides the event button, which leads to `urls.eventForm(id)` (see TPL-002).
 - **TPL-016** — The template's own settings are read through its schema at render time: a missing or invalid value takes the schema's default value, and an invalid setting never makes rendering fail.
 
 ## Themes

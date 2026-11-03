@@ -80,6 +80,7 @@ async fn token(
 
 async fn reset(State(state): State<AppState>) -> Result<StatusCode, ApiError> {
     seed::reset(&state.db).await?;
+    state.rate_limiter.reset();
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -93,7 +94,7 @@ async fn seed_scenario(
     ApiJson(request): ApiJson<SeedRequest>,
 ) -> Result<Json<SeedReport>, ApiError> {
     let run = seed::scenario(&request.scenario).ok_or(ApiError::UnknownScenario)?;
-    Ok(Json(run(&state.db).await?))
+    Ok(Json(run(&state.db, state.clock.now()).await?))
 }
 
 /// `now` is required but may be `null`.

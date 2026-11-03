@@ -1,8 +1,9 @@
 //! JSON shapes of the API that are shared by several routes.
 
 use cartouche_domain::{
-    CardContent, CardStatus, Link, LinkKind, MediaKind, Theme, VariantFormat, format_international,
-    storage_key,
+    AnswerSnapshot, CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind,
+    PublicForm, StandardAnswers, StandardField, StandardFields, Theme, VariantFormat, consent_text,
+    default_consent_text, form_version, format_international, storage_key,
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -11,6 +12,8 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::db::cards::Card;
+use crate::db::events::{Event, EventWithCount, PublicCandidate};
+use crate::db::leads::Lead;
 use crate::db::media::MediaRecord;
 use crate::error::ApiError;
 use crate::media::MediaService;
@@ -40,6 +43,95 @@ pub struct CardView {
     pub updated_at: DateTime<Utc>,
 }
 
+/// An event as its owner sees it: the access code is shown in clear (EVT-010).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EventView {
+    pub id: Uuid,
+    pub card_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub starts_at: DateTime<Utc>,
+    /// Absent: the event lasts until it is ended (EVT-003).
+    pub ends_at: Option<DateTime<Utc>>,
+    /// Computed with the server clock (EVT-020).
+    pub phase: EventPhase,
+    pub access_code: Option<String>,
+    /// Submissions allowed per device, 1 to 100 (EVT-014).
+    pub device_limit: u32,
+    pub standard_fields: StandardFields,
+    pub custom_fields: Vec<CustomField>,
+    /// The owner's own consent text; absent when the default one applies.
+    pub consent_text: Option<String>,
+    /// The consent text used when there is no custom one, for this card and title (FRM-029).
+    pub default_consent_text: String,
+    /// Every contact of the event, spam ones included.
+    pub lead_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl EventView {
+    /// `card` is the content of the event's card; the phase is computed at `now`.
+    pub fn new(counted: EventWithCount, card: &CardContent, now: DateTime<Utc>) -> EventView {
+        let EventWithCount { event, lead_count } = counted;
+        EventView {
+            phase: event.period.phase(now),
+            default_consent_text: default_consent_text(card, &event.title),
+            id: event.id,
+            card_id: event.card_id,
+            description: event.description,
+            starts_at: event.period.starts_at,
+            ends_at: event.period.ends_at,
+            access_code: event.access_code,
+            device_limit: event.device_limit,
+            standard_fields: event.form.standard,
+            custom_fields: event.form.custom,
+            consent_text: event.consent_text,
+            title: event.title,
+            lead_count,
+            created_at: event.created_at,
+            updated_at: event.updated_at,
+        }
+    }
+}
+
+/// A contact as the owner of its event sees it. The device that sent it is not shown.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct LeadView {
+    pub id: Uuid,
+    pub event_id: Uuid,
+    pub submitted_at: DateTime<Utc>,
+    /// Marked as spam by the owner (ABU-003); spam contacts stay listed (ABU-009).
+    pub spam: bool,
+    /// The answers to the standard fields; the phone number is in E.164.
+    pub answers: StandardAnswers,
+    /// The phone number as people write it, e.g. `+33 6 12 34 56 78`.
+    pub phone_display: Option<String>,
+    /// The answers to the custom fields, with the label and type each field had when the
+    /// contact was sent (FRM-022).
+    pub custom: Vec<AnswerSnapshot>,
+    /// When the prospect gave consent (FRM-038).
+    pub consent_at: DateTime<Utc>,
+    /// The consent text shown with the form, exactly (FRM-038).
+    pub consent_text: String,
+}
+
+impl From<Lead> for LeadView {
+    fn from(lead: Lead) -> LeadView {
+        LeadView {
+            phone_display: lead.standard.phone.as_deref().map(format_international),
+            spam: lead.spam_at.is_some(),
+            id: lead.id,
+            event_id: lead.event_id,
+            submitted_at: lead.submitted_at,
+            answers: lead.standard,
+            custom: lead.custom,
+            consent_at: lead.consent_at,
+            consent_text: lead.consent_text,
+        }
+    }
+}
+
 /// A served card as any visitor sees it: no internal id and no date. The files' addresses
 /// carry the media ids, so they are no secret.
 #[derive(Debug, Serialize, ToSchema)]
@@ -59,6 +151,120 @@ pub struct PublicCard {
     pub avatar: Option<MediaView>,
     /// Where to download the contact card: `/api/public/cards/{slug}/vcard`.
     pub vcard_url: String,
+    /// The events running now, by start then title (PUB-008, PUB-009, PUB-029).
+    pub events: Vec<PublicEventButton>,
+}
+
+/// A running event, as a button of the public card.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicEventButton {
+    pub id: Uuid,
+    pub title: String,
+    pub starts_at: DateTime<Utc>,
+}
+
+impl PublicEventButton {
+    /// The buttons among `candidates` (already in display order): the events running at `now`
+    /// (EVT-002, PUB-029).
+    pub fn running(candidates: Vec<PublicCandidate>, now: DateTime<Utc>) -> Vec<PublicEventButton> {
+        candidates
+            .into_iter()
+            .filter(|candidate| candidate.period.is_running(now))
+            .map(|candidate| PublicEventButton {
+                id: candidate.id,
+                title: candidate.title,
+                starts_at: candidate.period.starts_at,
+            })
+            .collect()
+    }
+}
+
+/// What a visitor learns of an event whose form is not handed out: its title only (EVT-027).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicEventHeading {
+    pub id: Uuid,
+    pub title: String,
+}
+
+impl From<&Event> for PublicEventHeading {
+    fn from(event: &Event) -> Self {
+        PublicEventHeading {
+            id: event.id,
+            title: event.title.clone(),
+        }
+    }
+}
+
+/// A standard field of the form, in display order (FRM-017).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicStandardField {
+    pub field: StandardField,
+    pub required: bool,
+}
+
+/// The form a prospect fills in. It never carries the access code, the device limit or dates.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PublicEventForm {
+    pub id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    /// The enabled standard fields, in display order (FRM-017, FRM-019).
+    pub standard_fields: Vec<PublicStandardField>,
+    pub custom_fields: Vec<CustomField>,
+    /// The text the prospect accepts, as it will be recorded (FRM-007, FRM-028).
+    pub consent_text: String,
+    /// Fingerprint of this form, sent back with the submission (FRM-030).
+    pub form_version: String,
+}
+
+/// The consent text of an event's form and the version of the form, as the prospect is shown
+/// them; a submission is checked and recorded against the same values (FRM-008, FRM-030).
+pub struct ShownForm {
+    pub consent_text: String,
+    pub form_version: String,
+}
+
+impl ShownForm {
+    /// `card` is the content of the event's card (it names the data controller).
+    pub fn new(event: &Event, card: &CardContent) -> ShownForm {
+        let consent = consent_text(event.consent_text.as_deref(), card, &event.title);
+        let form_version = form_version(&PublicForm {
+            title: &event.title,
+            description: event.description.as_deref(),
+            standard: &event.form.standard,
+            custom: &event.form.custom,
+            consent_text: &consent,
+        });
+        ShownForm {
+            consent_text: consent,
+            form_version,
+        }
+    }
+}
+
+impl PublicEventForm {
+    /// `card` is the content of the event's card (it names the data controller).
+    pub fn new(event: Event, card: &CardContent) -> PublicEventForm {
+        let ShownForm {
+            consent_text,
+            form_version,
+        } = ShownForm::new(&event, card);
+        PublicEventForm {
+            standard_fields: event
+                .form
+                .standard
+                .enabled()
+                .into_iter()
+                .map(|(field, required)| PublicStandardField { field, required })
+                .collect(),
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            custom_fields: event.form.custom,
+            consent_text,
+            form_version,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -102,9 +308,25 @@ pub struct ImageVariantView {
     pub url: String,
 }
 
+/// Who reads the addresses of a card's files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Audience {
+    /// Any visitor of the public page: plain addresses, readable while the card is served.
+    Public,
+    /// The owner's dashboard or the support page, at the given time: signed addresses,
+    /// readable even when the card is not served (MED-023).
+    Dashboard(DateTime<Utc>),
+}
+
 impl MediaView {
-    pub fn new(record: &MediaRecord, media: &MediaService) -> MediaView {
-        let url_of = |name: &str| media.url(&storage_key(record.card_id, record.id, name));
+    pub fn new(record: &MediaRecord, media: &MediaService, audience: Audience) -> MediaView {
+        let url_of = |name: &str| {
+            let key = storage_key(record.card_id, record.id, name);
+            match audience {
+                Audience::Public => media.url(&key),
+                Audience::Dashboard(now) => media.dashboard_url(&key, now),
+            }
+        };
         let mut images: Vec<ImageVariantView> = record
             .variants
             .iter()
@@ -151,9 +373,10 @@ fn attached_view(
     attached: &[MediaRecord],
     id: Option<Uuid>,
     media: &MediaService,
+    audience: Audience,
 ) -> Option<MediaView> {
     let record = attached.iter().find(|m| Some(m.id) == id)?;
-    Some(MediaView::new(record, media))
+    Some(MediaView::new(record, media, audience))
 }
 
 impl From<CardContent> for ContentView {
@@ -182,17 +405,20 @@ impl From<Link> for LinkView {
 }
 
 impl CardView {
-    /// `attached` holds the card's header and avatar records (others are ignored). Fails only
-    /// if the stored theme is no longer valid, which is a bug of ours.
+    /// `attached` holds the card's header and avatar records (others are ignored); the files'
+    /// addresses are signed at `now` (MED-023). Fails only if the stored theme is no longer
+    /// valid, which is a bug of ours.
     pub fn new(
         card: Card,
         attached: &[MediaRecord],
         config: &Config,
         media: &MediaService,
+        now: DateTime<Utc>,
     ) -> Result<CardView, ApiError> {
         let status = card.status();
         let theme = stored_theme(&card)?;
-        let view_of = |id: Option<Uuid>| attached_view(attached, id, media);
+        let view_of =
+            |id: Option<Uuid>| attached_view(attached, id, media, Audience::Dashboard(now));
         Ok(CardView {
             header: view_of(card.header_media_id),
             avatar: view_of(card.avatar_media_id),
@@ -218,9 +444,10 @@ impl PublicCard {
         attached: &[MediaRecord],
         config: &Config,
         media: &MediaService,
+        events: Vec<PublicEventButton>,
     ) -> Result<PublicCard, ApiError> {
         let theme = stored_theme(&card)?;
-        let view_of = |id: Option<Uuid>| attached_view(attached, id, media);
+        let view_of = |id: Option<Uuid>| attached_view(attached, id, media, Audience::Public);
         Ok(PublicCard {
             header: view_of(card.header_media_id),
             avatar: view_of(card.avatar_media_id),
@@ -232,6 +459,7 @@ impl PublicCard {
             theme,
             content: card.content.into(),
             links: card.links.into_iter().map(LinkView::from).collect(),
+            events,
         })
     }
 }

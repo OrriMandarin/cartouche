@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select exists (select 1 from events e join cards c on c.id = e.card_id\n                          where e.id = $1 and c.owner_id = $2) as \"owns!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owns!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5aaf9d0aa4a8e26909f31442084c1447c40590c8071f699ea43e9b6c17596f7c"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from events e using cards c where e.id = $1 and c.id = e.card_id and c.owner_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fa5c19d3644b4521706bd51be561170a88192ad34f1714f0800aae0107fd405f"
+}

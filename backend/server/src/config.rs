@@ -6,6 +6,12 @@ use cartouche_domain::SignupMode;
 use thiserror::Error;
 use url::Url;
 
+/// `MAX_SIMULTANEOUS_EVENTS` when the variable is absent (EVT-019).
+const DEFAULT_MAX_SIMULTANEOUS_EVENTS: usize = 3;
+
+/// Upper bound of `TRUSTED_PROXY_HOPS`.
+const MAX_TRUSTED_PROXY_HOPS: usize = 10;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppEnv {
     Development,
@@ -81,6 +87,10 @@ pub struct Config {
     pub signup_mode: SignupMode,
     pub sentry_dsn: Option<String>,
     pub media: MediaStorageConfig,
+    /// Reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted (ABU-008).
+    pub trusted_proxy_hops: usize,
+    /// Most events of one card that may run at the same instant (EVT-004, EVT-019).
+    pub max_simultaneous_events: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -131,6 +141,36 @@ impl Config {
             .map(str::to_string)
             .collect();
 
+        let trusted_proxy_hops = match optional("TRUSTED_PROXY_HOPS") {
+            None => 1,
+            Some(v) => v
+                .trim()
+                .parse::<usize>()
+                .ok()
+                .filter(|hops| *hops <= MAX_TRUSTED_PROXY_HOPS)
+                .ok_or_else(|| {
+                    invalid(
+                        "TRUSTED_PROXY_HOPS",
+                        format!("expected an integer from 0 to {MAX_TRUSTED_PROXY_HOPS}"),
+                    )
+                })?,
+        };
+
+        let max_simultaneous_events = match optional("MAX_SIMULTANEOUS_EVENTS") {
+            None => DEFAULT_MAX_SIMULTANEOUS_EVENTS,
+            Some(v) => v
+                .trim()
+                .parse::<usize>()
+                .ok()
+                .filter(|limit| *limit >= 1)
+                .ok_or_else(|| {
+                    invalid(
+                        "MAX_SIMULTANEOUS_EVENTS",
+                        "expected an integer of at least 1",
+                    )
+                })?,
+        };
+
         let media = match optional("MEDIA_STORAGE").as_deref().map(str::trim) {
             None | Some("local") => MediaStorageConfig::Local {
                 dir: optional("MEDIA_LOCAL_DIR")
@@ -173,6 +213,8 @@ impl Config {
             signup_mode,
             sentry_dsn: optional("SENTRY_DSN"),
             media,
+            trusted_proxy_hops,
+            max_simultaneous_events,
         })
     }
 }
@@ -333,6 +375,46 @@ mod tests {
         assert_eq!(c.auth.audience.as_deref(), Some("cartouche"));
         assert_eq!(c.signup_mode, SignupMode::Closed);
         assert_eq!(c.bind_addr.port(), 9000);
+    }
+
+    // spec: ABU-008
+    #[test]
+    fn trusted_proxy_hops_configuration() {
+        let hops = |value: &str| Config::from_vars(vars(&[("TRUSTED_PROXY_HOPS", value)]));
+        assert_eq!(Config::from_vars(vars(&[])).unwrap().trusted_proxy_hops, 1);
+        assert_eq!(hops("").unwrap().trusted_proxy_hops, 1);
+        assert_eq!(hops("0").unwrap().trusted_proxy_hops, 0);
+        assert_eq!(hops(" 2 ").unwrap().trusted_proxy_hops, 2);
+        assert_eq!(hops("10").unwrap().trusted_proxy_hops, 10);
+        for bad in ["x", "11", "-1", "1.5"] {
+            let err = hops(bad).unwrap_err();
+            assert!(
+                matches!(err, ConfigError::Invalid(ref n, _) if n == "TRUSTED_PROXY_HOPS"),
+                "{bad}: {err:?}"
+            );
+        }
+    }
+
+    // spec: EVT-019
+    #[test]
+    fn max_simultaneous_events_configuration() {
+        let limit = |value: &str| Config::from_vars(vars(&[("MAX_SIMULTANEOUS_EVENTS", value)]));
+        assert_eq!(
+            Config::from_vars(vars(&[]))
+                .unwrap()
+                .max_simultaneous_events,
+            3
+        );
+        assert_eq!(limit("").unwrap().max_simultaneous_events, 3);
+        assert_eq!(limit(" 1 ").unwrap().max_simultaneous_events, 1);
+        assert_eq!(limit("10").unwrap().max_simultaneous_events, 10);
+        for bad in ["0", "x", "-1", "1.5"] {
+            let err = limit(bad).unwrap_err();
+            assert!(
+                matches!(err, ConfigError::Invalid(ref n, _) if n == "MAX_SIMULTANEOUS_EVENTS"),
+                "{bad}: {err:?}"
+            );
+        }
     }
 
     // spec: MED-009, MED-011

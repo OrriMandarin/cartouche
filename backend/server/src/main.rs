@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
@@ -6,6 +7,7 @@ use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwksKeySource, JwtVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::media::MediaService;
+use cartouche_api::rate_limit::InMemoryRateLimiter;
 use cartouche_api::startup::{startup_summary, test_routes_enabled, validate};
 use cartouche_api::state::AppState;
 use cartouche_api::{db, telemetry};
@@ -73,14 +75,18 @@ async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
         clock,
         verifier: Arc::new(verifier),
         media,
+        rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         #[cfg(feature = "test-support")]
         test_clock: _test_clock,
     };
     let listener = tokio::net::TcpListener::bind(bind_addr).await?;
     tracing::info!(addr = %listener.local_addr()?, "listening");
-    axum::serve(listener, build_router(state))
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    axum::serve(
+        listener,
+        build_router(state).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
     Ok(())
 }
 

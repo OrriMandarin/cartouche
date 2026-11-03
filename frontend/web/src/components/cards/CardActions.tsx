@@ -97,6 +97,11 @@ export function CardActions({ card, onChanged }: { card: CardView; onChanged: ()
             {t("actions.edit")}
           </Link>
         </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link href={`/dashboard/cards/${card.id}/events`} data-testid={`card-events-${card.slug}`}>
+            {t("actions.events")}
+          </Link>
+        </Button>
         {canToggle(card.status) ? (
           card.status === "active" ? (
             <Button

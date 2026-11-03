@@ -1,0 +1,173 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id, card_id, title, description, starts_at, ends_at, access_code, device_limit, standard_fields, custom_fields, consent_text, created_at, updated_at from events where id = $1 and card_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "card_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "card_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "ends_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "ends_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "access_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "access_code"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "device_limit",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "device_limit"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "standard_fields",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "standard_fields"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "custom_fields",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "custom_fields"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "consent_text",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "consent_text"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "7ced8c385facd275df24e86bdca290d15957894f3cf55848c1cf55bcc6ad21d4"
+}

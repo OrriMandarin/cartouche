@@ -24,4 +24,8 @@ Domain concepts, as the spec uses them.
 | **Reserved slug** | A slug of a deleted card: it stays with its former owner, who can attach it to a new card (see LNK-013 and LNK-014). |
 | **Neutral page** | The "Cette carte n'est plus active" ("This card is no longer active") page, shown at the link of a card that is not served (see LNK-026 and LNK-027). |
 | **Media** | A card's header background (image or video) or profile photo, kept in the media storage. |
+| **Event state** | "À venir" ("upcoming"), "en cours" ("in progress") or "passé" ("past"), computed by the server (see EVT-020). |
+| **Submission window** | The period during which an event's form is open: from its start until 15 minutes after its end (see EVT-008 and EVT-026). |
+| **Device identifier** | A random identifier kept by the prospect's browser, used for the per-device submission limit (see EVT-028). |
+| **Honeypot field** | A form field invisible to a human; a bot that fills it in is ignored (see ABU-002). |
 | **Font pair** | A heading font and a body font, chosen together for a theme (see TPL-011). |

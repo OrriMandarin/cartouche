@@ -176,6 +176,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cards/{id}/consent-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview the default consent text
+         * @description The default consent text of the card for an event with this title: the text a prospect accepts when the event has no custom consent text.
+         */
+        post: operations["consent_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cards/{id}/disable": {
         parameters: {
             query?: never;
@@ -236,6 +256,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cards/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the events of a card
+         * @description The events of the card by start, each with its state (`upcoming`, `running` or `past`, from the server clock), its access code in clear and its number of contacts. Events of a disabled card are listed too.
+         */
+        get: operations["list_events"];
+        put?: never;
+        /**
+         * Create an event
+         * @description Creates an event on the card. All invalid fields are reported at once. Refused with `too_many_simultaneous_events` when it would make more events of the card run together than the instance allows; concurrent creations cannot exceed the limit together.
+         */
+        post: operations["create_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cards/{id}/media": {
         parameters: {
             query?: never;
@@ -256,6 +300,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an event
+         * @description One of the caller's events. An event of another user is reported as not found.
+         */
+        get: operations["get_event"];
+        /**
+         * Update an event
+         * @description Replaces the event's title, description, dates, access code, device limit, fields and consent text. All invalid fields are reported at once. Refused with `too_many_simultaneous_events` when the new period would make more events of the card run together than the instance allows; the event being edited does not count against itself. Nothing is saved on a refusal.
+         */
+        put: operations["update_event"];
+        post?: never;
+        /**
+         * Delete an event
+         * @description Deletes the event and every contact collected with it.
+         */
+        delete: operations["delete_event"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End an event now
+         * @description Sets the end of a running event to the server's current instant. Refused with `event_not_running` for an event that has not started or is already over.
+         */
+        post: operations["end_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/events/{id}/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the contacts of an event
+         * @description The contacts collected by the event, from the most recent to the oldest, spam ones included and flagged. Contacts of an event of a disabled card are listed too.
+         */
+        get: operations["list_event_leads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -269,6 +381,46 @@ export interface paths {
          */
         get: operations["health"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a contact
+         * @description Deletes the contact for good.
+         */
+        delete: operations["delete_lead"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leads/{id}/spam": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark or unmark a contact as spam
+         * @description Sets whether the contact is spam. Repeating the same value is accepted. A spam contact stays in the event's list.
+         */
+        put: operations["set_lead_spam"];
         post?: never;
         delete?: never;
         options?: never;
@@ -305,11 +457,71 @@ export interface paths {
         };
         /**
          * Resolve a public card
-         * @description No token needed. `active` carries the card; `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.
+         * @description No token needed. `active` carries the card, with a button for each event running now (by start, then title); `inactive` carries nothing (the card is disabled, deleted or its owner suspended); `redirect` names the current slug for an old slug or a slug written with capitals. A slug never attributed is a 404.
          */
         get: operations["get_public_card"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/cards/{slug}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a public event form
+         * @description No token needed. `open` carries the form. `code_required` and `closed` carry only the id and title of the event: the description, fields and consent text of an event with an access code are given by the unlock route after a correct code. An old slug or a slug with capitals reaches the event too. An event outside its submission window (from its start to 15 minutes after its end) is `closed`, whether or not it has a code.
+         */
+        get: operations["get_public_event"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/cards/{slug}/events/{event_id}/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a public event form
+         * @description No token needed. Stores the answers as a lead of the event, with the consent text shown with the form and the time of sending. Each address may make 120 sends per 10 minutes, accepted or refused, over every event; past that every send is `429 rate_limited` with `Retry-After`. The event must accept submissions (from its start to 15 minutes after its end). For an event with an access code, the code is checked again: a wrong or missing one is `403 invalid_access_code` and counts against the 30 wrong codes per address of the unlock route. A `form_version` that is no longer the form's is `409 form_changed`: reload the form. A device may send as many leads to an event as its device limit, leads marked as spam included. A send whose `fax` is not blank is answered like an accepted one and not stored.
+         */
+        post: operations["submit_lead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/cards/{slug}/events/{event_id}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unlock a public event form
+         * @description No token needed. A correct code (or any code, for an event without one) returns the form. A wrong code is `403 invalid_access_code`. Each address may fail 30 codes per 10 minutes; past that every attempt is `429 rate_limited` with `Retry-After`, a correct code included. A correct code does not count.
+         */
+        post: operations["unlock_public_event"];
         delete?: never;
         options?: never;
         head?: never;
@@ -380,6 +592,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description The postal address as typed by the prospect. */
+        AddressInput: {
+            city?: string | null;
+            country?: string | null;
+            postal_code?: string | null;
+            street?: string | null;
+        };
         /** @description One card with the account that owns it. */
         AdminCardDetail: {
             card: components["schemas"]["CardView"];
@@ -407,6 +626,35 @@ export interface components {
             is_admin: boolean;
             status: components["schemas"]["UserStatus"];
             subject: string;
+        };
+        /**
+         * @description The answer to one custom field, with the label and type the field had at submission time
+         *     (FRM-022, FRM-038).
+         */
+        AnswerSnapshot: {
+            /** Format: uuid */
+            field_id: string;
+            kind: components["schemas"]["CustomFieldKind"];
+            label: string;
+            /**
+             * @description A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`), a number
+             *     (`number`), a boolean (`checkbox`) or `null` when left empty.
+             */
+            value: unknown;
+        };
+        /** @description The answers of a prospect, as sent by the form (the `answers` of a submission). */
+        AnswersInput: {
+            address?: null | components["schemas"]["AddressInput"];
+            /** @description `AAAA-MM-JJ`. */
+            birth_date?: string | null;
+            /** @description Answers to the custom fields, by field identifier. */
+            custom?: {
+                [key: string]: unknown;
+            };
+            email?: string | null;
+            first_name?: string | null;
+            last_name?: string | null;
+            phone?: string | null;
         };
         Background: {
             color: components["schemas"]["Color"];
@@ -456,6 +704,14 @@ export interface components {
          * @example #1a2b3c
          */
         Color: string;
+        ConsentPreview: {
+            /** @description The default consent text for this card and title (FRM-029). */
+            text: string;
+        };
+        /** @description The title to compose the default consent text for. */
+        ConsentPreviewBody: {
+            title: string;
+        };
         /** @description Card content as submitted: free text, not yet normalized. */
         ContentInput: {
             company?: string | null;
@@ -484,6 +740,22 @@ export interface components {
             last_name?: string | null;
             slug: string;
         };
+        /** @description A field added by the owner, with a stable identifier (FRM-020, FRM-032). */
+        CustomField: {
+            help?: string | null;
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["CustomFieldKind"];
+            label: string;
+            /** @description Only for `single_choice`; empty for every other kind, and may then be left out. */
+            options?: string[];
+            required: boolean;
+        };
+        /**
+         * @description The types of custom field (FRM-021).
+         * @enum {string}
+         */
+        CustomFieldKind: "text" | "long_text" | "date" | "number" | "single_choice" | "checkbox";
         /** @description The slug of a duplicate. */
         DuplicateCardBody: {
             slug: string;
@@ -502,6 +774,75 @@ export interface components {
             /** @description Id of the failed request, also sent in the `x-request-id` response header. */
             request_id: string;
         };
+        /** @description Everything an owner submits for an event; also the body of the event routes. */
+        EventInput: {
+            access_code?: string | null;
+            consent_text?: string | null;
+            custom_fields: components["schemas"]["CustomField"][];
+            description?: string | null;
+            /**
+             * Format: int64
+             * @description Submissions allowed per device, from 1 to 100 (EVT-014, EVT-030).
+             */
+            device_limit: number;
+            /** Format: date-time */
+            ends_at?: string | null;
+            standard_fields: components["schemas"]["StandardFields"];
+            /**
+             * Format: date-time
+             * @description Required; kept optional so that a missing start is reported as a field error.
+             */
+            starts_at?: string | null;
+            title: string;
+        };
+        EventList: {
+            /** @description The card's events, by start (EVT-009). */
+            events: components["schemas"]["EventView"][];
+        };
+        /**
+         * @description Where an event stands relative to the server clock (EVT-020).
+         * @enum {string}
+         */
+        EventPhase: "upcoming" | "running" | "past";
+        /** @description An event as its owner sees it: the access code is shown in clear (EVT-010). */
+        EventView: {
+            access_code?: string | null;
+            /** Format: uuid */
+            card_id: string;
+            /** @description The owner's own consent text; absent when the default one applies. */
+            consent_text?: string | null;
+            /** Format: date-time */
+            created_at: string;
+            custom_fields: components["schemas"]["CustomField"][];
+            /** @description The consent text used when there is no custom one, for this card and title (FRM-029). */
+            default_consent_text: string;
+            description?: string | null;
+            /**
+             * Format: int32
+             * @description Submissions allowed per device, 1 to 100 (EVT-014).
+             */
+            device_limit: number;
+            /**
+             * Format: date-time
+             * @description Absent: the event lasts until it is ended (EVT-003).
+             */
+            ends_at?: string | null;
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: int64
+             * @description Every contact of the event, spam ones included.
+             */
+            lead_count: number;
+            /** @description Computed with the server clock (EVT-020). */
+            phase: components["schemas"]["EventPhase"];
+            standard_fields: components["schemas"]["StandardFields"];
+            /** Format: date-time */
+            starts_at: string;
+            title: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
         /** @description One invalid field of a request, reported with `400 validation_failed`. */
         FieldError: {
             /** @description Stable machine-readable code, snake_case (e.g. `invalid_email`). */
@@ -509,6 +850,11 @@ export interface components {
             /** @description Path of the field in the request, e.g. `content.email` or `links[3].url`. */
             field: string;
         };
+        /**
+         * @description Whether a standard field is absent from the form, optional or required (FRM-019).
+         * @enum {string}
+         */
+        FieldMode: "off" | "optional" | "required";
         /** @description Liveness and database reachability. */
         HealthResponse: {
             /**
@@ -529,6 +875,54 @@ export interface components {
              * @description Width in pixels (the side, for a profile photo).
              */
             width: number;
+        };
+        LeadList: {
+            /** @description The contacts of the event, newest first, spam ones included (EDI-020). */
+            leads: components["schemas"]["LeadView"][];
+        };
+        /** @description What a prospect sends. */
+        LeadSubmission: {
+            /** @description The code typed to unlock the form, for an event with an access code. */
+            access_code?: string | null;
+            answers: components["schemas"]["AnswersInput"];
+            /** @description Whether the consent box is ticked. */
+            consent: boolean;
+            /**
+             * Format: uuid
+             * @description Identifier of the browser, kept in a cookie (EVT-028).
+             */
+            device_id: string;
+            /** @description Hidden trap field: the form always leaves it empty. */
+            fax?: string | null;
+            /** @description The `form_version` of the form the prospect filled in. */
+            form_version: string;
+        };
+        /** @description A contact as the owner of its event sees it. The device that sent it is not shown. */
+        LeadView: {
+            /** @description The answers to the standard fields; the phone number is in E.164. */
+            answers: components["schemas"]["StandardAnswers"];
+            /**
+             * Format: date-time
+             * @description When the prospect gave consent (FRM-038).
+             */
+            consent_at: string;
+            /** @description The consent text shown with the form, exactly (FRM-038). */
+            consent_text: string;
+            /**
+             * @description The answers to the custom fields, with the label and type each field had when the
+             *     contact was sent (FRM-022).
+             */
+            custom: components["schemas"]["AnswerSnapshot"][];
+            /** Format: uuid */
+            event_id: string;
+            /** Format: uuid */
+            id: string;
+            /** @description The phone number as people write it, e.g. `+33 6 12 34 56 78`. */
+            phone_display?: string | null;
+            /** @description Marked as spam by the owner (ABU-003); spam contacts stay listed (ABU-009). */
+            spam: boolean;
+            /** Format: date-time */
+            submitted_at: string;
         };
         LinkInput: {
             kind: components["schemas"]["LinkKind"];
@@ -573,6 +967,8 @@ export interface components {
         PublicCard: {
             avatar?: null | components["schemas"]["MediaView"];
             content: components["schemas"]["ContentView"];
+            /** @description The events running now, by start then title (PUB-008, PUB-009, PUB-029). */
+            events: components["schemas"]["PublicEventButton"][];
             header?: null | components["schemas"]["MediaView"];
             links: components["schemas"]["LinkView"][];
             /** @description Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`. */
@@ -600,6 +996,53 @@ export interface components {
             /** @enum {string} */
             state: "redirect";
         };
+        /** @description A running event, as a button of the public card. */
+        PublicEventButton: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            starts_at: string;
+            title: string;
+        };
+        /** @description The form a prospect fills in. It never carries the access code, the device limit or dates. */
+        PublicEventForm: {
+            /** @description The text the prospect accepts, as it will be recorded (FRM-007, FRM-028). */
+            consent_text: string;
+            custom_fields: components["schemas"]["CustomField"][];
+            description?: string | null;
+            /** @description Fingerprint of this form, sent back with the submission (FRM-030). */
+            form_version: string;
+            /** Format: uuid */
+            id: string;
+            /** @description The enabled standard fields, in display order (FRM-017, FRM-019). */
+            standard_fields: components["schemas"]["PublicStandardField"][];
+            title: string;
+        };
+        /** @description What a visitor learns of an event whose form is not handed out: its title only (EVT-027). */
+        PublicEventHeading: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        /** @description What a visitor gets for an event. */
+        PublicEventResponse: {
+            event: components["schemas"]["PublicEventForm"];
+            /** @enum {string} */
+            state: "open";
+        } | {
+            event: components["schemas"]["PublicEventHeading"];
+            /** @enum {string} */
+            state: "code_required";
+        } | {
+            event: components["schemas"]["PublicEventHeading"];
+            /** @enum {string} */
+            state: "closed";
+        };
+        /** @description A standard field of the form, in display order (FRM-017). */
+        PublicStandardField: {
+            field: components["schemas"]["StandardField"];
+            required: boolean;
+        };
         /** @description The status to move an account to. */
         SetStatusBody: {
             status: components["schemas"]["UserStatus"];
@@ -619,6 +1062,38 @@ export interface components {
         SlugSuggestion: {
             /** @description A free slug derived from the name, or `null` when the name gives nothing usable. */
             slug?: string | null;
+        };
+        SpamBody: {
+            /** @description `true` marks the contact as spam, `false` removes the mark. */
+            spam: boolean;
+        };
+        /** @description Validated answers to the standard fields; an empty or disabled field is `None`. */
+        StandardAnswers: {
+            /** Format: date */
+            birth_date?: string | null;
+            city?: string | null;
+            country?: string | null;
+            email?: string | null;
+            first_name?: string | null;
+            last_name?: string | null;
+            /** @description E.164. */
+            phone?: string | null;
+            postal_code?: string | null;
+            street?: string | null;
+        };
+        /**
+         * @description The standard fields an owner can enable (FRM-017).
+         * @enum {string}
+         */
+        StandardField: "first_name" | "last_name" | "birth_date" | "email" | "phone" | "address";
+        /** @description The mode of each standard field. */
+        StandardFields: {
+            address: components["schemas"]["FieldMode"];
+            birth_date: components["schemas"]["FieldMode"];
+            email: components["schemas"]["FieldMode"];
+            first_name: components["schemas"]["FieldMode"];
+            last_name: components["schemas"]["FieldMode"];
+            phone: components["schemas"]["FieldMode"];
         };
         /** @description Number of accounts per status; all four are always present. */
         StatusCounts: {
@@ -645,6 +1120,10 @@ export interface components {
             /** @description Preset identifier; an unknown one is accepted and falls back at render time. */
             preset: string;
             text?: null | components["schemas"]["Color"];
+        };
+        UnlockBody: {
+            /** @description The code as typed: case, surrounding spaces and accents do not matter. */
+            access_code: string;
         };
         /** @description The whole editable content of a card; it replaces what is stored. */
         UpdateCardBody: {
@@ -1556,6 +2035,87 @@ export interface operations {
             };
         };
     };
+    consent_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentPreviewBody"];
+            };
+        };
+        responses: {
+            /** @description The default consent text. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentPreview"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     disable_card: {
         parameters: {
             query?: never;
@@ -1818,6 +2378,173 @@ export interface operations {
             };
         };
     };
+    list_events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The card's events. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventList"];
+                };
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventInput"];
+            };
+        };
+        responses: {
+            /** @description The new event. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventView"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many simultaneous events (`too_many_simultaneous_events`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     upload_media: {
         parameters: {
             query?: never;
@@ -1917,6 +2644,411 @@ export interface operations {
             };
         };
     };
+    get_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the event. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventView"];
+                };
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such event for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the event. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventInput"];
+            };
+        };
+        responses: {
+            /** @description The saved event. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventView"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such event for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many simultaneous events (`too_many_simultaneous_events`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the event. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such event for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    end_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the event. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event, now ended. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventView"];
+                };
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such event for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The event is not running (`event_not_running`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_event_leads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the event. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event's contacts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadList"];
+                };
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such event for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -1942,6 +3074,162 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    delete_lead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The contact is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such contact for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    set_lead_spam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpamBody"];
+            };
+        };
+        responses: {
+            /** @description The contact, with its new mark. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadView"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such contact for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };
@@ -2025,6 +3313,249 @@ export interface operations {
             };
             /** @description The slug was never attributed (`not_found`). */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_public_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+                /** @description Id of the event. */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The form, or what to do before getting it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEventResponse"];
+                };
+            };
+            /** @description Malformed event id (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown slug, or an event that is unknown, deleted or of another card (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The card is not served (`card_inactive`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    submit_lead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+                /** @description Id of the event. */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadSubmission"];
+            };
+        };
+        responses: {
+            /** @description The lead is stored. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed id or body (`invalid_request`), or invalid answers (`validation_failed`, every invalid field listed). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Wrong or missing access code (`invalid_access_code`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown slug, or an event that is unknown, deleted or of another card (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The event does not accept submissions now (`event_closed`), the form changed (`form_changed`) or this device reached the event's limit (`device_limit_reached`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The card is not served (`card_inactive`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many sends, or too many wrong codes, from this address (`rate_limited`). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    unlock_public_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The slug, in any case. */
+                slug: string;
+                /** @description Id of the event. */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnlockBody"];
+            };
+        };
+        responses: {
+            /** @description The form. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEventForm"];
+                };
+            };
+            /** @description Malformed id or body (`invalid_request`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Wrong access code (`invalid_access_code`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown slug, or an event that is unknown, deleted or of another card (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The event does not accept submissions now (`event_closed`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The card is not served (`card_inactive`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many wrong codes from this address (`rate_limited`). */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

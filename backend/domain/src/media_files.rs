@@ -1,5 +1,6 @@
 //! How stored media files are addressed and served: storage keys, the keys `/media/*`
-//! accepts, their content types, and `Range` requests (MED-010, MED-016, MED-017).
+//! accepts, their content types, who may read them, and `Range` requests (MED-010, MED-016,
+//! MED-017, MED-023).
 
 use std::ops::Range;
 
@@ -37,6 +38,38 @@ pub fn served_content_type(key: &str) -> Option<&'static str> {
         (true, "webp") => Some("image/webp"),
         (true, "jpg") => Some("image/jpeg"),
         _ => None,
+    }
+}
+
+/// The card a storage key belongs to: the first segment after `cards/`, when it is a
+/// lowercase UUID.
+pub fn card_of_key(key: &str) -> Option<Uuid> {
+    let card = key.strip_prefix("cards/")?.split('/').next()?;
+    if !is_uuid_text(card) {
+        return None;
+    }
+    card.parse().ok()
+}
+
+/// How a media file that may be read is cached.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MediaCache {
+    /// By anyone, for good: a file never changes under its name (MED-016).
+    Immutable,
+    /// By the reader's browser only: a signed address of the dashboard or the support page,
+    /// readable even when the card is not served (MED-023).
+    Private,
+}
+
+/// Whether a file under `/media/*` may be read, and how it is cached. `signed` tells whether
+/// the request carries a valid signature; `served` whether the file's card is publicly
+/// served (`None`: no such card). Without a signature, only a served card's files are read
+/// (MED-023).
+pub fn media_access(signed: bool, served: Option<bool>) -> Option<MediaCache> {
+    match (signed, served) {
+        (true, _) => Some(MediaCache::Private),
+        (false, Some(true)) => Some(MediaCache::Immutable),
+        (false, Some(false) | None) => None,
     }
 }
 
@@ -158,6 +191,42 @@ mod tests {
 
     fn range(header: &str, size: u64) -> Option<(u64, u64)> {
         parse_range(header, size).ok().map(|r| (r.start, r.end))
+    }
+
+    // spec: MED-023
+    #[test]
+    fn media_access_decisions() {
+        for served in [Some(true), Some(false), None] {
+            assert_eq!(
+                media_access(true, served),
+                Some(MediaCache::Private),
+                "{served:?}"
+            );
+        }
+        assert_eq!(media_access(false, Some(true)), Some(MediaCache::Immutable));
+        assert_eq!(media_access(false, Some(false)), None);
+        assert_eq!(media_access(false, None), None);
+    }
+
+    // spec: MED-023
+    #[test]
+    fn card_id_is_read_from_the_key() {
+        let card = Uuid::from_u128(1);
+        let media = Uuid::from_u128(2);
+        assert_eq!(
+            card_of_key(&storage_key(card, media, "s128.webp")),
+            Some(card)
+        );
+        assert_eq!(card_of_key(&key("video.mp4")), Some(CARD.parse().unwrap()));
+        for bad in [
+            format!("cards/x/{MEDIA}/s128.webp"),
+            format!("cards/{}/{MEDIA}/s128.webp", CARD.to_uppercase()),
+            format!("files/{CARD}/{MEDIA}/s128.webp"),
+            "cards/".to_string(),
+            String::new(),
+        ] {
+            assert_eq!(card_of_key(&bad), None, "{bad}");
+        }
     }
 
     // spec: MED-017

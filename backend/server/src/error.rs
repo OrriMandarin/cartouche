@@ -1,5 +1,5 @@
 use axum::Json;
-use axum::http::StatusCode;
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use cartouche_domain::FieldError;
 use serde::Serialize;
@@ -73,6 +73,22 @@ pub enum ApiError {
     /// The card is not publicly served: disabled, deleted or its owner is suspended
     /// (LNK-007, LNK-026). Says nothing of the reason (LNK-027).
     CardInactive,
+    /// A creation or modification would put too many events of a card together (EVT-018).
+    TooManySimultaneousEvents,
+    /// `end now` was asked on an event that is not running (EVT-021).
+    EventNotRunning,
+    /// The event is outside its submission window (EVT-008, EVT-026).
+    EventClosed,
+    /// The access code typed for an event is wrong (EVT-027).
+    InvalidAccessCode,
+    /// The form changed since the prospect loaded it (FRM-030).
+    FormChanged,
+    /// The device already sent as many submissions as the event allows (EVT-029).
+    DeviceLimitReached,
+    /// The caller's address used up a rate limit (ABU-006, ABU-007).
+    RateLimited {
+        retry_after_secs: u64,
+    },
     /// `POST /api/test/seed` named a scenario that does not exist.
     #[cfg(feature = "test-support")]
     UnknownScenario,
@@ -103,6 +119,13 @@ impl ApiError {
             ApiError::SlugReserved => "slug_reserved",
             ApiError::CardDisabledBySupport => "card_disabled_by_support",
             ApiError::CardInactive => "card_inactive",
+            ApiError::TooManySimultaneousEvents => "too_many_simultaneous_events",
+            ApiError::EventNotRunning => "event_not_running",
+            ApiError::EventClosed => "event_closed",
+            ApiError::InvalidAccessCode => "invalid_access_code",
+            ApiError::FormChanged => "form_changed",
+            ApiError::DeviceLimitReached => "device_limit_reached",
+            ApiError::RateLimited { .. } => "rate_limited",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "unknown_scenario",
             ApiError::Internal(_) => "internal_error",
@@ -122,15 +145,22 @@ impl ApiError {
             | ApiError::AccountRejected
             | ApiError::AccountSuspended
             | ApiError::Forbidden
-            | ApiError::CannotModerateAdmin => StatusCode::FORBIDDEN,
+            | ApiError::CannotModerateAdmin
+            | ApiError::InvalidAccessCode => StatusCode::FORBIDDEN,
             ApiError::InvalidRequest | ApiError::Validation(_) => StatusCode::BAD_REQUEST,
             ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::InvalidTransition
             | ApiError::SlugTaken
             | ApiError::SlugReserved
-            | ApiError::CardDisabledBySupport => StatusCode::CONFLICT,
+            | ApiError::CardDisabledBySupport
+            | ApiError::TooManySimultaneousEvents
+            | ApiError::EventNotRunning
+            | ApiError::EventClosed
+            | ApiError::FormChanged
+            | ApiError::DeviceLimitReached => StatusCode::CONFLICT,
             ApiError::CardInactive => StatusCode::GONE,
+            ApiError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -159,6 +189,17 @@ impl ApiError {
             ApiError::SlugReserved => "This link was used by another of your cards.",
             ApiError::CardDisabledBySupport => "This card was disabled by support.",
             ApiError::CardInactive => "This card is no longer active.",
+            ApiError::TooManySimultaneousEvents => {
+                "Too many events of this card would run at the same time."
+            }
+            ApiError::EventNotRunning => "This event is not running.",
+            ApiError::EventClosed => "This event is not open for submissions.",
+            ApiError::InvalidAccessCode => "The access code is wrong.",
+            ApiError::FormChanged => "The form changed since it was loaded.",
+            ApiError::DeviceLimitReached => {
+                "This device already sent as many submissions as this event allows."
+            }
+            ApiError::RateLimited { .. } => "Too many requests. Try again later.",
             #[cfg(feature = "test-support")]
             ApiError::UnknownScenario => "This seed scenario does not exist.",
             ApiError::Internal(_) => "An internal error occurred.",
@@ -198,6 +239,10 @@ impl IntoResponse for ApiError {
         }
         let request_id = request_id::current().map(|id| id.0).unwrap_or_default();
         let (code, message, status) = (self.code(), self.message(), self.status());
+        let retry_after = match &self {
+            ApiError::RateLimited { retry_after_secs } => Some(*retry_after_secs),
+            _ => None,
+        };
         let fields = match self {
             ApiError::Validation(fields) => fields,
             _ => Vec::new(),
@@ -210,7 +255,13 @@ impl IntoResponse for ApiError {
                 fields,
             },
         };
-        (status, Json(body)).into_response()
+        let mut response = (status, Json(body)).into_response();
+        if let Some(seconds) = retry_after {
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from(seconds));
+        }
+        response
     }
 }
 
@@ -259,6 +310,23 @@ mod tests {
             .await
             .unwrap();
         (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    // spec: ABU-006
+    #[tokio::test]
+    async fn rate_limited_is_429_with_retry_after() {
+        let error = ApiError::RateLimited {
+            retry_after_secs: 42,
+        };
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(response.headers()["retry-after"], "42");
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["error"]["code"], "rate_limited");
+        assert!(body["error"].get("fields").is_none());
     }
 
     #[tokio::test]
@@ -310,6 +378,24 @@ mod tests {
     fn inactive_card_is_410() {
         assert_eq!(ApiError::CardInactive.code(), "card_inactive");
         assert_eq!(ApiError::CardInactive.status(), StatusCode::GONE);
+    }
+
+    // spec: EVT-026, EVT-027
+    #[test]
+    fn event_access_errors() {
+        assert_eq!(ApiError::EventClosed.code(), "event_closed");
+        assert_eq!(ApiError::EventClosed.status(), StatusCode::CONFLICT);
+        assert_eq!(ApiError::InvalidAccessCode.code(), "invalid_access_code");
+        assert_eq!(ApiError::InvalidAccessCode.status(), StatusCode::FORBIDDEN);
+    }
+
+    // spec: FRM-030, EVT-029
+    #[test]
+    fn submission_conflicts_are_409() {
+        assert_eq!(ApiError::FormChanged.code(), "form_changed");
+        assert_eq!(ApiError::FormChanged.status(), StatusCode::CONFLICT);
+        assert_eq!(ApiError::DeviceLimitReached.code(), "device_limit_reached");
+        assert_eq!(ApiError::DeviceLimitReached.status(), StatusCode::CONFLICT);
     }
 
     // spec: ACC-007

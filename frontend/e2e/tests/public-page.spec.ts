@@ -4,6 +4,7 @@ import { WEB_URL } from "../env";
 import { expect, test } from "../fixtures";
 
 const NEUTRAL_TEXT = "Cette carte n'est plus active";
+const MARIAGE = "Salon du Mariage Clermont 2027";
 
 let aliceCardId: string;
 
@@ -54,6 +55,27 @@ for (const template of TEMPLATE_IDS) {
       expect(content).toContain("FN:Alice Durand");
     });
 
+    test("TPL-003 TPL-020 FRM-001 FRM-006 event button, form and consent on every template", async ({ page, api }) => {
+      // The events scenario starts from an empty database: the card gets its template again.
+      const { cards, events } = await api.seedEvents();
+      const alice = cards.find((card) => card.slug === "alice-durand");
+      const mariage = events.find((event) => event.title === MARIAGE);
+      if (!alice || !mariage) throw new Error("the events scenario has no alice-durand wedding fair");
+      await api.updateCard("seed-alice", alice.id, { template });
+
+      await page.goto("/c/alice-durand");
+      await page.getByTestId(`event-button-${mariage.id}`).click();
+      await expect(page).toHaveURL(new RegExp(`/c/alice-durand/e/${mariage.id}$`));
+      await expect(page.getByTestId("event-form-page")).toHaveAttribute("style", /--card-accent:/);
+      await expect(page.getByTestId("consent-text")).toContainText("Alice Durand (Atelier Durand & Fils)");
+      await page.getByTestId("field-answers.first_name").fill("Maëlle");
+      await page.getByTestId("field-answers.last_name").fill("N’Guessan-Lefèvre ✨");
+      await page.getByTestId("field-answers.email").fill("maelle@example.test");
+      await page.getByTestId("consent-checkbox").check();
+      await page.getByTestId("event-form-submit").click();
+      await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+    });
+
     test("PUB-017 link preview tags", async ({ page }) => {
       await page.goto("/c/alice-durand");
       await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Alice Durand");
@@ -68,6 +90,33 @@ for (const template of TEMPLATE_IDS) {
     });
   });
 }
+
+test("PUB-008 PUB-009 PUB-029 running events are buttons sorted by start", async ({ page, api }) => {
+  const { events } = await api.seedEvents();
+  const idOf = (title: string) => {
+    const event = events.find((candidate) => candidate.title === title);
+    if (!event) throw new Error(`no seeded event "${title}"`);
+    return event.id;
+  };
+  await page.goto("/c/alice-durand");
+  const buttons = page.getByTestId(/^event-button-/);
+  await expect(buttons).toHaveText([MARIAGE, "Portes ouvertes de l'Atelier", "Démonstration en boutique"]);
+  const testIds = await buttons.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-testid")));
+  expect(testIds).toEqual([
+    `event-button-${idOf(MARIAGE)}`,
+    `event-button-${idOf("Portes ouvertes de l'Atelier")}`,
+    `event-button-${idOf("Démonstration en boutique")}`,
+  ]);
+  // Ended ten minutes ago, or not started yet: no button.
+  await expect(page.getByTestId(`event-button-${idOf("Atelier découverte")}`)).toHaveCount(0);
+  await expect(page.getByTestId(`event-button-${idOf("Foire de Lyon")}`)).toHaveCount(0);
+});
+
+test("PUB-010 no running event, no button", async ({ page }) => {
+  await page.goto("/c/alice-durand");
+  await expect(page.getByTestId("card-name")).toHaveText("Alice Durand");
+  await expect(page.getByTestId(/^event-button-/)).toHaveCount(0);
+});
 
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
@@ -115,6 +164,14 @@ test("LNK-021 uppercase slug redirects to lowercase", async ({ page, api }) => {
   const response = await api.get(`${WEB_URL}/c/Alice-Durand`, { maxRedirects: 0 });
   expect(response.status()).toBe(308);
   expect(response.headers()["location"]).toMatch(/\/c\/alice-durand$/);
+});
+
+test("LNK-024 LNK-030 permanent redirects are not cached", async ({ api }) => {
+  for (const path of ["/c/alice", "/c/Alice-Durand", "/api/public/cards/alice/vcard"]) {
+    const response = await api.get(`${WEB_URL}${path}`, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(308);
+    expect(response.headers()["cache-control"], path).toContain("no-store");
+  }
 });
 
 test("LNK-006 LNK-027 disabled card shows the neutral page", async ({ page }) => {

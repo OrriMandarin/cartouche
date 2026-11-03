@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use cartouche_domain::{Slot, served_content_type};
+use chrono::{DateTime, Utc};
 use futures_util::TryStreamExt;
 use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
@@ -18,10 +19,21 @@ use url::Url;
 use uuid::Uuid;
 
 use super::process::{EncodedVariant, ProcessError, process_image};
+use super::signing::UrlSigner;
 use crate::config::MediaStorageConfig;
 
 /// Files never change under their name (MED-016).
 pub const CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
+
+/// Files read through a signed address of the dashboard or the support page (MED-023).
+pub const PRIVATE_CACHE_CONTROL: &str = "private, max-age=86400";
+
+/// How long a signed address stays valid at least (MED-023).
+const SIGNATURE_LIFETIME_SECONDS: i64 = 24 * 3600;
+
+/// A processing job panicked (a decoder bug on a hostile file).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Panicked;
 
 /// Images processed at the same time: decoding and resizing are CPU and memory heavy.
 const IMAGE_PROCESSING_PERMITS: usize = 2;
@@ -69,6 +81,8 @@ pub struct MediaService {
     /// it serves the file.
     stores_headers: bool,
     image_permits: Arc<Semaphore>,
+    /// Signs the dashboard's addresses of local files (MED-023).
+    signer: UrlSigner,
 }
 
 impl MediaService {
@@ -135,6 +149,7 @@ impl MediaService {
             serves_locally,
             stores_headers: !serves_locally,
             image_permits: Arc::new(Semaphore::new(IMAGE_PROCESSING_PERMITS)),
+            signer: UrlSigner::random(),
         }
     }
 
@@ -146,6 +161,32 @@ impl MediaService {
     /// Public address of the file stored under `key`.
     pub fn url(&self, key: &str) -> String {
         format!("{}/{}", self.base_url, key.trim_start_matches('/'))
+    }
+
+    /// Address of the file under `key` for the dashboard and the support page. In local mode it
+    /// is signed, so it stays readable when the card is not served; it expires at the start of
+    /// the hour after `now`, plus 24 hours, so it does not change within the hour and the
+    /// browser can cache it. In S3 mode it is the public address (MED-023, MED-024).
+    pub fn dashboard_url(&self, key: &str, now: DateTime<Utc>) -> String {
+        let url = self.url(key);
+        if !self.serves_locally {
+            return url;
+        }
+        let next_hour = (now.timestamp().div_euclid(3600) + 1) * 3600;
+        let expires_at = next_hour + SIGNATURE_LIFETIME_SECONDS;
+        let signature = self.signer.sign(key, expires_at);
+        format!("{url}?exp={expires_at}&sig={signature}")
+    }
+
+    /// Whether `signature` was made by this service for `key` and is not expired at `now`.
+    pub fn verify_signature(
+        &self,
+        key: &str,
+        expires_at: i64,
+        signature: &str,
+        now: DateTime<Utc>,
+    ) -> bool {
+        self.signer.verify(key, expires_at, signature, now)
     }
 
     pub async fn put(&self, key: &str, bytes: Bytes) -> Result<(), MediaError> {
@@ -215,13 +256,24 @@ impl MediaService {
         bytes: Bytes,
         slot: Slot,
     ) -> Result<Vec<EncodedVariant>, ProcessError> {
-        self.run_limited(move || process_image(&bytes, slot)).await
+        match self.run_limited(move || process_image(&bytes, slot)).await {
+            Ok(result) => result,
+            Err(Panicked) => {
+                tracing::error!("image processing panicked, refusing the file as corrupt");
+                Err(ProcessError::Corrupt)
+            }
+        }
     }
 
     /// Runs `work` on a blocking thread under a processing permit. The permit travels with the
     /// work: if the caller is dropped (client disconnect), the work still holds its permit
-    /// until it ends, so the limit counts running threads, not waiting callers.
-    async fn run_limited<T: Send + 'static>(&self, work: impl FnOnce() -> T + Send + 'static) -> T {
+    /// until it ends, so the limit counts running threads, not waiting callers. A panic in
+    /// `work` is reported as [`Panicked`] (the permit is still given back) instead of
+    /// propagating to the request.
+    async fn run_limited<T: Send + 'static>(
+        &self,
+        work: impl FnOnce() -> T + Send + 'static,
+    ) -> Result<T, Panicked> {
         let permit = Arc::clone(&self.image_permits)
             .acquire_owned()
             .await
@@ -231,7 +283,7 @@ impl MediaService {
             work()
         })
         .await
-        .expect("image processing does not panic")
+        .map_err(|_| Panicked)
     }
 
     async fn delete_prefix(&self, prefix: &str) -> Result<(), MediaError> {
@@ -309,6 +361,20 @@ mod tests {
         })
         .await
         .expect("permit released after the work ended");
+    }
+
+    // spec: MED-012
+    #[tokio::test]
+    async fn a_panicking_job_is_reported_not_propagated() {
+        let media = service();
+        let result = media.run_limited(|| -> u32 { panic!("decoder") }).await;
+        assert_eq!(result, Err(Panicked));
+        // The permit went back: another job runs.
+        assert_eq!(media.run_limited(|| 7).await, Ok(7));
+        assert_eq!(
+            media.image_permits.available_permits(),
+            IMAGE_PROCESSING_PERMITS
+        );
     }
 
     const CARD: &str = "0198a1b2-0000-7000-8000-000000000001";
