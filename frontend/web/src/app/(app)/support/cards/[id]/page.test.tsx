@@ -71,13 +71,13 @@ describe("SupportCardPage", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  test("an unknown card reads as « Carte introuvable »", async () => {
+  test("ADM-006 ADM-013 an unknown card reads as « Carte introuvable »", async () => {
     get.mockRejectedValue(new ApiError({ status: 404, code: "not_found", message: "No.", requestId: "r1" }));
     renderWithIntl(<SupportCardPage />);
     await waitFor(() => expect(screen.getByTestId("support-not-found")).toHaveTextContent("Carte introuvable"));
   });
 
-  test("any other failure shows the generic notice with the request id", async () => {
+  test("ADM-013 any other failure shows the generic notice with the request id", async () => {
     get.mockRejectedValue(new ApiError({ status: 500, code: "internal_error", message: "Boom.", requestId: "req-1" }));
     renderWithIntl(<SupportCardPage />);
     expect(await screen.findByTestId("error-request-id")).toHaveTextContent("req-1");

@@ -45,7 +45,7 @@ describe("SupportUserPage", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  test("an unknown or malformed id reads as « Utilisateur introuvable »", async () => {
+  test("ADM-006 an unknown or malformed id reads as « Utilisateur introuvable »", async () => {
     get.mockRejectedValue(new ApiError({ status: 400, code: "invalid_request", message: "No.", requestId: "r1" }));
     renderWithIntl(<SupportUserPage />);
     expect(await screen.findByTestId("support-not-found")).toHaveTextContent("Utilisateur introuvable");

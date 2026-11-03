@@ -52,7 +52,7 @@ describe("CardModeration", () => {
     });
   });
 
-  test("the button stays disabled from the click until the reload has finished", async () => {
+  test("ADM-009 ADM-010 the button stays disabled from the click until the reload has finished", async () => {
     post.mockResolvedValue({ data: {} });
     let finishReload: () => void = () => undefined;
     const onChanged = vi.fn(() => new Promise<void>((resolve) => (finishReload = resolve)));
