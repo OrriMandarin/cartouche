@@ -10,7 +10,8 @@ export type UploadMedia = (slot: MediaSlot, file: Blob, poster?: Blob) => Promis
 /** Limits of the server (MED-002, MED-012), mirrored here to answer before sending; the server stays the arbiter. */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
-export const MAX_VIDEO_SECONDS = 30;
+/** The server accepts up to 30.1 s: containers often report a few hundredths over 30 s for a 30 s video. */
+export const MAX_VIDEO_SECONDS = 30.1;
 
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const VIDEO_TYPE = "video/mp4";

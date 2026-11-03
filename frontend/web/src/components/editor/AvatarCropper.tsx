@@ -26,10 +26,13 @@ export function AvatarCropper({
   file,
   onConfirm,
   onCancel,
+  onError,
 }: {
   file: File;
   onConfirm: (square: Blob) => void;
   onCancel: () => void;
+  /** The photo could not be cropped (undecodable image, no canvas): the caller tells the owner. */
+  onError: () => void;
 }) {
   const t = useTranslations("editor.media.cropper");
   const [url, setUrl] = useState<string | null>(null);
@@ -52,8 +55,7 @@ export function AvatarCropper({
     try {
       onConfirm(await cropToSquare(file, area));
     } catch {
-      // The caller shows what went wrong; the dialog closes.
-      onCancel();
+      onError();
     }
   }
 

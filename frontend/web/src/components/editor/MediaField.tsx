@@ -147,6 +147,10 @@ function SlotField({
         <AvatarCropper
           file={cropping}
           onCancel={() => setCropping(null)}
+          onError={() => {
+            setCropping(null);
+            setErrorKey("editor.media.errors.unreadable");
+          }}
           onConfirm={(square) => {
             setCropping(null);
             void send(square);

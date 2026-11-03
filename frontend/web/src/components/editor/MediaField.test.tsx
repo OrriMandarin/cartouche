@@ -15,10 +15,15 @@ vi.mock("@/lib/media/video", () => ({
 
 // The cropper itself needs a browser: a stand-in that confirms a fixed square.
 vi.mock("./AvatarCropper", () => ({
-  AvatarCropper: ({ onConfirm }: { onConfirm: (square: Blob) => void }) => (
-    <button type="button" data-testid="avatar-crop-confirm" onClick={() => onConfirm(new Blob(["square"], { type: "image/jpeg" }))}>
-      ok
-    </button>
+  AvatarCropper: ({ onConfirm, onError }: { onConfirm: (square: Blob) => void; onError: () => void }) => (
+    <>
+      <button type="button" data-testid="avatar-crop-confirm" onClick={() => onConfirm(new Blob(["square"], { type: "image/jpeg" }))}>
+        ok
+      </button>
+      <button type="button" data-testid="avatar-crop-fail" onClick={onError}>
+        fail
+      </button>
+    </>
   ),
 }));
 
@@ -142,6 +147,33 @@ describe("MediaField", () => {
     const [slot, sent] = upload.mock.calls[0] as [string, Blob];
     expect(slot).toBe("avatar");
     expect(await sent.text()).toBe("square");
+  });
+
+  test("MED-005 a photo the cropper cannot read is reported, nothing is sent", async () => {
+    const upload = vi.fn();
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-avatar-input", jpeg());
+    fireEvent.click(await screen.findByTestId("avatar-crop-fail"));
+
+    expect(await screen.findByTestId("media-avatar-error")).toHaveTextContent("Ce fichier ne peut pas être lu par le navigateur");
+    expect(screen.queryByTestId("avatar-crop-confirm")).toBeNull();
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  test("MED-002 MED-013 the 30.1 s tolerance of the server is mirrored: 30.05 s goes, 30.2 s does not", async () => {
+    const upload = vi.fn().mockResolvedValue(media("clip", "video"));
+    renderWithIntl(<Harness upload={upload} />);
+
+    readVideoDuration.mockResolvedValue(30.2);
+    pick("media-header-input", mp4());
+    expect(await screen.findByTestId("media-header-error")).toHaveTextContent("La vidéo dépasse 30 secondes");
+    expect(upload).not.toHaveBeenCalled();
+
+    readVideoDuration.mockResolvedValue(30.05);
+    pick("media-header-input", mp4());
+    await waitFor(() => expect(state().header).toBe("clip"));
+    expect(upload).toHaveBeenCalledTimes(1);
   });
 
   test("MED-001 « Retirer » empties the slot in the draft", () => {
