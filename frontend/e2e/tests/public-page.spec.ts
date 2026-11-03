@@ -1,12 +1,25 @@
+import type { Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { TEMPLATE_IDS } from "../../web/src/templates/ids";
 import { WEB_URL } from "../env";
 import { expect, test } from "../fixtures";
 
-const NEUTRAL_TEXT = "Cette carte n'est plus active";
+const UNAVAILABLE_TITLE = "Cette carte n’est pas disponible";
+const UNAVAILABLE_TEXT = "Le lien est peut-être incorrect, ou la carte n’est plus active.";
 const MARIAGE = "Salon du Mariage Clermont 2027";
 
 let aliceCardId: string;
+
+/** The neutral page of a card that is not served: 404, both texts, not indexed, no link preview (LNK-027). */
+async function expectNeutralPage(page: Page, url: string) {
+  const response = await page.goto(url);
+  expect(response?.status(), url).toBe(404);
+  const unavailable = page.getByTestId("card-unavailable");
+  await expect(unavailable.getByRole("heading", { level: 1 }), url).toHaveText(UNAVAILABLE_TITLE);
+  await expect(unavailable, url).toContainText(UNAVAILABLE_TEXT);
+  await expect(page.locator('meta[name="robots"]').first(), url).toHaveAttribute("content", /noindex/);
+  await expect(page.locator('meta[property^="og:"]'), url).toHaveCount(0);
+}
 
 test.beforeEach(async ({ api }) => {
   const { cards } = await api.seed("cards");
@@ -249,44 +262,68 @@ test("LNK-024 LNK-030 permanent redirects are not cached", async ({ api }) => {
   }
 });
 
-test("LNK-006 LNK-027 disabled card shows the neutral page", async ({ page }) => {
-  const response = await page.goto("/c/alice-archive");
-  expect(response?.status()).toBe(200);
-  await expect(page.getByText(NEUTRAL_TEXT)).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.locator('meta[property="og:title"]')).toHaveCount(0);
-  await expect(page.locator('meta[property="og:image"]')).toHaveCount(0);
+test("LNK-023 LNK-027 LNK-034 unknown, disabled and blocked cards show the same 404 page", async ({ page }) => {
+  for (const url of ["/c/inconnu-zz", "/c/alice-archive", "/c/bob-martin"]) {
+    await expectNeutralPage(page, url);
+    const text = await page.locator("body").innerText();
+    for (const word of ["Alice", "Bob", "Ancien poste"]) expect(text, url).not.toContain(word);
+  }
+});
+
+test("LNK-006 LNK-027 a disabled card says nothing of itself in its HTML", async ({ page }) => {
+  await expectNeutralPage(page, "/c/alice-archive");
   const html = await page.content();
   expect(html).not.toContain("Ancien poste");
   expect(html).not.toContain("Alice");
   await expect(page.getByTestId("card-name")).toHaveCount(0);
 });
 
-test("LNK-010 support-disabled card shows the same neutral page", async ({ page }) => {
-  const response = await page.goto("/c/bob-martin");
-  expect(response?.status()).toBe(200);
-  await expect(page.getByText(NEUTRAL_TEXT)).toBeVisible();
-  await expect(page.locator("main")).toHaveText(NEUTRAL_TEXT);
+test("LNK-010 ADM-011 LNK-012 support-disabled, suspended and deleted cards show the same 404 page", async ({
+  page,
+}) => {
+  await expectNeutralPage(page, "/c/bob-martin");
   expect(await page.locator("body").innerText()).not.toMatch(/support|bob|martin/i);
-});
-
-test("ADM-011 suspended owner shows the neutral page", async ({ page }) => {
-  const response = await page.goto("/c/dan-moreau");
-  expect(response?.status()).toBe(200);
-  await expect(page.locator("main")).toHaveText(NEUTRAL_TEXT);
+  await expectNeutralPage(page, "/c/dan-moreau");
   expect(await page.locator("body").innerText()).not.toMatch(/dan|moreau/i);
+  await expectNeutralPage(page, "/c/alice-ancienne");
 });
 
-test("LNK-012 deleted card shows the neutral page", async ({ page }) => {
-  const response = await page.goto("/c/alice-ancienne");
-  expect(response?.status()).toBe(200);
-  await expect(page.locator("main")).toHaveText(NEUTRAL_TEXT);
+test("PUB-037 from 40rem the card is 28rem wide with rounded corners", async ({ page }, testInfo) => {
+  await page.goto("/c/alice-durand");
+  const card = page.locator("article.cc");
+  await expect(card).toBeVisible();
+  const { width, radius, viewport } = await card.evaluate((element) => ({
+    width: element.getBoundingClientRect().width,
+    radius: getComputedStyle(element).borderTopLeftRadius,
+    viewport: document.documentElement.clientWidth,
+  }));
+  if (testInfo.project.name === "desktop") {
+    expect(width).toBe(448);
+    expect(radius).toBe("28px");
+  } else {
+    expect(width).toBe(viewport);
+  }
+  // The theme variables sit on the page frame, never on html or body.
+  for (const selector of ["html", "body"]) {
+    const style = await page.evaluate((target) => document.querySelector(target)?.getAttribute("style") ?? "", selector);
+    expect(style, selector).not.toContain("--c-");
+  }
 });
 
-test("LNK-023 unknown slug is a 404", async ({ page }) => {
-  const response = await page.goto("/c/personne");
-  expect(response?.status()).toBe(404);
-  await expect(page.getByText("Carte introuvable")).toBeVisible();
+test("TPL-012 the public page downloads only the files of its pair", async ({ page, api }) => {
+  await api.updateCard("seed-alice", aliceCardId, { theme: { preset: "bonbon" } });
+  const fonts: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith(".woff2")) fonts.push(request.url());
+  });
+  await page.goto("/c/alice-durand");
+  await expect(page.getByTestId("card-name")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(fonts.some((url) => url.includes("bricolage-grotesque")), fonts.join("\n")).toBe(true);
+  expect(fonts.some((url) => url.includes("instrument-sans")), fonts.join("\n")).toBe(true);
+  for (const other of ["playfair", "source-sans", "fraunces", "nunito", "jetbrains"]) {
+    expect(fonts.filter((url) => url.includes(other)), other).toEqual([]);
+  }
 });
 
 test("LNK-007 vCard of a disabled card is refused", async ({ api }) => {

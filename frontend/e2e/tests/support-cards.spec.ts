@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures";
 
-const NEUTRAL_TEXT = "Cette carte n'est plus active";
+const UNAVAILABLE_TITLE = "Cette carte n’est pas disponible";
 
 test("ADM-006 ADM-013 admin browses a user's cards, even disabled", async ({ page, api, loginAs }) => {
   await api.seed("cards");
@@ -40,7 +40,7 @@ test("ADM-009 LNK-010 LNK-011 admin disables a card", async ({ page, api, loginA
 
   // The public page turns neutral...
   await page.goto("/c/alice-durand");
-  await expect(page.getByText(NEUTRAL_TEXT)).toBeVisible();
+  await expect(page.getByTestId("card-unavailable")).toContainText(UNAVAILABLE_TITLE);
   await expect(page.getByTestId("card-name")).toHaveCount(0);
 
   // ...and the owner sees the block, with no way to lift it.

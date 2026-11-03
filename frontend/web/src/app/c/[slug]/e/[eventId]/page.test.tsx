@@ -59,7 +59,9 @@ describe("event form page", () => {
 
   test("TPL-020 FRM-025 the form carries the card theme", async () => {
     fetchPublicEvent.mockResolvedValue({ state: "open", event: publicEventForm() });
-    expect(await html()).toMatch(/data-testid="event-form-page"[^>]*style="[^"]*--c-accent:#c0392b/);
+    const page = await html();
+    expect(page).toMatch(/class="cc-page" style="[^"]*--c-accent:#c0392b/);
+    expect(page).toMatch(/class="cc-stage"><main data-testid="event-form-page"/);
   });
 
   test("FRM-002 EVT-027 an event with a code renders its title and the code screen only", async () => {
@@ -88,16 +90,6 @@ describe("event form page", () => {
   test("FRM-024 LNK-024 LNK-021 an old or uppercase slug redirects to the current form address", async () => {
     fetchPublicCard.mockResolvedValue({ state: "redirect", slug: "alice-durand" });
     await expect(EventFormRoute(props("Alice"))).rejects.toThrow(`redirect:/c/alice-durand/e/${EVENT_ID}`);
-  });
-
-  test("LNK-007 LNK-027 the form of an unserved card is the neutral page", async () => {
-    fetchPublicCard.mockResolvedValue({ state: "inactive" });
-    expect(await html()).toContain("Cette carte n&#x27;est plus active");
-    fetchPublicCard.mockResolvedValue({ state: "active", card });
-    fetchPublicEvent.mockResolvedValue({ state: "inactive" });
-    const page = await html();
-    expect(page).toContain("Cette carte n&#x27;est plus active");
-    expect(page).not.toContain(card.content.first_name ?? "");
   });
 
   test("FRM-024 the form is not indexed", () => {

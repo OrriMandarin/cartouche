@@ -24,11 +24,12 @@ export interface ThemePreset {
 
 export const DEFAULT_PRESET_ID = "craie";
 
-type JsonBackground =
+export type JsonBackground =
   | { type: "solid"; color: string }
   | { type: "gradient"; from: string; to: string; angle: number };
 
-function backgroundOf(background: JsonBackground): ThemeBackground {
+/** A background of `themes.json`, in the API grammar. */
+export function backgroundOf(background: JsonBackground): ThemeBackground {
   return background.type === "solid"
     ? { kind: "solid", color: background.color.toLowerCase() }
     : {

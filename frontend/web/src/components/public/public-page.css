@@ -41,3 +41,17 @@
 @media (prefers-reduced-motion: reduce) {
   .cc-dot::after { animation: none; }
 }
+
+/* --- Page frame: on mobile the card fills the screen; from 40rem, a 28rem card centred (PUB-037) --- */
+.cc-page { container-type: inline-size; min-height: 100svh; }
+.cc-stage { min-height: inherit; background: linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2)); }
+@container (min-width: 40rem) {
+  .cc-stage { padding: 56px 24px 80px; background: color-mix(in oklab, var(--c-bg) 86%, var(--c-text)); }
+  .cc-stage .cc { border-radius: 28px; box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 28px 64px -28px rgb(0 0 0 / .45); }
+}
+
+/* --- Neutral page of a card that is not served (LNK-034), from design/Etats.dc.html --- */
+.cc-off { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 48px 32px; text-align: center; }
+.cc-off-mark { width: 64px; height: 64px; border-radius: 999px; display: grid; place-items: center; background: var(--c-surface); color: var(--c-muted); margin-bottom: 8px; }
+.cc-off-title { margin: 0; font-family: var(--font-title); font-weight: var(--title-weight); letter-spacing: var(--title-tracking); font-size: 22px; line-height: 1.25; text-wrap: balance; }
+.cc-off-text { margin: 0; max-width: 30ch; font-size: 15px; color: var(--c-muted); text-wrap: pretty; }

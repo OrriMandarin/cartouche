@@ -48,7 +48,7 @@ describe("open graph", () => {
     expect(only({ job_title: null, company: null })).toBeUndefined();
   });
 
-  test("LNK-027 inactive metadata reveals nothing and asks not to index", () => {
+  test("LNK-027 the neutral metadata asks not to index and has no OpenGraph", () => {
     expect(INACTIVE_METADATA.robots).toEqual({ index: false, follow: false });
     expect(INACTIVE_METADATA.openGraph).toBeUndefined();
     expect(INACTIVE_METADATA.twitter).toBeUndefined();

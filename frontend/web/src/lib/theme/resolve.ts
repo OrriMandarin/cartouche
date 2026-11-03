@@ -1,13 +1,16 @@
 import { isDarkTheme, onAccentFor } from "./contrast";
 import {
+  backgroundOf,
   DEFAULT_FONT_ID,
   DEFAULT_PRESET_ID,
   FONT_PAIRS,
   THEME_PRESETS,
   type ButtonShape,
   type FontPair,
+  type JsonBackground,
   type ThemeBackground,
 } from "./presets";
+import themesJson from "./themes.json";
 
 /** A theme with every value present and valid, ready to render. */
 export interface ResolvedTheme {
@@ -90,5 +93,26 @@ export function resolveTheme(raw: unknown): ResolvedTheme {
     fontPair,
     onAccent: onAccentFor(accent),
     colorScheme: isDarkTheme({ accent, text, background: resolvedBackground }) ? "dark" : "light",
+  };
+}
+
+const NEUTRAL_THEME_ID = "neutral";
+
+/**
+ * The theme of the neutral page (LNK-034): the same for every card that is not served, so it says nothing
+ * of the owner's own theme (LNK-027). No fade, rounded buttons.
+ */
+export function neutralTheme(): ResolvedTheme {
+  const neutral = themesJson.neutralUnavailableTheme;
+  return {
+    ...resolveTheme({
+      accent: neutral.accent,
+      text: neutral.text,
+      background: backgroundOf(neutral.background as JsonBackground),
+      header_gradient: 0,
+      button_shape: "rounded",
+      font: neutral.fontPair,
+    }),
+    presetId: NEUTRAL_THEME_ID,
   };
 }

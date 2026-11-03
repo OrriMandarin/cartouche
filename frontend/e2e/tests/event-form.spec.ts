@@ -11,7 +11,8 @@ const LYON = "Foire de Lyon";
 const ARCHIVE = "Événement archivé";
 const BLOQUE = "Salon bloqué";
 
-const NEUTRAL_TEXT = "Cette carte n'est plus active";
+const UNAVAILABLE_TITLE = "Cette carte n’est pas disponible";
+const UNAVAILABLE_TEXT = "Le lien est peut-être incorrect, ou la carte n’est plus active.";
 
 let eventIds: Record<string, string>;
 
@@ -245,10 +246,11 @@ test("FRM-024 an upcoming event shows the closed screen", async ({ page }) => {
   await expect(page).toHaveURL(/\/c\/alice-durand$/);
 });
 
-test("FRM-024 an unknown event is a 404", async ({ page }) => {
+test("FRM-024 an unknown event of a served card still says Formulaire introuvable", async ({ page }) => {
   const unknown = await page.goto("/c/alice-durand/e/0198c8a2-0000-7000-8000-0000000000ff");
   expect(unknown?.status()).toBe(404);
-  await expect(page.getByText("Formulaire introuvable")).toBeVisible();
+  await expect(page.getByTestId("event-form-not-found")).toHaveText("Formulaire introuvable");
+  await expect(page.getByTestId("card-unavailable")).toHaveCount(0);
 
   const malformed = await page.goto("/c/alice-durand/e/abc");
   expect(malformed?.status()).toBe(404);
@@ -257,15 +259,20 @@ test("FRM-024 an unknown event is a 404", async ({ page }) => {
   // An event of another card is unknown here.
   const elsewhere = await page.goto(`/c/alice-durand/e/${idOf(BLOQUE)}`);
   expect(elsewhere?.status()).toBe(404);
+  await expect(page.getByText("Formulaire introuvable")).toBeVisible();
 });
 
-test("LNK-007 FRM-024 the form of an unserved card shows the neutral page", async ({ page }) => {
-  for (const url of [formUrl(ARCHIVE, "alice-archive"), formUrl(BLOQUE, "bob-martin")]) {
+test("LNK-007 FRM-024 the form of an inactive card is the same 404 page", async ({ page }) => {
+  for (const url of [formUrl(ARCHIVE, "alice-archive"), formUrl(BLOQUE, "bob-martin"), formUrl(MARIAGE, "inconnu-zz")]) {
     const response = await page.goto(url);
-    expect(response?.status(), url).toBe(200);
-    await expect(page.locator("main"), url).toHaveText(NEUTRAL_TEXT);
+    expect(response?.status(), url).toBe(404);
+    const unavailable = page.getByTestId("card-unavailable");
+    await expect(unavailable.getByRole("heading", { level: 1 }), url).toHaveText(UNAVAILABLE_TITLE);
+    await expect(unavailable, url).toContainText(UNAVAILABLE_TEXT);
     await expect(page.getByTestId("event-form"), url).toHaveCount(0);
-    await expect(page.locator('meta[name="robots"]'), url).toHaveAttribute("content", /noindex/);
+    await expect(page.getByTestId("event-form-not-found"), url).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]').first(), url).toHaveAttribute("content", /noindex/);
+    await expect(page.locator('meta[property^="og:"]'), url).toHaveCount(0);
   }
 });
 

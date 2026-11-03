@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { WEB_URL } from "../env";
 import { expect, test } from "../fixtures";
 
-const NEUTRAL_TEXT = "Cette carte n'est plus active";
+const UNAVAILABLE_TITLE = "Cette carte n’est pas disponible";
 
 test.beforeEach(async ({ api, loginAs }) => {
   await api.seed("cards");
@@ -45,7 +45,7 @@ test("EDI-001 LNK-005 LNK-009 disable then enable", async ({ page }) => {
   await row.getByTestId("card-disable-alice-durand").click();
   await expect(page.getByTestId("card-status-alice-durand")).toHaveText("Désactivée");
   await page.goto("/c/alice-durand");
-  await expect(page.getByText(NEUTRAL_TEXT)).toBeVisible();
+  await expect(page.getByTestId("card-unavailable")).toContainText(UNAVAILABLE_TITLE);
   await expect(page.getByTestId("card-name")).toHaveCount(0);
 
   await page.goto("/dashboard");
@@ -91,7 +91,7 @@ test("EDI-002 LNK-012 delete with confirmation", async ({ page }) => {
   // Her other card is still there.
   await expect(page.getByTestId("card-row-alice-archive")).toBeVisible();
   await page.goto("/c/alice-durand");
-  await expect(page.getByText(NEUTRAL_TEXT)).toBeVisible();
+  await expect(page.getByTestId("card-unavailable")).toContainText(UNAVAILABLE_TITLE);
 });
 
 test("LNK-017 LNK-029 share: link and QR codes", async ({ page, context, browserName }) => {

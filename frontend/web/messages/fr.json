@@ -187,7 +187,10 @@
   },
   "publicCard": {
     "saveContact": "Enregistrer le contact",
-    "inactive": "Cette carte n'est plus active",
+    "unavailable": {
+      "title": "Cette carte n’est pas disponible",
+      "text": "Le lien est peut-être incorrect, ou la carte n’est plus active."
+    },
     "notFound": "Carte introuvable",
     "eventLive": "Événement en cours",
     "contacts": "Coordonnées",

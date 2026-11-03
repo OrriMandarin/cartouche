@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import messages from "../../../../messages/fr.json";
 import { sampleCard } from "@/templates/fixtures";
+import { INACTIVE_METADATA } from "@/lib/og";
 import PublicCardPage, { generateMetadata } from "./page";
 
 const fetchPublicCard = vi.fn();
@@ -71,16 +72,19 @@ describe("public card page", () => {
     await expect(PublicCardPage(props("alice"))).rejects.toThrow("redirect:/c/alice-durand");
   });
 
-  test("LNK-023 a slug never attributed is a 404", async () => {
-    fetchPublicCard.mockResolvedValue(null);
-    await expect(PublicCardPage(props("personne"))).rejects.toThrow("not-found");
+  test("TPL-026 PUB-037 an active card sits in the page frame that carries its theme", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "active", card: { ...sampleCard, theme: { preset: "craie", accent: "#c0392b" } } });
+    const { container } = await renderPage("eloise-daubigne");
+    const frame = container.querySelector<HTMLElement>(".cc-page");
+    expect(frame?.style.getPropertyValue("--c-accent")).toBe("#c0392b");
+    expect(frame?.querySelector(":scope > .cc-stage > article.cc")).not.toBeNull();
   });
 
-  test("LNK-006 LNK-027 an inactive card shows the neutral text and nothing of the card", async () => {
+  test("LNK-023 LNK-027 an unknown slug and an inactive card both end in notFound", async () => {
+    fetchPublicCard.mockResolvedValue(null);
+    await expect(PublicCardPage(props("personne"))).rejects.toThrow("not-found");
     fetchPublicCard.mockResolvedValue({ state: "inactive" });
-    const { container } = await renderPage("alice-archive");
-    expect(screen.getByText("Cette carte n'est plus active")).toBeInTheDocument();
-    expect(container.querySelector("[data-testid='card-name']")).toBeNull();
+    await expect(PublicCardPage(props("alice-archive"))).rejects.toThrow("not-found");
   });
 });
 
@@ -99,8 +103,8 @@ describe("public card metadata", () => {
     expect(metadata.title).toBeUndefined();
   });
 
-  test("LNK-023 an unknown slug has no card metadata", async () => {
+  test("LNK-023 LNK-027 an unknown slug gets the same neutral metadata", async () => {
     fetchPublicCard.mockResolvedValue(null);
-    expect(await generateMetadata(props("personne"))).toEqual({});
+    expect(await generateMetadata(props("personne"))).toEqual(INACTIVE_METADATA);
   });
 });
