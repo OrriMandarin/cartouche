@@ -1,6 +1,6 @@
 # Public card link
 
-> Status: implemented (plans 2 and 3); LNK-015, LNK-016 and LNK-031 to LNK-033: plan 4
+> Status: implemented (plans 2, 3 and 4)
 
 ## Format and uniqueness
 

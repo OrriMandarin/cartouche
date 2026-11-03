@@ -60,7 +60,7 @@ Pre-flight of the plan (R-PF, before Task 1) then execution (R-E). Each line: de
 
 - In-memory rate limiter without a cap on tracked addresses (plan 3 R-E8): kept — plan 4 touches no anti-abuse rule; purge every 1,024 calls bounds it on a single instance.
 - S3 media of an unserved card readable at their bucket URL (MED-024): kept — documented v1 limit; account deletion (ACC-022) now deletes them for deleted accounts.
-- Flaky tests seen once under load (`migrations::card_foreign_keys_are_indexed`, `public_cards::vcard_photo_is_the_256_jpeg`, `CardEditor.test.tsx` "EDI-016 after a save…"): kept under watch — not reproduced; the final gate of plan 4 records any recurrence here.
+- Flaky tests seen once under load (`migrations::card_foreign_keys_are_indexed`, `public_cards::vcard_photo_is_the_256_jpeg`, `CardEditor.test.tsx` "EDI-016 after a save…"): kept under watch — not reproduced, including at the final gate of plan 4 (`make lint test`, then the full `make e2e` on both projects, all green on the first complete run).
 - Plan 3 Task 17 components written before their tests: nothing to do — historical; tests exist.
 - Plan 3 minors not touched by plan 4 (Tasks 1 to 9, 12 to 14, 16, 17 and the final review residuals, except those listed as taken up in the plan): kept — outside plan 4's files; see the plan 3 follow-ups file.
 

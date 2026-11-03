@@ -1,6 +1,6 @@
 # Account and authentication
 
-> Status: implemented (plans 1 and 2): ACC-001 to ACC-017; ACC-018 to ACC-024, and the account deletion exception of ACC-004: plan 4
+> Status: implemented (plans 1, 2 and 4)
 
 ## Account creation and status
 

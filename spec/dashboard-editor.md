@@ -1,6 +1,6 @@
 # Dashboard and card editor
 
-> Status: implemented (plans 2 and 3); EDI-010 and EDI-021: plan 4
+> Status: implemented (plans 2, 3 and 4)
 
 ## Cards
 

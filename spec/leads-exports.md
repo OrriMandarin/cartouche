@@ -1,6 +1,6 @@
 # Leads and exports
 
-> Status: specified, not implemented (plan 4); the list of an event's leads, with spam marking and deletion, exists since plan 3 (EDI-020)
+> Status: implemented (plans 3 and 4)
 
 ## Viewing
 
