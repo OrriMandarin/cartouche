@@ -42,7 +42,7 @@ Note pour le poste local de développement : `pnpm` est dans `~/.local/bin` (Nod
 2. **Plan de tâches** : petites tâches, chacune avec ses tests et les identifiants de règles concernés.
 3. **`builder` implémente en TDD** : un test qui échoue, le code minimal, le test qui passe, un commit par tâche.
 4. **`task-reviewer`** relit chaque tâche terminée. Rien ne passe à la suite tant que le verdict n'est pas `APPROVED`.
-5. **`make test`**, puis **`make e2e`**, doivent passer.
+5. **`make test`**, puis **`make e2e`**, doivent passer **en local avant chaque push**. La CI ne lance les tests e2e que sur `main` : sur une branche, c'est ce passage local qui les garantit.
 6. **`feature-reviewer`** relit la fonctionnalité complète en fin de parcours.
 7. **Un bug part toujours d'un test qui le reproduit.** `debugger` d'abord ; si deux tentatives échouent, `debugger-deep`. Si le bug révèle une règle manquante ou fausse, on corrige la spec d'abord (étape 1).
 

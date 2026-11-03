@@ -18,7 +18,7 @@ Tu implémentes une tâche du plan, avec ses tests, et rien de plus.
 1. Écris d'abord le test qui échoue, en citant la règle (`// spec: XXX-NNN` en Rust, identifiant dans le nom du test en TypeScript). Lance-le et vérifie qu'il échoue pour la bonne raison.
 2. Écris le code minimal qui le fait passer. Relance.
 3. Refactore si nécessaire, tests verts.
-4. Lance les vérifications de la tâche (`make lint`, `make test`, et `make e2e` si le plan le demande) et lis leur sortie.
+4. Lance les vérifications de la tâche (`make lint`, `make test`, et `make e2e` avant tout push, la CI ne le lançant que sur `main`) et lis leur sortie.
 5. Commit petit et clair (`feat:`, `fix:`, `chore:`, `docs:`…), message **en anglais** (comme le code, les commentaires et les identifiants ; seuls les textes d'interface et la spec sont en français).
 
 ## Règles

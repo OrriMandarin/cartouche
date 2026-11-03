@@ -16,7 +16,7 @@ Tu relis une **fonctionnalité complète** (ou une correction de bug) de bout en
 
 ## Ce que tu vérifies
 1. **Exécute** et lis la sortie de : `make test`, `make e2e`, `node scripts/spec-lint.mjs --coverage`. Tout échec est un constat Critique.
-2. **Couverture des règles** : chaque règle `spec/` **nouvelle ou modifiée** est citée par au moins un test (utilise `--coverage` et `grep -rn "XXX-NNN" apps packages e2e`). Vérifie que le test vérifie réellement la règle.
+2. **Couverture des règles** : chaque règle `spec/` **nouvelle ou modifiée** est citée par au moins un test (utilise `--coverage` et `grep -rn "XXX-NNN" backend frontend`). Vérifie que le test vérifie réellement la règle.
 3. **Cohérence avec la spec** : le comportement obtenu correspond aux règles ; aucune règle existante n'est contredite ; les changements de comportement ont été signalés au porteur.
 4. **Non-régression** : effets de bord sur les autres fonctionnalités, migrations, contrat OpenAPI et client régénérés (`make openapi` ne produit aucun diff), isolation par propriétaire, absence de code de test en production.
 5. **Cohérence d'ensemble** : architecture (logique dans `cartouche-domain` / `src/lib`), textes d'interface dans `messages/fr.json`, lisibilité, absence de code mort ou de TODO oubliés.

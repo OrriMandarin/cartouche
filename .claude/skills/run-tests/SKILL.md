@@ -43,7 +43,7 @@ N'écrivez pas `pnpm -C frontend --filter web test -- <motif>` : le `--` est tra
 Un test cite sa règle (`// spec: ACC-004` en Rust, `ACC-004` dans le nom en TypeScript).
 
 ```bash
-grep -rn "ACC-004" apps e2e --include='*.rs' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.next
+grep -rn "ACC-004" backend frontend --include='*.rs' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.next
 ```
 
 Lancer ensuite chaque fichier trouvé (Rust : `--test <fichier sans .rs>` pour `backend/server/tests/<fichier>.rs`, ou `--lib` pour `src/` ; web : `pnpm -C frontend --filter web test <fichier>` ; e2e : `make e2e ARGS="-g ACC-004"`). Une règle sans test apparaît avec `node scripts/spec-lint.mjs --coverage`.
@@ -51,7 +51,7 @@ Lancer ensuite chaque fichier trouvé (Rust : `--test <fichier sans .rs>` pour `
 ## La suite complète (avant de conclure une tâche)
 
 ```bash
-make lint test e2e              # lint, tests unitaires + intégration + spec-lint, puis Playwright
+make lint test e2e              # lint, tests unitaires + intégration + spec-lint, puis Playwright : obligatoire avant chaque push (la CI ne lance l'e2e que sur main)
 node scripts/spec-lint.mjs --coverage   # règles sans test : à lire, pas bloquant
 make e2e-down                   # arrête la stack de test quand on a fini
 ```
