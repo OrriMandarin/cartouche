@@ -37,6 +37,25 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 
 Pre-flight of the plan (R-PF, before Task 1) then execution (R-E). Each line: decision — reason — cost if wrong.
 
+- Ruling R-PF0 (pre-task): the flaky `EventEditor.test.tsx` "FRM-028 FRM-029 a custom consent text…" test was a race in the test (the debounced consent-preview POST could land after the save and be read as its body); `lastBody()` now skips consent-preview calls (833dec7) — the component was right — cost if wrong: none.
+- Ruling R-PF1 (T7): `tests/migrations.rs::audit_log_requires_an_existing_actor` is deleted, replaced by `audit_actor_is_no_longer_a_foreign_key` (ACC-024) — it asserts the foreign key migration 0006 drops — cost if wrong: none.
+- Ruling R-PF2 (T3, T5, T7, T8): the plan's `cargo test` commands with two name filters are replaced by one filter per command — cargo takes a single filter — cost if wrong: none.
+- Ruling R-PF3 (T8): the failing test store delegates to `InMemory`, fails only `delete_stream` (never with `NotFound`) behind an on/off switch so the retry runs on the same app; `delete_me` maps a storage error to `Internal` explicitly — `From<MediaError>` maps `NotFound` to 404 — cost if wrong: none.
+- Ruling R-PF4 (T13): e2e tests that need a deleted Bob delete him through `DELETE /api/me` first — every test starts from a reseeded state — cost if wrong: none.
+- Ruling R-PF5 (T13): the deletion e2e lifts the support block of `bob-martin` first and visits only `/c/*` pages after the deletion — the seeded card is already neutral, and any dashboard page would recreate Bob's account (ACC-001) — cost if wrong: none.
+- Ruling R-PF6 (T13, T14): the leave guard becomes one `useLeaveGuard(dirty, message)` hook (`lib/leave-guard.ts`: `beforeunload` + capture-phase click on internal links) used by the card and event editors — the new "Mon compte" header link would otherwise leave both editors without asking (EDI-016, EDI-021) — cost if wrong: one hook.
+- Ruling R-PF7 (T14): the EDI-021 e2e checks the back link asks and a save goes to the event list without a dialog — a save already redirects; the editor has one link — cost if wrong: none.
+- Ruling R-PF8 (T13): the confirmation word "SUPPRIMER" lives in `fr.json` (`account.delete.confirmWord`) and `isDeletionConfirmed(input, word)` takes it as a parameter — it is interface text — cost if wrong: none.
+- Ruling R-PF9 (T12): the support lead pages get their own component test (ADM-017, ADM-018) — the plan named no test file — cost if wrong: none.
+- Ruling R-PF10 (T11): the EDI-010 link test lives with the component that gets `card-leads-link`; export e2e tests live in `exports.spec.ts`, not `leads.spec.ts` — file list fix — cost if wrong: none.
+- Ruling R-PF11 (T10, T11): the owner's spam and delete actions are built once in `lib/events/lead-actions.ts` and reused by both lead pages — no duplicated logic — cost if wrong: none.
+- Ruling R-PF12 (T9): `LeadList.tsx` switches to `leadHeading` in T9; a search word made only of zeros matches no phone — empty digits never match — cost if wrong: none.
+- Ruling R-PF13 (T3/T7): `slug_form` is the whole LNK-019 transformation including ligatures (ß→ss, œ→oe…), shared with `suggest_base` — one transformation, two callers — cost if wrong: none.
+- Ruling R-PF14 (T2): column order follows LEA-024 as T2's test states; Review Focus 3 lists columns, not an order — cost if wrong: none.
+- Ruling R-PF15 (T1): `spam_body_and_lead_id_are_checked` is a regression test that passes before the change — the extractors already reject bad input — cost if wrong: none.
+- Ruling R-PF17 (T2–T4): `ExportContext.event` alone decides the event scope, with a `debug_assert!` in `render` — one source of truth — cost if wrong: none.
+- Ruling R-PF18 (T7, T12, T13): extra tests: the pending/rejected/suspended screens all offer deletion, a support lead detail sends no request (ADM-019), a test reset empties `blocked_slugs` — partial coverage found in pre-flight — cost if wrong: a few tests.
+
 ## Deferred findings (carried over from plan 3)
 
 - In-memory rate limiter without a cap on tracked addresses (plan 3 R-E8): kept — plan 4 touches no anti-abuse rule; purge every 1,024 calls bounds it on a single instance.
