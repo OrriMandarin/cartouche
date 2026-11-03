@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { afterReload, localDate, refusalAction, unlockMessageKey } from "./flow";
+import { afterReload, refusalAction, unlockMessageKey, utcDate } from "./flow";
 import { publicEventForm } from "./form.fixture";
 
 describe("refusalAction", () => {
@@ -43,9 +43,11 @@ describe("unlockMessageKey", () => {
   });
 });
 
-describe("localDate", () => {
-  test("FRM-035 today is the visitor's calendar day", () => {
-    expect(localDate(new Date(2027, 2, 5, 23, 30))).toBe("2027-03-05");
+describe("utcDate", () => {
+  test("FRM-035 today is the UTC calendar day, as on the server, whatever the visitor's time zone", () => {
+    expect(utcDate(new Date("2027-03-05T23:30:00-05:00"))).toBe("2027-03-06");
+    expect(utcDate(new Date("2027-03-06T00:30:00+02:00"))).toBe("2027-03-05");
+    expect(utcDate(new Date("2027-12-31T23:59:59Z"))).toBe("2027-12-31");
   });
 });
 

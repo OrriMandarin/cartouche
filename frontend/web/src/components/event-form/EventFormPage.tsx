@@ -14,7 +14,7 @@ import {
   type LeadDraft,
 } from "@/lib/event-form/answers";
 import { getDeviceId } from "@/lib/event-form/device";
-import { afterReload, localDate, refusalAction, unlockMessageKey, type RefusalAction } from "@/lib/event-form/flow";
+import { afterReload, refusalAction, unlockMessageKey, utcDate, type RefusalAction } from "@/lib/event-form/flow";
 import { submissionOutcome } from "@/lib/event-form/outcome";
 import { clearDraft, loadDraft, saveDraft } from "@/lib/event-form/persist";
 import { reloadForm, submitLead, unlockEvent } from "@/lib/event-form/requests";
@@ -160,7 +160,7 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
 
   function submit() {
     if (!form || !draft) return;
-    const found = checkLeadDraft(form, draft, localDate(new Date()));
+    const found = checkLeadDraft(form, draft, utcDate(new Date()));
     setErrors(found);
     if (Object.keys(found).length > 0) {
       setMessage("eventForm.fix");

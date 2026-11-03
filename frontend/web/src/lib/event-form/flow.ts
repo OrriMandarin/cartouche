@@ -48,8 +48,10 @@ export function unlockMessageKey(outcome: SubmissionOutcome): string {
   return `eventForm.refused.${outcome.kind}`;
 }
 
-/** The visitor's calendar day, `AAAA-MM-JJ`, the latest birth date it accepts (FRM-035). */
-export function localDate(now: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+/**
+ * The UTC calendar day of `now`, `AAAA-MM-JJ`: the latest birth date accepted (FRM-035). The server bounds it by
+ * the same UTC day, so the browser never accepts a date the server refuses.
+ */
+export function utcDate(now: Date): string {
+  return now.toISOString().slice(0, 10);
 }
