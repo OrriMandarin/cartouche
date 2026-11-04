@@ -265,7 +265,9 @@
       "settings": {
         "links_layout": "Disposition des liens",
         "links_layout_icons": "Icônes",
-        "links_layout_list": "Liste"
+        "links_layout_list": "Liste",
+        "links_layout_icons_summary": "liens en icônes",
+        "links_layout_list_summary": "liens en liste"
       }
     }
   },
@@ -380,21 +382,64 @@
   "editor": {
     "title": "Modifier la carte",
     "loading": "Chargement de la carte…",
-    "back": "Retour",
     "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
     "formLabel": "Formulaire de la carte",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
-    "saved": "Modifications enregistrées",
+    "savedToast": "Carte enregistrée et publiée",
     "unsaved": "Modifications non enregistrées",
     "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+    "errorCount": "{count, plural, one {# erreur à corriger} other {# erreurs à corriger}}",
+    "errorSummary": "Rien n’a été enregistré\u00a0: {count, plural, one {# point à corriger} other {# points à corriger}}.",
+    "errorFields": {
+      "linkKind": "Type du lien {index}",
+      "linkLabel": "Intitulé du lien {index}",
+      "linkUrl": "Adresse du lien {index}",
+      "other": "Autre champ"
+    },
+    "publicPage": "Page publique",
+    "optional": "(facultatif)",
+    "blocked": {
+      "title": "Cette carte est désactivée par le support.",
+      "description": "Tu ne peux pas la modifier pour le moment. Ses événements restent modifiables et ses contacts exportables.",
+      "support": "Contacter le support"
+    },
+    "modes": {
+      "label": "Mode",
+      "edit": "Modifier",
+      "preview": "Aperçu"
+    },
+    "tabs": {
+      "label": "Sections",
+      "identity": "Identité",
+      "contact": "Coordonnées",
+      "links": "Liens",
+      "media": "Médias",
+      "appearance": "Apparence"
+    },
     "sections": {
       "identity": "Identité",
+      "contact": "Coordonnées",
       "links": "Liens",
+      "media": "Médias",
       "template": "Template",
       "settings": "Réglages du template",
-      "theme": "Apparence",
-      "media": "Photo et en-tête"
+      "theme": "Thème"
+    },
+    "summary": {
+      "noContact": "Aucune coordonnée",
+      "networks": "{count, plural, one {# réseau} other {# réseaux}}",
+      "customLinks": "{count, plural, one {# lien libre} other {# liens libres}}",
+      "noLinks": "Aucun lien",
+      "headerVideo": "Vidéo d’en-tête",
+      "headerImage": "Photo d’en-tête",
+      "avatar": "photo de profil",
+      "avatarAlone": "Photo de profil",
+      "noMedia": "Aucun média",
+      "themeCustomized": "{name}, personnalisé"
+    },
+    "hints": {
+      "description": "Deux ou trois lignes s’affichent le mieux."
     },
     "content": {
       "first_name": "Prénom",
@@ -481,6 +526,9 @@
     },
     "preview": {
       "title": "Aperçu de la carte",
+      "heading": "Aperçu",
+      "draft": "Brouillon, non publié",
+      "note": "L’aperçu suit chaque frappe. Rien n’est publié avant «\u00a0Enregistrer\u00a0».",
       "frame": "Aperçu dans un téléphone",
       "simulateEvent": "Simuler un événement en cours",
       "event": "Événement de démonstration"

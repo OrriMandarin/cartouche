@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { BrandMark } from "./BrandMark";
 
-export type Crumb = { label: string; href?: string };
+export type Crumb = { label: string; href?: string; testId?: string };
 export type BackAction = { href: string; label: string };
 
 /**
@@ -15,11 +15,15 @@ export type BackAction = { href: string; label: string };
  */
 export function TopBar({
   breadcrumb,
+  breadcrumbTail,
+  actions,
   title,
   back,
   action,
 }: {
   breadcrumb?: Crumb[] | undefined;
+  breadcrumbTail?: ReactNode;
+  actions?: ReactNode;
   title?: string | undefined;
   back?: BackAction | undefined;
   action?: ReactNode;
@@ -28,23 +32,25 @@ export function TopBar({
   return (
     <>
       {breadcrumb && breadcrumb.length > 0 ? (
-        <div className="border-app-border hidden min-h-[68px] items-center border-b px-10 @min-[848px]:flex">
-          <nav aria-label={t("breadcrumbLabel")} className="text-app-muted flex items-center gap-1.5 text-sm">
+        <div className="border-app-border hidden min-h-[68px] items-center justify-between gap-4 border-b pr-6 pl-10 @min-[848px]:flex">
+          <nav aria-label={t("breadcrumbLabel")} className="text-app-muted flex min-w-0 items-center gap-1.5 text-sm">
             {breadcrumb.map((crumb, index) => (
               <Fragment key={`${index}-${crumb.label}`}>
                 {index > 0 ? <ChevronRight aria-hidden="true" className="size-4" /> : null}
                 {crumb.href ? (
-                  <Link href={crumb.href} className="underline underline-offset-3">
+                  <Link href={crumb.href} data-testid={crumb.testId} className="flex-none whitespace-nowrap underline underline-offset-3">
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span aria-current="page" className="text-app-text font-semibold">
+                  <span aria-current="page" data-testid={crumb.testId} className="text-app-text min-w-[4rem] truncate font-semibold">
                     {crumb.label}
                   </span>
                 )}
               </Fragment>
             ))}
+            {breadcrumbTail}
           </nav>
+          {actions ? <div className="flex flex-none items-center gap-2.5">{actions}</div> : null}
         </div>
       ) : null}
       <div className="bg-app-surface border-app-border sticky top-0 z-10 flex min-h-14 items-center gap-1 border-b pr-1.5 pl-2 @min-[848px]:hidden">

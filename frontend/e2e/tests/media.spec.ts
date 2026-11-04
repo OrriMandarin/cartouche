@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { expect, test } from "../fixtures";
+import { editorSaveButton, expect, openEditorSection, saveCard, showEditorView, test } from "../fixtures";
 import { WEB_URL } from "../env";
 
 let aliceCardId: string;
@@ -15,18 +15,20 @@ test.beforeEach(async ({ api, loginAs }) => {
 const editorUrl = () => `/dashboard/cards/${aliceCardId}`;
 const fixture = (name: string) => new URL(`../fixtures/${name}`, import.meta.url).pathname;
 
-async function save(page: import("@playwright/test").Page) {
-  await page.getByTestId("editor-save").click();
-  await expect(page.getByTestId("editor-status")).toHaveText("Modifications enregistrées");
+/** The editor of Alice's card, its media section unfolded on a phone. */
+async function openMedia(page: import("@playwright/test").Page) {
+  await page.goto(editorUrl());
+  await openEditorSection(page, "media");
 }
 
 test("MED-005 MED-006 PUB-014 avatar is cropped, published as WebP and in the vCard", async ({ page, api }) => {
-  await page.goto(editorUrl());
+  await openMedia(page);
   await page.getByTestId("media-avatar-input").setInputFiles(fixture("avatar.jpg"));
   await page.getByTestId("avatar-crop-confirm").click();
   await expect(page.getByTestId("media-avatar-current")).toBeVisible();
+  await showEditorView(page, "Aperçu");
   await expect(page.getByTestId("phone-preview").getByTestId("card-avatar")).toBeVisible();
-  await save(page);
+  await saveCard(page);
 
   await page.goto("/c/alice-durand");
   const avatar = page.getByTestId("card-avatar");
@@ -39,10 +41,10 @@ test("MED-005 MED-006 PUB-014 avatar is cropped, published as WebP and in the vC
 });
 
 test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page }) => {
-  await page.goto(editorUrl());
+  await openMedia(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-2s.mp4"));
   await expect(page.getByTestId("media-header-current")).toContainText("vidéo");
-  await save(page);
+  await saveCard(page);
 
   await page.goto("/c/alice-durand");
   const video = page.getByTestId("card-header-video");
@@ -58,11 +60,11 @@ test("MED-013 too long video is refused before upload", async ({ page }) => {
   page.on("request", (request) => {
     if (request.method() === "POST" && request.url().includes("/media")) uploads.push(request.url());
   });
-  await page.goto(editorUrl());
+  await openMedia(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-31s.mp4"));
   await expect(page.getByTestId("media-header-error")).toHaveText("La vidéo dépasse 30 secondes");
   expect(uploads).toEqual([]);
-  await expect(page.getByTestId("editor-save")).toBeDisabled();
+  await expect(editorSaveButton(page)).toBeDisabled();
 });
 
 test("MED-017 media served through the web origin honours Range", async ({ api }) => {
@@ -101,7 +103,7 @@ test("MED-012 uploads above 10 MB pass the web rewrite", async ({ api }) => {
 });
 
 test("MED-018 EDI-006 an unsaved upload does not reach the public page", async ({ page, context }) => {
-  await page.goto(editorUrl());
+  await openMedia(page);
   await page.getByTestId("media-avatar-input").setInputFiles(fixture("avatar.jpg"));
   await page.getByTestId("avatar-crop-confirm").click();
   await expect(page.getByTestId("media-avatar-current")).toBeVisible();

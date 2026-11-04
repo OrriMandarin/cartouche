@@ -12,8 +12,16 @@ export const classiqueSettingsSchema: SettingsSchema = {
       key: "links_layout",
       labelKey: "templates.classique.settings.links_layout",
       options: [
-        { value: "icons", labelKey: "templates.classique.settings.links_layout_icons" },
-        { value: "list", labelKey: "templates.classique.settings.links_layout_list" },
+        {
+          value: "icons",
+          labelKey: "templates.classique.settings.links_layout_icons",
+          summaryKey: "templates.classique.settings.links_layout_icons_summary",
+        },
+        {
+          value: "list",
+          labelKey: "templates.classique.settings.links_layout_list",
+          summaryKey: "templates.classique.settings.links_layout_list_summary",
+        },
       ],
       default: "icons",
     },

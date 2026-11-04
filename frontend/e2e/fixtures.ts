@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { test as base, expect, request, type APIRequestContext, type Download, type Page } from "@playwright/test";
+import { test as base, expect, request, type APIRequestContext, type Download, type Locator, type Page } from "@playwright/test";
 import { API_URL, EVENTS_NOW } from "./env";
 
 /** How a media is framed on upload (MED-026, MED-028); what is left out takes the server's default. */
@@ -402,4 +402,36 @@ export async function openCardMenu(page: Page, slug: string): Promise<void> {
   await expect(page.getByRole("menu")).toHaveCount(0);
   await page.getByTestId(`card-menu-${slug}`).click();
   await expect(page.getByRole("menu")).toBeVisible();
+}
+
+/**
+ * The card editor's « Enregistrer »: in the top bar on a computer, in the sticky save bar on a phone
+ * (EDI-003). Only one of them is shown at a time.
+ */
+export function editorSaveButton(page: Page): Locator {
+  return page.locator('[data-testid="editor-save"]:visible, [data-testid="editor-save-bar"]:visible');
+}
+
+/** Saves the card and waits for the confirmation (EDI-027). */
+export async function saveCard(page: Page): Promise<void> {
+  await editorSaveButton(page).click();
+  await expect(page.getByText("Carte enregistrée et publiée")).toBeVisible();
+}
+
+export type EditorSection = "identity" | "contact" | "links" | "media" | "template" | "theme";
+
+/** Unfolds a section of the card editor on a phone; a computer shows every section already. */
+export async function openEditorSection(page: Page, section: EditorSection): Promise<void> {
+  // The editor appears once the card is loaded; only then does the toggle tell whether it is shown.
+  await expect(page.getByTestId("card-editor")).toBeVisible();
+  const toggle = page.getByTestId(`editor-section-toggle-${section}`);
+  if ((await toggle.isVisible()) && (await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  await expect(page.getByTestId(`editor-section-body-${section}`)).toBeVisible();
+}
+
+/** Shows the « Aperçu » or the « Modifier » view of the card editor on a phone; a computer shows both. */
+export async function showEditorView(page: Page, view: "Modifier" | "Aperçu"): Promise<void> {
+  await expect(page.getByTestId("card-editor")).toBeVisible();
+  const tab = page.getByRole("tab", { name: view });
+  if (await tab.isVisible()) await tab.click();
 }

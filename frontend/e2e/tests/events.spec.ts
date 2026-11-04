@@ -72,7 +72,7 @@ test("EDI-009 EDI-018 EVT-020 the events of a card in three groups", async ({ pa
 
 test("EDI-018 the events are also one click away from the editor of the card", async ({ page }) => {
   await page.goto(`/dashboard/cards/${aliceCardId}`);
-  await page.getByTestId("editor-events").click();
+  await page.locator('[data-testid^="editor-events"]:visible').click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(page.getByTestId("events-group-running")).toBeVisible();
 });

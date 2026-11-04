@@ -3,7 +3,8 @@ export type SettingsField =
       kind: "select";
       key: string;
       labelKey: string;
-      options: { value: string; labelKey: string }[];
+      /** `summaryKey`: how the option reads in the folded template section of the phone editor (EDI-003). */
+      options: { value: string; labelKey: string; summaryKey?: string }[];
       default: string;
     }
   | { kind: "boolean"; key: string; labelKey: string; default: boolean }

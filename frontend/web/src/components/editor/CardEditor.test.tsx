@@ -2,6 +2,7 @@ import { ApiError } from "@cartouche/api-client";
 import { configure, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { cardView } from "@/components/cards/card-view.fixture";
+import { AppShell } from "@/components/shell/AppShell";
 import type { CardView } from "@/lib/cards/types";
 import { CardEditor } from "./CardEditor";
 import { chooseOption, renderWithIntl } from "./test-helpers";
@@ -13,6 +14,9 @@ const get = vi.fn();
 const put = vi.fn();
 const uploadMedia = vi.fn();
 vi.mock("@/lib/api", () => ({ useApi: () => ({ GET: get, PUT: put }), useUploadMedia: () => uploadMedia }));
+const showToast = vi.fn();
+vi.mock("@/lib/toast", () => ({ showToast: (...args: unknown[]) => showToast(...args) }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard/cards/0198c8a0-0000-7000-8000-000000000001" }));
 
 const avatar = {
   id: "0198a1a0-0000-7000-8000-000000000002",
@@ -29,8 +33,13 @@ const card = (overrides: Partial<CardView> = {}) =>
     ...overrides,
   });
 
+/** The editor inside the dashboard shell, which holds its top bar actions and its phone save bar. */
 function renderEditor(value = card()) {
-  return renderWithIntl(<CardEditor card={value} />);
+  return renderWithIntl(
+    <AppShell user={{ name: "Alice Durand", email: "alice@example.test" }} onSignOut={() => undefined}>
+      <CardEditor card={value} />
+    </AppShell>,
+  );
 }
 
 function type(testId: string, value: string) {
@@ -43,6 +52,7 @@ const validationFailed = (fields: { field: string; code: string }[]) =>
 beforeEach(() => {
   get.mockReset().mockResolvedValue({ data: { status: "current", slug: null } });
   put.mockReset();
+  showToast.mockReset();
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -54,9 +64,155 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     const form = screen.getByRole("form", { name: "Formulaire de la carte" });
     const preview = screen.getByRole("region", { name: "Aperçu de la carte" });
     expect(within(preview).getByTestId("phone-preview")).toBeInTheDocument();
+    expect(within(preview).getByText("Brouillon, non publié")).toBeInTheDocument();
+    expect(within(preview).getByText(/^L’aperçu suit chaque frappe/).textContent).toBe(
+      "L’aperçu suit chaque frappe. Rien n’est publié avant «\u00a0Enregistrer\u00a0».",
+    );
     expect(within(form).queryByTestId("phone-preview")).toBeNull();
-    // The columns are side by side from the large breakpoint, stacked below it.
-    expect(screen.getByTestId("card-editor").className).toContain("lg:grid-cols-2");
+    // On a computer the columns sit side by side: the form, then a 440 px preview column.
+    expect(screen.getByTestId("card-editor").className).toContain("@min-[848px]:grid-cols-[minmax(0,1fr)_440px]");
+    // The anchor tabs lead to the sections of the form.
+    const tabs = within(screen.getByRole("navigation", { name: "Sections" })).getAllByRole("link");
+    expect(tabs.map((tab) => [tab.textContent, tab.getAttribute("href")])).toEqual([
+      ["Identité", "#section-identity"],
+      ["Coordonnées", "#section-contact"],
+      ["Liens", "#section-links"],
+      ["Médias", "#section-media"],
+      ["Apparence", "#section-template"],
+    ]);
+  });
+
+  test("EDI-003 on a phone Modifier and Aperçu switch views", () => {
+    renderEditor();
+    const form = screen.getByRole("form", { name: "Formulaire de la carte" });
+    const preview = screen.getByRole("region", { name: "Aperçu de la carte" });
+    const edit = screen.getByRole("tab", { name: "Modifier" });
+    const show = screen.getByRole("tab", { name: "Aperçu" });
+    expect(edit).toHaveAttribute("aria-selected", "true");
+    expect(form.className).not.toContain("@max-[847px]:hidden");
+    expect(preview.className).toContain("@max-[847px]:hidden");
+
+    fireEvent.click(show);
+    expect(show).toHaveAttribute("aria-selected", "true");
+    expect(edit).toHaveAttribute("aria-selected", "false");
+    expect(form.className).toContain("@max-[847px]:hidden");
+    expect(preview.className).not.toContain("@max-[847px]:hidden");
+
+    fireEvent.click(edit);
+    expect(form.className).not.toContain("@max-[847px]:hidden");
+  });
+
+  test("EDI-003 on a phone the sections fold, each with its summary", () => {
+    renderEditor(card({ content: { first_name: "Alice", last_name: "Durand", email: "alice@example.test", phone: "+33639984217" } }));
+    const identity = screen.getByTestId("editor-section-toggle-identity");
+    const contact = screen.getByTestId("editor-section-toggle-contact");
+    expect(identity).toHaveAttribute("aria-expanded", "true");
+    expect(contact).toHaveAttribute("aria-expanded", "false");
+    expect(contact).toHaveTextContent("Coordonnées");
+    expect(contact).toHaveTextContent("alice@example.test · +33639984217");
+    expect(screen.getByTestId("editor-section-toggle-links")).toHaveTextContent("1 lien libre");
+    expect(screen.getByTestId("editor-section-body-contact").className).toContain("@max-[847px]:hidden");
+
+    fireEvent.click(contact);
+    expect(contact).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("editor-section-body-contact").className).not.toContain("@max-[847px]:hidden");
+    // Folded again, the summary follows the draft.
+    type("editor-email", "zoe@example.test");
+    fireEvent.click(contact);
+    expect(contact).toHaveAttribute("aria-expanded", "false");
+    expect(contact).toHaveTextContent("zoe@example.test · +33639984217");
+  });
+
+  test("EDI-007 optional fields are marked and the description has its hint", () => {
+    renderEditor();
+    expect(screen.getByLabelText("Prénom")).toBe(screen.getByTestId("editor-first_name"));
+    expect(screen.getByLabelText("Poste (facultatif)")).toBe(screen.getByTestId("editor-job_title"));
+    expect(screen.getByTestId("editor-description")).toHaveAccessibleDescription("Deux ou trois lignes s’affichent le mieux.");
+  });
+
+  test("EDI-027 the unsaved badge follows the draft", () => {
+    renderEditor();
+    expect(screen.getByTestId("editor-status")).toBeEmptyDOMElement();
+    expect(screen.getByTestId("editor-save-bar")).toBeDisabled();
+    type("editor-job_title", "Directrice");
+    expect(screen.getByTestId("editor-status")).toHaveTextContent("Modifications non enregistrées");
+    expect(screen.getByTestId("editor-status-phone")).toHaveTextContent("Modifications non enregistrées");
+    expect(screen.getByTestId("editor-save-bar")).toBeEnabled();
+    type("editor-job_title", "Fondatrice");
+    expect(screen.getByTestId("editor-status")).toBeEmptyDOMElement();
+    expect(screen.getByTestId("editor-status-phone")).toBeEmptyDOMElement();
+  });
+
+  test("EDI-027 a refused save lists the fields with links", async () => {
+    put.mockRejectedValue(
+      validationFailed([
+        { field: "links[0].url", code: "invalid_url" },
+        { field: "content.email", code: "invalid_email" },
+      ]),
+    );
+    renderEditor();
+    type("editor-email", "pas-un-email");
+    fireEvent.click(screen.getByTestId("editor-save"));
+
+    const summary = await screen.findByTestId("editor-error-summary");
+    expect(summary.textContent).toContain("Rien n’a été enregistré\u00a0: 2 points à corriger.");
+    const links = within(summary).getAllByRole("link");
+    expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["E-mail", "#editor-email"],
+      ["Adresse du lien 1", "#link-url-0"],
+    ]);
+    expect(screen.getByTestId("editor-error-count")).toHaveTextContent("2 erreurs à corriger");
+    // The sections holding an error open on a phone.
+    expect(screen.getByTestId("editor-section-toggle-contact")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("editor-section-toggle-links")).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(links[1]!);
+    await waitFor(() => expect(screen.getByTestId("link-url-0")).toHaveFocus());
+
+    // Correcting a field takes it out of the summary.
+    type("editor-email", "alice@example.test");
+    expect(screen.getByTestId("editor-error-summary")).toHaveTextContent("1 point à corriger.");
+    expect(screen.getByTestId("editor-error-count")).toHaveTextContent("1 erreur à corriger");
+  });
+
+  test("EDI-027 a successful save says Carte enregistrée et publiée", async () => {
+    put.mockResolvedValue({ data: card({ content: { first_name: "Alice", job_title: "Directrice" } }) });
+    renderEditor();
+    type("editor-job_title", "Directrice");
+    fireEvent.click(screen.getByTestId("editor-save-bar"));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith("Carte enregistrée et publiée"));
+    expect(screen.getByTestId("editor-status")).toBeEmptyDOMElement();
+  });
+
+  test("EDI-027 the top bar shows the public link and the page; the save bar replaces the tab bar", () => {
+    renderEditor();
+    expect(screen.queryByTestId("tab-cards")).toBeNull();
+    expect(screen.getByTestId("editor-save-bar")).toBeInTheDocument();
+    const crumbs = screen.getByRole("navigation", { name: "Fil d’Ariane" });
+    expect(crumbs).toHaveTextContent("Mes cartes");
+    expect(crumbs).toHaveTextContent("Alice Durand");
+    expect(screen.getByTestId("editor-slug")).toHaveTextContent("/c/alice-durand");
+    expect(screen.getByTestId("shell-title")).toHaveTextContent("Alice Durand");
+    expect(screen.getByTestId("editor-public-page")).toHaveAttribute("href", "http://localhost:13000/c/alice-durand");
+    expect(screen.getByTestId("editor-public-page")).toHaveAttribute("target", "_blank");
+    expect(screen.getByTestId("editor-save")).toBeDisabled();
+  });
+
+  test("LNK-036 a blocked card opens read-only", () => {
+    renderEditor(card({ status: "disabled_by_support" }));
+    expect(screen.getByTestId("editor-blocked")).toHaveTextContent("désactivée par le support");
+    expect(within(screen.getByTestId("editor-blocked")).getByRole("link", { name: "Contacter le support" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("mailto:"),
+    );
+    expect(screen.getByTestId("editor-job_title")).toBeDisabled();
+    expect(screen.getByTestId("link-url-0")).toBeDisabled();
+    expect(screen.getByTestId("slug-input")).toBeDisabled();
+    expect(screen.queryByTestId("editor-save")).toBeNull();
+    expect(screen.queryByTestId("editor-save-bar")).toBeNull();
+    // The preview still works.
+    fireEvent.click(screen.getByTestId("simulate-event"));
+    expect(within(screen.getByTestId("phone-preview")).getByTestId("event-button-preview")).toBeInTheDocument();
   });
 
   test("EDI-004 preview updates on each keystroke, with no save", () => {
@@ -118,7 +274,7 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(screen.getByTestId("editor-status")).toHaveTextContent("Modifications non enregistrées");
     fireEvent.click(screen.getByTestId("editor-save"));
 
-    await waitFor(() => expect(screen.getByTestId("editor-status")).toHaveTextContent("Modifications enregistrées"));
+    await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
     expect(put).toHaveBeenCalledWith("/api/cards/{id}", {
       params: { path: { id: stored.id } },
       body: expect.objectContaining({
@@ -342,7 +498,7 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     renderEditor();
     type("editor-job_title", "Directrice");
     fireEvent.click(screen.getByTestId("editor-save"));
-    await waitFor(() => expect(screen.getByTestId("editor-status")).toHaveTextContent("Modifications enregistrées"));
+    await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
     const event = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(false);

@@ -13,3 +13,8 @@ export function fieldErrorKeys(fields: readonly FieldError[]): Record<string, st
   }
   return errors;
 }
+
+/** Id of the message under a field, from the field's path in the request (`links[0].url` → `field-error-links-0-url`). */
+export function fieldErrorId(path: string): string {
+  return `field-error-${path.replace(/[^a-zA-Z0-9]+/g, "-").replace(/-$/, "")}`;
+}
