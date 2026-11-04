@@ -14,7 +14,7 @@ const VARIANT = {
 export function CardStatusBadge({ status, slug }: { status: CardStatus; slug: string }) {
   const t = useTranslations();
   return (
-    <Badge variant={VARIANT[status]} data-testid={`card-status-${slug}`}>
+    <Badge variant={VARIANT[status]} className="whitespace-normal" data-testid={`card-status-${slug}`}>
       {t(cardStatusLabelKey(status))}
     </Badge>
   );

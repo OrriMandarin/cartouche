@@ -140,6 +140,13 @@ test("EDI-023 EDI-024 the card list of Alice", async ({ page, api, loginAs }) =>
   await expect(page.getByTestId("card-events-alice-durand")).toHaveText("3 en cours · 1 à venir");
   await expect(page.getByTestId("card-status-alice-archive")).toHaveText("Désactivée");
 
+  if (page.viewportSize()!.width >= 900) {
+    // On a computer the events link and the Modifier button sit side by side without overlapping.
+    const events = (await page.getByTestId("card-events-alice-durand").boundingBox())!;
+    const edit = (await page.getByTestId("card-edit-alice-durand").boundingBox())!;
+    expect(events.x + events.width).toBeLessThanOrEqual(edit.x);
+  }
+
   await openCardMenu(page, "alice-durand");
   await page.getByTestId("card-delete-alice-durand").click();
   const dialog = page.getByRole("alertdialog");

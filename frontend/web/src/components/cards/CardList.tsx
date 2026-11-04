@@ -14,7 +14,7 @@ import { CardThumbnail } from "./CardThumbnail";
 import { CopyLinkButton } from "./ShareCard";
 
 const GRID =
-  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 @min-[848px]:grid-cols-[56px_minmax(0,1.2fr)_minmax(0,1.4fr)_128px_180px_140px] @min-[848px]:gap-x-4 @min-[848px]:px-5";
+  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 @min-[848px]:grid-cols-[56px_minmax(0,1.2fr)_minmax(0,1.4fr)_120px_190px_176px] @min-[848px]:gap-x-4 @min-[848px]:px-5";
 
 function EventsSummary({ card }: { card: CardView }) {
   const t = useTranslations("cards.events");
@@ -23,7 +23,7 @@ function EventsSummary({ card }: { card: CardView }) {
     <Link
       href={`/dashboard/cards/${card.id}/events`}
       data-testid={`card-events-${card.slug}`}
-      className="text-app-text focus-visible:outline-app-ring inline-flex min-h-11 items-center gap-2 whitespace-nowrap justify-self-end text-[13px] font-semibold underline underline-offset-3 focus-visible:outline-2 focus-visible:outline-offset-2 @min-[848px]:justify-self-start @min-[848px]:text-sm"
+      className="text-app-text focus-visible:outline-app-ring inline-flex min-h-11 items-center gap-2 justify-self-end text-[13px] font-semibold underline underline-offset-3 focus-visible:outline-2 focus-visible:outline-offset-2 @min-[848px]:justify-self-start @min-[848px]:text-sm"
     >
       <Calendar aria-hidden="true" className="size-[18px]" />
       {parts.length === 0 ? t("none") : parts.map((part) => t(part.key, { count: part.count })).join(" · ")}

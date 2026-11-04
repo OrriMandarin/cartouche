@@ -171,7 +171,7 @@
     },
     "delete": {
       "title": "Supprimer cette carte\u00a0?",
-      "description": "{total, plural, =0 {La carte <b>{slug}</b> sera supprimée définitivement.} other {La carte <b>{slug}</b>, {events, plural, =0 {aucun événement} one {son événement} other {ses # événements}} et {leads, plural, =0 {aucun contact} one {son contact} other {ses # contacts}} seront supprimés définitivement.}} Les tags NFC et QR codes qui pointent vers ce lien afficheront «\u00a0Cette carte n’est pas disponible\u00a0».",
+      "description": "{total, plural, =0 {La carte <b>{slug}</b> sera supprimée définitivement.} other {La carte <b>{slug}</b>{events, plural, =0 {} one {{eventsLead} son événement} other {{eventsLead} ses # événements}}{leads, plural, =0 {} one { et son contact} other { et ses # contacts}} seront supprimés définitivement.}} Les tags NFC et QR codes qui pointent vers ce lien afficheront «\u00a0Cette carte n’est pas disponible\u00a0».",
       "cancel": "Annuler",
       "confirm": "Supprimer définitivement"
     },

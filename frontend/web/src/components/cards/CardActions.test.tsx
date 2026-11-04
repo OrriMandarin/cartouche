@@ -131,7 +131,9 @@ describe("CardActions", { timeout: 15_000 }, () => {
   test("EDI-024 the deletion dialog reads well with one, zero and no contents", async () => {
     const cases: [CardCounts, string][] = [
       [{ events: 1, leads: 1 }, "La carte alice-durand, son événement et son contact seront supprimés définitivement."],
-      [{ events: 0, leads: 3 }, "La carte alice-durand, aucun événement et ses 3 contacts seront supprimés définitivement."],
+      [{ events: 0, leads: 3 }, "La carte alice-durand et ses 3 contacts seront supprimés définitivement."],
+      [{ events: 1, leads: 0 }, "La carte alice-durand et son événement seront supprimés définitivement."],
+      [{ events: 5, leads: 0 }, "La carte alice-durand et ses 5 événements seront supprimés définitivement."],
       [{ events: 0, leads: 0 }, "La carte alice-durand sera supprimée définitivement."],
     ];
     for (const [{ events, leads }, sentence] of cases) {

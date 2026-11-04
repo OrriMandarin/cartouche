@@ -45,6 +45,7 @@ export function DeleteCardDialog({
               slug: card.slug,
               events: running + upcoming + past,
               leads: card.lead_count,
+              eventsLead: card.lead_count > 0 ? "," : " et",
               total: running + upcoming + past + card.lead_count,
               b: (chunks) => <b className="text-app-text">{chunks}</b>,
             })}
