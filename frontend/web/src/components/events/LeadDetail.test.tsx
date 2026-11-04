@@ -153,9 +153,9 @@ describe("LeadDetail", () => {
     show();
     fireEvent.click(screen.getByTestId("lead-detail-spam"));
     await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
-    const action = showToast.mock.calls[0][1].action;
+    const [, options] = showToast.mock.calls[0] as [string, { action: { onClick: () => void } }];
     setSpam.mockRejectedValue(new ApiError({ status: 500, code: "internal_error", message: "Boom.", requestId: "req-undo" }));
-    action.onClick();
+    options.action.onClick();
     await waitFor(() => expect(showToast).toHaveBeenCalledWith("L’annulation a échoué. Réessaie dans un instant."));
   });
 

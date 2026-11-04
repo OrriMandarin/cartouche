@@ -3,7 +3,7 @@
 import { Pencil, Square, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export function EventActions({ event, onChanged }: { event: EventView; onChanged
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [deleting, setDeleting] = useState(false);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const params = { params: { path: { id: event.id } } };
   const base = `/dashboard/cards/${event.card_id}/events/${event.id}`;
   const knownError = eventErrorKey(error);
@@ -67,6 +68,7 @@ export function EventActions({ event, onChanged }: { event: EventView; onChanged
           </Button>
         ) : null}
         <Button
+          ref={deleteButtonRef}
           variant="dangerGhost"
           size="icon"
           disabled={busy}
@@ -89,6 +91,7 @@ export function EventActions({ event, onChanged }: { event: EventView; onChanged
         event={event}
         open={deleting}
         onOpenChange={setDeleting}
+        returnFocusRef={deleteButtonRef}
         onConfirm={() => {
           setDeleting(false);
           void run(() => api.DELETE("/api/events/{id}", params));

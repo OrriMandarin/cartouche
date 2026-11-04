@@ -23,6 +23,13 @@ function open(scope: Parameters<typeof ExportDialog>[0]["scope"] = { kind: "even
 }
 
 describe("ExportDialog", () => {
+  test("LEA-021 closing the dialog returns the focus to the export button", async () => {
+    open();
+    fireEvent.click(await screen.findByTestId("export-cancel"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByTestId("export-open")).toHaveFocus();
+  });
+
   test("LEA-021 the dialog offers the three formats, CSV chosen, spam left out, and a hint for Excel users", async () => {
     open();
     expect(await screen.findByRole("dialog")).toBeVisible();

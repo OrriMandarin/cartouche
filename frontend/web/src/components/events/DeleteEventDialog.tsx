@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { type RefObject, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { EventView } from "@/lib/events/types";
 import { ExportDialogPanel } from "./ExportDialog";
+import { returnFocus } from "./return-focus";
 
 /**
  * spec: EDI-033, EVT-024, LEA-006. Confirms the deletion of an event and announces the contacts that go with it.
@@ -27,11 +28,14 @@ export function DeleteEventDialog({
   open,
   onOpenChange,
   onConfirm,
+  returnFocusRef,
 }: {
   event: EventView;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  /** The button that opened the dialog, which gets the focus back when it closes. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const t = useTranslations("events");
   const [exporting, setExporting] = useState(false);
@@ -40,7 +44,7 @@ export function DeleteEventDialog({
   return (
     <>
       <AlertDialog open={open && !exporting} onOpenChange={onOpenChange}>
-        <AlertDialogContent>
+        <AlertDialogContent onCloseAutoFocus={returnFocus(returnFocusRef)}>
           <AlertDialogHeader>
             <span className="bg-app-danger-soft text-app-danger grid size-11 place-items-center rounded-full">
               <Trash2 aria-hidden="true" className="size-5" />

@@ -144,6 +144,14 @@ describe("EventList", () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
   });
 
+  test("EDI-033 closing the deletion dialog returns the focus to the delete button of the row", async () => {
+    renderList();
+    fireEvent.click(screen.getByTestId("event-delete-running-1"));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByTestId("event-delete-cancel"));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByTestId("event-delete-running-1")).toHaveFocus();
+  });
+
   test("EDI-033 the deletion dialog counts the contacts and offers the export", async () => {
     renderList();
     fireEvent.click(screen.getByTestId("event-delete-running-1"));
