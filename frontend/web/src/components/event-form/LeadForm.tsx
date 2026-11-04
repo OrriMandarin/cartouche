@@ -1,15 +1,17 @@
+import { Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, type FormEvent, type HTMLAttributes, type ReactNode } from "react";
 import type { AddressPart, DraftEdit, LeadDraft, StandardAnswerKey } from "@/lib/event-form/answers";
 import type { PublicCustomField, PublicEventForm } from "@/lib/event-form/types";
+import { privacyUrl } from "@/lib/instance-links";
 import { ConsentField } from "./ConsentField";
+import { FormHead } from "./FormChrome";
 import { Honeypot } from "./Honeypot";
-import { BUTTON_STYLE, HEADING_STYLE, INPUT_CLASS, INPUT_STYLE } from "./styles";
 
 type InputMode = HTMLAttributes<HTMLInputElement>["inputMode"];
 
 interface InputKind {
-  type: "text" | "email" | "tel" | "date";
+  type: "text" | "email" | "tel" | "date" | "datetime-local";
   autoComplete: string;
   inputMode?: InputMode;
 }
@@ -45,10 +47,16 @@ function describedBy(...ids: (string | false | undefined)[]): string | undefined
 function ErrorText({ id, path, message }: { id: string | undefined; path: string; message: string }) {
   const t = useTranslations();
   return (
-    <p id={id} data-testid={`field-error-${path}`} className="mt-1 text-sm font-medium">
+    <p id={id} data-testid={`field-error-${path}`} className="fm-error">
       {t(message)}
     </p>
   );
+}
+
+/** "(facultatif)" after the label of an optional field; a required one carries no mark (FRM-045). */
+function OptionalMark({ required }: { required: boolean }) {
+  const t = useTranslations("eventForm");
+  return required ? null : <span className="fm-opt"> ({t("optional")})</span>;
 }
 
 interface FieldProps {
@@ -61,31 +69,28 @@ interface FieldProps {
   children(props: { id: string; "aria-invalid"?: true; "aria-describedby"?: string; "data-testid": string }): ReactNode;
 }
 
-/** A label, the control, its help and its error, right next to it (FRM-015). */
+/** A label, its help, the control and its error, right next to it (FRM-015, FRM-045). */
 function Field({ path, label, required, help, error, children }: FieldProps) {
-  const t = useTranslations();
   const id = inputId(path);
   const helpId = help ? `${id}-help` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   return (
-    <div className="mt-4">
-      <label htmlFor={id} className="block font-medium">
+    <div className="fm-field">
+      <label htmlFor={id} className="fm-label">
         {label}
-        {!required && <span className="font-normal opacity-75"> ({t("eventForm.optional")})</span>}
+        <OptionalMark required={required} />
       </label>
       {help && (
-        <p id={helpId} className="text-sm opacity-80">
+        <p id={helpId} className="fm-hint">
           {help}
         </p>
       )}
-      <div className="mt-1">
-        {children({
-          id,
-          ...(error ? { "aria-invalid": true } : {}),
-          "aria-describedby": describedBy(helpId, errorId),
-          "data-testid": `field-${path}`,
-        })}
-      </div>
+      {children({
+        id,
+        ...(error ? { "aria-invalid": true } : {}),
+        "aria-describedby": describedBy(helpId, errorId),
+        "data-testid": `field-${path}`,
+      })}
       {error && <ErrorText id={errorId} path={path} message={error} />}
     </div>
   );
@@ -112,14 +117,27 @@ function TextInput({ path, label, required, kind, value, error, help, onChange }
           autoComplete={kind.autoComplete}
           inputMode={kind.inputMode}
           aria-required={required || undefined}
-          className={INPUT_CLASS}
-          style={INPUT_STYLE}
+          className="fm-input"
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
       )}
     </Field>
   );
+}
+
+/** The input of a custom field typed as text: native pickers and keyboards (FRM-039, FRM-045). */
+function customInputKind(kind: PublicCustomField["kind"]): InputKind {
+  switch (kind) {
+    case "date":
+      return { type: "date", autoComplete: "off" };
+    case "datetime":
+      return { type: "datetime-local", autoComplete: "off" };
+    case "number":
+      return { type: "text", autoComplete: "off", inputMode: "decimal" };
+    default:
+      return { type: "text", autoComplete: "off" };
+  }
 }
 
 interface CustomInputProps {
@@ -141,25 +159,21 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
       const errorId = error ? `${id}-error` : undefined;
       const helpId = field.help ? `${id}-help` : undefined;
       return (
-        <div className="mt-4">
-          <div className="flex items-start gap-3">
+        <div className="fm-field">
+          <div className="fm-check">
             <input
               id={id}
               type="checkbox"
               data-testid={`field-${path}`}
-              className="mt-1 h-5 w-5 shrink-0"
-              style={{ accentColor: "var(--c-accent)" }}
               aria-invalid={error ? true : undefined}
               aria-describedby={describedBy(helpId, errorId)}
               checked={value === true}
               onChange={(event) => onChange(event.target.checked)}
             />
-            <label htmlFor={id} className="font-medium">
-              {field.label}
-            </label>
+            <label htmlFor={id}>{field.label}</label>
           </div>
           {field.help && (
-            <p id={helpId} className="text-sm opacity-80">
+            <p id={helpId} className="fm-hint">
               {field.help}
             </p>
           )}
@@ -175,8 +189,7 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
               {...attributes}
               rows={4}
               aria-required={field.required || undefined}
-              className={INPUT_CLASS}
-              style={INPUT_STYLE}
+              className="fm-input"
               value={text}
               onChange={(event) => onChange(event.target.value)}
             />
@@ -190,8 +203,7 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
             <select
               {...attributes}
               aria-required={field.required || undefined}
-              className={INPUT_CLASS}
-              style={INPUT_STYLE}
+              className="fm-input"
               value={text}
               onChange={(event) => onChange(event.target.value)}
             >
@@ -205,20 +217,28 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
           )}
         </Field>
       );
-    default: {
-      const kind: InputKind =
-        field.kind === "date"
-          ? { type: "date", autoComplete: "off" }
-          : field.kind === "number"
-            ? { type: "text", autoComplete: "off", inputMode: "decimal" }
-            : { type: "text", autoComplete: "off" };
-      return <TextInput {...common} kind={kind} value={text} onChange={onChange} />;
-    }
+    default:
+      return <TextInput {...common} kind={customInputKind(field.kind)} value={text} onChange={onChange} />;
   }
+}
+
+type StandardField = PublicEventForm["standard_fields"][number];
+
+/** The standard fields, the first and last names side by side when both follow each other (FRM-044). */
+function standardRows(fields: StandardField[]): StandardField[][] {
+  const rows: StandardField[][] = [];
+  fields.forEach((entry, index) => {
+    const previous = fields[index - 1];
+    if (entry.field === "last_name" && previous?.field === "first_name") rows.at(-1)!.push(entry);
+    else rows.push([entry]);
+  });
+  return rows;
 }
 
 export interface LeadFormProps {
   form: PublicEventForm;
+  /** The card's full name: the only one the answers are sent to (FRM-044). */
+  ownerName: string;
   draft: LeadDraft;
   /** Message keys by field path. */
   errors: Record<string, string>;
@@ -233,10 +253,11 @@ export interface LeadFormProps {
 }
 
 /**
- * The form of an event: its title and description, then the standard fields, then the custom ones (FRM-003),
- * the consent, the trap field and the button. Every decision is the caller's (`lib/event-form`).
+ * The form of an event (FRM-003, FRM-044): the band with its title and description, the note, the standard
+ * fields under "Vos coordonnées", the custom ones under "Votre projet", the consent, the trap field, the button
+ * and the privacy line. Every decision is the caller's (`lib/event-form`).
  */
-export function LeadForm({ form, draft, errors, attempt, disabled, notice, onEdit, onSubmit }: LeadFormProps) {
+export function LeadForm({ form, ownerName, draft, errors, attempt, disabled, notice, onEdit, onSubmit }: LeadFormProps) {
   const t = useTranslations("eventForm");
   const ref = useRef<HTMLFormElement>(null);
 
@@ -249,87 +270,105 @@ export function LeadForm({ form, draft, errors, attempt, disabled, notice, onEdi
     onSubmit();
   }
 
-  return (
-    <form ref={ref} data-testid="event-form" noValidate onSubmit={submit} className="relative py-6">
-      <h1 data-testid="event-form-title" className="text-2xl font-bold" style={HEADING_STYLE}>
-        {form.title}
-      </h1>
-      {form.description && (
-        <p data-testid="event-form-description" className="mt-3 whitespace-pre-line">
-          {form.description}
-        </p>
-      )}
-
-      <fieldset disabled={disabled} className="mt-2">
-        {form.standard_fields.map(({ field, required }) => {
-          if (field === "address") {
+  function standardInput({ field, required }: StandardField) {
+    if (field === "address") {
+      return (
+        <fieldset key={field} className="fm-set fm-fields">
+          <legend className="fm-label fm-sublegend">
+            {t("fields.address")}
+            <OptionalMark required={required} />
+          </legend>
+          {ADDRESS_PARTS.map((part) => {
+            const path = `answers.address.${part}`;
             return (
-              <fieldset key={field} className="mt-6">
-                <legend className="font-semibold">
-                  {t("fields.address")}
-                  {!required && <span className="font-normal opacity-75"> ({t("optional")})</span>}
-                </legend>
-                {ADDRESS_PARTS.map((part) => {
-                  const path = `answers.address.${part}`;
-                  return (
-                    <TextInput
-                      key={part}
-                      path={path}
-                      label={t(`fields.${part}`)}
-                      required={required}
-                      kind={ADDRESS_INPUTS[part]}
-                      value={draft.answers.address[part]}
-                      error={errors[path]}
-                      onChange={(value) => onEdit({ field: "address", part, value })}
-                    />
-                  );
-                })}
-              </fieldset>
+              <TextInput
+                key={part}
+                path={path}
+                label={t(`fields.${part}`)}
+                required={required}
+                kind={ADDRESS_INPUTS[part]}
+                value={draft.answers.address[part]}
+                error={errors[path]}
+                onChange={(value) => onEdit({ field: "address", part, value })}
+              />
             );
-          }
-          const path = `answers.${field}`;
-          return (
-            <TextInput
-              key={field}
-              path={path}
-              label={t(`fields.${field}`)}
-              required={required}
-              kind={STANDARD_INPUTS[field]}
-              value={draft.answers[field]}
-              error={errors[path]}
-              onChange={(value) => onEdit({ field, value })}
-            />
-          );
-        })}
+          })}
+        </fieldset>
+      );
+    }
+    const path = `answers.${field}`;
+    return (
+      <TextInput
+        key={field}
+        path={path}
+        label={t(`fields.${field}`)}
+        required={required}
+        kind={STANDARD_INPUTS[field]}
+        value={draft.answers[field]}
+        error={errors[path]}
+        onChange={(value) => onEdit({ field, value })}
+      />
+    );
+  }
 
-        {form.custom_fields.map((field) => (
-          <CustomInput
-            key={field.id}
-            field={field}
-            value={draft.custom[field.id]}
-            error={errors[`answers.custom.${field.id}`]}
-            onChange={(value) => onEdit({ field: "custom", id: field.id, value })}
+  return (
+    <>
+      <FormHead title={form.title} description={form.description} live />
+      <form ref={ref} data-testid="event-form" noValidate onSubmit={submit} className="fm-form">
+        <p className="fm-note">{t("note")}</p>
+        <fieldset disabled={disabled} className="fm-set fm-form">
+          <fieldset className="fm-set">
+            <legend className="fm-legend">{t("sections.contact")}</legend>
+            <div className="fm-fields">
+              {standardRows(form.standard_fields).map((row) =>
+                row.length === 2 ? (
+                  <div key={row[0]!.field} className="fm-row2">
+                    {row.map(standardInput)}
+                  </div>
+                ) : (
+                  standardInput(row[0]!)
+                ),
+              )}
+            </div>
+          </fieldset>
+
+          {form.custom_fields.length > 0 && (
+            <fieldset className="fm-set">
+              <legend className="fm-legend">{t("sections.project")}</legend>
+              <div className="fm-fields">
+                {form.custom_fields.map((field) => (
+                  <CustomInput
+                    key={field.id}
+                    field={field}
+                    value={draft.custom[field.id]}
+                    error={errors[`answers.custom.${field.id}`]}
+                    onChange={(value) => onEdit({ field: "custom", id: field.id, value })}
+                  />
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          <ConsentField
+            text={form.consent_text}
+            checked={draft.consent}
+            error={errors.consent}
+            onChange={(value) => onEdit({ field: "consent", value })}
           />
-        ))}
+          <Honeypot value={draft.fax} onChange={(value) => onEdit({ field: "fax", value })} />
 
-        <ConsentField
-          text={form.consent_text}
-          checked={draft.consent}
-          error={errors.consent}
-          onChange={(value) => onEdit({ field: "consent", value })}
-        />
-        <Honeypot value={draft.fax} onChange={(value) => onEdit({ field: "fax", value })} />
-
-        {notice}
-        <button
-          type="submit"
-          data-testid="event-form-submit"
-          className="mt-6 w-full px-5 py-3 text-lg font-semibold"
-          style={BUTTON_STYLE}
-        >
-          {t("submit")}
-        </button>
-      </fieldset>
-    </form>
+          {notice}
+          <div className="fm-actions">
+            <button type="submit" data-testid="event-form-submit" className="fm-submit">
+              <Send className="ic" aria-hidden="true" />
+              {t("submit")}
+            </button>
+            <p className="fm-privacy">
+              {t("privacy", { name: ownerName })} <a href={privacyUrl()}>{t("privacyLink")}</a>
+            </p>
+          </div>
+        </fieldset>
+      </form>
+    </>
   );
 }

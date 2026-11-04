@@ -17,6 +17,7 @@ import { LeadForm, type LeadFormProps } from "./LeadForm";
 function renderForm(overrides: Partial<LeadFormProps> = {}, form: PublicEventForm = publicEventForm()) {
   const props: LeadFormProps = {
     form,
+    ownerName: "Éloïse D’Aubigné-Müller",
     draft: emptyLeadDraft(form),
     errors: {},
     attempt: 0,
@@ -97,6 +98,50 @@ describe("LeadForm", () => {
     // An optional field says so; a required one does not.
     expect(screen.getByText(/^Téléphone/)).toHaveTextContent("Téléphone (facultatif)");
     expect(screen.getByText(/^Prénom/)).toHaveTextContent(/^Prénom$/);
+  });
+
+  test("FRM-045 only optional fields are marked facultatif", () => {
+    renderForm(
+      {},
+      publicEventForm({
+        custom_fields: [
+          { id: TEXT_ID, kind: "text", label: "Entreprise", required: true, help: "Le nom sur votre devis." },
+          { id: LONG_ID, kind: "long_text", label: "Message", required: false },
+        ],
+      }),
+    );
+    const labelOf = (path: string) => document.querySelector(`label[for="${field(path).id}"]`);
+    for (const path of ["answers.first_name", "answers.last_name", "answers.email", `answers.custom.${TEXT_ID}`]) {
+      expect(labelOf(path)?.querySelector(".fm-opt"), path).toBeNull();
+    }
+    for (const path of ["answers.birth_date", "answers.phone", `answers.custom.${LONG_ID}`]) {
+      expect(labelOf(path)?.querySelector(".fm-opt"), path).toHaveTextContent("(facultatif)");
+    }
+    for (const input of screen.getAllByTestId(/^field-answers\./)) {
+      expect(input, input.dataset.testid).toHaveClass("fm-input");
+    }
+    // The help is a hint tied to its field.
+    const help = screen.getByText("Le nom sur votre devis.");
+    expect(help).toHaveClass("fm-hint");
+    expect(field(`answers.custom.${TEXT_ID}`)).toHaveAccessibleDescription("Le nom sur votre devis.");
+    // The first and last names sit side by side.
+    expect(field("answers.first_name").closest(".fm-row2")).toBe(field("answers.last_name").closest(".fm-row2"));
+    expect(field("answers.first_name").closest(".fm-row2")).not.toBeNull();
+  });
+
+  test("FRM-039 FRM-043 a datetime field is a datetime-local input", () => {
+    const id = "0198c8a1-0000-7000-8000-000000000005";
+    const props = renderForm(
+      {},
+      publicEventForm({
+        custom_fields: [{ id, kind: "datetime", label: "Rendez-vous souhaité", required: false }],
+      }),
+    );
+    const input = field(`answers.custom.${id}`);
+    expect(input).toHaveAttribute("type", "datetime-local");
+    expect(screen.getByLabelText(/^Rendez-vous souhaité/)).toBe(input);
+    fireEvent.change(input, { target: { value: "2027-03-20T14:30" } });
+    expect(props.onEdit).toHaveBeenCalledWith({ field: "custom", id, value: "2027-03-20T14:30" });
   });
 
   test("FRM-021 a single choice offers its options and a help text describes its field", () => {

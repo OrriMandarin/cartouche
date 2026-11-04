@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ClosedEvent } from "@/components/event-form/ClosedEvent";
 import { EventFormPage } from "@/components/event-form/EventFormPage";
+import "@/components/event-form/event-form.css";
 import { CardStage } from "@/components/public/CardStage";
 import { eventFormPath } from "@/lib/card-urls";
 import { fetchPublicCard } from "@/lib/public-card";
@@ -30,20 +31,17 @@ export default async function EventFormRoute({ params }: PageProps) {
 
   return (
     <CardStage theme={resolveTheme(card.theme)}>
-      <main
-        data-testid="event-form-page"
-        className="min-h-screen"
-        style={{
-          background: "linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2))",
-          color: "var(--c-text)",
-          fontFamily: "var(--font-body)",
-        }}
-      >
-        {event.state === "closed" ? (
-          <ClosedEvent slug={card.slug} title={event.event.title} />
-        ) : (
-          <EventFormPage slug={card.slug} card={card} initial={event} />
-        )}
+      <main data-testid="event-form-page">
+        {/* The card's frame and its theme (FRM-049, PUB-037); never the styles of a template. */}
+        <article className="cc">
+          <div className="fm">
+            {event.state === "closed" ? (
+              <ClosedEvent slug={card.slug} title={event.event.title} />
+            ) : (
+              <EventFormPage slug={card.slug} card={card} initial={event} />
+            )}
+          </div>
+        </article>
       </main>
     </CardStage>
   );

@@ -36,8 +36,18 @@ function refusal(status: number, code: string, fields: { field: string; code: st
   return new ApiError({ status, code, message: code, requestId: "req-1", fields });
 }
 
-function renderPage(initial: FillableEvent = open) {
-  return renderWithIntl(<EventFormPage slug={SLUG} card={sampleCard} initial={initial} />);
+function renderPage(initial: FillableEvent = open, card = sampleCard) {
+  return renderWithIntl(<EventFormPage slug={SLUG} card={card} initial={initial} />);
+}
+
+const CARD_NAME = "Éloïse D'Aubigné-Müller";
+
+/** `true` when every element comes after the one before it in the page. */
+function inOrder(...elements: Element[]): boolean {
+  return elements.every(
+    (element, index) =>
+      index === 0 || Boolean(elements[index - 1]!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+  );
 }
 
 const field = (path: string) => screen.getByTestId(`field-${path}`);
@@ -77,7 +87,73 @@ describe("EventFormPage", () => {
   test("FRM-001 the way back goes to the card", () => {
     renderPage();
     expect(screen.getByTestId("event-form-back")).toHaveAttribute("href", `/c/${SLUG}`);
-    expect(screen.getByTestId("event-form-back")).toHaveTextContent("Retour à la carte");
+    expect(screen.getByTestId("event-form-back")).toHaveTextContent(CARD_NAME);
+  });
+
+  test("FRM-044 the page shows the back link, the band, the note, the sections and the privacy line", () => {
+    const full = publicEventForm({ description: "Laissez-moi vos coordonnées ✨" });
+    renderPage({ state: "open", event: full });
+
+    const back = screen.getByTestId("event-form-back");
+    expect(back).toHaveClass("fm-back");
+    expect(back.querySelector(".fm-back-av img")).toHaveAttribute("src", sampleCard.avatar?.jpeg_url);
+    expect(back.querySelector(".fm-back-av img")).toHaveAttribute("alt", "");
+
+    const live = screen.getByText("Événement en cours");
+    expect(live.closest(".fm-head")).not.toBeNull();
+    expect(live.querySelector(".cc-dot")).not.toBeNull();
+    const title = screen.getByTestId("event-form-title");
+    expect(title).toHaveClass("fm-title");
+    expect(title.tagName).toBe("H1");
+    expect(screen.getByTestId("event-form-description")).toHaveClass("fm-intro");
+
+    const note = screen.getByText(/^Tous les champs sont obligatoires/);
+    expect(note).toHaveClass("fm-note");
+    // French typography: non-breaking spaces inside the quotes.
+    expect(note.textContent).toBe("Tous les champs sont obligatoires, sauf mention «\u00a0facultatif\u00a0».");
+    const contact = screen.getByRole("group", { name: "Vos coordonnées" });
+    const project = screen.getByRole("group", { name: "Votre projet" });
+    expect(contact).toContainElement(field("answers.first_name"));
+    expect(project).toContainElement(field(`answers.custom.${full.custom_fields[0]!.id}`));
+    const consentBox = screen.getByTestId("consent-checkbox");
+    expect(consentBox.closest(".fm-check")).not.toBeNull();
+    expect(screen.getByTestId("consent-text")).toHaveTextContent(full.consent_text);
+    const submit = screen.getByTestId("event-form-submit");
+    expect(submit).toHaveClass("fm-submit");
+    expect(submit).toHaveTextContent("Envoyer mes coordonnées");
+    const privacy = screen.getByText(`Vos informations sont transmises uniquement à ${CARD_NAME}.`, { exact: false });
+    expect(privacy).toHaveClass("fm-privacy");
+    expect(screen.getByRole("link", { name: "Vos données personnelles" })).toHaveAttribute("href", "/confidentialite");
+
+    expect(inOrder(back, live, title, note, contact, project, consentBox, submit, privacy)).toBe(true);
+  });
+
+  test("FRM-044 no custom field, no Votre projet section", () => {
+    renderPage(open, { ...sampleCard, avatar: null });
+    expect(screen.getByRole("group", { name: "Vos coordonnées" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Votre projet" })).toBeNull();
+    // Without a photo, the initials (PUB-023).
+    const back = screen.getByTestId("event-form-back");
+    expect(back.querySelector("img")).toBeNull();
+    expect(back.querySelector(".fm-back-av")).toHaveTextContent("ÉD");
+    // Only the first name is asked: no row of two.
+    expect(field("answers.first_name").closest(".fm-row2")).toBeNull();
+  });
+
+  test("FRM-048 the code screen shows the title only, one field and Continuer", () => {
+    renderPage(coded);
+    expect(screen.getByTestId("event-form-back")).toHaveTextContent(CARD_NAME);
+    const head = screen.getByTestId("event-form-title").closest(".fm-head");
+    expect(head).not.toBeNull();
+    expect(head).toHaveTextContent(new RegExp(`^${form.title}$`));
+    expect(screen.queryByText("Événement en cours")).toBeNull();
+    const input = screen.getByLabelText("Code d’accès");
+    expect(input).toBe(screen.getByTestId("access-code-input"));
+    expect(input).toHaveClass("fm-input");
+    expect(screen.getAllByRole("textbox")).toEqual([input]);
+    expect(screen.getByTestId("access-code-submit")).toHaveTextContent(/^Continuer$/);
+    expect(screen.getByTestId("access-code-submit")).toHaveClass("fm-submit");
+    expect(screen.queryByText(/Vos informations sont transmises/)).toBeNull();
   });
 
   test("FRM-002 the code screen comes first", async () => {
@@ -89,7 +165,7 @@ describe("EventFormPage", () => {
     unlockEvent.mockRejectedValueOnce(refusal(403, "invalid_access_code"));
     fireEvent.change(screen.getByTestId("access-code-input"), { target: { value: "moulin" } });
     fireEvent.click(screen.getByTestId("access-code-submit"));
-    expect(await screen.findByTestId("access-code-message")).toHaveTextContent("Ce code n'est pas le bon.");
+    expect(await screen.findByTestId("access-code-message")).toHaveTextContent("Ce code n’est pas le bon.");
     expect(unlockEvent).toHaveBeenCalledWith(SLUG, EVENT_ID, "moulin");
 
     await unlockWith(" chateau ");
@@ -150,7 +226,7 @@ describe("EventFormPage", () => {
     consent();
     submitLead.mockRejectedValueOnce(refusal(403, "invalid_access_code"));
     send();
-    expect(await screen.findByTestId("access-code-message")).toHaveTextContent("Le code d'accès a changé.");
+    expect(await screen.findByTestId("access-code-message")).toHaveTextContent("Le code d’accès a changé.");
     expect(screen.getByTestId("access-code-input")).toHaveValue("");
 
     await unlockWith("moulin");
@@ -201,8 +277,8 @@ describe("EventFormPage", () => {
     const cases: [unknown, string][] = [
       [refusal(409, "event_closed"), "Ce formulaire est fermé"],
       [refusal(409, "device_limit_reached"), "Vous avez déjà envoyé ce formulaire depuis cet appareil."],
-      [refusal(429, "rate_limited"), "Trop d'envois depuis ce réseau."],
-      [refusal(410, "card_inactive"), "Cette carte n'est plus active"],
+      [refusal(429, "rate_limited"), "Trop d’envois depuis ce réseau."],
+      [refusal(410, "card_inactive"), "Cette carte n’est plus active"],
       [refusal(500, "internal_error"), "Une erreur est survenue."],
     ];
     renderPage();

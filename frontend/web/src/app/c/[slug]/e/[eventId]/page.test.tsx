@@ -61,7 +61,23 @@ describe("event form page", () => {
     fetchPublicEvent.mockResolvedValue({ state: "open", event: publicEventForm() });
     const page = await html();
     expect(page).toMatch(/class="cc-page" style="[^"]*--c-accent:#c0392b/);
-    expect(page).toMatch(/class="cc-stage"><main data-testid="event-form-page"/);
+    expect(page).toMatch(/class="cc-stage"><main data-testid="event-form-page"><article class="cc"><div class="fm">/);
+  });
+
+  test("FRM-049 TPL-022 the form uses the card theme and its error colour", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "active", card: { ...card, theme: { preset: "encre" } } });
+    fetchPublicEvent.mockResolvedValue({ state: "open", event: publicEventForm() });
+    const page = await html();
+    const wrapper = page.match(/class="cc-page" style="([^"]*)"/)?.[1] ?? "";
+    expect(wrapper).toContain("--c-danger:#FF8A80");
+    expect(wrapper).toContain("color-scheme:dark");
+    // The variables sit on the wrapper only: the form itself carries no colour of its own.
+    expect(page).toMatch(/<main data-testid="event-form-page">/);
+
+    fetchPublicCard.mockResolvedValue({ state: "active", card });
+    const light = (await html()).match(/class="cc-page" style="([^"]*)"/)?.[1] ?? "";
+    expect(light).toContain("--c-danger:#B3261E");
+    expect(light).toContain("color-scheme:light");
   });
 
   test("FRM-002 EVT-027 an event with a code renders its title and the code screen only", async () => {
@@ -75,7 +91,7 @@ describe("event form page", () => {
   test("FRM-024 EVT-026 outside its window the form says it is not open, with the way back", async () => {
     fetchPublicEvent.mockResolvedValue({ state: "closed", event: { id: EVENT_ID, title: "Foire de Lyon" } });
     const page = await html();
-    expect(page).toContain("Ce formulaire n&#x27;est pas ouvert en ce moment.");
+    expect(page).toContain("Ce formulaire n’est pas ouvert en ce moment.");
     expect(page).toContain(`href="/c/${card.slug}"`);
     expect(page).not.toContain('data-testid="event-form"');
   });
