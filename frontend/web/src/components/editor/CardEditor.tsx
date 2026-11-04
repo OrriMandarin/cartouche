@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useApi, useUploadMedia } from "@/lib/api";
+import { useApi, useReframeMedia, useUploadMedia } from "@/lib/api";
 import { cardDisplayName } from "@/lib/cards/display-name";
 import {
   applyTemplateChange,
@@ -31,7 +31,8 @@ import { canEdit } from "@/lib/cards/status";
 import type { CardView } from "@/lib/cards/types";
 import { supportMailto } from "@/lib/instance-links";
 import { useLeaveGuard } from "@/lib/leave-guard";
-import type { UploadMedia } from "@/lib/media/upload";
+import type { ReframeMedia, UploadMedia } from "@/lib/media/upload";
+import { resolveTheme } from "@/lib/theme/resolve";
 import { showToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { getTemplate } from "@/templates/registry";
@@ -70,20 +71,26 @@ export function CardEditor({ card }: { card: CardView }) {
   const t = useTranslations();
   const api = useApi();
   const sendMedia = useUploadMedia(card.id);
+  const sendReframe = useReframeMedia(card.id);
   const readOnly = !canEdit(card.status);
-  // Uploads in flight. A save landing meanwhile would delete the upload as unreferenced (MED-018) and leave
-  // the draft pointing at a dead media id, so saving waits for them.
+  // Uploads and re-framings in flight. A save landing meanwhile would delete the new media as unreferenced
+  // (MED-018) and leave the draft pointing at a dead media id, so saving waits for them.
   const [uploading, setUploading] = useState(0);
+  const inFlight = useCallback(async <T,>(request: () => Promise<T>): Promise<T> => {
+    setUploading((count) => count + 1);
+    try {
+      return await request();
+    } finally {
+      setUploading((count) => count - 1);
+    }
+  }, []);
   const uploadMedia = useCallback<UploadMedia>(
-    async (slot, file, poster, framing) => {
-      setUploading((count) => count + 1);
-      try {
-        return await sendMedia(slot, file, poster, framing);
-      } finally {
-        setUploading((count) => count - 1);
-      }
-    },
-    [sendMedia],
+    (slot, file, poster, framing) => inFlight(() => sendMedia(slot, file, poster, framing)),
+    [inFlight, sendMedia],
+  );
+  const reframeMedia = useCallback<ReframeMedia>(
+    (mediaId, framing, poster) => inFlight(() => sendReframe(mediaId, framing, poster)),
+    [inFlight, sendReframe],
   );
   const [saved, setSaved] = useState(() => draftFromCard(card));
   const [draft, setDraft] = useState(saved);
@@ -377,6 +384,9 @@ export function CardEditor({ card }: { card: CardView }) {
               header={draft.header}
               avatar={draft.avatar}
               upload={uploadMedia}
+              reframe={reframeMedia}
+              theme={resolveTheme(draft.theme)}
+              name={cardDisplayName(draft.content)}
               onChange={(slot, media) => edit({ [slot]: media }, [`${slot}_media_id`])}
             />
             {mediaErrors.map((path) => (

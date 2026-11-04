@@ -120,14 +120,16 @@ export async function reframeMedia(
 
 const ERROR_PREFIX = "editor.media.errors.";
 
-/** Message key of a failed upload (MED-012, MED-013): one message per code the server answers with. */
+/** Message key of a failed upload or re-framing (MED-012, MED-013, MED-030): one message per code the server answers with. */
 export function mediaErrorKey(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === "payload_too_large" || error.code === "unsupported_media_type") {
+    if (["payload_too_large", "unsupported_media_type", "media_not_reframable"].includes(error.code)) {
       return ERROR_PREFIX + error.code;
     }
-    const known = ["video_too_long", "poster_required", "image_too_large"];
-    const refused = error.fields.find(({ field, code }) => (field === "file" || field === "poster") && known.includes(code));
+    const known = ["video_too_long", "poster_required", "image_too_large", "invalid_crop"];
+    const refused = error.fields.find(
+      ({ field, code }) => (field === "file" || field === "poster" || field === "crop") && known.includes(code),
+    );
     if (refused) return ERROR_PREFIX + refused.code;
   }
   return `${ERROR_PREFIX}generic`;

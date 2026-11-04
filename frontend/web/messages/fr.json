@@ -528,7 +528,7 @@
       "header": "En-tête",
       "avatar": "Photo de profil",
       "headerHintImage": "Image JPEG, PNG ou WebP, 10 Mo au plus.",
-      "headerHintVideo": "Image JPEG, PNG ou WebP (10 Mo au plus) ou vidéo MP4 (30 secondes et 25 Mo au plus).",
+      "headerHintVideo": "Image ou courte vidéo (lue sans le son). Format 4:3 conseillé\u00a0; garde le sujet dans la moitié haute.",
       "avatarHint": "Image JPEG, PNG ou WebP, 10 Mo au plus. Elle sera recadrée en carré.",
       "choose": "Choisir un fichier",
       "replace": "Remplacer",
@@ -540,6 +540,34 @@
         "video": "vidéo"
       },
       "thumbnail": "Aperçu du fichier actuel",
+      "headerKind": {
+        "image": "Photo",
+        "video": "Vidéo",
+        "videoLength": "Vidéo · {seconds}\u00a0s"
+      },
+      "recrop": "Recadrer",
+      "cannotRecrop": "Remplace ce média pour pouvoir le recadrer.",
+      "crop": {
+        "close": "Fermer",
+        "cancel": "Annuler",
+        "apply": "Appliquer",
+        "reset": "Réinitialiser",
+        "zoom": "Zoom",
+        "zoomValue": "{n}\u00a0%",
+        "zoomIn": "Zoomer",
+        "zoomOut": "Dézoomer",
+        "showZones": "Afficher les zones couvertes",
+        "header": {
+          "title": "Recadrer l’en-tête",
+          "stage": "Zone de recadrage. Flèches pour déplacer, plus et moins pour zoomer.",
+          "fade": "Fondu {n}\u00a0%",
+          "avatar": "Photo de profil",
+          "legendFade": "Fondu vers le fond de la carte",
+          "legendRound": "Photo de profil et bouton pause",
+          "preview": "Sur ta carte",
+          "phoneHint": "Pince pour zoomer, glisse pour déplacer."
+        }
+      },
       "cropper": {
         "title": "Recadrer la photo",
         "description": "Déplace et zoome la photo : la partie dans le cercle sera gardée.",
@@ -556,6 +584,8 @@
         "poster_required": "L'image d'attente de la vidéo est manquante : réessaie",
         "payload_too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
         "unsupported_media_type": "Ce fichier n'est pas une image JPEG, PNG ou WebP ni une vidéo MP4, ou il est abîmé",
+        "media_not_reframable": "Remplace ce média pour pouvoir le recadrer.",
+        "invalid_crop": "Ce recadrage n’est pas accepté\u00a0: réessaie.",
         "generic": "L'envoi a échoué : réessaie dans un instant"
       }
     },

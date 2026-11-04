@@ -13,7 +13,14 @@ configure({ asyncUtilTimeout: 4000 });
 const get = vi.fn();
 const put = vi.fn();
 const uploadMedia = vi.fn();
-vi.mock("@/lib/api", () => ({ useApi: () => ({ GET: get, PUT: put }), useUploadMedia: () => uploadMedia }));
+const reframeMedia = vi.fn();
+vi.mock("@/lib/api", () => ({
+  useApi: () => ({ GET: get, PUT: put }),
+  useUploadMedia: () => uploadMedia,
+  useReframeMedia: () => reframeMedia,
+}));
+// A 4:3 photo goes up as it is, without the crop dialog (EDI-026).
+vi.mock("@/lib/media/image", () => ({ readImageSize: async () => ({ width: 800, height: 600 }) }));
 const showToast = vi.fn();
 vi.mock("@/lib/toast", () => ({ showToast: (...args: unknown[]) => showToast(...args) }));
 const push = vi.fn();

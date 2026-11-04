@@ -2,6 +2,8 @@ import { ApiError } from "@cartouche/api-client";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import type { CropRect } from "@/lib/media/upload";
+import { resolveTheme } from "@/lib/theme/resolve";
 import type { MediaView, TemplateDefinition } from "@/templates/contract";
 import { MediaField } from "./MediaField";
 import { renderWithIntl } from "./test-helpers";
@@ -12,6 +14,34 @@ vi.mock("@/lib/media/video", () => ({
   readVideoDuration: (file: File) => readVideoDuration(file),
   capturePoster: (file: File) => capturePoster(file),
   POSTER_SECONDS: 0.1,
+}));
+
+const readImageSize = vi.fn();
+vi.mock("@/lib/media/image", () => ({ readImageSize: (file: File) => readImageSize(file) }));
+
+// The crop dialog needs a browser: a stand-in that shows what it frames and applies a fixed crop.
+const DIALOG_CROP: CropRect = { x: 0.125, y: 0, width: 0.75, height: 1 };
+vi.mock("./crop/HeaderCropDialog", () => ({
+  HeaderCropDialog: ({
+    source,
+    initialCrop,
+    onApply,
+    onCancel,
+  }: {
+    source: File | string;
+    initialCrop?: CropRect | null;
+    onApply: (crop: CropRect) => void;
+    onCancel: () => void;
+  }) => (
+    <div data-testid="header-crop-dialog" data-source={typeof source === "string" ? source : source.name} data-initial={JSON.stringify(initialCrop ?? null)}>
+      <button type="button" onClick={() => onApply(DIALOG_CROP)}>
+        Appliquer
+      </button>
+      <button type="button" onClick={onCancel}>
+        Annuler
+      </button>
+    </div>
+  ),
 }));
 
 // The cropper itself needs a browser: a stand-in that confirms a fixed square.
@@ -37,13 +67,21 @@ const media = (id: string, kind: MediaView["kind"] = "image"): MediaView => ({
 
 const ALL: TemplateDefinition<unknown>["media"] = { header: ["image", "video"], avatar: true };
 
+const reframable = (id: string): MediaView => ({
+  ...media(id),
+  crop: { x: 0, y: 0.1, width: 1, height: 0.8 },
+  source: { url: `https://media.example.test/${id}/source.webp?sig=1`, width: 1200, height: 1125 },
+});
+
 function Harness({
   declared = ALL,
   upload,
+  reframe = vi.fn(),
   initial = { header: null, avatar: null },
 }: {
   declared?: TemplateDefinition<unknown>["media"];
   upload: (...args: unknown[]) => Promise<MediaView>;
+  reframe?: (...args: unknown[]) => Promise<MediaView>;
   initial?: { header: MediaView | null; avatar: MediaView | null };
 }) {
   const [state, setState] = useState(initial);
@@ -54,6 +92,9 @@ function Harness({
         header={state.header}
         avatar={state.avatar}
         upload={upload}
+        reframe={reframe}
+        theme={resolveTheme({ preset: "craie" })}
+        name="Zoé Lefèvre ✨"
         onChange={(slot, value) => setState((current) => ({ ...current, [slot]: value }))}
       />
       <output data-testid="state">{JSON.stringify({ header: state.header?.id ?? null, avatar: state.avatar?.id ?? null })}</output>
@@ -67,6 +108,7 @@ const jpeg = () => new File(["jpeg"], "photo.jpg", { type: "image/jpeg" });
 const mp4 = () => new File(["mp4"], "clip.mp4", { type: "video/mp4" });
 
 beforeEach(() => {
+  readImageSize.mockReset().mockResolvedValue({ width: 800, height: 600 });
   readVideoDuration.mockReset().mockResolvedValue(2);
   capturePoster.mockReset().mockResolvedValue(new Blob(["poster"], { type: "image/jpeg" }));
 });
@@ -207,5 +249,95 @@ describe("MediaField", () => {
     expect(screen.queryByTestId("media-header")).toBeNull();
     expect(screen.getByTestId("media-avatar-input").getAttribute("accept")).toBe("image/jpeg,image/png,image/webp");
     expect(ALL.header).toContain("video");
+  });
+
+  test("EDI-026 a non-4:3 file opens the dialog before upload", async () => {
+    readImageSize.mockResolvedValue({ width: 1280, height: 720 });
+    const upload = vi.fn().mockResolvedValue(media("framed"));
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-header-input", jpeg());
+
+    const dialog = await screen.findByTestId("header-crop-dialog");
+    expect(dialog).toHaveAttribute("data-source", "photo.jpg");
+    expect(upload).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer" }));
+
+    await waitFor(() => expect(state().header).toBe("framed"));
+    expect(upload).toHaveBeenCalledWith("header", expect.any(File), undefined, { crop: DIALOG_CROP });
+    expect(screen.queryByTestId("header-crop-dialog")).toBeNull();
+  });
+
+  test("EDI-026 a 4:3 photo is sent as it is, and cancelling the dialog sends nothing", async () => {
+    const upload = vi.fn().mockResolvedValue(media("as-is"));
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-header-input", jpeg());
+    await waitFor(() => expect(state().header).toBe("as-is"));
+    expect(screen.queryByTestId("header-crop-dialog")).toBeNull();
+
+    readImageSize.mockResolvedValue({ width: 600, height: 800 });
+    pick("media-header-input", jpeg());
+    fireEvent.click(await screen.findByRole("button", { name: "Annuler" }));
+    expect(screen.queryByTestId("header-crop-dialog")).toBeNull();
+    expect(upload).toHaveBeenCalledTimes(1);
+  });
+
+  test("MED-021 a photo the browser cannot decode is reported before any upload", async () => {
+    readImageSize.mockRejectedValue(new Error("undecodable"));
+    const upload = vi.fn();
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-header-input", jpeg());
+
+    expect(await screen.findByTestId("media-header-error")).toHaveTextContent("Ce fichier ne peut pas être lu par le navigateur");
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  test("EDI-026 MED-030 « Recadrer » re-frames the header photo from its source", async () => {
+    const reframe = vi.fn().mockResolvedValue(media("reframed"));
+    renderWithIntl(<Harness upload={vi.fn()} reframe={reframe} initial={{ header: reframable("current"), avatar: null }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Recadrer" }));
+
+    const dialog = screen.getByTestId("header-crop-dialog");
+    expect(dialog).toHaveAttribute("data-source", "https://media.example.test/current/source.webp?sig=1");
+    expect(JSON.parse(dialog.getAttribute("data-initial")!)).toEqual({ x: 0, y: 0.1, width: 1, height: 0.8 });
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer" }));
+
+    await waitFor(() => expect(state().header).toBe("reframed"));
+    expect(reframe).toHaveBeenCalledWith("current", { crop: DIALOG_CROP });
+  });
+
+  test("MED-030 a refused re-framing is shown and the draft keeps its media", async () => {
+    const refusal = new ApiError({ status: 409, code: "media_not_reframable", message: "m", requestId: "r1", fields: [] });
+    const reframe = vi.fn().mockRejectedValue(refusal);
+    renderWithIntl(<Harness upload={vi.fn()} reframe={reframe} initial={{ header: reframable("current"), avatar: null }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Recadrer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer" }));
+
+    expect(await screen.findByTestId("media-header-error")).toHaveTextContent("Remplace ce média pour pouvoir le recadrer.");
+    expect(state().header).toBe("current");
+  });
+
+  test("MED-030 MED-033 a media without source cannot be re-framed", () => {
+    renderWithIntl(<Harness upload={vi.fn()} initial={{ header: media("legacy"), avatar: null }} />);
+
+    const crop = screen.getByRole("button", { name: "Recadrer" });
+    expect(crop).toBeDisabled();
+    expect(crop).toHaveAccessibleDescription("Remplace ce média pour pouvoir le recadrer.");
+    expect(screen.getByRole("button", { name: "Remplacer" })).toBeEnabled();
+  });
+
+  test("EDI-026 the header shows its kind and the length of a video", () => {
+    const { unmount } = renderWithIntl(<Harness upload={vi.fn()} initial={{ header: reframable("photo"), avatar: null }} />);
+    expect(screen.getByTestId("media-header-current")).toHaveTextContent("Photo");
+    expect(screen.getByText("Image ou courte vidéo (lue sans le son). Format 4:3 conseillé ; garde le sujet dans la moitié haute.")).toBeInTheDocument();
+    unmount();
+
+    const video = { ...media("clip", "video"), duration_seconds: 8.6 };
+    renderWithIntl(<Harness upload={vi.fn()} initial={{ header: video, avatar: null }} />);
+    expect(screen.getByTestId("media-header-current")).toHaveTextContent("Vidéo · 9 s");
   });
 });

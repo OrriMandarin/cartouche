@@ -194,6 +194,13 @@ describe("mediaErrorKey", () => {
     expect(mediaErrorKey(apiError(415, "unsupported_media_type"))).toBe("editor.media.errors.unsupported_media_type");
   });
 
+  test("MED-030 MED-033 a media without source and a refused crop have their message", () => {
+    expect(mediaErrorKey(apiError(409, "media_not_reframable"))).toBe("editor.media.errors.media_not_reframable");
+    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "crop", code: "invalid_crop" }]))).toBe(
+      "editor.media.errors.invalid_crop",
+    );
+  });
+
   test("MED-013 anything else reads as a generic failure", () => {
     expect(mediaErrorKey(apiError(500, "internal_error"))).toBe("editor.media.errors.generic");
     expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "slot", code: "required" }]))).toBe(

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { editorSaveButton, expect, openEditorSection, saveCard, showEditorView, test } from "../fixtures";
+import { editorSaveButton, expect, openEditorSection, saveCard, showEditorView, test, type TestApi } from "../fixtures";
 import { WEB_URL } from "../env";
 
 let aliceCardId: string;
@@ -43,7 +43,7 @@ test("MED-005 MED-006 PUB-014 avatar is cropped, published as WebP and in the vC
 test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page }) => {
   await openMedia(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-2s.mp4"));
-  await expect(page.getByTestId("media-header-current")).toContainText("vidéo");
+  await expect(page.getByTestId("media-header-current")).toContainText("Vidéo");
   await saveCard(page);
 
   await page.goto("/c/alice-durand");
@@ -53,6 +53,75 @@ test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page 
   await expect(video).toHaveJSProperty("muted", true);
   await expect(video).toHaveJSProperty("loop", false);
   await expect(video).toHaveAttribute("playsinline", "");
+});
+
+/** A 1280 × 720 (16:9) JPEG drawn by the browser: a header photo that is not 4:3. */
+async function wideJpeg(page: import("@playwright/test").Page): Promise<Buffer> {
+  const dataUrl = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1280;
+    canvas.height = 720;
+    const context = canvas.getContext("2d")!;
+    const gradient = context.createLinearGradient(0, 0, 1280, 720);
+    gradient.addColorStop(0, "#d9774b");
+    gradient.addColorStop(1, "#3366cc");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 1280, 720);
+    context.fillStyle = "#ffffff";
+    context.beginPath();
+    context.arc(640, 300, 120, 0, Math.PI * 2);
+    context.fill();
+    return canvas.toDataURL("image/jpeg", 0.9);
+  });
+  return Buffer.from(dataUrl.split(",")[1]!, "base64");
+}
+
+/** The header media id of Alice's card as stored. */
+async function storedHeaderId(api: TestApi): Promise<string | undefined> {
+  const response = await api.get(`/api/cards/${aliceCardId}`, { headers: await api.authHeaders("seed-alice") });
+  expect(response.ok()).toBe(true);
+  return ((await response.json()) as { header?: { id: string } | null }).header?.id;
+}
+
+test("EDI-026 MED-030 re-framing the header photo", async ({ page, api }) => {
+  await openMedia(page);
+  const photo = await wideJpeg(page);
+  await page.getByTestId("media-header-input").setInputFiles({ name: "large.jpg", mimeType: "image/jpeg", buffer: photo });
+
+  // A 16:9 photo is framed before it is sent.
+  const dialog = page.getByRole("dialog", { name: "Recadrer l’en-tête" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("switch", { name: "Afficher les zones couvertes" })).toBeChecked();
+  await expect(dialog.getByTestId("covered-zones")).toBeVisible();
+  await dialog.getByRole("application").focus();
+  await page.keyboard.press("+");
+  await expect(dialog.getByRole("slider", { name: "Zoom" })).toHaveAttribute("aria-valuetext", "110\u00a0%");
+  await page.keyboard.press("ArrowLeft");
+  await dialog.getByRole("button", { name: "Appliquer" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("media-header-current")).toHaveText("Photo");
+  await saveCard(page);
+  const first = await storedHeaderId(api);
+  expect(first).toBeTruthy();
+
+  await page.goto("/c/alice-durand");
+  const header = page.getByTestId("card-header-image");
+  await expect(header).toBeVisible();
+  const ratio = await header.evaluate((img: HTMLImageElement) => img.naturalWidth / img.naturalHeight);
+  expect(Math.abs(ratio / (4 / 3) - 1)).toBeLessThan(0.01);
+
+  // « Recadrer » makes a new media from the kept source; the card shows it once saved.
+  await openMedia(page);
+  await page.getByTestId("media-header-crop").click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Réinitialiser" }).click();
+  await dialog.getByRole("button", { name: "Appliquer" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("editor-status")).toHaveText("Modifications non enregistrées");
+  await saveCard(page);
+  const second = await storedHeaderId(api);
+  expect(second).toBeTruthy();
+  expect(second).not.toBe(first);
 });
 
 test("MED-013 too long video is refused before upload", async ({ page }) => {

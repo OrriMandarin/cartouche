@@ -79,6 +79,9 @@
   --color-app-danger-soft: var(--app-danger-soft);
   --color-app-info: var(--app-info);
   --color-app-info-soft: var(--app-info-soft);
+  --color-app-stage: var(--app-stage);
+  --color-app-on-stage: var(--app-on-stage);
+  --color-app-stage-dim: var(--app-stage-dim);
   --radius-app-sm: var(--app-radius-sm);
   --radius-app: var(--app-radius);
   --radius-app-lg: var(--app-radius-lg);
