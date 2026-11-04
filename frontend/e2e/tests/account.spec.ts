@@ -71,15 +71,21 @@ test("ACC-011 ACC-026 a pending account sees its email and can sign out", async 
 test("ACC-026 a suspended account can contact support", async ({ page, loginAs }) => {
   await loginAs("seed-dan");
   await page.goto("/dashboard");
-  // The address is percent-encoded by `supportMailto()`.
-  await expect(page.getByTestId("account-support")).toHaveAttribute(
-    "href",
-    /^mailto:support(@|%40)cartouche\.invalid$/,
-  );
+  await expect(page.getByTestId("account-support")).toHaveAttribute("href", "mailto:support@cartouche.invalid");
 });
 
 test("ACC-025 the sign-in page links to the terms and the privacy policy", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("link", { name: "Conditions générales d’utilisation" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Politique de confidentialité" })).toBeVisible();
+});
+
+test("ACC-025 the sample card never covers the arguments of the sign-in page", async ({ page, isMobile }) => {
+  test.skip(isMobile, "the arguments and the sample card show from 600 px");
+  await page.goto("/login");
+  const list = await page.getByTestId("login-arguments").boundingBox();
+  const preview = await page.getByTestId("login-card-preview").boundingBox();
+  expect(list).not.toBeNull();
+  expect(preview).not.toBeNull();
+  expect(preview!.y).toBeGreaterThanOrEqual(list!.y + list!.height);
 });

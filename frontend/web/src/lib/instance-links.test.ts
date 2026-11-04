@@ -11,7 +11,7 @@ describe("instance links", () => {
     vi.stubEnv("NEXT_PUBLIC_TERMS_URL", undefined);
     vi.stubEnv("NEXT_PUBLIC_PRIVACY_URL", undefined);
     expect(supportEmail()).toBe("support@cartouche.invalid");
-    expect(supportMailto()).toBe("mailto:support%40cartouche.invalid");
+    expect(supportMailto()).toBe("mailto:support@cartouche.invalid");
     expect(termsUrl()).toBe("/cgu");
     expect(privacyUrl()).toBe("/confidentialite");
 
@@ -27,7 +27,7 @@ describe("instance links", () => {
     vi.stubEnv("NEXT_PUBLIC_TERMS_URL", "https://cartes.example/conditions");
     vi.stubEnv("NEXT_PUBLIC_PRIVACY_URL", "https://cartes.example/vie-privée");
     expect(supportEmail()).toBe("aide+carte@zoé.example");
-    expect(supportMailto()).toBe("mailto:aide%2Bcarte%40zo%C3%A9.example");
+    expect(supportMailto()).toBe("mailto:aide%2Bcarte@zo%C3%A9.example");
     expect(termsUrl()).toBe("https://cartes.example/conditions");
     expect(privacyUrl()).toBe("https://cartes.example/vie-privée");
   });

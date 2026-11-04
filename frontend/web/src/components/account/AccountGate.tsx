@@ -120,6 +120,7 @@ function Notice({ testId, title, description }: { testId: string; title: string;
  */
 export function AccountGate({ children, ...shell }: ShellSlots & { children: ReactNode }) {
   const t = useTranslations("account");
+  const tAuth = useTranslations("auth");
   const router = useRouter();
   const api = useApi();
   const { status: authStatus, user, signOut } = useAuth();
@@ -174,8 +175,6 @@ export function AccountGate({ children, ...shell }: ShellSlots & { children: Rea
   }
 
   let body: ReactNode;
-  // The status cards carry their own sign-out; the other screens keep it in the header.
-  let signOutInHeader = true;
   const statusNotice = (props: {
     testId: string;
     tone: StatusTone;
@@ -184,7 +183,6 @@ export function AccountGate({ children, ...shell }: ShellSlots & { children: Rea
     description: string;
     withSupport: boolean;
   }) => {
-    signOutInHeader = false;
     return (
       <StatusNotice
         testId={props.testId}
@@ -233,6 +231,8 @@ export function AccountGate({ children, ...shell }: ShellSlots & { children: Rea
     });
   }
 
+  // The status cards carry their own sign-out; the other screens keep it in the header.
+  const signOutInHeader = state.kind !== "ready";
   const identity = state.kind === "ready" && state.me.email ? state.me.email : name;
 
   // The accounts that do not reach the dashboard get a plain header, with the sign-out when the screen has none.
@@ -244,7 +244,7 @@ export function AccountGate({ children, ...shell }: ShellSlots & { children: Rea
       >
         <span className="font-app-display inline-flex items-center gap-2.5 text-[22px] leading-none font-semibold tracking-[-0.01em]">
           <BrandMark />
-          {t("brand")}
+          {tAuth("brand")}
         </span>
         <span className="flex items-center gap-4">
           <span className="text-app-muted hidden text-[13px] min-[600px]:inline">

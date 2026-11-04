@@ -97,7 +97,6 @@
       "identityProvider": "Ton compte chez le fournisseur d'identité existe toujours : si tu veux aussi le supprimer, fais-le chez lui. Te reconnecter avec ce compte créera un nouveau compte Cartouche, vide.",
       "home": "Retour à l'accueil"
     },
-    "brand": "Cartouche",
     "actions": {
       "signOut": "Se déconnecter",
       "support": "Contacter le support"

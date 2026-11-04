@@ -116,7 +116,7 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-screen grid-cols-1 min-[600px]:grid-cols-2">
-      <section className="min-[600px]:bg-app-surface-2 border-app-border relative flex flex-col gap-7 overflow-hidden px-5 pt-7 pb-6 min-[600px]:border-r min-[600px]:px-10 min-[600px]:py-12 min-[1000px]:px-14">
+      <section className="min-[600px]:bg-app-surface-2 border-app-border flex flex-col gap-7 overflow-hidden min-[600px]:max-h-screen px-5 pt-7 pb-6 min-[600px]:border-r min-[600px]:px-10 min-[600px]:py-12 min-[1000px]:px-14">
         <span className="font-app-display inline-flex items-center gap-2.5 text-[22px] leading-none font-semibold tracking-[-0.01em]">
           <BrandMark />
           {t("brand")}
@@ -124,15 +124,17 @@ export default function LoginPage() {
         <h1 className="font-app-display max-w-[13ch] text-[32px] leading-[1.08] font-semibold tracking-[-0.015em] min-[600px]:mt-6 min-[600px]:text-[46px] min-[600px]:leading-[1.05]">
           {t("login.tagline")}
         </h1>
-        <ul className="hidden max-w-[28ch] flex-col gap-3 text-base min-[600px]:flex">
+        <ul data-testid="login-arguments" className="hidden max-w-[28ch] flex-col gap-3 text-base min-[600px]:flex">
           {ARGUMENTS.map(({ key, Icon }) => (
             <li key={key} className="flex items-center gap-3">
-              <Icon className="size-5 flex-none" aria-hidden="true" />
+              <Icon className="text-app-brand size-5 flex-none" aria-hidden="true" />
               {t(`login.arguments.${key}`)}
             </li>
           ))}
         </ul>
-        <LoginCardPreview className="absolute top-[250px] right-14 hidden w-80 min-[1000px]:block" />
+        <div className="hidden min-h-0 flex-1 justify-center overflow-hidden min-[600px]:flex">
+          <LoginCardPreview className="h-fit w-80 max-w-full flex-none" />
+        </div>
       </section>
       <section className="flex flex-col items-center justify-center gap-5 px-5 py-6 min-[600px]:px-10 min-[600px]:py-12">
         {body}

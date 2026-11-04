@@ -16,7 +16,11 @@ export function supportEmail(): string {
 
 /** The address of every "Contacter le support" link. */
 export function supportMailto(): string {
-  return `mailto:${encodeURIComponent(supportEmail())}`;
+  // RFC 6068: the `@` stays literal, the local part and the domain are encoded on their own.
+  return `mailto:${supportEmail()
+    .split("@")
+    .map((part) => encodeURIComponent(part))
+    .join("@")}`;
 }
 
 export function termsUrl(): string {
