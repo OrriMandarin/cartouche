@@ -193,6 +193,32 @@ test("PUB-023 a card without photo shows its initials", async ({ page }) => {
   await expect(page.getByTestId("card-avatar")).toHaveCount(0);
 });
 
+test("PUB-032 a long name and a long job title wrap inside the card", async ({ page, api }) => {
+  await api.updateCard("seed-alice", aliceCardId, {
+    content: {
+      first_name: "Anne-Sophie-Marguerite-Éloïse",
+      last_name: "De La Tour D’Auvergne-Lauraguais-Montmorency-Saint-Aignan",
+      job_title: "Directrice générale adjointe chargée du développement international et des partenariats",
+    },
+  });
+  await page.goto("/c/alice-durand");
+  for (const id of ["card-name", "card-job-title"]) {
+    const box = await page.getByTestId(id).evaluate((element) => {
+      const card = element.closest("article")!;
+      return {
+        overflowsCard: element.getBoundingClientRect().right > card.getBoundingClientRect().right + 0.5,
+        clipped: element.scrollWidth > element.clientWidth,
+        lines: Math.round(element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)),
+      };
+    });
+    expect(box.overflowsCard, id).toBe(false);
+    expect(box.clipped, id).toBe(false);
+    expect(box.lines, id).toBeGreaterThan(1);
+  }
+  const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+  expect(fitsViewport).toBe(true);
+});
+
 test("PUB-038 reduced motion stops the event sheen and the pulse", async ({ page, api }) => {
   const { events } = await api.seedEvents();
   const mariage = events.find((event) => event.title === MARIAGE);

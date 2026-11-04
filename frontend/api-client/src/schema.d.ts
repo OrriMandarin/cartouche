@@ -657,8 +657,9 @@ export interface components {
             kind: components["schemas"]["CustomFieldKind"];
             label: string;
             /**
-             * @description A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`), a number
-             *     (`number`), a boolean (`checkbox`) or `null` when left empty.
+             * @description A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`, `datetime` as
+             *     `AAAA-MM-JJTHH:MM`), a number (`number`),
+             *     a boolean (`checkbox`) or `null` when left empty.
              */
             value: unknown;
         };
