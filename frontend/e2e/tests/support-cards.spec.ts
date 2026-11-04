@@ -1,4 +1,4 @@
-import { expect, test } from "../fixtures";
+import { expect, openCardMenu, test } from "../fixtures";
 
 const UNAVAILABLE_TITLE = "Cette carte n’est pas disponible";
 
@@ -46,7 +46,9 @@ test("ADM-009 LNK-010 LNK-011 admin disables a card", async ({ page, api, loginA
   // ...and the owner sees the block, with no way to lift it.
   await loginAs("seed-alice");
   await page.goto("/dashboard");
-  await expect(page.getByTestId("card-blocked-alice-durand")).toHaveText("Désactivée par le support");
+  await expect(page.getByTestId("card-status-alice-durand")).toHaveText("Désactivée par le support");
+  await expect(page.getByTestId("card-support-alice-durand")).toHaveText("Contacter le support");
+  await openCardMenu(page, "alice-durand");
   await expect(page.getByTestId("card-enable-alice-durand")).toHaveCount(0);
 });
 

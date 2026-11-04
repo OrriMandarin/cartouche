@@ -25,3 +25,8 @@ export function canToggle(status: CardStatus): boolean {
 export function canDuplicate(status: CardStatus): boolean {
   return status !== "disabled_by_support";
 }
+
+/** spec: LNK-036. A card disabled by the support is read-only for its owner (409 card_disabled_by_support). */
+export function canEdit(status: CardStatus): boolean {
+  return status !== "disabled_by_support";
+}

@@ -103,36 +103,56 @@
     }
   },
   "dashboard": {
-    "title": "Tableau de bord",
-    "empty": "Aucune carte pour l'instant",
-    "support": "Support",
-    "loading": "Chargement…",
-    "newCard": "Nouvelle carte"
+    "title": "Mes cartes",
+    "summary": "{total, plural, one {# carte} other {# cartes}} · {active, plural, one {# active} other {# actives}}",
+    "support": "Support"
   },
   "cards": {
     "title": "Mes cartes",
     "untitled": "Carte sans nom",
     "close": "Fermer",
     "cancel": "Annuler",
+    "loading": "Chargement des cartes",
+    "create": "Créer une carte",
+    "hint": "Une carte désactivée affiche la page «\u00a0Cette carte n’est pas disponible\u00a0»\u00a0; tu peux la réactiver à tout moment.",
+    "contactSupport": "Contacter le support",
+    "columns": {
+      "card": "Carte",
+      "link": "Lien public",
+      "status": "État",
+      "events": "Événements"
+    },
     "status": {
       "active": "Active",
       "disabled": "Désactivée",
       "disabledBySupport": "Désactivée par le support"
     },
+    "events": {
+      "running": "{count} en cours",
+      "upcoming": "{count} à venir",
+      "none": "Aucun événement à venir"
+    },
+    "empty": {
+      "title": "Crée ta première carte",
+      "text": "Ta carte, c’est ta page publique\u00a0: tes coordonnées, tes liens, et un bouton pour t’enregistrer en un geste. Ton prénom et ton nom suffisent pour commencer.",
+      "create": "Créer une carte"
+    },
     "actions": {
       "edit": "Modifier",
+      "more": "Plus d’actions pour {slug}",
+      "menuLabel": "Actions de la carte",
+      "open": "Ouvrir la page publique",
       "disable": "Désactiver",
       "enable": "Réactiver",
       "duplicate": "Dupliquer",
-      "delete": "Supprimer",
-      "events": "Événements"
+      "delete": "Supprimer…"
     },
     "share": {
-      "copy": "Copier le lien",
-      "copied": "Lien copié",
+      "copyLabel": "Copier le lien de {slug}",
+      "copied": "Lien copié\u00a0: {link}",
       "copyFailed": "Impossible de copier le lien",
-      "qrSvg": "QR code SVG",
-      "qrPng": "QR code PNG",
+      "qrSvg": "Télécharger le QR code (SVG)",
+      "qrPng": "Télécharger le QR code (PNG)",
       "qrFailed": "Impossible de générer le QR code"
     },
     "slug": {
@@ -150,8 +170,9 @@
       "confirm": "Dupliquer"
     },
     "delete": {
-      "title": "Supprimer la carte ?",
-      "description": "La carte « {name} » sera supprimée définitivement, et son lien affichera une page neutre.",
+      "title": "Supprimer cette carte\u00a0?",
+      "description": "La carte <b>{slug}</b>, {events, plural, one {ses # événement} other {ses # événements}} et {leads, plural, one {ses # contact} other {ses # contacts}} seront supprimés définitivement. Les tags NFC et QR codes qui pointent vers ce lien afficheront «\u00a0Cette carte n’est pas disponible\u00a0».",
+      "cancel": "Annuler",
       "confirm": "Supprimer définitivement"
     },
     "new": {

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountGate, useMe } from "@/components/account/AccountGate";
-import { CardList } from "@/components/cards/CardList";
+import { CardList, CardListEmpty, CardListSkeleton } from "@/components/cards/CardList";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api";
@@ -13,6 +13,7 @@ import type { CardView } from "@/lib/cards/types";
 
 function DashboardContent() {
   const t = useTranslations("dashboard");
+  const tCards = useTranslations("cards");
   const me = useMe();
   const api = useApi();
   const [cards, setCards] = useState<CardView[] | null>(null);
@@ -39,36 +40,42 @@ function DashboardContent() {
     })();
   }, [reload]);
 
+  const active = cards?.filter((card) => card.status === "active").length ?? 0;
+
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="@max-[847px]:sr-only text-[28px] leading-[1.2] font-bold tracking-[-0.02em]">{t("title")}</h1>
+          {cards !== null && cards.length > 0 ? (
+            <p data-testid="dashboard-summary" className="text-app-muted">
+              {t("summary", { total: cards.length, active })}
+            </p>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2">
           {me.is_admin ? (
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <Link href="/support" data-testid="nav-support">
                 {t("support")}
               </Link>
             </Button>
           ) : null}
-          <Button asChild>
-            <Link href="/dashboard/cards/new" data-testid="new-card">
-              {t("newCard")}
-            </Link>
-          </Button>
+          {cards !== null && cards.length > 0 ? (
+            <Button asChild>
+              <Link href="/dashboard/cards/new" data-testid="new-card">
+                <Plus aria-hidden="true" />
+                {tCards("create")}
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </div>
       {error !== null ? <ErrorNotice error={error} /> : null}
       {cards === null ? (
-        error === null ? (
-          <p data-testid="dashboard-loading" className="text-muted-foreground py-6 text-center">
-            {t("loading")}
-          </p>
-        ) : null
+        error === null ? <CardListSkeleton /> : null
       ) : cards.length === 0 ? (
-        <p data-testid="dashboard-empty" className="text-muted-foreground rounded-lg border border-dashed p-10 text-center">
-          {t("empty")}
-        </p>
+        <CardListEmpty />
       ) : (
         <CardList cards={cards} onChanged={reload} />
       )}

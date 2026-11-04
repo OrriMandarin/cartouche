@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { test as base, expect, request, type APIRequestContext, type Download } from "@playwright/test";
+import { test as base, expect, request, type APIRequestContext, type Download, type Page } from "@playwright/test";
 import { API_URL, EVENTS_NOW } from "./env";
 
 /** How a media is framed on upload (MED-026, MED-028); what is left out takes the server's default. */
@@ -395,3 +395,11 @@ export const test = base.extend<Fixtures>({
 });
 
 export { expect };
+
+/** Opens the « Plus d’actions » menu of a card of the dashboard. */
+export async function openCardMenu(page: Page, slug: string): Promise<void> {
+  // A menu that was just used may still be closing.
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await page.getByTestId(`card-menu-${slug}`).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+}
