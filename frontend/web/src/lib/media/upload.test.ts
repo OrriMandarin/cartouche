@@ -73,6 +73,36 @@ describe("uploadMedia", () => {
     expect(form.has("poster")).toBe(false);
   });
 
+  test("MED-028 MED-026 uploadMedia sends the framing fields", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const video = new Blob(["video"], { type: "video/mp4" });
+    const poster = new Blob(["poster"], { type: "image/jpeg" });
+
+    await uploadMedia(async () => "t", "card-1", "header", video, poster, {
+      crop: { x: 0.125, y: 0, width: 0.75, height: 1 },
+      loop: { start: 0.5, end: 7.5 },
+      posterTime: 0.1,
+    });
+
+    const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+    expect(JSON.parse(form.get("crop") as string)).toEqual({ x: 0.125, y: 0, width: 0.75, height: 1 });
+    expect(JSON.parse(form.get("loop") as string)).toEqual({ start: 0.5, end: 7.5 });
+    expect(form.get("poster_time")).toBe("0.1");
+  });
+
+  test("MED-026 without framing, no framing field is sent", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await uploadMedia(async () => "t", "card-1", "header", new Blob(["img"], { type: "image/png" }), undefined, { posterTime: 0 });
+
+    const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+    expect(form.has("crop")).toBe(false);
+    expect(form.has("loop")).toBe(false);
+    expect(form.get("poster_time")).toBe("0");
+  });
+
   test("MED-013 server media errors are converted to ApiError, then to a message", async () => {
     const body = {
       error: {

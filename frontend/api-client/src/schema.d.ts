@@ -291,7 +291,7 @@ export interface paths {
         put?: never;
         /**
          * Upload a media
-         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar.
+         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files and its framing. The server keeps the whole image (the waiting image, for a video) as the media's source and cuts the files shown along the crop. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar.
          */
         post: operations["upload_media"];
         delete?: never;
@@ -740,6 +740,17 @@ export interface components {
             last_name?: string | null;
             slug: string;
         };
+        /** @description A rectangle in proportions of the source image, from 0 to 1 (MED-026). */
+        CropRect: {
+            /** Format: double */
+            height: number;
+            /** Format: double */
+            width: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+        };
         /** @description A field added by the owner, with a stable identifier (FRM-020, FRM-032). */
         CustomField: {
             help?: string | null;
@@ -948,16 +959,29 @@ export interface components {
         };
         /** @enum {string} */
         MediaKind: "image" | "video";
-        /** @description An uploaded image or video and the addresses of its files. */
+        /** @description An uploaded image or video, the addresses of its files and its framing. */
         MediaView: {
+            crop?: null | components["schemas"]["CropRect"];
+            /**
+             * Format: double
+             * @description The duration of a video, as the server read it (MED-013).
+             */
+            duration_seconds?: number | null;
             /** Format: uuid */
             id: string;
-            /** @description The WebP variants, narrowest first; for a video, the waiting image. */
+            /** @description The WebP variants, narrowest first, cut along the crop; for a video, the waiting image. */
             images: components["schemas"]["ImageVariantView"][];
             /** @description The largest JPEG variant, for a profile photo (vCard and link previews). */
             jpeg_url?: string | null;
             kind: components["schemas"]["MediaKind"];
-            /** @description The MP4 file, for a video. */
+            loop?: null | components["schemas"]["VideoLoop"];
+            /**
+             * Format: double
+             * @description When, in seconds, the waiting image of a video was captured (MED-028).
+             */
+            poster_time?: number | null;
+            source?: null | components["schemas"]["SourceView"];
+            /** @description The MP4 file, for a video, as uploaded. */
             video_url?: string | null;
         };
         /**
@@ -1063,6 +1087,15 @@ export interface components {
             /** @description A free slug derived from the name, or `null` when the name gives nothing usable. */
             slug?: string | null;
         };
+        /** @description The source of a media, for its owner (MED-031). */
+        SourceView: {
+            /** Format: int32 */
+            height: number;
+            /** @description Signed in local mode; the bucket address in S3 mode. */
+            url: string;
+            /** Format: int32 */
+            width: number;
+        };
         SpamBody: {
             /** @description `true` marks the contact as spam, `false` removes the mark. */
             spam: boolean;
@@ -1151,21 +1184,41 @@ export interface components {
         /** @description Shape of the multipart form, for the API description only. */
         UploadMediaBody: {
             /**
+             * @description JSON `{x, y, width, height}` in proportions of the image (of the waiting image, for a
+             *     video): 4:3 for the header, square for the avatar. Default: the largest centred one.
+             */
+            crop?: string | null;
+            /**
              * Format: binary
              * @description A JPEG, PNG or WebP image (10 MB, 40 million pixels at most), or in `header` an MP4
              *     video (25 MB, 30 s at most). The type is read from the content.
              */
             file: string;
+            /** @description Video only. JSON `{start, end}` in seconds. Default: the whole video. */
+            loop?: string | null;
             /**
              * Format: binary
-             * @description The waiting image of a video, captured in the browser. Required for a video.
+             * @description The waiting image of a video: the whole frame at `poster_time`, captured in the
+             *     browser. Required for a video.
              */
             poster?: string | null;
+            /**
+             * Format: double
+             * @description Video only. The time of the waiting image, in seconds, as a decimal. Default: 0.
+             */
+            poster_time?: number | null;
             /** @description Where the media is shown. A video is only accepted in `header`. */
             slot: components["schemas"]["Slot"];
         };
         /** @enum {string} */
         UserStatus: "pending" | "approved" | "rejected" | "suspended";
+        /** @description The part of a header video that plays in a loop, in seconds (MED-028). */
+        VideoLoop: {
+            /** Format: double */
+            end: number;
+            /** Format: double */
+            start: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -2570,7 +2623,7 @@ export interface operations {
                     "application/json": components["schemas"]["MediaView"];
                 };
             };
-            /** @description Malformed request or form (`invalid_request`) or refused file (`validation_failed`: `file` is `required`, `image_too_large` or `video_too_long`; `slot` is `required`; `poster` is `poster_required` or `image_too_large`). */
+            /** @description Malformed request or form, a framing field that does not parse, or a loop or poster time sent with an image (`invalid_request`), or refused file or framing (`validation_failed`: `file` is `required`, `image_too_large` or `video_too_long`; `slot` is `required`; `poster` is `poster_required` or `image_too_large`; `crop` is `invalid_crop`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
             400: {
                 headers: {
                     [name: string]: unknown;

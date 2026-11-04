@@ -11,6 +11,7 @@ const capturePoster = vi.fn();
 vi.mock("@/lib/media/video", () => ({
   readVideoDuration: (file: File) => readVideoDuration(file),
   capturePoster: (file: File) => capturePoster(file),
+  POSTER_SECONDS: 0.1,
 }));
 
 // The cropper itself needs a browser: a stand-in that confirms a fixed square.
@@ -79,17 +80,17 @@ describe("MediaField", () => {
     pick("media-header-input", jpeg());
 
     await waitFor(() => expect(state().header).toBe("new-header"));
-    expect(upload).toHaveBeenCalledWith("header", expect.any(File), undefined);
+    expect(upload).toHaveBeenCalledWith("header", expect.any(File), undefined, undefined);
   });
 
-  test("MED-003 a video is sent with the poster captured from it", async () => {
+  test("MED-003 MED-028 a video is sent with the poster captured from it and its time", async () => {
     const upload = vi.fn().mockResolvedValue(media("clip", "video"));
     renderWithIntl(<Harness upload={upload} />);
 
     pick("media-header-input", mp4());
 
     await waitFor(() => expect(state().header).toBe("clip"));
-    expect(upload).toHaveBeenCalledWith("header", expect.any(File), expect.any(Blob));
+    expect(upload).toHaveBeenCalledWith("header", expect.any(File), expect.any(Blob), { posterTime: 0.1 });
   });
 
   test("MED-013 a video above 30 seconds is refused before any upload", async () => {

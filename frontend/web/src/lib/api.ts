@@ -46,9 +46,9 @@ export function useApi(): ApiClient {
 export function useUploadMedia(cardId: string): UploadMedia {
   const { getToken } = useAuth();
   return useCallback(
-    async (slot, file, poster) => {
+    async (slot, file, poster, framing) => {
       try {
-        return await uploadMedia(getToken, cardId, slot, file, poster);
+        return await uploadMedia(getToken, cardId, slot, file, poster, framing);
       } catch (error) {
         report(error);
         throw error;

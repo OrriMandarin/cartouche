@@ -1,6 +1,6 @@
 //! How stored media files are addressed and served: storage keys, the keys `/media/*`
 //! accepts, their content types, who may read them, and `Range` requests (MED-010, MED-016,
-//! MED-017, MED-023).
+//! MED-017, MED-023, MED-031).
 
 use std::ops::Range;
 
@@ -11,9 +11,34 @@ pub fn storage_key(card_id: Uuid, media_id: Uuid, name: &str) -> String {
     format!("cards/{card_id}/{media_id}/{name}")
 }
 
+/// File name of a media's source (MED-025, MED-031): `source-<token>.webp`, where `token` is
+/// drawn at random for each media so that the name cannot be guessed.
+pub fn source_name(token: &str) -> String {
+    format!("source-{token}.webp")
+}
+
+/// Whether `name` is the file name of a source: `source-`, 32 lowercase hexadecimal
+/// characters, `.webp` (MED-031).
+pub fn is_source_name(name: &str) -> bool {
+    name.strip_prefix("source-")
+        .and_then(|rest| rest.strip_suffix(".webp"))
+        .is_some_and(|token| {
+            token.len() == 32
+                && token
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        })
+}
+
+/// Whether `key` is the storage key of a media's source (MED-031).
+pub fn is_source_key(key: &str) -> bool {
+    served_content_type(key).is_some() && key.rsplit('/').next().is_some_and(is_source_name)
+}
+
 /// The content type of a file served under `/media/*`, or `None` when `key` is not the key
 /// of a media file: `cards/{uuid}/{uuid}/` then `s|w`, 2 to 4 digits and `.webp` or `.jpg`,
-/// or `video.mp4`. Nothing else is ever read from the store, so a path cannot leave it.
+/// `video.mp4`, or a source name. Nothing else is ever read from the store, so a path cannot
+/// leave it.
 pub fn served_content_type(key: &str) -> Option<&'static str> {
     let mut segments = key.split('/');
     let (cards, card, media, name) = (
@@ -28,6 +53,9 @@ pub fn served_content_type(key: &str) -> Option<&'static str> {
     }
     if name == "video.mp4" {
         return Some("video/mp4");
+    }
+    if is_source_name(name) {
+        return Some("image/webp");
     }
     let (stem, extension) = name.split_once('.')?;
     let (kind, digits) = stem.split_at_checked(1)?;
@@ -63,11 +91,12 @@ pub enum MediaCache {
 
 /// Whether a file under `/media/*` may be read, and how it is cached. `signed` tells whether
 /// the request carries a valid signature; `served` whether the file's card is publicly
-/// served (`None`: no such card). Without a signature, only a served card's files are read
-/// (MED-023).
-pub fn media_access(signed: bool, served: Option<bool>) -> Option<MediaCache> {
+/// served (`None`: no such card); `is_source` whether the file is a media's source. Without a
+/// signature, only a served card's files are read, and never a source (MED-023, MED-031).
+pub fn media_access(signed: bool, served: Option<bool>, is_source: bool) -> Option<MediaCache> {
     match (signed, served) {
         (true, _) => Some(MediaCache::Private),
+        (false, _) if is_source => None,
         (false, Some(true)) => Some(MediaCache::Immutable),
         (false, Some(false) | None) => None,
     }
@@ -189,6 +218,52 @@ mod tests {
         }
     }
 
+    const TOKEN: &str = "0123456789abcdef0123456789abcdef";
+
+    // spec: MED-031
+    #[test]
+    fn source_names_carry_a_random_token() {
+        assert_eq!(source_name(TOKEN), format!("source-{TOKEN}.webp"));
+        assert!(is_source_name(&source_name(TOKEN)));
+        for bad in [
+            "source.webp".to_string(),
+            "source-.webp".to_string(),
+            format!("source-{}.webp", &TOKEN[1..]),
+            format!("source-{TOKEN}0.webp"),
+            format!("source-{}.webp", TOKEN.to_uppercase()),
+            format!("source-{}g.webp", &TOKEN[1..]),
+            format!("source-{TOKEN}.jpg"),
+            format!("source-{TOKEN}.webp.x"),
+            format!("xsource-{TOKEN}.webp"),
+        ] {
+            assert!(!is_source_name(&bad), "{bad}");
+        }
+        assert_eq!(
+            served_content_type(&key(&source_name(TOKEN))),
+            Some("image/webp")
+        );
+        assert_eq!(served_content_type(&key("source.webp")), None);
+        assert!(is_source_key(&key(&source_name(TOKEN))));
+        assert!(!is_source_key(&key("w750.webp")));
+        assert!(!is_source_key(&format!(
+            "cards/{CARD}/{}",
+            source_name(TOKEN)
+        )));
+    }
+
+    // spec: MED-031, MED-023
+    #[test]
+    fn a_source_needs_a_signature_even_on_a_served_card() {
+        for served in [Some(true), Some(false), None] {
+            assert_eq!(media_access(false, served, true), None, "{served:?}");
+            assert_eq!(
+                media_access(true, served, true),
+                Some(MediaCache::Private),
+                "{served:?}"
+            );
+        }
+    }
+
     fn range(header: &str, size: u64) -> Option<(u64, u64)> {
         parse_range(header, size).ok().map(|r| (r.start, r.end))
     }
@@ -198,14 +273,17 @@ mod tests {
     fn media_access_decisions() {
         for served in [Some(true), Some(false), None] {
             assert_eq!(
-                media_access(true, served),
+                media_access(true, served, false),
                 Some(MediaCache::Private),
                 "{served:?}"
             );
         }
-        assert_eq!(media_access(false, Some(true)), Some(MediaCache::Immutable));
-        assert_eq!(media_access(false, Some(false)), None);
-        assert_eq!(media_access(false, None), None);
+        assert_eq!(
+            media_access(false, Some(true), false),
+            Some(MediaCache::Immutable)
+        );
+        assert_eq!(media_access(false, Some(false), false), None);
+        assert_eq!(media_access(false, None, false), None);
     }
 
     // spec: MED-023

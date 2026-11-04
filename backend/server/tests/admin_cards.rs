@@ -105,7 +105,7 @@ async fn card_admin_routes_need_an_admin(pool: PgPool) {
     assert!(audit_rows(&pool).await.is_empty());
 }
 
-// spec: ADM-006, ADM-013, ACC-017
+// spec: ADM-006, ADM-013, ACC-017, MED-031
 #[sqlx::test(migrations = "./migrations")]
 async fn admin_sees_a_users_cards_read_only(pool: PgPool) {
     let app = cards_app(pool.clone()).await;
@@ -161,7 +161,11 @@ async fn admin_sees_a_users_cards_read_only(pool: PgPool) {
         detail.json["card"]["content"]["email"],
         "eloise@example.com"
     );
-    assert_eq!(detail.json["card"]["avatar"], saved.json["avatar"]);
+    // Support sees the owner's media, without its source (MED-031).
+    let mut owner_avatar = saved.json["avatar"].clone();
+    assert!(owner_avatar["source"].is_object());
+    owner_avatar.as_object_mut().unwrap().remove("source");
+    assert_eq!(detail.json["card"]["avatar"], owner_avatar);
     assert_eq!(detail.json["owner"]["id"], alice.to_string());
     assert_eq!(detail.json["owner"]["email"], "alice@example.com");
 

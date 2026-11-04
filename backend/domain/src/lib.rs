@@ -59,8 +59,8 @@ pub use media::{
     plan_image_variants, sniff, source_size,
 };
 pub use media_files::{
-    ByteRange, MediaCache, RangeNotSatisfiable, card_of_key, media_access, parse_range,
-    served_content_type, storage_key,
+    ByteRange, MediaCache, RangeNotSatisfiable, card_of_key, is_source_key, is_source_name,
+    media_access, parse_range, served_content_type, source_name, storage_key,
 };
 pub use phone::{InvalidPhone, format_international, normalize_phone};
 pub use public_access::{PublicAccess, SlugMatch, public_access};

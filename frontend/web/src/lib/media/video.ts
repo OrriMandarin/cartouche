@@ -70,11 +70,14 @@ export async function readVideoDuration(file: File): Promise<number> {
 /** Widest waiting image worth sending: the server never makes one wider than 1 920 px (MED-015). */
 const POSTER_MAX_WIDTH = 1920;
 
+/** When the waiting image of an uploaded video is captured, in seconds; sent as its poster time (MED-028). */
+export const POSTER_SECONDS = 0.1;
+
 /**
  * spec: MED-003, MED-021. A still of the video, as a JPEG, to be shown while the video loads: the frame at
  * `atSeconds` (or the first one for a shorter video), drawn in a canvas. Loading and seeking each have the time limit.
  */
-export async function capturePoster(file: File, atSeconds = 0.1): Promise<Blob> {
+export async function capturePoster(file: File, atSeconds = POSTER_SECONDS): Promise<Blob> {
   const { video, release } = await loadVideo(file);
   try {
     await waitFor(video, "seeked", () => {

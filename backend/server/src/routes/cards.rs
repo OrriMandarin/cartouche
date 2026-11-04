@@ -15,13 +15,13 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::auth::ApprovedUser;
-use crate::db::media::{MediaRecord, StoredVariant};
+use crate::db::media::{MediaRecord, SourceFile, StoredVariant};
 use crate::db::{cards, media, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
-use crate::media::MediaService;
+use crate::media::{MediaService, new_source_name};
 use crate::state::AppState;
-use crate::views::CardView;
+use crate::views::{Audience, CardView};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CardList {
@@ -55,7 +55,15 @@ pub async fn list_cards(
     let now = state.clock.now();
     let cards = owned
         .into_iter()
-        .map(|card| CardView::new(card, &attached, &state.config, &state.media, now))
+        .map(|card| {
+            CardView::new(
+                card,
+                &attached,
+                &state.config,
+                &state.media,
+                Audience::Owner(now),
+            )
+        })
         .collect::<Result<_, _>>()?;
     Ok(Json(CardList { cards }))
 }
@@ -141,7 +149,7 @@ pub async fn create_card(
             &[],
             &state.config,
             &state.media,
-            state.clock.now(),
+            Audience::Owner(state.clock.now()),
         )?),
     ))
 }
@@ -179,7 +187,7 @@ pub async fn get_card(
         &attached,
         &state.config,
         &state.media,
-        state.clock.now(),
+        Audience::Owner(state.clock.now()),
     )?))
 }
 
@@ -292,7 +300,7 @@ pub async fn update_card(
         &attached,
         &state.config,
         &state.media,
-        state.clock.now(),
+        Audience::Owner(state.clock.now()),
     )?))
 }
 
@@ -372,7 +380,7 @@ async fn set_disabled(
         &attached,
         &state.config,
         &state.media,
-        state.clock.now(),
+        Audience::Owner(state.clock.now()),
     )?))
 }
 
@@ -444,26 +452,48 @@ struct MediaCopy {
     copy: MediaRecord,
 }
 
-/// Storage keys of every variant of `source` and of its `copy`.
-fn variant_keys<'a>(
-    source: &'a MediaRecord,
-    copy: &'a MediaRecord,
-) -> impl Iterator<Item = (String, String)> + 'a {
-    source
-        .variants
-        .iter()
-        .map(move |StoredVariant { name, .. }| {
+impl MediaCopy {
+    /// A copy of `source` on the card `card_id`, with its framing and a source file under a
+    /// new name (EDI-014, MED-031).
+    fn of(source: MediaRecord, card_id: Uuid) -> MediaCopy {
+        let copy = MediaRecord {
+            id: Uuid::now_v7(),
+            card_id,
+            source: source.source.clone().map(|file| SourceFile {
+                name: new_source_name(),
+                ..file
+            }),
+            ..source.clone()
+        };
+        MediaCopy { source, copy }
+    }
+
+    /// Storage keys of every file of the source media and of its copy: the variants under the
+    /// same names, the source under its new name.
+    fn file_keys(&self) -> impl Iterator<Item = (String, String)> + '_ {
+        let MediaCopy { source, copy } = self;
+        let variants = source
+            .variants
+            .iter()
+            .map(|StoredVariant { name, .. }| (name, name));
+        let sources = source
+            .source
+            .iter()
+            .zip(&copy.source)
+            .map(|(from, to)| (&from.name, &to.name));
+        variants.chain(sources).map(|(from, to)| {
             (
-                storage_key(source.card_id, source.id, name),
-                storage_key(copy.card_id, copy.id, name),
+                storage_key(source.card_id, source.id, from),
+                storage_key(copy.card_id, copy.id, to),
             )
         })
+    }
 }
 
 /// Copies the files of every media of `copies`; when one fails, removes what was copied.
 async fn copy_files(storage: &MediaService, copies: &[MediaCopy]) -> Result<(), ApiError> {
-    for MediaCopy { source, copy } in copies {
-        for (from, to) in variant_keys(source, copy) {
+    for media_copy in copies {
+        for (from, to) in media_copy.file_keys() {
             if let Err(error) = storage.copy(&from, &to).await {
                 remove_copied_files(storage, copies).await;
                 return Err(error.into());
@@ -566,14 +596,7 @@ pub async fn duplicate_card(
     let copies: Vec<MediaCopy> = media::list_attached(&mut *tx, owner_id, &[id])
         .await?
         .into_iter()
-        .map(|source| {
-            let copy = MediaRecord {
-                id: Uuid::now_v7(),
-                card_id: new_id,
-                ..source.clone()
-            };
-            MediaCopy { source, copy }
-        })
+        .map(|source| MediaCopy::of(source, new_id))
         .collect();
     // Files first: the new rows only ever point at files that exist.
     copy_files(&state.media, &copies).await?;
@@ -585,7 +608,7 @@ pub async fn duplicate_card(
                 &attached,
                 &state.config,
                 &state.media,
-                state.clock.now(),
+                Audience::Owner(state.clock.now()),
             )?),
         )),
         Err(error) => {

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select m.id, m.card_id, m.slot, m.kind, m.variants from media m join cards c on c.id = m.card_id where c.owner_id = $1 and c.id = any($2) and (c.header_media_id = m.id or c.avatar_media_id = m.id)",
+  "query": "select m.id, m.card_id, m.slot, m.kind, m.variants, m.source, m.framing, m.duration_ms from media m join cards c on c.id = m.card_id where c.id = $1 and c.owner_id = $2 order by m.created_at, m.id",
   "describe": {
     "columns": [
       {
@@ -57,12 +57,45 @@
             "name": "variants"
           }
         }
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "framing",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "framing"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "duration_ms",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "duration_ms"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "UuidArray"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -70,8 +103,11 @@
       false,
       false,
       false,
-      false
+      false,
+      true,
+      true,
+      true
     ]
   },
-  "hash": "30387b7fc86482d0cf7eeb44adcb81363cb32dec19733481b8599636231ec98e"
+  "hash": "24f10ac045569399505b4aac5003dfc627c80131aa6306536e853dc2484117a2"
 }

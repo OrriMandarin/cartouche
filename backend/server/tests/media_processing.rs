@@ -1,16 +1,33 @@
-//! Content sniffing, MP4 duration, variant planning and the image pipeline (Task 7).
+//! Content sniffing, MP4 duration, variant planning and the image pipeline: source, crop and
+//! cut variants (Task 7, plan 6).
 
 mod common;
 
 use std::io::Cursor;
 use std::time::{Duration, Instant};
 
-use cartouche_api::media::process::{ProcessError, process_image};
+use cartouche_api::media::process::{
+    EncodedVariant, PrepareError, ProcessError, cut_variants, decode, encode_source, fit_source,
+    prepare_image,
+};
 use cartouche_domain::{
-    MediaFormat, Slot, VariantFormat, mp4_duration, plan_image_variants, sniff,
+    CropRect, MediaFormat, Slot, VariantFormat, mp4_duration, plan_image_variants, sniff,
 };
 use common::media_fixtures::{jpeg, jpeg_with_exif, mp4, png, png_claiming};
 use image::{ImageDecoder, ImageFormat, ImageReader, metadata::Orientation};
+
+/// The variants of an upload cut along the default crop.
+fn process_image(bytes: &[u8], slot: Slot) -> Result<Vec<EncodedVariant>, ProcessError> {
+    match prepare_image(bytes, slot, None) {
+        Ok(prepared) => Ok(prepared.variants),
+        Err(PrepareError::Image(error)) => Err(error),
+        Err(PrepareError::Crop) => panic!("the default crop is always valid"),
+    }
+}
+
+fn has_metadata(bytes: &[u8]) -> bool {
+    bytes.windows(4).any(|w| w == b"Exif") || bytes.windows(3).any(|w| w == b"GPS")
+}
 
 fn names(slot: Slot, width: u32, height: u32, format: VariantFormat) -> Vec<String> {
     plan_image_variants(slot, width, height)
@@ -109,9 +126,10 @@ fn avatar_variants_are_square_webp_and_jpeg() {
     }
 }
 
-// spec: MED-006, MED-015
+// spec: MED-006, MED-015, MED-026, MED-027
 #[test]
-fn header_variants_are_webp_scaled_to_width() {
+fn header_variants_are_4_3_webp_cut_from_the_centre() {
+    // 2000 × 1000: the default crop is the centred 1333 × 1000 rectangle.
     let variants = process_image(&png(2000, 1000), Slot::Header).unwrap();
     let sizes: Vec<_> = variants
         .iter()
@@ -120,11 +138,94 @@ fn header_variants_are_webp_scaled_to_width() {
     assert_eq!(
         sizes,
         [
-            ("w750.webp".to_string(), (750, 375)),
-            ("w1125.webp".to_string(), (1125, 562)),
-            ("w1440.webp".to_string(), (1440, 720)),
+            ("w750.webp".to_string(), (750, 563)),
+            ("w1125.webp".to_string(), (1125, 844)),
+            ("w1333.webp".to_string(), (1333, 1000)),
         ]
     );
+}
+
+// spec: MED-025, MED-007, MED-014
+#[test]
+fn the_source_is_kept_oriented_without_metadata() {
+    let upload = jpeg_with_exif(1200, 800, 6, true);
+    let prepared = prepare_image(&upload, Slot::Header, None).unwrap();
+    // Turned the right way up: the landscape upload is a portrait.
+    assert_eq!((prepared.source.width, prepared.source.height), (800, 1200));
+    assert_eq!(dimensions(&prepared.source.bytes), (800, 1200));
+    assert_eq!(sniff(&prepared.source.bytes), Some(MediaFormat::Webp));
+    assert!(!has_metadata(&prepared.source.bytes));
+    // The default crop of an 800 × 1200 portrait: full width, 600 high, centred.
+    assert_eq!(
+        prepared.crop,
+        CropRect {
+            x: 0.0,
+            y: 0.25,
+            width: 1.0,
+            height: 0.5
+        }
+    );
+}
+
+// spec: MED-025
+#[test]
+fn a_long_source_is_reduced_to_4096_pixels() {
+    let source = fit_source(decode(&png(5000, 1000)).unwrap());
+    let encoded = encode_source(&source).unwrap();
+    assert_eq!((encoded.width, encoded.height), (4096, 819));
+    assert_eq!(dimensions(&encoded.bytes), (4096, 819));
+    // A smaller image is never enlarged.
+    let small = fit_source(decode(&png(300, 200)).unwrap());
+    assert_eq!(encode_source(&small).unwrap().width, 300);
+}
+
+// spec: MED-026, MED-027, MED-015
+#[test]
+fn variants_are_cut_along_the_crop() {
+    let source = decode(&png(1600, 1200)).unwrap();
+    let crop = CropRect {
+        x: 0.5,
+        y: 0.5,
+        width: 0.5,
+        height: 0.5,
+    };
+    let header: Vec<_> = cut_variants(&source, Slot::Header, &crop)
+        .unwrap()
+        .iter()
+        .map(|v| (v.name.clone(), dimensions(&v.bytes)))
+        .collect();
+    assert_eq!(
+        header,
+        [
+            ("w750.webp".to_string(), (750, 563)),
+            ("w800.webp".to_string(), (800, 600)),
+        ]
+    );
+    // An avatar is cut square.
+    let square = CropRect {
+        x: 0.0,
+        y: 0.0,
+        width: 0.375,
+        height: 0.5,
+    };
+    for variant in cut_variants(&source, Slot::Avatar, &square).unwrap() {
+        assert_eq!(dimensions(&variant.bytes), (variant.width, variant.width));
+    }
+}
+
+// spec: MED-026
+#[test]
+fn a_crop_of_the_wrong_shape_is_refused() {
+    let crop = CropRect {
+        x: 0.0,
+        y: 0.0,
+        width: 1.0,
+        height: 1.0,
+    };
+    assert!(matches!(
+        prepare_image(&png(1600, 900), Slot::Header, Some(crop)),
+        Err(PrepareError::Crop)
+    ));
 }
 
 #[test]
@@ -145,12 +246,11 @@ fn orientation_applied_and_exif_removed() {
     assert!(upload.windows(4).any(|w| w == b"Exif"));
 
     let variants = process_image(&upload, Slot::Header).unwrap();
-    let w750 = variants.iter().find(|v| v.name == "w750.webp").unwrap();
-    // Rotated a quarter turn: the landscape upload is shown as a portrait.
-    assert_eq!(dimensions(&w750.bytes), (750, 1125));
+    let names: Vec<_> = variants.iter().map(|v| v.name.as_str()).collect();
+    // Rotated a quarter turn: the portrait is 800 wide, its 4:3 crop 800 × 600.
+    assert_eq!(names, ["w750.webp", "w800.webp"]);
     for variant in &variants {
-        assert!(!variant.bytes.windows(4).any(|w| w == b"Exif"));
-        assert!(!variant.bytes.windows(3).any(|w| w == b"GPS"));
+        assert!(!has_metadata(&variant.bytes));
     }
 }
 
@@ -160,8 +260,7 @@ fn avatar_jpeg_variants_carry_no_exif() {
     let variants = process_image(&jpeg_with_exif(600, 600, 3, true), Slot::Avatar).unwrap();
     assert!(variants.iter().any(|v| v.format == VariantFormat::Jpeg));
     for variant in &variants {
-        assert!(!variant.bytes.windows(4).any(|w| w == b"Exif"));
-        assert!(!variant.bytes.windows(3).any(|w| w == b"GPS"));
+        assert!(!has_metadata(&variant.bytes));
     }
 }
 

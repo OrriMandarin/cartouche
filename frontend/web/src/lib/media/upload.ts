@@ -1,11 +1,23 @@
-import { ApiError, toApiError } from "@cartouche/api-client";
+import { ApiError, toApiError, type components } from "@cartouche/api-client";
 import type { MediaView } from "@/templates/contract";
 
 export type MediaSlot = "header" | "avatar";
 export type MediaKind = "image" | "video";
+export type CropRect = components["schemas"]["CropRect"];
+export type VideoLoop = components["schemas"]["VideoLoop"];
+
+/**
+ * How a media is framed on upload (MED-026, MED-028): its crop, and for a video its loop and the time of its
+ * waiting image. Whatever is left out takes the server's default.
+ */
+export interface UploadFraming {
+  crop?: CropRect;
+  loop?: VideoLoop;
+  posterTime?: number;
+}
 
 /** Sends a media of a card and returns what the server stored (`uploadMedia` bound to a card and a session). */
-export type UploadMedia = (slot: MediaSlot, file: Blob, poster?: Blob) => Promise<MediaView>;
+export type UploadMedia = (slot: MediaSlot, file: Blob, poster?: Blob, framing?: UploadFraming) => Promise<MediaView>;
 
 /** Limits of the server (MED-002, MED-012), mirrored here to answer before sending; the server stays the arbiter. */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -41,8 +53,9 @@ export function checkBeforeUpload(
 }
 
 /**
- * spec: MED-003. Sends a media to `POST /api/cards/{id}/media`: the slot, the file and, for a video, its
- * waiting image. A refusal is thrown as an `ApiError`, as with the generated client.
+ * spec: MED-003, MED-026, MED-028. Sends a media to `POST /api/cards/{id}/media`: the slot, the file, for a
+ * video its waiting image, and the framing given. A refusal is thrown as an `ApiError`, as with the generated
+ * client.
  */
 export async function uploadMedia(
   getToken: () => Promise<string | null>,
@@ -50,11 +63,15 @@ export async function uploadMedia(
   slot: MediaSlot,
   file: Blob,
   poster?: Blob,
+  framing: UploadFraming = {},
 ): Promise<MediaView> {
   const form = new FormData();
   form.append("slot", slot);
   form.append("file", file, file instanceof File ? file.name : "media");
   if (poster) form.append("poster", poster, "poster.jpg");
+  if (framing.crop) form.append("crop", JSON.stringify(framing.crop));
+  if (framing.loop) form.append("loop", JSON.stringify(framing.loop));
+  if (framing.posterTime !== undefined) form.append("poster_time", String(framing.posterTime));
 
   const headers = new Headers();
   const token = await getToken();

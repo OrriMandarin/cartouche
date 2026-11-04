@@ -1,9 +1,9 @@
 //! JSON shapes of the API that are shared by several routes.
 
 use cartouche_domain::{
-    AnswerSnapshot, CardContent, CardStatus, CustomField, EventPhase, Link, LinkKind, MediaKind,
-    PublicForm, StandardAnswers, StandardField, StandardFields, Theme, VariantFormat, consent_text,
-    default_consent_text, form_version, format_international, storage_key,
+    AnswerSnapshot, CardContent, CardStatus, CropRect, CustomField, EventPhase, Link, LinkKind,
+    MediaKind, PublicForm, StandardAnswers, StandardField, StandardFields, Theme, VariantFormat,
+    VideoLoop, consent_text, default_consent_text, form_version, format_international, storage_key,
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -288,17 +288,40 @@ pub struct LinkView {
     pub label: Option<String>,
 }
 
-/// An uploaded image or video and the addresses of its files.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+/// An uploaded image or video, the addresses of its files and its framing.
+#[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
 pub struct MediaView {
     pub id: Uuid,
     pub kind: MediaKind,
-    /// The WebP variants, narrowest first; for a video, the waiting image.
+    /// The WebP variants, narrowest first, cut along the crop; for a video, the waiting image.
     pub images: Vec<ImageVariantView>,
-    /// The MP4 file, for a video.
+    /// The MP4 file, for a video, as uploaded.
     pub video_url: Option<String>,
     /// The largest JPEG variant, for a profile photo (vCard and link previews).
     pub jpeg_url: Option<String>,
+    /// The crop, in proportions of the source (MED-026); absent for a media uploaded before
+    /// plan 6, which is shown centred (MED-033).
+    pub crop: Option<CropRect>,
+    /// The part of a header video that plays in a loop, in seconds (MED-028).
+    #[serde(rename = "loop")]
+    pub video_loop: Option<VideoLoop>,
+    /// When, in seconds, the waiting image of a video was captured (MED-028).
+    pub poster_time: Option<f64>,
+    /// The duration of a video, as the server read it (MED-013).
+    pub duration_seconds: Option<f64>,
+    /// The whole image the files are cut from, to re-frame the media. Only in the owner's
+    /// views, and only for a media uploaded since plan 6 (MED-025, MED-031).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<SourceView>,
+}
+
+/// The source of a media, for its owner (MED-031).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+pub struct SourceView {
+    /// Signed in local mode; the bucket address in S3 mode.
+    pub url: String,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
@@ -313,9 +336,11 @@ pub struct ImageVariantView {
 pub enum Audience {
     /// Any visitor of the public page: plain addresses, readable while the card is served.
     Public,
-    /// The owner's dashboard or the support page, at the given time: signed addresses,
-    /// readable even when the card is not served (MED-023).
-    Dashboard(DateTime<Utc>),
+    /// The card's owner, at the given time: signed addresses, readable even when the card is
+    /// not served (MED-023), and the media's source (MED-031).
+    Owner(DateTime<Utc>),
+    /// The support page, at the given time: signed addresses (MED-023), never the source.
+    Support(DateTime<Utc>),
 }
 
 impl MediaView {
@@ -324,9 +349,18 @@ impl MediaView {
             let key = storage_key(record.card_id, record.id, name);
             match audience {
                 Audience::Public => media.url(&key),
-                Audience::Dashboard(now) => media.dashboard_url(&key, now),
+                Audience::Owner(now) | Audience::Support(now) => media.dashboard_url(&key, now),
             }
         };
+        let source = match audience {
+            Audience::Owner(_) => record.source.as_ref().map(|source| SourceView {
+                url: url_of(&source.name),
+                width: source.width,
+                height: source.height,
+            }),
+            Audience::Public | Audience::Support(_) => None,
+        };
+        let framing = record.framing.as_ref();
         let mut images: Vec<ImageVariantView> = record
             .variants
             .iter()
@@ -350,6 +384,11 @@ impl MediaView {
             images,
             video_url: named(VariantFormat::Mp4).map(|v| url_of(&v.name)),
             jpeg_url: named(VariantFormat::Jpeg).map(|v| url_of(&v.name)),
+            crop: framing.map(|f| f.crop),
+            video_loop: framing.and_then(|f| f.video_loop),
+            poster_time: framing.and_then(|f| f.poster_time),
+            duration_seconds: record.duration_ms.map(|ms| f64::from(ms) / 1000.0),
+            source,
         }
     }
 }
@@ -406,19 +445,18 @@ impl From<Link> for LinkView {
 
 impl CardView {
     /// `attached` holds the card's header and avatar records (others are ignored); the files'
-    /// addresses are signed at `now` (MED-023). Fails only if the stored theme is no longer
-    /// valid, which is a bug of ours.
+    /// addresses are those of `audience`, the owner or support (MED-023, MED-031). Fails only
+    /// if the stored theme is no longer valid, which is a bug of ours.
     pub fn new(
         card: Card,
         attached: &[MediaRecord],
         config: &Config,
         media: &MediaService,
-        now: DateTime<Utc>,
+        audience: Audience,
     ) -> Result<CardView, ApiError> {
         let status = card.status();
         let theme = stored_theme(&card)?;
-        let view_of =
-            |id: Option<Uuid>| attached_view(attached, id, media, Audience::Dashboard(now));
+        let view_of = |id: Option<Uuid>| attached_view(attached, id, media, audience);
         Ok(CardView {
             header: view_of(card.header_media_id),
             avatar: view_of(card.avatar_media_id),

@@ -11,10 +11,11 @@ import {
   MAX_VIDEO_SECONDS,
   type MediaKind,
   type MediaSlot,
+  type UploadFraming,
   type UploadMedia,
   VIDEO_TYPE,
 } from "@/lib/media/upload";
-import { capturePoster, readVideoDuration } from "@/lib/media/video";
+import { capturePoster, POSTER_SECONDS, readVideoDuration } from "@/lib/media/video";
 import type { MediaView, TemplateDefinition } from "@/templates/contract";
 import { AvatarCropper } from "./AvatarCropper";
 
@@ -50,10 +51,10 @@ function SlotField({
   const hint = slot === "avatar" ? t("editor.media.avatarHint") : hasVideo ? t("editor.media.headerHintVideo") : t("editor.media.headerHintImage");
   const thumbnail = value?.images[0]?.url;
 
-  async function send(file: Blob, poster?: Blob) {
+  async function send(file: Blob, poster?: Blob, framing?: UploadFraming) {
     setBusy(true);
     try {
-      onChange(await upload(slot, file, poster));
+      onChange(await upload(slot, file, poster, framing));
     } catch (error) {
       setErrorKey(mediaErrorKey(error));
     } finally {
@@ -77,7 +78,7 @@ function SlotField({
       setBusy(false);
       return;
     }
-    await send(file, poster);
+    await send(file, poster, { posterTime: POSTER_SECONDS });
   }
 
   function choose(file: File) {

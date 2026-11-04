@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select m.id, m.card_id, m.slot, m.kind, m.variants from media m join cards c on c.id = m.card_id where c.id = $1 and c.owner_id = $2 order by m.created_at, m.id",
+  "query": "delete from media m using cards c where m.card_id = c.id and c.id = $1 and c.owner_id = $2 and c.header_media_id is distinct from m.id and c.avatar_media_id is distinct from m.id returning m.id, m.card_id, m.slot, m.kind, m.variants, m.source, m.framing, m.duration_ms",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,39 @@
             "name": "variants"
           }
         }
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "framing",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "framing"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "duration_ms",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "duration_ms"
+          }
+        }
       }
     ],
     "parameters": {
@@ -70,8 +103,11 @@
       false,
       false,
       false,
-      false
+      false,
+      true,
+      true,
+      true
     ]
   },
-  "hash": "4612b2fbf9c269efd7fb6136b6d5b4dc0155b4790e6e19efb4cb3589e62f62ac"
+  "hash": "5e4740b8d2980c9adf9d08de4fb286d72103eb9acae593ff9305f15ed88d7423"
 }

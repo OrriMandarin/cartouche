@@ -159,3 +159,32 @@ fn s3_storage_builds_without_touching_the_network() {
     assert!(!media.serves_locally());
     assert_eq!(media.url("cards/a"), "https://cdn.example/cards/a");
 }
+
+// spec: MED-025, MED-031, MED-018
+#[tokio::test]
+async fn deleting_a_media_removes_its_source_too() {
+    let media = service();
+    let (card, kept, removed) = (Uuid::now_v7(), Uuid::now_v7(), Uuid::now_v7());
+    let source = cartouche_api::media::new_source_name();
+    assert!(cartouche_domain::is_source_name(&source), "{source}");
+    assert_ne!(source, cartouche_api::media::new_source_name());
+    for (id, name) in [
+        (removed, source.as_str()),
+        (removed, "w750.webp"),
+        (kept, "w750.webp"),
+    ] {
+        media
+            .put(
+                &format!("cards/{card}/{id}/{name}"),
+                Bytes::from_static(b"x"),
+            )
+            .await
+            .unwrap();
+    }
+
+    media.delete_media(card, removed).await.unwrap();
+    assert_eq!(
+        media.list_keys().await,
+        [format!("cards/{card}/{kept}/w750.webp")]
+    );
+}

@@ -55,10 +55,10 @@ export function CardEditor({ card }: { card: CardView }) {
   // the draft pointing at a dead media id, so saving waits for them.
   const [uploading, setUploading] = useState(0);
   const uploadMedia = useCallback<UploadMedia>(
-    async (slot, file, poster) => {
+    async (slot, file, poster, framing) => {
       setUploading((count) => count + 1);
       try {
-        return await sendMedia(slot, file, poster);
+        return await sendMedia(slot, file, poster, framing);
       } finally {
         setUploading((count) => count - 1);
       }

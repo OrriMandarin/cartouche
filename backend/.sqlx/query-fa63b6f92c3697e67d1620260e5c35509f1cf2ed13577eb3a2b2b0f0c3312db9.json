@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into media (id, card_id, slot, kind, variants) select $1, c.id, $3, $4, $5 from cards c where c.id = $2 and c.owner_id = $6 returning id, card_id, slot, kind, variants",
+  "query": "select m.id, m.card_id, m.slot, m.kind, m.variants, m.source, m.framing, m.duration_ms from media m join cards c on c.id = m.card_id where c.owner_id = $1 and c.id = any($2) and (c.header_media_id = m.id or c.avatar_media_id = m.id)",
   "describe": {
     "columns": [
       {
@@ -57,16 +57,45 @@
             "name": "variants"
           }
         }
+      },
+      {
+        "ordinal": 5,
+        "name": "source",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "framing",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "framing"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "duration_ms",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "media",
+            "name": "duration_ms"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
-        "Text",
-        "Text",
-        "Jsonb",
-        "Uuid"
+        "UuidArray"
       ]
     },
     "nullable": [
@@ -74,8 +103,11 @@
       false,
       false,
       false,
-      false
+      false,
+      true,
+      true,
+      true
     ]
   },
-  "hash": "b132e55aedae68b3c9ab7ba93568797d26ff969123beda24b17d0a7f568b831c"
+  "hash": "fa63b6f92c3697e67d1620260e5c35509f1cf2ed13577eb3a2b2b0f0c3312db9"
 }

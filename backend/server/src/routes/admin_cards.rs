@@ -17,7 +17,7 @@ use crate::error::{ApiError, ErrorBody};
 use crate::extract::ApiPath;
 use crate::routes::admin_users::AdminUserView;
 use crate::state::AppState;
-use crate::views::CardView;
+use crate::views::{Audience, CardView};
 
 /// An account and all its cards, whatever their state.
 #[derive(Debug, Serialize, ToSchema)]
@@ -67,7 +67,15 @@ pub async fn get_user(
     let now = state.clock.now();
     let cards = owned
         .into_iter()
-        .map(|card| CardView::new(card, &attached, &state.config, &state.media, now))
+        .map(|card| {
+            CardView::new(
+                card,
+                &attached,
+                &state.config,
+                &state.media,
+                Audience::Support(now),
+            )
+        })
         .collect::<Result<_, _>>()?;
     Ok(Json(AdminUserDetail {
         user: AdminUserView::new(user, &state),
@@ -114,7 +122,7 @@ pub async fn get_card(
             &attached,
             &state.config,
             &state.media,
-            state.clock.now(),
+            Audience::Support(state.clock.now()),
         )?,
         owner: AdminUserView::new(owner, &state),
     }))
@@ -159,7 +167,7 @@ async fn set_support_block(
         &attached,
         &state.config,
         &state.media,
-        state.clock.now(),
+        Audience::Support(state.clock.now()),
     )?))
 }
 
