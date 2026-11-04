@@ -218,7 +218,7 @@ pub struct UpdateCardBody {
     put,
     path = "/api/cards/{id}",
     summary = "Update a card",
-    description = "Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted.",
+    description = "Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted. Refused while support has disabled the card.",
     tag = "cards",
     security(("bearer" = [])),
     params(("id" = Uuid, Path, description = "Id of the card.")),
@@ -229,7 +229,7 @@ pub struct UpdateCardBody {
         (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
         (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
         (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
-        (status = 409, description = "The slug is not available (`slug_taken`, `slug_reserved`).", body = ErrorBody),
+        (status = 409, description = "The slug is not available (`slug_taken`, `slug_reserved`) or support disabled the card (`card_disabled_by_support`).", body = ErrorBody),
         (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
         (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
     ),
@@ -253,11 +253,12 @@ pub async fn update_card(
     let owner_id = me.user.id;
     let mut tx = state.db.begin().await?;
     // The lock keeps a concurrent deletion or upload out until this save is committed.
-    if cards::lock_for_owner(&mut tx, owner_id, id)
+    let locked = cards::lock_for_owner(&mut tx, owner_id, id)
         .await?
-        .is_none()
-    {
-        return Err(ApiError::NotFound);
+        .ok_or(ApiError::NotFound)?;
+    // Only after the 404 of another owner's card, so nothing is learned about it (LNK-036).
+    if locked.support_disabled {
+        return Err(ApiError::CardDisabledBySupport);
     }
     let card_media: Vec<_> = media::list_for_card(&mut *tx, owner_id, id)
         .await?

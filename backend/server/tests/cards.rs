@@ -633,3 +633,71 @@ async fn cards_count_their_leads_spam_included(pool: PgPool) {
         0
     );
 }
+
+async fn support_disable(pool: &PgPool, id: &str) {
+    sqlx::query("update cards set support_disabled_at = now() where id = $1::uuid")
+        .bind(id)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+// spec: LNK-036, EVT-025, LNK-008
+#[sqlx::test(migrations = "./migrations")]
+async fn a_card_blocked_by_support_cannot_be_saved_by_its_owner(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card["id"].as_str().unwrap();
+    let event = create_event(&app, "alice", id, event_body("2026-01-10T08:00:00Z", None)).await;
+    send_lead(
+        &app,
+        "alice-durand",
+        event["id"].as_str().unwrap(),
+        json!({}),
+    )
+    .await;
+    support_disable(&pool, id).await;
+
+    let res = put_card(
+        &app,
+        "alice",
+        id,
+        json!({ "slug": "alice-new", "content": { "first_name": "Changed" } }),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CONFLICT);
+    assert_eq!(error_code(&res), "card_disabled_by_support");
+    assert!(!res.json.to_string().contains("alice@example.com"));
+    // Nothing changed, the slug included.
+    let after = get_card(&app, "alice", id).await;
+    assert_eq!(after.json["slug"], "alice-durand");
+    assert_eq!(after.json["content"]["first_name"], "Alice");
+    assert_eq!(after.json["updated_at"], card["updated_at"]);
+
+    // Another owner still gets a plain 404.
+    let other = put_card_as(&app, "bob", id, &save_body(&card, json!({}))).await;
+    assert_eq!(other.status, StatusCode::NOT_FOUND);
+
+    // Its events stay editable (EVT-025) and its leads exportable (LNK-008).
+    let created = create_event(&app, "alice", id, event_body("2026-02-01T08:00:00Z", None)).await;
+    assert_eq!(created["card_id"], id);
+    let export = app
+        .request(
+            "GET",
+            &format!("/api/cards/{id}/leads/export?format=csv"),
+            Some(&token("alice")),
+            None,
+        )
+        .await;
+    assert_eq!(export.status, StatusCode::OK);
+}
+
+async fn put_card_as(app: &TestApp, sub: &str, id: &str, body: &Value) -> TestResponse {
+    app.request(
+        "PUT",
+        &format!("/api/cards/{id}"),
+        Some(&token(sub)),
+        Some(body.clone()),
+    )
+    .await
+}

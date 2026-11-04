@@ -1916,3 +1916,47 @@ async fn reframing_checks_the_crop_and_the_video_framing(pool: PgPool) {
     assert_eq!(stored_files(&app).await, before);
     assert_eq!(media_rows(&pool).await, 2);
 }
+
+// spec: LNK-036
+#[sqlx::test(migrations = "./migrations")]
+async fn a_card_blocked_by_support_takes_no_upload_or_reframe(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let (id, old) = card_with_quadrants_header(&app).await;
+    sqlx::query("update cards set support_disabled_at = now() where id = $1::uuid")
+        .bind(&id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let files = stored_files(&app).await;
+    let rows = media_rows(&pool).await;
+
+    let uploaded = upload_image(&app, &id, "avatar", png(400, 400)).await;
+    assert_eq!(uploaded.status, StatusCode::CONFLICT);
+    assert_eq!(error_code(&uploaded), "card_disabled_by_support");
+
+    let reframed = reframe(
+        &app,
+        "alice",
+        &id,
+        old["id"].as_str().unwrap(),
+        &[crop_part(0.5, 0.5, 0.5, 0.5)],
+    )
+    .await;
+    assert_eq!(reframed.status, StatusCode::CONFLICT);
+    assert_eq!(error_code(&reframed), "card_disabled_by_support");
+
+    // Nothing was stored; another owner's request is still a 404.
+    assert_eq!(media_rows(&pool).await, rows);
+    assert_eq!(stored_files(&app).await, files);
+    let other = upload(
+        &app,
+        "bob",
+        &id,
+        &[
+            Part::text("slot", "avatar"),
+            Part::file("file", "photo.png", "image/png", png(400, 400)),
+        ],
+    )
+    .await;
+    assert_eq!(other.status, StatusCode::NOT_FOUND);
+}

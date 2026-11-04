@@ -307,7 +307,7 @@ async fn prepare(
     post,
     path = "/api/cards/{id}/media",
     summary = "Upload a media",
-    description = "Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files and its framing. The server keeps the whole image (the waiting image, for a video) as the media's source and cuts the files shown along the crop. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar.",
+    description = "Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files and its framing. The server keeps the whole image (the waiting image, for a video) as the media's source and cuts the files shown along the crop. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar. Refused while support has disabled the card.",
     tag = "cards",
     security(("bearer" = [])),
     params(("id" = Uuid, Path, description = "Id of the card.")),
@@ -318,6 +318,7 @@ async fn prepare(
         (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
         (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
         (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
+        (status = 409, description = "Support disabled the card (`card_disabled_by_support`).", body = ErrorBody),
         (status = 413, description = "The file is too heavy: 10 MB for an image, 25 MB for a video (`payload_too_large`).", body = ErrorBody),
         (status = 415, description = "The content is not a supported image or video (`unsupported_media_type`).", body = ErrorBody),
         (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
@@ -332,9 +333,12 @@ pub async fn upload_media(
 ) -> Result<(StatusCode, Json<MediaView>), ApiError> {
     let owner_id = me.user.id;
     // Before reading the body: another user's card is not found, whatever is sent.
-    cards::find_for_owner(&state.db, owner_id, card_id)
+    let card = cards::find_for_owner(&state.db, owner_id, card_id)
         .await?
         .ok_or(ApiError::NotFound)?;
+    if card.support_disabled_at.is_some() {
+        return Err(ApiError::CardDisabledBySupport);
+    }
 
     let form = read_form(&mut multipart).await?;
     let mut missing = Vec::new();
@@ -504,7 +508,7 @@ async fn prepare_reframed(
     post,
     path = "/api/cards/{id}/media/{media_id}/reframe",
     summary = "Re-frame a media",
-    description = "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used.",
+    description = "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.",
     tag = "cards",
     security(("bearer" = [])),
     params(
@@ -518,7 +522,7 @@ async fn prepare_reframed(
         (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
         (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
         (status = 404, description = "No such card or media of this card for the caller (`not_found`).", body = ErrorBody),
-        (status = 409, description = "The media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`).", body = ErrorBody),
+        (status = 409, description = "Support disabled the card (`card_disabled_by_support`), or the media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`).", body = ErrorBody),
         (status = 413, description = "The new frame is too heavy (`payload_too_large`).", body = ErrorBody),
         (status = 415, description = "The new frame is not a supported image (`unsupported_media_type`).", body = ErrorBody),
         (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
@@ -533,9 +537,12 @@ pub async fn reframe_media(
 ) -> Result<(StatusCode, Json<MediaView>), ApiError> {
     let owner_id = me.user.id;
     // Before reading the body: another user's card or media is not found, whatever is sent.
-    cards::find_for_owner(&state.db, owner_id, card_id)
+    let card = cards::find_for_owner(&state.db, owner_id, card_id)
         .await?
         .ok_or(ApiError::NotFound)?;
+    if card.support_disabled_at.is_some() {
+        return Err(ApiError::CardDisabledBySupport);
+    }
     let previous = media::find_for_owner(&state.db, owner_id, media_id)
         .await?
         .filter(|media| media.card_id == card_id)

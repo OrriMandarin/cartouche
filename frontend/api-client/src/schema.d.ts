@@ -222,7 +222,7 @@ export interface paths {
         get: operations["get_card"];
         /**
          * Update a card
-         * @description Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted.
+         * @description Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted. Refused while support has disabled the card.
          */
         put: operations["update_card"];
         post?: never;
@@ -391,7 +391,7 @@ export interface paths {
         put?: never;
         /**
          * Upload a media
-         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files and its framing. The server keeps the whole image (the waiting image, for a video) as the media's source and cuts the files shown along the crop. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar.
+         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files and its framing. The server keeps the whole image (the waiting image, for a video) as the media's source and cuts the files shown along the crop. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar. Refused while support has disabled the card.
          */
         post: operations["upload_media"];
         delete?: never;
@@ -411,7 +411,7 @@ export interface paths {
         put?: never;
         /**
          * Re-frame a media
-         * @description Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used.
+         * @description Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.
          */
         post: operations["reframe_media"];
         delete?: never;
@@ -2436,7 +2436,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The slug is not available (`slug_taken`, `slug_reserved`). */
+            /** @description The slug is not available (`slug_taken`, `slug_reserved`) or support disabled the card (`card_disabled_by_support`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3277,6 +3277,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description Support disabled the card (`card_disabled_by_support`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description The file is too heavy: 10 MB for an image, 25 MB for a video (`payload_too_large`). */
             413: {
                 headers: {
@@ -3378,7 +3387,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`). */
+            /** @description Support disabled the card (`card_disabled_by_support`), or the media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`). */
             409: {
                 headers: {
                     [name: string]: unknown;
