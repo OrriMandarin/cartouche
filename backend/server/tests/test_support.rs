@@ -208,6 +208,10 @@ async fn reset_empties_tables(pool: PgPool) {
     .execute(&pool)
     .await
     .unwrap();
+    sqlx::query("insert into blocked_slugs (slug_hash) values (sha256('ancien-lien'::bytea))")
+        .execute(&pool)
+        .await
+        .unwrap();
 
     let response = app.request("POST", "/api/test/reset", None, None).await;
     assert_eq!(response.status, StatusCode::NO_CONTENT);
@@ -217,6 +221,11 @@ async fn reset_empties_tables(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(audits, 0);
+    let blocked: i64 = sqlx::query_scalar("select count(*) from blocked_slugs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(blocked, 0);
 }
 
 // spec: ABU-006
@@ -651,6 +660,73 @@ async fn events_scenario_contacts_are_listed_for_their_owner(pool: PgPool) {
     for lead in leads {
         assert_eq!(lead["consent_text"], default_text);
     }
+}
+
+// spec: FRM-008
+#[sqlx::test]
+async fn seeded_consent_texts_are_the_ones_a_submission_records(pool: PgPool) {
+    let app = test_app(pool).await;
+    let report = seed_events_at_t0(&app).await;
+    let token = token_for(&app, json!({"subject": "seed-alice"})).await;
+    let mut checked = 0;
+    for event in report["events"].as_array().unwrap() {
+        if event["card_slug"] != "alice-durand" {
+            continue;
+        }
+        let id = event["id"].as_str().unwrap();
+        let view = app
+            .request("GET", &format!("/api/events/{id}"), Some(&token), None)
+            .await;
+        assert_eq!(view.status, StatusCode::OK, "{}", view.json);
+        // What the public form shows, hence what a submission records: the custom text, or the default.
+        let expected = view.json["consent_text"]
+            .as_str()
+            .unwrap_or_else(|| view.json["default_consent_text"].as_str().unwrap());
+        let listed = app
+            .request(
+                "GET",
+                &format!("/api/events/{id}/leads"),
+                Some(&token),
+                None,
+            )
+            .await;
+        assert_eq!(listed.status, StatusCode::OK, "{}", listed.json);
+        for lead in listed.json["leads"].as_array().unwrap() {
+            assert_eq!(lead["consent_text"], expected, "{}", event["title"]);
+            checked += 1;
+        }
+    }
+    assert_eq!(checked, 4);
+}
+
+// spec: FRM-023
+#[sqlx::test]
+async fn jean_michel_keeps_his_deleted_answer(pool: PgPool) {
+    let app = test_app(pool).await;
+    let report = seed_events_at_t0(&app).await;
+    let token = token_for(&app, json!({"subject": "seed-alice"})).await;
+    let paris = event_id(&report, "Salon de Paris 2026");
+    let listed = app
+        .request(
+            "GET",
+            &format!("/api/events/{paris}/leads"),
+            Some(&token),
+            None,
+        )
+        .await;
+    assert_eq!(listed.status, StatusCode::OK, "{}", listed.json);
+    let leads = listed.json["leads"].as_array().unwrap();
+    assert_eq!(leads.len(), 1);
+    assert_eq!(leads[0]["answers"]["first_name"], "Jean-Michel");
+    let custom = leads[0]["custom"].as_array().unwrap();
+    assert_eq!(custom.len(), 1);
+    assert_eq!(
+        custom[0]["field_id"],
+        "0198c8a1-0000-7000-8000-000000000005"
+    );
+    assert_eq!(custom[0]["label"], "Entreprise");
+    assert_eq!(custom[0]["kind"], "text");
+    assert_eq!(custom[0]["value"], "Hébert & Fils");
 }
 
 // spec: ACC-008

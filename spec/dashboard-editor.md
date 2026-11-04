@@ -1,6 +1,6 @@
 # Dashboard and card editor
 
-> Status: implemented (plans 2 and 3); EDI-010: plan 4; EDI-003 amended and EDI-022 to EDI-035: plan 6 (phase B)
+> Status: implemented (plans 2, 3 and 4); EDI-003 amended and EDI-022 to EDI-035: plan 6 (phase B)
 
 ## Cards
 
@@ -39,6 +39,7 @@
 - **EDI-019** — The event editor sets the title, the description, the start, the end, the access code (shown in clear, see EVT-010), the per-device limit, the standard fields (not asked, optional or required), the custom fields (adding, order, type, label, help text, options, required or not) and the consent text (default or custom). Each error is shown next to its field, with no input lost (see EDI-015).
 - **EDI-020** — For each event, the dashboard lists its leads, from newest to oldest, with the submission date, the name, the email, the phone and the "Spam" label, and lets the owner mark or unmark a lead as spam and delete it (see ABU-003, ABU-004, ABU-009 and ABU-010). Search, the detailed view, the "toute la carte" ("whole card") view and exports come with EDI-010.
 - **EDI-010** — The dashboard gives access to the leads and their exports (see LEA-001 and LEA-006).
+- **EDI-021** — Leaving the event editor with unsaved changes requires confirmation, as in the card editor (EDI-016): closing or reloading the page, and following a link of the page, ask first; after a successful save, or when the changes have been undone, nothing is asked.
 - **EDI-031** — The "Contacts" entry of the navigation (EDI-022) shows the leads of one card, chosen with a card selector (the first card of the list by default): the whole card or one of its events, chosen with tabs on a computer and with a menu on a phone, each with its number of leads (see LEA-001). A line sums up the scope: "{n} contacts, dont {m} marqués comme spam" ("{n} contacts, {m} of them marked as spam"). Without any lead, the page says "Aucun contact pour l’instant" ("No contact yet") with a link "Voir mes événements" ("See my events").
 - **EDI-032** — A card's event list says when the card has as many events in progress as the instance allows (EVT-004, EVT-019, the limit being given to the dashboard by the API): "{max} événements en cours : c’est le maximum par carte. Termine-en un pour en démarrer un nouveau. Tu peux toujours en programmer à venir." ("{max} events in progress: the maximum per card. End one to start a new one. You can still schedule upcoming ones."). With no event, it says "Aucun événement" ("No event") with a button "Créer un événement" ("Create an event").
 - **EDI-033** — The confirmation of an event deletion (EVT-024) is titled "Supprimer « {title} » ?" ("Delete "{title}"?"), says "Les {n} contacts collectés pendant cet événement seront supprimés avec lui, définitivement." ("The {n} contacts collected during this event will be deleted with it, permanently."), offers "Exporter les contacts" ("Export the contacts", LEA-006), and its button reads "Supprimer l’événement et {n} contacts" ("Delete the event and {n} contacts"), or "Supprimer l’événement" when the event has no lead.

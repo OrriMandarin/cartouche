@@ -8,7 +8,7 @@ vi.mock("@sentry/nextjs", () => ({ captureException: (...args: unknown[]) => cap
 import { ApiError } from "@cartouche/api-client";
 import { AuthContext } from "./auth/context";
 import type { AuthContextValue } from "./auth/types";
-import { useApi } from "./api";
+import { useApi, useDownloadExport } from "./api";
 
 function wrapperFor(getToken: AuthContextValue["getToken"]) {
   const value: AuthContextValue = {
@@ -83,5 +83,30 @@ describe("useApi", () => {
       (result.current as unknown as { GET: (path: string) => Promise<unknown> }).GET("/api/me"),
     ).rejects.toThrow("network down");
     expect(captureException).not.toHaveBeenCalled();
+  });
+});
+
+describe("useDownloadExport", () => {
+  const EXPORT_PATH = "/api/cards/c-1/leads/export?format=csv&include_spam=false&tz=Europe%2FParis";
+
+  test("LEA-021: reports a refused download to Sentry with its request id and rethrows it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: { code: "not_found", message: "nope", request_id: "req-9" } }), {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+    const { result } = renderHook(() => useDownloadExport(), { wrapper: wrapperFor(async () => "tok") });
+
+    await expect(result.current(EXPORT_PATH)).rejects.toBeInstanceOf(ApiError);
+
+    expect(captureException).toHaveBeenCalledTimes(1);
+    const [error, hint] = captureException.mock.calls[0] as [ApiError, { tags: Record<string, string> }];
+    expect(error.code).toBe("not_found");
+    expect(hint.tags).toEqual({ request_id: "req-9" });
   });
 });

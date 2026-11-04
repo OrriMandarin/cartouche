@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/nextjs";
 import { ApiError, createApiClient } from "@cartouche/api-client";
 import { useCallback, useMemo } from "react";
 import { useAuth } from "./auth/context";
+import { downloadExport } from "./events/lead-export";
 import { reframeMedia, uploadMedia, type ReframeMedia, type UploadMedia } from "./media/upload";
 
 type ApiClient = ReturnType<typeof createApiClient>;
@@ -71,5 +72,21 @@ export function useReframeMedia(cardId: string): ReframeMedia {
       }
     },
     [getToken, cardId],
+  );
+}
+
+/** Downloads an export of leads as the current session; a failure is reported like those of `useApi`. */
+export function useDownloadExport(): (path: string) => Promise<string> {
+  const { getToken } = useAuth();
+  return useCallback(
+    async (path) => {
+      try {
+        return await downloadExport(getToken, path);
+      } catch (error) {
+        report(error);
+        throw error;
+      }
+    },
+    [getToken],
   );
 }

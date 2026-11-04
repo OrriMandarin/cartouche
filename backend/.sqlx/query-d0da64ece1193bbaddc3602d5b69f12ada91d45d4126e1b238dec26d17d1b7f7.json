@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select exists (\n               select 1 from blocked_slugs where slug_hash = sha256(convert_to($1, 'UTF8'))\n           ) as \"blocked!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "blocked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d0da64ece1193bbaddc3602d5b69f12ada91d45d4126e1b238dec26d17d1b7f7"
+}

@@ -8,7 +8,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::auth::ApprovedUser;
-use crate::db::slugs;
+use crate::db::{blocked_slugs, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::ApiQuery;
 use crate::state::AppState;
@@ -61,7 +61,8 @@ pub async fn suggest_slug(
         .chain((2..=MAX_SUGGESTION_SUFFIX).map(|n| with_suffix(&base, n)));
     for candidate in candidates {
         let existing = slugs::find(&state.db, candidate.as_str()).await?;
-        if decide_claim(existing.as_ref(), me.user.id, None).is_ok() {
+        let blocked = blocked_slugs::is_blocked(&state.db, candidate.as_str()).await?;
+        if decide_claim(existing.as_ref(), blocked, me.user.id, None).is_ok() {
             return Ok(Json(SlugSuggestion {
                 slug: Some(candidate.as_str().to_owned()),
             }));
@@ -132,7 +133,8 @@ pub async fn slug_availability(
         }));
     };
     let existing = slugs::find(&state.db, slug.as_str()).await?;
-    let status = match decide_claim(existing.as_ref(), me.user.id, query.card_id) {
+    let blocked = blocked_slugs::is_blocked(&state.db, slug.as_str()).await?;
+    let status = match decide_claim(existing.as_ref(), blocked, me.user.id, query.card_id) {
         Ok(SlugClaim::AlreadyCurrent) => SlugAvailabilityStatus::Current,
         Ok(_) => SlugAvailabilityStatus::Free,
         Err(SlugClaimError::Reserved) => SlugAvailabilityStatus::Reserved,

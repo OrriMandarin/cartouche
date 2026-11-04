@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { SlugField } from "@/components/cards/SlugField";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/cards/draft";
 import { useSlugAvailability } from "@/lib/cards/slug-availability";
 import type { CardView } from "@/lib/cards/types";
+import { useLeaveGuard } from "@/lib/leave-guard";
 import type { UploadMedia } from "@/lib/media/upload";
 import { getTemplate } from "@/templates/registry";
 import { parseSettings } from "@/templates/settings-schema";
@@ -78,24 +79,11 @@ export function CardEditor({ card }: { card: CardView }) {
   const dirty = isDirty(saved, draft);
   const slugRefused = ["taken", "reserved", "invalid"].includes(slugCheck.status);
 
-  // EDI-016: the browser asks before closing, reloading or leaving the site.
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  // EDI-016: the browser asks before closing, reloading or leaving the site, and every link of the page asks too.
+  useLeaveGuard(dirty, t("editor.leaveConfirm"));
 
   const message = (key: string | undefined) => (key ? (t.has(key) ? t(key) : t("editor.invalid")) : undefined);
   const messages = Object.fromEntries(Object.entries(errors).map(([path, key]) => [path, message(key)!]));
-
-  // Leaving by a link asks first when there are unsaved changes (EDI-016).
-  function confirmLeave(event: React.MouseEvent) {
-    if (dirty && !window.confirm(t("editor.leaveConfirm"))) event.preventDefault();
-  }
 
   /** Applies an edit; the messages of the fields it corrects go away. */
   function edit(patch: Partial<CardDraft>, fixed: string[]) {
@@ -149,19 +137,13 @@ export function CardEditor({ card }: { card: CardView }) {
       >
         <div className="bg-background/95 sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-b px-1 py-3 backdrop-blur">
           <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              data-testid="editor-back"
-              className="text-sm underline"
-              onClick={confirmLeave}
-            >
+            <Link href="/dashboard" data-testid="editor-back" className="text-sm underline">
               {t("editor.back")}
             </Link>
             <Link
               href={`/dashboard/cards/${card.id}/events`}
               data-testid="editor-events"
               className="text-sm underline"
-              onClick={confirmLeave}
             >
               {t("editor.events")}
             </Link>

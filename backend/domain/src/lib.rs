@@ -7,6 +7,7 @@ pub mod clock;
 pub mod consent;
 pub mod email;
 pub mod event;
+pub mod export;
 pub mod form;
 pub mod framing;
 pub mod lead;
@@ -75,7 +76,8 @@ pub use slug::{
 pub use text::normalize;
 pub use theme::{Background, ButtonShape, Color, InvalidTheme, Theme};
 pub use user::{
-    InvalidTransition, SignupClosed, SignupMode, UserStatus, check_transition, initial_status,
+    AdminAccountDeletion, InvalidTransition, SignupClosed, SignupMode, UserStatus,
+    check_account_deletion, check_transition, initial_status,
 };
 pub use validation::FieldError;
 pub use vcard::{VCard, render as render_vcard};

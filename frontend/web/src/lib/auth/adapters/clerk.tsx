@@ -16,9 +16,16 @@ function ClerkBridge({ children }: { children: ReactNode }) {
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login";
   }, []);
-  const signOut = useCallback(async () => {
-    await clerk.signOut();
-  }, [clerk]);
+  const signOut = useCallback(
+    async (opts?: { redirectTo?: string }) => {
+      if (opts?.redirectTo) {
+        await clerk.signOut({ redirectUrl: opts.redirectTo });
+      } else {
+        await clerk.signOut();
+      }
+    },
+    [clerk],
+  );
 
   const status: AuthContextValue["status"] = !isLoaded ? "loading" : isSignedIn ? "signed-in" : "signed-out";
   const email = user?.primaryEmailAddress?.emailAddress;

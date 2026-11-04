@@ -1,15 +1,10 @@
 //! Event access codes: comparison ignores case, surrounding spaces and accents (EVT-011).
 
-use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
+use crate::text::fold;
 
 /// Folds a code to its comparison form: trimmed, accents removed, lowercase.
 pub fn fold_access_code(input: &str) -> String {
-    input
-        .trim()
-        .nfd()
-        .filter(|c| !is_combining_mark(*c))
-        .collect::<String>()
-        .to_lowercase()
+    fold(input)
 }
 
 /// Whether the code typed by a visitor matches the stored code (EVT-011).

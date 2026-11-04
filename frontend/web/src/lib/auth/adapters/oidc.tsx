@@ -113,8 +113,13 @@ export function OidcAuthAdapter({ children }: { children: ReactNode }) {
   const signIn = useCallback(async () => {
     await getOidcUserManager().signinRedirect();
   }, []);
-  const signOut = useCallback(async () => {
-    await getOidcUserManager().signoutRedirect();
+  const signOut = useCallback(async (opts?: { redirectTo?: string }) => {
+    const um = getOidcUserManager();
+    if (opts?.redirectTo) {
+      await um.signoutRedirect({ post_logout_redirect_uri: `${window.location.origin}${opts.redirectTo}` });
+    } else {
+      await um.signoutRedirect();
+    }
   }, []);
 
   const value = useMemo<AuthContextValue>(

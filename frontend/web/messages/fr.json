@@ -57,6 +57,34 @@
       "title": "Une erreur est survenue",
       "message": "Réessaie dans un instant. Si le problème persiste, communique l'identifiant ci-dessous au support.",
       "requestId": "Identifiant de requête :"
+    },
+    "nav": {
+      "account": "Mon compte"
+    },
+    "page": {
+      "title": "Mon compte",
+      "email": "Adresse e-mail",
+      "displayName": "Nom affiché",
+      "notProvided": "Non renseigné"
+    },
+    "delete": {
+      "open": "Supprimer mon compte",
+      "title": "Supprimer ton compte ?",
+      "consequences": "Tes cartes, leurs médias, tes événements et tes contacts seront supprimés pour toujours. Les liens de tes cartes resteront bloqués définitivement : personne, toi compris, ne pourra les reprendre.",
+      "identityProvider": "Ton compte chez le fournisseur d'identité ne sera pas supprimé : tu devras le supprimer toi-même chez lui.",
+      "confirmWord": "SUPPRIMER",
+      "inputLabel": "Tape {word} pour confirmer",
+      "cancel": "Annuler",
+      "confirm": "Supprimer définitivement",
+      "close": "Fermer",
+      "admin": "Un administrateur ne peut pas supprimer son compte. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS.",
+      "adminRefused": "Ton compte est celui d'un administrateur : il ne peut pas être supprimé. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS."
+    },
+    "deleted": {
+      "title": "Ton compte a été supprimé",
+      "description": "Tes cartes, leurs médias, tes événements et tes contacts ont été supprimés. Les liens de tes cartes restent bloqués.",
+      "identityProvider": "Ton compte chez le fournisseur d'identité existe toujours : si tu veux aussi le supprimer, fais-le chez lui. Te reconnecter avec ce compte créera un nouveau compte Cartouche, vide.",
+      "home": "Retour à l'accueil"
     }
   },
   "dashboard": {
@@ -157,6 +185,21 @@
       "backToSupport": "Retour au support",
       "userNotFound": "Utilisateur introuvable",
       "cardNotFound": "Carte introuvable"
+    },
+    "events": {
+      "open": "Événements",
+      "title": "Événements",
+      "backToCard": "Retour à la carte",
+      "empty": "Aucun événement",
+      "leads": "Contacts",
+      "allLeads": "Tous les contacts de la carte"
+    },
+    "leads": {
+      "title": "Contacts",
+      "cardTitle": "Contacts — toute la carte",
+      "notice": "Consultation en lecture seule, enregistrée dans le journal d'audit",
+      "backToEvents": "Retour aux événements",
+      "eventNotFound": "Événement introuvable"
     }
   },
   "themes": {
@@ -408,6 +451,7 @@
     "loading": "Chargement des événements…",
     "notFound": "Événement introuvable",
     "newEvent": "Nouvel événement",
+    "allLeads": "Tous les contacts de la carte",
     "backToDashboard": "Retour au tableau de bord",
     "backToEvents": "Retour aux événements",
     "cancel": "Annuler",
@@ -450,6 +494,8 @@
       "formLabel": "Formulaire de l'événement",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
+      "unsaved": "Modifications non enregistrées",
+      "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
       "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
       "sections": {
         "general": "Événement",
@@ -535,6 +581,51 @@
     "markSpam": "Marquer comme spam",
     "unmarkSpam": "Ce n'est pas un spam",
     "delete": "Supprimer",
+    "search": "Rechercher un contact",
+    "searchPlaceholder": "Nom, email, ville, téléphone…",
+    "count": "{count, plural, =0 {Aucun contact} one {# contact} other {# contacts}}",
+    "noMatch": "Aucun contact ne correspond à ta recherche.",
+    "open": "Voir",
+    "cardTitle": "Contacts — toute la carte",
+    "export": {
+      "open": "Exporter",
+      "title": "Exporter les contacts",
+      "description": "Le fichier contient tous les contacts, quelle que soit ta recherche.",
+      "format": "Format du fichier",
+      "csv": "CSV (Notion, tableurs)",
+      "xlsx": "Excel (XLSX)",
+      "json": "JSON",
+      "excelHint": "Pour ouvrir le fichier dans Excel, choisis plutôt le format XLSX.",
+      "includeSpam": "Inclure les contacts marqués spam",
+      "download": "Télécharger",
+      "cancel": "Annuler",
+      "close": "Fermer"
+    },
+    "detail": {
+      "title": "Détail du contact",
+      "event": "Événement",
+      "submittedAt": "Reçu le",
+      "consentAt": "Consentement donné le",
+      "consentText": "Texte de consentement",
+      "spam": "Marqué comme spam",
+      "notSpam": "Non marqué comme spam",
+      "yes": "Oui",
+      "no": "Non",
+      "empty": "Non renseigné",
+      "close": "Fermer",
+      "fields": {
+        "first_name": "Prénom",
+        "last_name": "Nom",
+        "email": "Email",
+        "phone": "Téléphone",
+        "birth_date": "Date de naissance",
+        "street": "Rue",
+        "postal_code": "Code postal",
+        "city": "Ville",
+        "country": "Pays"
+      },
+      "address": "Adresse"
+    },
     "deleteDialog": {
       "title": "Supprimer ce contact ?",
       "description": "Ce contact sera supprimé définitivement.",

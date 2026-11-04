@@ -5,6 +5,7 @@ export function leadView(overrides: Partial<LeadView> = {}): LeadView {
   return {
     id: "0198c8a3-0000-7000-8000-000000000001",
     event_id: "0198d000-0000-7000-8000-000000000001",
+    event_title: "Salon du Mariage",
     submitted_at: "2027-03-15T09:30:00Z",
     spam: false,
     answers: { first_name: "Éloïse", last_name: "D’Aubigné-Müller", email: "eloise@example.test", phone: "+33612345678" },

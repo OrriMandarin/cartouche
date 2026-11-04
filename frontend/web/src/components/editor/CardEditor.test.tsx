@@ -297,6 +297,18 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(backNavigates()).toBe(true);
   });
 
+  test("EDI-016 a link outside the editor, such as the page header, asks too", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderEditor();
+    const header = document.body.appendChild(document.createElement("a"));
+    header.href = "/account";
+    header.dataset.testid = "outside-link";
+    type("editor-job_title", "Directrice");
+    expect(backNavigates("outside-link")).toBe(false);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    header.remove();
+  });
+
   test("EDI-018 the events of the card are one link away, which also asks before leaving unsaved changes", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderEditor();

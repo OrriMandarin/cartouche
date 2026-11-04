@@ -53,11 +53,18 @@ function EventsContent({ card }: { card: CardView }) {
             {cardDisplayName(card.content) ?? card.slug}
           </p>
         </div>
-        <Button asChild>
-          <Link href={`/dashboard/cards/${card.id}/events/new`} data-testid="new-event">
-            {t("newEvent")}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/cards/${card.id}/leads`} data-testid="card-leads-link">
+              {t("allLeads")}
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href={`/dashboard/cards/${card.id}/events/new`} data-testid="new-event">
+              {t("newEvent")}
+            </Link>
+          </Button>
+        </div>
       </div>
       {error !== null ? <ErrorNotice error={error} /> : null}
       {events === null ? (
@@ -73,7 +80,7 @@ function EventsContent({ card }: { card: CardView }) {
   );
 }
 
-/** spec: EDI-009, EDI-018, EVT-025. The events of one card of the signed-in user, in three groups. */
+/** spec: EDI-009, EDI-010, EDI-018, EVT-025, LEA-013. The events of one card of the signed-in user, in three groups. */
 export default function CardEventsPage() {
   const { id } = useParams<{ id: string }>();
 

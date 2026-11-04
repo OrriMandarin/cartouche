@@ -2,11 +2,13 @@
 
 import { ApiError, type components } from "@cartouche/api-client";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { DeleteAccount } from "@/components/account/DeleteAccount";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth/context";
 
@@ -29,13 +31,29 @@ type State =
   | { kind: "signup-closed" }
   | { kind: "error"; error: unknown };
 
-function Notice({ testId, title, description }: { testId: string; title: string; description: string }) {
+function Notice({
+  testId,
+  title,
+  description,
+  deletable = false,
+}: {
+  testId: string;
+  title: string;
+  description: string;
+  /** Offers the deletion of the account under the text (ACC-021): the screens of an existing account only. */
+  deletable?: boolean;
+}) {
   return (
     <Card data-testid={testId} className="mx-auto max-w-xl">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
+      {deletable ? (
+        <CardContent>
+          <DeleteAccount isAdmin={false} />
+        </CardContent>
+      ) : null}
     </Card>
   );
 }
@@ -94,11 +112,11 @@ export function AccountGate({ children }: { children: ReactNode }) {
   } else if (state.kind === "error") {
     body = <ErrorNotice error={state.error} />;
   } else if (state.me.status === "pending") {
-    body = <Notice testId="account-pending" title={t("pending.title")} description={t("pending.description")} />;
+    body = <Notice testId="account-pending" title={t("pending.title")} description={t("pending.description")} deletable />;
   } else if (state.me.status === "rejected") {
-    body = <Notice testId="account-rejected" title={t("rejected.title")} description={t("rejected.description")} />;
+    body = <Notice testId="account-rejected" title={t("rejected.title")} description={t("rejected.description")} deletable />;
   } else if (state.me.status === "suspended") {
-    body = <Notice testId="account-suspended" title={t("suspended.title")} description={t("suspended.description")} />;
+    body = <Notice testId="account-suspended" title={t("suspended.title")} description={t("suspended.description")} deletable />;
   } else {
     body = <MeContext.Provider value={state.me}>{children}</MeContext.Provider>;
   }
@@ -110,9 +128,16 @@ export function AccountGate({ children }: { children: ReactNode }) {
     <div className="mx-auto max-w-5xl px-4 py-6">
       <header data-testid="account-header" className="mb-8 flex items-center justify-between gap-4 border-b pb-4">
         <span className="font-semibold">{t("header.signedInAs", { name })}</span>
-        <Button variant="outline" size="sm" data-testid="sign-out" onClick={() => void signOut()}>
-          {t("header.signOut")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/dashboard/account" data-testid="account-link">
+              {t("nav.account")}
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" data-testid="sign-out" onClick={() => void signOut()}>
+            {t("header.signOut")}
+          </Button>
+        </div>
       </header>
       {body}
     </div>

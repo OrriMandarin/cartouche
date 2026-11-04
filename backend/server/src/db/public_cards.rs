@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use super::blocked_slugs;
 use super::cards::{Card, CardRow};
 use super::users::parse_status;
 
@@ -84,7 +85,8 @@ impl ResolutionRow {
     }
 }
 
-/// Resolves `slug` (exactly as stored: lowercase). `None` when it was never attributed.
+/// Resolves `slug` (exactly as stored: lowercase). A blocked slug (LNK-015) resolves like a
+/// deleted card (LNK-033). `None` when it was never attributed.
 pub async fn resolve(pool: &PgPool, slug: &str) -> Result<Option<Resolution>, sqlx::Error> {
     let Some(row) = sqlx::query_as!(
         ResolutionRow,
@@ -104,7 +106,9 @@ pub async fn resolve(pool: &PgPool, slug: &str) -> Result<Option<Resolution>, sq
     .fetch_optional(pool)
     .await?
     else {
-        return Ok(None);
+        return Ok(blocked_slugs::is_blocked(pool, slug)
+            .await?
+            .then_some(Resolution::Deleted));
     };
     let is_current = row.is_current;
     Ok(Some(match row.into_current().transpose()? {

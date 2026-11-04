@@ -328,3 +328,182 @@ async fn leads_of_a_disabled_card_stay_visible(pool: PgPool) {
 
     assert_eq!(leads_of(&app, &event).await.len(), 1);
 }
+
+async fn get_card_leads(app: &TestApp, sub: &str, card_id: &str) -> TestResponse {
+    app.request(
+        "GET",
+        &format!("/api/cards/{card_id}/leads"),
+        Some(&token(sub)),
+        None,
+    )
+    .await
+}
+
+// spec: LEA-001, LEA-013, LEA-014
+#[sqlx::test(migrations = "./migrations")]
+async fn whole_card_lists_every_event_newest_first(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", SLUG).await;
+    let event_a = running_event(&app, &card, json!({ "title": "A", "device_limit": 5 })).await;
+    let event_b = running_event(&app, &card, json!({ "title": "B", "device_limit": 5 })).await;
+    for (event, first_name) in [(&event_a, "Éloïse"), (&event_a, "Zoé"), (&event_b, "Noël")] {
+        send_lead(
+            &app,
+            SLUG,
+            id_of(event),
+            json!({ "answers": { "first_name": first_name } }),
+        )
+        .await;
+        one_second_later(&app);
+    }
+    let zoe = leads_of(&app, &event_a)
+        .await
+        .into_iter()
+        .find(|lead| lead["answers"]["first_name"] == "Zoé")
+        .expect("Zoé's lead");
+    let marked = put_spam(&app, "alice", id_of(&zoe), true).await;
+    assert_eq!(marked.status, StatusCode::OK, "{}", marked.json);
+
+    let res = get_card_leads(&app, "alice", id_of(&card)).await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.json);
+    let leads = res.json["leads"].as_array().expect("leads");
+    let summary: Vec<(&str, &str, bool)> = leads
+        .iter()
+        .map(|lead| {
+            (
+                lead["answers"]["first_name"].as_str().unwrap(),
+                lead["event_title"].as_str().unwrap(),
+                lead["spam"].as_bool().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        summary,
+        [
+            ("Noël", "B", false),
+            ("Zoé", "A", true),
+            ("Éloïse", "A", false)
+        ]
+    );
+}
+
+// spec: EDI-020, LEA-013
+#[sqlx::test(migrations = "./migrations")]
+async fn event_leads_carry_their_event_title(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", SLUG).await;
+    let event = running_event(&app, &card, json!({ "title": "Salon du Mariage ✨" })).await;
+    send_lead(&app, SLUG, id_of(&event), json!({})).await;
+
+    let leads = leads_of(&app, &event).await;
+    assert_eq!(leads.len(), 1);
+    assert_eq!(leads[0]["event_title"], "Salon du Mariage ✨");
+}
+
+// spec: ACC-017
+#[sqlx::test(migrations = "./migrations")]
+async fn whole_card_of_another_user_is_404(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", SLUG).await;
+    let event = running_event(&app, &card, json!({})).await;
+    send_lead(&app, SLUG, id_of(&event), json!({})).await;
+    create_card(&app, "bob", "bob-martin").await;
+
+    let foreign = get_card_leads(&app, "bob", id_of(&card)).await;
+    assert_eq!(foreign.status, StatusCode::NOT_FOUND);
+    assert_eq!(error_code(&foreign), "not_found");
+    let unknown = get_card_leads(&app, "alice", "0190c9a0-0000-7000-8000-00000000dead").await;
+    assert_eq!(unknown.status, StatusCode::NOT_FOUND);
+    assert_eq!(error_code(&unknown), "not_found");
+}
+
+// spec: LNK-008
+#[sqlx::test(migrations = "./migrations")]
+async fn whole_card_of_a_disabled_card_is_listed(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", SLUG).await;
+    let event = running_event(&app, &card, json!({})).await;
+    send_lead(&app, SLUG, id_of(&event), json!({})).await;
+    let disabled = app
+        .request(
+            "POST",
+            &format!("/api/cards/{}/disable", id_of(&card)),
+            Some(&token("alice")),
+            None,
+        )
+        .await;
+    assert_eq!(disabled.status, StatusCode::OK);
+
+    let res = get_card_leads(&app, "alice", id_of(&card)).await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.json);
+    assert_eq!(res.json["leads"].as_array().unwrap().len(), 1);
+}
+
+// spec: ABU-003, ABU-009
+#[sqlx::test(migrations = "./migrations")]
+async fn re_marking_spam_keeps_the_first_date(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let card = create_card(&app, "alice", SLUG).await;
+    let event = running_event(&app, &card, json!({})).await;
+    send_lead(&app, SLUG, id_of(&event), json!({})).await;
+    let lead = leads_of(&app, &event).await.remove(0);
+    let lead_id = id_of(&lead);
+    let spam_at = || async {
+        sqlx::query_scalar::<_, Option<chrono::DateTime<chrono::Utc>>>(
+            "select spam_at from leads where id = $1::uuid",
+        )
+        .bind(lead_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+    };
+
+    let first = app.clock.now();
+    put_spam(&app, "alice", lead_id, true).await;
+    assert_eq!(spam_at().await, Some(first));
+
+    app.clock.advance(chrono::Duration::hours(1));
+    let again = put_spam(&app, "alice", lead_id, true).await;
+    assert_eq!(again.status, StatusCode::OK, "{}", again.json);
+    assert_eq!(spam_at().await, Some(first));
+
+    put_spam(&app, "alice", lead_id, false).await;
+    assert_eq!(spam_at().await, None);
+
+    put_spam(&app, "alice", lead_id, true).await;
+    assert_eq!(spam_at().await, Some(first + chrono::Duration::hours(1)));
+}
+
+// spec: ABU-003
+#[sqlx::test(migrations = "./migrations")]
+async fn spam_body_and_lead_id_are_checked(pool: PgPool) {
+    let app = cards_app(pool).await;
+    create_card(&app, "alice", SLUG).await;
+    let lead_id = "0190c9a0-0000-7000-8000-00000000dead";
+
+    for body in [json!({ "spam": "yes" }), json!({})] {
+        let res = app
+            .request(
+                "PUT",
+                &format!("/api/leads/{lead_id}/spam"),
+                Some(&token("alice")),
+                Some(body),
+            )
+            .await;
+        assert_eq!(res.status, StatusCode::BAD_REQUEST, "{}", res.json);
+        assert_eq!(error_code(&res), "invalid_request");
+    }
+    let bad_id = app
+        .request(
+            "PUT",
+            "/api/leads/not-a-uuid/spam",
+            Some(&token("alice")),
+            Some(json!({ "spam": true })),
+        )
+        .await;
+    assert_eq!(bad_id.status, StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(&bad_id), "invalid_request");
+    let bad_delete = delete_lead(&app, "alice", "not-a-uuid").await;
+    assert_eq!(bad_delete.status, StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(&bad_delete), "invalid_request");
+}

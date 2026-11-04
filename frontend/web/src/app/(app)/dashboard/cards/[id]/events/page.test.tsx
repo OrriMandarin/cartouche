@@ -37,6 +37,16 @@ describe("CardEventsPage", () => {
     expect(get).toHaveBeenCalledWith("/api/cards/{id}/events", { params: { path: { id: "card-1" } } });
   });
 
+  test("EDI-010 LEA-013 the card's events page links to the whole-card view, even with no event", async () => {
+    get.mockImplementation((path: string) =>
+      Promise.resolve({ data: path === "/api/cards/{id}" ? cardView({ id: "card-1" }) : { events: [] } }),
+    );
+    renderWithIntl(<CardEventsPage />);
+    const link = await screen.findByTestId("card-leads-link");
+    expect(link).toHaveAttribute("href", "/dashboard/cards/card-1/leads");
+    expect(link).toHaveTextContent("Tous les contacts de la carte");
+  });
+
   test("EVT-025 LNK-008 the events of a disabled card are listed all the same", async () => {
     get.mockImplementation((path: string) =>
       Promise.resolve({ data: path === "/api/cards/{id}" ? cardView({ status: "disabled" }) : { events: [eventView({ title: "Archivé" })] } }),

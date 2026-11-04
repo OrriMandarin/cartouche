@@ -21,11 +21,13 @@ import {
   draftToBody,
   enableEnd,
   eventFieldErrors,
+  isEventDraftDirty,
   newEventDraft,
 } from "@/lib/events/draft";
 import { eventErrorKey } from "@/lib/events/errors";
 import { userTimeZone, zoneLabel } from "@/lib/events/time";
 import type { EventView } from "@/lib/events/types";
+import { useLeaveGuard } from "@/lib/leave-guard";
 import { ConsentEditor } from "./ConsentEditor";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { StandardFieldsEditor } from "./StandardFieldsEditor";
@@ -40,21 +42,24 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /**
- * spec: EDI-019, EDI-015, EVT-001, EVT-009, EVT-018, EVT-022. Creates an event of the card, or edits `event`.
- * A refused save keeps everything typed and shows each error under its field; a card already at its limit of
- * simultaneous events is explained at the top of the form.
+ * spec: EDI-019, EDI-015, EDI-021, EVT-001, EVT-009, EVT-018, EVT-022. Creates an event of the card, or edits
+ * `event`. A refused save keeps everything typed and shows each error under its field; a card already at its
+ * limit of simultaneous events is explained at the top of the form. Leaving with unsaved changes asks first.
  */
 export function EventEditor({ cardId, card, event }: { cardId: string; card: CardView; event?: EventView }) {
   const t = useTranslations();
   const api = useApi();
   const router = useRouter();
   const [zone] = useState(userTimeZone);
-  const [draft, setDraft] = useState(() => (event ? draftFromEvent(event, zone) : newEventDraft(zone, new Date())));
+  const [saved, setSaved] = useState(() => (event ? draftFromEvent(event, zone) : newEventDraft(zone, new Date())));
+  const [draft, setDraft] = useState(saved);
   const [busy, setBusy] = useState(false);
   // Field errors of the last save, by path (message keys), and any other failure.
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<unknown>(null);
   const listHref = `/dashboard/cards/${cardId}/events`;
+  const dirty = isEventDraftDirty(saved, draft);
+  useLeaveGuard(dirty, t("events.editor.leaveConfirm"));
 
   const message = (key: string | undefined) => (key ? (t.has(key) ? t(key) : t("events.editor.invalid")) : undefined);
   const messages = Object.fromEntries(Object.entries(errors).map(([path, key]) => [path, message(key)!]));
@@ -72,12 +77,15 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
     setFailure(null);
     setErrors({});
     try {
-      const body = draftToBody(draft, zone);
+      const sent = draft;
+      const body = draftToBody(sent, zone);
       if (event) {
         await api.PUT("/api/events/{id}", { params: { path: { id: event.id } }, body });
       } else {
         await api.POST("/api/cards/{id}/events", { params: { path: { id: cardId } }, body });
       }
+      // What was sent is now the reference, so the redirect below does not ask (EDI-021).
+      setSaved(sent);
       // The button stays disabled until the page changes: a second click cannot create a second event.
       router.push(listHref);
     } catch (error) {
@@ -109,9 +117,14 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
         <Link href={listHref} data-testid="event-back" className="text-sm underline">
           {t("events.backToEvents")}
         </Link>
-        <Button type="submit" data-testid="event-save" disabled={busy}>
-          {busy ? t("events.editor.saving") : t("events.editor.save")}
-        </Button>
+        <div className="flex items-center gap-3">
+          <p data-testid="event-status" role="status" className="text-muted-foreground text-sm">
+            {dirty ? t("events.editor.unsaved") : null}
+          </p>
+          <Button type="submit" data-testid="event-save" disabled={busy}>
+            {busy ? t("events.editor.saving") : t("events.editor.save")}
+          </Button>
+        </div>
       </div>
 
       <h1 className="text-3xl font-bold tracking-tight">

@@ -45,4 +45,11 @@ describe("UserCards", () => {
     renderWithIntl(<UserCards user={alice} cards={[]} />);
     expect(screen.getByTestId("support-user-no-cards")).toHaveTextContent("Cet utilisateur n'a aucune carte.");
   });
+
+  test("ADM-016 each card links to its events", () => {
+    renderWithIntl(<UserCards user={alice} cards={[cardView({ id: "c1", slug: "alice-durand" })]} />);
+    const link = screen.getByTestId("support-card-events-alice-durand");
+    expect(link).toHaveAttribute("href", "/support/cards/c1/events");
+    expect(link).toHaveTextContent("Événements");
+  });
 });

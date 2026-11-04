@@ -142,6 +142,16 @@ impl MediaService {
         MediaService::new(Arc::new(InMemory::new()), public_base.as_str(), false)
     }
 
+    /// A service over any store, for tests that need a store of their own (e.g. one that fails).
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn with_store(
+        store: Arc<dyn ObjectStore>,
+        public_base: Url,
+        serves_locally: bool,
+    ) -> MediaService {
+        MediaService::new(store, public_base.as_str(), serves_locally)
+    }
+
     fn new(store: Arc<dyn ObjectStore>, base_url: &str, serves_locally: bool) -> MediaService {
         MediaService {
             store,

@@ -14,9 +14,14 @@ use tracing::{Span, field};
 
 use crate::error::ApiError;
 use crate::request_id::{self, MakeUuidV7, REQUEST_ID_HEADER};
+use crate::routes::account::delete_me;
 use crate::routes::admin_cards::{
     get_card as admin_get_card, get_user as admin_get_user, support_disable_card,
     support_enable_card,
+};
+use crate::routes::admin_leads::{
+    list_card_events as support_list_card_events, list_card_leads as support_list_card_leads,
+    list_event_leads as support_list_event_leads,
 };
 use crate::routes::admin_users::{list_users, set_user_status};
 use crate::routes::card_media::{UPLOAD_BODY_LIMIT, reframe_media, upload_media};
@@ -28,7 +33,8 @@ use crate::routes::events::{
     consent_preview, create_event, delete_event, end_event, get_event, list_events, update_event,
 };
 use crate::routes::health::health;
-use crate::routes::leads::{delete_lead, list_event_leads, set_lead_spam};
+use crate::routes::lead_exports::{export_card_leads, export_event_leads};
+use crate::routes::leads::{delete_lead, list_card_leads, list_event_leads, set_lead_spam};
 use crate::routes::me::me;
 use crate::routes::media_files::get_media_file;
 use crate::routes::public_cards::{get_public_card, get_public_vcard};
@@ -40,7 +46,7 @@ pub fn build_router(state: AppState) -> Router {
     let router = Router::new()
         .route("/api/openapi.json", get(openapi_json))
         .route("/api/health", get(health))
-        .route("/api/me", get(me))
+        .route("/api/me", get(me).delete(delete_me))
         .route("/api/cards", get(list_cards).post(create_card))
         .route(
             "/api/cards/{id}",
@@ -62,12 +68,15 @@ pub fn build_router(state: AppState) -> Router {
             get(list_events).post(create_event),
         )
         .route("/api/cards/{id}/consent-preview", post(consent_preview))
+        .route("/api/cards/{id}/leads", get(list_card_leads))
+        .route("/api/cards/{id}/leads/export", get(export_card_leads))
         .route(
             "/api/events/{id}",
             get(get_event).put(update_event).delete(delete_event),
         )
         .route("/api/events/{id}/end", post(end_event))
         .route("/api/events/{id}/leads", get(list_event_leads))
+        .route("/api/events/{id}/leads/export", get(export_event_leads))
         .route("/api/leads/{id}/spam", put(set_lead_spam))
         .route("/api/leads/{id}", delete(delete_lead))
         .route("/api/slugs/suggestion", get(suggest_slug))
@@ -90,6 +99,15 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/admin/users/{id}", get(admin_get_user))
         .route("/api/admin/users/{id}/status", post(set_user_status))
         .route("/api/admin/cards/{id}", get(admin_get_card))
+        .route(
+            "/api/admin/cards/{id}/events",
+            get(support_list_card_events),
+        )
+        .route("/api/admin/cards/{id}/leads", get(support_list_card_leads))
+        .route(
+            "/api/admin/events/{id}/leads",
+            get(support_list_event_leads),
+        )
         .route(
             "/api/admin/cards/{id}/support-disable",
             post(support_disable_card),

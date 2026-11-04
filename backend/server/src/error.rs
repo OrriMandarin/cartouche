@@ -54,6 +54,8 @@ pub enum ApiError {
     Forbidden,
     /// An administrator tried to change the status of an administrator (ADM-004).
     CannotModerateAdmin,
+    /// A current administrator tried to delete their account (ACC-021).
+    CannotDeleteAdmin,
     /// The request is malformed: unparsable body, invalid path or query parameter.
     InvalidRequest,
     /// The body is well-formed but some fields are invalid (`400 validation_failed`).
@@ -112,6 +114,7 @@ impl ApiError {
             ApiError::AccountSuspended => "account_suspended",
             ApiError::Forbidden => "forbidden",
             ApiError::CannotModerateAdmin => "cannot_moderate_admin",
+            ApiError::CannotDeleteAdmin => "cannot_delete_admin",
             ApiError::InvalidRequest => "invalid_request",
             ApiError::Validation(_) => "validation_failed",
             ApiError::PayloadTooLarge => "payload_too_large",
@@ -149,6 +152,7 @@ impl ApiError {
             | ApiError::AccountSuspended
             | ApiError::Forbidden
             | ApiError::CannotModerateAdmin
+            | ApiError::CannotDeleteAdmin
             | ApiError::InvalidAccessCode => StatusCode::FORBIDDEN,
             ApiError::InvalidRequest | ApiError::Validation(_) => StatusCode::BAD_REQUEST,
             ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
@@ -183,6 +187,9 @@ impl ApiError {
             ApiError::Forbidden => "You are not allowed to do this.",
             ApiError::CannotModerateAdmin => {
                 "Administrators cannot change an administrator's status."
+            }
+            ApiError::CannotDeleteAdmin => {
+                "Administrators must be removed from the administrators before deleting their account."
             }
             ApiError::InvalidRequest => "The request is malformed.",
             ApiError::Validation(_) => "Some fields are invalid.",
@@ -295,6 +302,7 @@ mod tests {
             (ApiError::AccountSuspended, "account_suspended"),
             (ApiError::Forbidden, "forbidden"),
             (ApiError::CannotModerateAdmin, "cannot_moderate_admin"),
+            (ApiError::CannotDeleteAdmin, "cannot_delete_admin"),
         ] {
             assert_eq!(error.code(), code);
             assert_eq!(error.status(), StatusCode::FORBIDDEN);

@@ -39,7 +39,7 @@ OpenAPI is the contract between the two sides: the API publishes it, `frontend/a
 
 ```bash
 make setup    # dependencies: pnpm (frontend/), cargo fetch, sqlx-cli
-make dev-db   # local PostgreSQL (port 54320)
+make dev-db   # local PostgreSQL (port 54320, or DEV_DB_PORT)
 make api      # Rust API on http://localhost:8080
 make web      # Next.js site on http://localhost:3000
 make seed     # demo data (one administrator and one user per status)
