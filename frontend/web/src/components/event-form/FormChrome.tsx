@@ -1,5 +1,7 @@
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, CircleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { fieldMessageKey } from "@/lib/event-form/errors";
+import type { PublicCustomField } from "@/lib/event-form/types";
 import type { PublicCard } from "@/templates/contract";
 import { initials } from "@/templates/link-display";
 
@@ -63,3 +65,24 @@ export function FormHead({ title, description, live }: { title: string; descript
     </header>
   );
 }
+
+interface ErrorTextProps {
+  id: string | undefined;
+  path: string;
+  /** The error code of the field. */
+  code: string;
+  /** The kind of a custom field. */
+  kind?: PublicCustomField["kind"];
+}
+
+/** The message of a field error, next to its field and worded for it (FRM-015, FRM-046). */
+export function ErrorText({ id, path, code, kind }: ErrorTextProps) {
+  const t = useTranslations();
+  return (
+    <p id={id} data-testid={`field-error-${path}`} className="fm-error">
+      <CircleAlert className="ic" aria-hidden="true" />
+      {t(fieldMessageKey(path, code, kind))}
+    </p>
+  );
+}
+

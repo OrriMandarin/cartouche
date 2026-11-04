@@ -1,16 +1,15 @@
-import { useTranslations } from "next-intl";
+import { ErrorText } from "./FormChrome";
 
 interface ConsentFieldProps {
   text: string;
   checked: boolean;
-  /** Message key of the error, if any. */
+  /** Error code of the consent, if any. */
   error: string | undefined;
   onChange(checked: boolean): void;
 }
 
 /** The consent box, labelled by the exact text that will be recorded (FRM-006, FRM-008). */
 export function ConsentField({ text, checked, error, onChange }: ConsentFieldProps) {
-  const t = useTranslations();
   return (
     <div className="fm-field">
       <div className="fm-check">
@@ -28,11 +27,7 @@ export function ConsentField({ text, checked, error, onChange }: ConsentFieldPro
           {text}
         </label>
       </div>
-      {error && (
-        <p id="lead-consent-error" data-testid="field-error-consent" className="fm-error">
-          {t(error)}
-        </p>
-      )}
+      {error && <ErrorText id="lead-consent-error" path="consent" code={error} />}
     </div>
   );
 }

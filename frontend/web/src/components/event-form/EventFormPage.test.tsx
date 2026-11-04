@@ -200,9 +200,7 @@ describe("EventFormPage", () => {
     renderPage();
     fill("Éloïse", "eloise@");
     send();
-    expect(await screen.findByTestId("field-error-answers.email")).toHaveTextContent(
-      "Cette adresse e-mail n'est pas valide.",
-    );
+    expect((await screen.findByTestId("field-error-answers.email")).textContent).toContain("Vérifiez l’adresse e-mail (exemple\u00a0: nom@domaine.fr).");
     expect(screen.getByTestId("field-error-consent")).toBeInTheDocument();
     expect(field("answers.first_name")).toHaveValue("Éloïse");
     expect(field("answers.email")).toHaveValue("eloise@");
@@ -214,7 +212,7 @@ describe("EventFormPage", () => {
     consent();
     send();
     await waitFor(() => expect(submitLead).toHaveBeenCalled());
-    expect(await screen.findByTestId("field-error-answers.email")).toHaveTextContent("Cette adresse e-mail n'est pas valide.");
+    expect((await screen.findByTestId("field-error-answers.email")).textContent).toContain("Vérifiez l’adresse e-mail (exemple\u00a0: nom@domaine.fr).");
     expect(field("answers.email")).toHaveValue("eloise@exemple.invalid");
     expect(screen.queryByTestId("field-error-consent")).toBeNull();
   });
@@ -262,15 +260,74 @@ describe("EventFormPage", () => {
     consent();
     send();
     const confirmation = await screen.findByTestId("event-form-confirmation");
-    expect(confirmation).toHaveTextContent("Vos informations ont bien été envoyées.");
+    expect(confirmation).toHaveTextContent(`${CARD_NAME} a bien reçu vos coordonnées.`);
     const save = screen.getByTestId("confirmation-save-contact");
     expect(save).toHaveAttribute("href", sampleCard.vcard_url);
     expect(save).toHaveAttribute("download");
-    expect(save).toHaveTextContent("Enregistrer le contact");
+    expect(save).toHaveTextContent("Enregistrer le contact d’Éloïse");
     expect(screen.getByTestId("confirmation-back")).toHaveAttribute("href", `/c/${SLUG}`);
     expect(screen.queryByTestId("event-form")).toBeNull();
     // The answers are forgotten once sent (FRM-040).
     expect(window.sessionStorage.getItem(`cartouche.lead.${EVENT_ID}`)).toBeNull();
+  });
+
+  test("FRM-046 the summary counts the fields and takes the focus to the first one", async () => {
+    renderPage();
+    fill("", "eloise@");
+    send();
+    const summary = await screen.findByTestId("event-form-summary");
+    expect(summary).toHaveAttribute("role", "alert");
+    expect(summary).toHaveClass("fm-alert");
+    expect(summary.textContent).toContain("Vos coordonnées n’ont pas été envoyées\u00a0: 3 champs sont à corriger.");
+    expect(screen.getByTestId("field-error-answers.first_name")).toHaveTextContent("Indiquez votre prénom.");
+    expect(field("answers.first_name")).toHaveFocus();
+    expect(field("answers.first_name")).toHaveAccessibleDescription("Indiquez votre prénom.");
+    expect(field("answers.email")).toHaveValue("eloise@");
+
+    fireEvent.change(field("answers.first_name"), { target: { value: "Zoé" } });
+    fireEvent.change(field("answers.email"), { target: { value: "zoe@example.test" } });
+    send();
+    expect(await screen.findByTestId("event-form-summary")).toHaveTextContent("1 champ est à corriger.");
+  });
+
+  test("FRM-046 a server refusal shows the same summary", async () => {
+    renderPage();
+    fill();
+    consent();
+    submitLead.mockRejectedValueOnce(
+      refusal(400, "validation_failed", [
+        { field: "answers.email", code: "invalid_email" },
+        { field: "answers.first_name", code: "too_long" },
+      ]),
+    );
+    send();
+    expect((await screen.findByTestId("event-form-summary")).textContent).toContain("Vos coordonnées n’ont pas été envoyées\u00a0: 2 champs sont à corriger.");
+    expect(screen.getByTestId("field-error-answers.first_name")).toHaveTextContent("Ce texte est trop long.");
+    expect(field("answers.first_name")).toHaveFocus();
+    expect(screen.queryByTestId("event-form-message")).toBeNull();
+  });
+
+  test("FRM-047 the confirmation thanks the prospect by first name", async () => {
+    renderPage();
+    fill("  Inès ");
+    consent();
+    send();
+    const confirmation = await screen.findByTestId("event-form-confirmation");
+    expect(confirmation.querySelector(".fm-done-mark")).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Merci Inès, c’est envoyé\u00a0!");
+    expect(screen.getByTestId("confirmation-back")).toHaveClass("fm-link");
+  });
+
+  test("FRM-047 without first names the confirmation stays neutral", async () => {
+    const noFirstName = { ...sampleCard, content: { ...sampleCard.content, first_name: undefined } };
+    renderPage({ state: "open", event: publicEventForm({ standard_fields: [{ field: "email", required: true }], custom_fields: [] }) }, noFirstName);
+    fireEvent.change(field("answers.email"), { target: { value: "ines@example.test" } });
+    consent();
+    send();
+    await screen.findByTestId("event-form-confirmation");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Merci, c’est envoyé\u00a0!");
+    expect(screen.getByTestId("confirmation-save-contact")).toHaveTextContent("Enregistrer le contact");
+    expect(screen.getByTestId("confirmation-save-contact")).not.toHaveTextContent("Enregistrer le contact de");
   });
 
   test("FRM-042 FRM-040 each refusal and a network error have their message", async () => {

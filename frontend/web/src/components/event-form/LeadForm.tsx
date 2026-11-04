@@ -1,11 +1,12 @@
-import { Send } from "lucide-react";
+import { CircleAlert, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, type FormEvent, type HTMLAttributes, type ReactNode } from "react";
 import type { AddressPart, DraftEdit, LeadDraft, StandardAnswerKey } from "@/lib/event-form/answers";
+import { errorCount } from "@/lib/event-form/errors";
 import type { PublicCustomField, PublicEventForm } from "@/lib/event-form/types";
 import { privacyUrl } from "@/lib/instance-links";
 import { ConsentField } from "./ConsentField";
-import { FormHead } from "./FormChrome";
+import { ErrorText, FormHead } from "./FormChrome";
 import { Honeypot } from "./Honeypot";
 
 type InputMode = HTMLAttributes<HTMLInputElement>["inputMode"];
@@ -43,16 +44,6 @@ function describedBy(...ids: (string | false | undefined)[]): string | undefined
   return present.length > 0 ? present.join(" ") : undefined;
 }
 
-/** The message of a field error, next to its field (FRM-015). */
-function ErrorText({ id, path, message }: { id: string | undefined; path: string; message: string }) {
-  const t = useTranslations();
-  return (
-    <p id={id} data-testid={`field-error-${path}`} className="fm-error">
-      {t(message)}
-    </p>
-  );
-}
-
 /** "(facultatif)" after the label of an optional field; a required one carries no mark (FRM-045). */
 function OptionalMark({ required }: { required: boolean }) {
   const t = useTranslations("eventForm");
@@ -64,13 +55,15 @@ interface FieldProps {
   label: string;
   required: boolean;
   help?: string | null;
-  /** Message key of the error, if any. */
+  /** Error code of the field, if any. */
   error: string | undefined;
+  /** The kind of a custom field. */
+  kind?: PublicCustomField["kind"];
   children(props: { id: string; "aria-invalid"?: true; "aria-describedby"?: string; "data-testid": string }): ReactNode;
 }
 
 /** A label, its help, the control and its error, right next to it (FRM-015, FRM-045). */
-function Field({ path, label, required, help, error, children }: FieldProps) {
+function Field({ path, label, required, help, error, kind, children }: FieldProps) {
   const id = inputId(path);
   const helpId = help ? `${id}-help` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -91,7 +84,7 @@ function Field({ path, label, required, help, error, children }: FieldProps) {
         "aria-describedby": describedBy(helpId, errorId),
         "data-testid": `field-${path}`,
       })}
-      {error && <ErrorText id={errorId} path={path} message={error} />}
+      {error && <ErrorText id={errorId} path={path} code={error} kind={kind} />}
     </div>
   );
 }
@@ -104,12 +97,14 @@ interface TextInputProps {
   value: string;
   error: string | undefined;
   help?: string | null;
+  /** The kind of a custom field. */
+  fieldKind?: PublicCustomField["kind"];
   onChange(value: string): void;
 }
 
-function TextInput({ path, label, required, kind, value, error, help, onChange }: TextInputProps) {
+function TextInput({ path, label, required, kind, value, error, help, fieldKind, onChange }: TextInputProps) {
   return (
-    <Field path={path} label={label} required={required} help={help} error={error}>
+    <Field path={path} label={label} required={required} help={help} error={error} kind={fieldKind}>
       {(attributes) => (
         <input
           {...attributes}
@@ -151,7 +146,7 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
   const t = useTranslations("eventForm.fields");
   const path = `answers.custom.${field.id}`;
   const text = typeof value === "string" ? value : "";
-  const common = { path, label: field.label, required: field.required, help: field.help, error };
+  const common = { path, label: field.label, required: field.required, help: field.help, error, kind: field.kind };
 
   switch (field.kind) {
     case "checkbox": {
@@ -177,7 +172,7 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
               {field.help}
             </p>
           )}
-          {error && <ErrorText id={errorId} path={path} message={error} />}
+          {error && <ErrorText id={errorId} path={path} code={error} kind="checkbox" />}
         </div>
       );
     }
@@ -218,7 +213,15 @@ function CustomInput({ field, value, error, onChange }: CustomInputProps) {
         </Field>
       );
     default:
-      return <TextInput {...common} kind={customInputKind(field.kind)} value={text} onChange={onChange} />;
+      return (
+        <TextInput
+          {...common}
+          fieldKind={field.kind}
+          kind={customInputKind(field.kind)}
+          value={text}
+          onChange={onChange}
+        />
+      );
   }
 }
 
@@ -240,7 +243,7 @@ export interface LeadFormProps {
   /** The card's full name: the only one the answers are sent to (FRM-044). */
   ownerName: string;
   draft: LeadDraft;
-  /** Message keys by field path. */
+  /** Error codes by field path. */
   errors: Record<string, string>;
   /** Increases at each refused submission: the first invalid field then takes the focus. */
   attempt: number;
@@ -316,6 +319,12 @@ export function LeadForm({ form, ownerName, draft, errors, attempt, disabled, no
       <FormHead title={form.title} description={form.description} live />
       <form ref={ref} data-testid="event-form" noValidate onSubmit={submit} className="fm-form">
         <p className="fm-note">{t("note")}</p>
+        {errorCount(errors) > 0 && (
+          <div role="alert" data-testid="event-form-summary" className="fm-alert">
+            <CircleAlert className="ic" aria-hidden="true" />
+            <p>{t("summary", { count: errorCount(errors) })}</p>
+          </div>
+        )}
         <fieldset disabled={disabled} className="fm-set fm-form">
           <fieldset className="fm-set">
             <legend className="fm-legend">{t("sections.contact")}</legend>

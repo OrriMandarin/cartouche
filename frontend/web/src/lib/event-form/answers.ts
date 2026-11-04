@@ -1,4 +1,3 @@
-import { fieldErrorKey } from "@/lib/field-errors";
 import type { LeadSubmission, PublicCustomField, PublicEventForm } from "./types";
 
 /** What the prospect types while the form is open: every text is a string, empty when absent. */
@@ -159,11 +158,14 @@ export function isCalendarDateTime(value: string): boolean {
 
 const DECIMAL = /^[-+]?[0-9]+(?:[.,][0-9]+)?$/;
 
-/** The answers the form asks, checked as the server will (FRM-033 to FRM-037); the server stays the judge. */
+/**
+ * The answers the form asks, checked as the server will (FRM-033 to FRM-037); the server stays the judge. The
+ * error codes by field path, the first of each field.
+ */
 export function checkLeadDraft(form: PublicEventForm, draft: LeadDraft, today: string): Record<string, string> {
   const errors: Record<string, string> = {};
   const fail = (path: string, code: string) => {
-    if (!Object.hasOwn(errors, path)) errors[path] = fieldErrorKey(code);
+    if (!Object.hasOwn(errors, path)) errors[path] = code;
   };
   /** The normalized answer, after the required and length checks. */
   const text = (path: string, raw: string, required: boolean, max: number): string => {

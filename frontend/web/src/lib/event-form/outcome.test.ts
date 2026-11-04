@@ -20,7 +20,7 @@ describe("submissionOutcome", () => {
     expect(submissionOutcome(new TypeError("Failed to fetch"))).toEqual({ kind: "network" });
   });
 
-  test("FRM-015 FRM-036 invalid answers are listed by field with their message key", () => {
+  test("FRM-015 FRM-036 invalid answers are listed by field with their error code", () => {
     const outcome = submissionOutcome(
       refusal(400, "validation_failed", [
         { field: "answers.email", code: "invalid_email" },
@@ -35,12 +35,12 @@ describe("submissionOutcome", () => {
     expect(outcome).toEqual({
       kind: "fields",
       fields: {
-        "answers.email": "fieldErrors.invalid_email",
-        "answers.custom.0198d000-0000-7000-8000-0000000000a4": "fieldErrors.invalid_number",
-        "answers.custom.0198d000-0000-7000-8000-0000000000a5": "fieldErrors.invalid_choice",
-        "answers.birth_date": "fieldErrors.invalid_date",
-        "answers.custom.0198d000-0000-7000-8000-0000000000a6": "fieldErrors.invalid_value",
-        consent: "fieldErrors.required",
+        "answers.email": "invalid_email",
+        "answers.custom.0198d000-0000-7000-8000-0000000000a4": "invalid_number",
+        "answers.custom.0198d000-0000-7000-8000-0000000000a5": "invalid_choice",
+        "answers.birth_date": "invalid_date",
+        "answers.custom.0198d000-0000-7000-8000-0000000000a6": "invalid_value",
+        consent: "required",
       },
     });
   });

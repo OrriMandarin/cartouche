@@ -194,19 +194,25 @@ describe("LeadForm", () => {
     draft.answers.email = "eloise@";
     renderForm({
       draft,
-      errors: { "answers.email": "fieldErrors.invalid_email", consent: "fieldErrors.required" },
+      errors: { "answers.email": "invalid_email", consent: "required" },
     });
-    expect(screen.getByTestId("field-error-answers.email")).toHaveTextContent("Cette adresse e-mail n'est pas valide.");
+    expect(screen.getByTestId("field-error-answers.email").textContent).toContain("Vérifiez l’adresse e-mail (exemple\u00a0: nom@domaine.fr).");
+    expect(screen.getByTestId("event-form-summary")).toHaveTextContent("2 champs sont à corriger.");
+    expect(screen.getByTestId("field-error-answers.email").querySelector("svg")).not.toBeNull();
     expect(field("answers.email")).toHaveAttribute("aria-invalid", "true");
-    expect(field("answers.email")).toHaveAccessibleDescription("Cette adresse e-mail n'est pas valide.");
+    expect(field("answers.email")).toHaveAccessibleDescription(
+      "Vérifiez l’adresse e-mail (exemple\u00a0: nom@domaine.fr).",
+    );
     expect(field("answers.email")).toHaveValue("eloise@");
     expect(field("answers.first_name")).toHaveValue("Éloïse");
     expect(field("answers.first_name")).not.toHaveAttribute("aria-invalid");
-    expect(screen.getByTestId("field-error-consent")).toHaveTextContent("Ce champ est obligatoire.");
+    expect(screen.getByTestId("field-error-consent")).toHaveTextContent(
+      "Cochez cette case pour envoyer vos coordonnées.",
+    );
   });
 
   test("FRM-015 a refused submission puts the focus on the first invalid field", () => {
-    const props = renderForm({ errors: { "answers.email": "fieldErrors.required" }, attempt: 1 });
+    const props = renderForm({ errors: { "answers.email": "required" }, attempt: 1 });
     expect(field("answers.email")).toHaveFocus();
     fireEvent.change(field("answers.first_name"), { target: { value: "Zoé" } });
     expect(props.onEdit).toHaveBeenCalledWith({ field: "first_name", value: "Zoé" });

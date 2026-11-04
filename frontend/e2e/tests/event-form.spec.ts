@@ -140,7 +140,9 @@ test("FRM-003 FRM-012 FRM-013 FRM-015 FRM-004 FRM-016 fill, fix, send, confirm",
   await fillMariage(page);
   await field(page, "answers.email").fill("maelle@");
   await page.getByTestId("event-form-submit").click();
-  await expect(page.getByTestId("field-error-answers.email")).toHaveText("Cette adresse e-mail n'est pas valide.");
+  await expect(page.getByTestId("field-error-answers.email")).toHaveText(
+    "Vérifiez l’adresse e-mail (exemple\u00a0: nom@domaine.fr).",
+  );
   await expect(field(page, "answers.first_name")).toHaveValue("Maëlle");
 
   await field(page, "answers.email").fill("maelle@example.test");
@@ -169,6 +171,57 @@ test("FRM-003 FRM-012 FRM-013 FRM-015 FRM-004 FRM-016 fill, fix, send, confirm",
 
   await page.getByTestId("confirmation-back").click();
   await expect(page).toHaveURL(/\/c\/alice-durand$/);
+});
+ 
+test("FRM-046 four errors: summary, focus and messages", async ({ page }) => {
+  await page.goto(formUrl(MARIAGE));
+  await field(page, "answers.first_name").fill("Inès");
+  await field(page, "answers.email").fill("ines.martin@");
+  const guests = page.getByLabel(/Nombre d'invités/);
+  await guests.fill("abc");
+  await page.getByTestId("event-form-submit").click();
+
+  await expect(page.getByTestId("event-form-summary")).toHaveText(
+    "Vos coordonnées n’ont pas été envoyées\u00a0: 4 champs sont à corriger.",
+  );
+  await expect(field(page, "answers.last_name")).toBeFocused();
+  await expect(page.getByTestId("field-error-answers.last_name")).toHaveText("Indiquez votre nom.");
+  await expect(page.getByTestId("field-error-answers.email")).toHaveText(
+    "Vérifiez l’adresse e-mail (exemple\u00a0: nom@domaine.fr).",
+  );
+  await expect(guests.locator("xpath=..").locator(".fm-error")).toHaveText(
+    "Indiquez un nombre, par exemple 80 ou 12,5.",
+  );
+  await expect(page.getByTestId("field-error-consent")).toHaveText(
+    "Cochez cette case pour envoyer vos coordonnées.",
+  );
+  await expect(field(page, "answers.first_name")).toHaveValue("Inès");
+  await expect(field(page, "answers.email")).toHaveValue("ines.martin@");
+  await expect(guests).toHaveValue("abc");
+});
+
+test("FRM-047 confirmation and vCard of Alice", async ({ page }) => {
+  await page.goto(formUrl(MARIAGE));
+  await fillMariage(page, "Inès");
+  await page.getByTestId("event-form-submit").click();
+
+  const confirmation = page.getByTestId("event-form-confirmation");
+  await expect(confirmation.getByRole("heading")).toHaveText("Merci Inès, c’est envoyé\u00a0!");
+  await expect(confirmation).toContainText("Alice Durand a bien reçu vos coordonnées.");
+  await expect(page.getByTestId("confirmation-save-contact")).toHaveText("Enregistrer le contact d’Alice");
+  await expect(page.getByTestId("confirmation-back")).toHaveText("Retour à la carte");
+});
+
+test("FRM-043 a date and time answer reaches the owner", async ({ page, api }) => {
+  const demo = idOf(DEMO);
+  await page.goto(formUrl(DEMO));
+  await page.getByLabel(/Rendez-vous souhaité/).fill("2027-03-20T14:30");
+  await fillEmailOnly(page, "rdv@example.test");
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+
+  const [lead] = await api.leads("seed-alice", demo);
+  expect(lead?.custom.find((answer) => answer.label === "Rendez-vous souhaité")?.value).toBe("2027-03-20T14:30");
 });
 
 test("FRM-002 EVT-011 the access code ignores case, spaces and accents", async ({ page }) => {
