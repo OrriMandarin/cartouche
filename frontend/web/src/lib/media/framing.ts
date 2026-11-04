@@ -188,6 +188,12 @@ export function clampTime(seconds: number, duration: number): number {
   return tenth(seconds, 0, duration);
 }
 
+/** spec: EDI-034. The time under a pointer at `clientX` on the strip (`box`, its left edge and width), within the video. */
+export function timeAtPointer(clientX: number, box: { left: number; width: number }, duration: number): number {
+  if (box.width <= 0) return 0;
+  return clamp(((clientX - box.left) / box.width) * duration, 0, duration);
+}
+
 const TIME_KEYS: Record<string, 1 | -1> = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 };
 
 /** spec: EDI-034. How far an arrow moves a handle or the playhead, in seconds, or null for any other key. */

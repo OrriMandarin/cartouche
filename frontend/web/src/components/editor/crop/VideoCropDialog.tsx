@@ -13,6 +13,7 @@ import {
   setLoopEnd,
   setLoopStart,
   stepTime,
+  timeAtPointer,
   videoCropStyle,
   wholeLoop,
 } from "@/lib/media/framing";
@@ -85,7 +86,8 @@ export function VideoCropDialog({
   const stageVideo = useRef<RefObject<HTMLVideoElement | null> | null>(null);
   const previewVideo = useRef<HTMLVideoElement>(null);
   const strip = useRef<HTMLDivElement>(null);
-  const drag = useRef<Drag | null>(null);
+  /** What the pointer drags, and how far from it, in seconds, it grabbed it. */
+  const drag = useRef<{ target: Drag; offset: number } | null>(null);
   const videos = () => [stageVideo.current?.current, previewVideo.current].filter((element) => element != null);
 
   // Paused, both videos show the frame at the playhead.
@@ -150,20 +152,27 @@ export function VideoCropDialog({
     };
   }
 
-  /** The time under the pointer, from the strip's left edge (0) to its right edge (the duration). */
   function timeAt(clientX: number): number {
     const box = strip.current?.getBoundingClientRect();
-    if (!box || box.width === 0) return 0;
-    return ((clientX - box.left) / box.width) * duration;
+    return box ? timeAtPointer(clientX, box, duration) : 0;
   }
 
-  function startDrag(target: Drag) {
+  /**
+   * A press on the strip moves the playhead there; a press on a handle grabs it where it was pressed, so that it
+   * follows the pointer without jumping.
+   */
+  function startDrag(target: Drag, grabbed?: number) {
     return (event: PointerEvent) => {
       event.stopPropagation();
-      drag.current = target;
+      const at = timeAt(event.clientX);
+      drag.current = { target, offset: grabbed === undefined ? 0 : at - grabbed };
       strip.current?.setPointerCapture?.(event.pointerId);
-      move(target, timeAt(event.clientX));
+      if (grabbed === undefined) move(target, at);
     };
+  }
+
+  function onDrag(event: PointerEvent) {
+    if (drag.current) move(drag.current.target, timeAt(event.clientX) - drag.current.offset);
   }
 
   const percent = (seconds: number) => `${(seconds / duration) * 100}%`;
@@ -207,7 +216,7 @@ export function VideoCropDialog({
               data-testid="video-crop-strip"
               className="relative h-14 flex-1 touch-none select-none max-[847px]:h-[52px]"
               onPointerDown={startDrag("playhead")}
-              onPointerMove={(event) => drag.current && move(drag.current, timeAt(event.clientX))}
+              onPointerMove={onDrag}
               onPointerUp={() => (drag.current = null)}
               onPointerCancel={() => (drag.current = null)}
             >
@@ -231,7 +240,7 @@ export function VideoCropDialog({
                 valueText={valueText(loop.start)}
                 barLeft={percent(loop.start)}
                 onKeyDown={onKey("start", loop.start)}
-                onPointerDown={startDrag("start")}
+                onPointerDown={startDrag("start", loop.start)}
               />
               <Handle
                 label={t("video.end")}
@@ -241,7 +250,7 @@ export function VideoCropDialog({
                 valueText={valueText(loop.end)}
                 barLeft={`calc(${percent(loop.end)} - 16px)`}
                 onKeyDown={onKey("end", loop.end)}
-                onPointerDown={startDrag("end")}
+                onPointerDown={startDrag("end", loop.end)}
               />
               <span
                 role="slider"

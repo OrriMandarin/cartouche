@@ -80,10 +80,23 @@ export async function readVideoInfo(file: File): Promise<VideoInfo> {
   }
 }
 
-/** Seeks `video` to `seconds` (the first frame for a shorter video) and draws that frame, `maxWidth` wide at most. */
+/** How far before its end a video is sought to show its last frame: browsers may show nothing exactly at the end. */
+const LAST_FRAME_MARGIN = 0.05;
+
+/**
+ * spec: MED-003, MED-029. Where to seek for the frame at `seconds`: that time, or just before the end for a time at
+ * or past it (the last frame); the start for a time that is not a number or is negative.
+ */
+function seekTime(seconds: number, duration: number): number {
+  if (!Number.isFinite(seconds) || seconds < 0) return 0;
+  if (!Number.isFinite(duration) || seconds < duration - LAST_FRAME_MARGIN) return seconds;
+  return Math.max(0, duration - LAST_FRAME_MARGIN);
+}
+
+/** Seeks `video` to the frame at `seconds` and draws it, `maxWidth` wide at most. */
 async function drawFrame(video: HTMLVideoElement, seconds: number, maxWidth: number): Promise<HTMLCanvasElement> {
   await waitFor(video, "seeked", () => {
-    video.currentTime = video.duration > seconds ? seconds : 0;
+    video.currentTime = seekTime(seconds, video.duration);
   });
   const scale = Math.min(1, maxWidth / video.videoWidth);
   const canvas = document.createElement("canvas");
@@ -103,8 +116,8 @@ export const POSTER_SECONDS = 0.1;
 
 /**
  * spec: MED-003, MED-021, MED-029. A still of the video, as a JPEG, to be shown while the video loads: the whole
- * frame at `atSeconds` (or the first one for a shorter video), drawn in a canvas. Loading and seeking each have the
- * time limit.
+ * frame at `atSeconds` (the last one for a time at or past the end), drawn in a canvas. Loading and seeking each
+ * have the time limit.
  */
 export async function capturePoster(source: File | string, atSeconds = POSTER_SECONDS): Promise<Blob> {
   const { video, release } = await loadVideo(source);

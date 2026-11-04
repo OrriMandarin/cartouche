@@ -102,4 +102,24 @@ describe("video", () => {
     // The address is the stored video's: nothing to release.
     expect(revokeObjectURL).not.toHaveBeenCalled();
   });
+
+  test("MED-003 MED-029 a waiting image at the video's end is its last frame, not its first", async () => {
+    const outcome = capturePoster(mp4(), 7.5);
+    element.dispatchEvent(new Event("loadeddata"));
+    await outcome;
+
+    // Just before the end, where the last frame still shows.
+    expect(seeks).toEqual([7.45]);
+  });
+
+  test("MED-003 a time past the end gives the last frame, a time that is not a number the first", async () => {
+    const late = capturePoster(mp4(), 9);
+    element.dispatchEvent(new Event("loadeddata"));
+    await late;
+    const odd = capturePoster(mp4(), Number.NaN);
+    element.dispatchEvent(new Event("loadeddata"));
+    await odd;
+
+    expect(seeks).toEqual([7.45, 0]);
+  });
 });

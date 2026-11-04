@@ -12,6 +12,7 @@ import {
   setLoopEnd,
   setLoopStart,
   stepTime,
+  timeAtPointer,
   videoCropStyle,
   zoomStep,
 } from "./framing";
@@ -143,5 +144,15 @@ describe("framing", () => {
   test("EDI-034 the strip shows frames spread evenly over the video", () => {
     expect(frameTimes(8, 4)).toEqual([1, 3, 5, 7]);
     expect(frameTimes(2, 8)).toEqual([0.125, 0.375, 0.625, 0.875, 1.125, 1.375, 1.625, 1.875]);
+  });
+
+  test("EDI-034 a pointer on the strip is a time of the video, within it", () => {
+    const strip = { left: 100, width: 400 };
+    expect(timeAtPointer(300, strip, 8)).toBe(4);
+    expect(timeAtPointer(150, strip, 8)).toBe(1);
+    expect(timeAtPointer(40, strip, 8)).toBe(0);
+    expect(timeAtPointer(900, strip, 8)).toBe(8);
+    // A strip not laid out yet gives the start.
+    expect(timeAtPointer(300, { left: 0, width: 0 }, 8)).toBe(0);
   });
 });
