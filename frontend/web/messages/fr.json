@@ -462,16 +462,17 @@
       "phone": "Téléphone"
     },
     "links": {
-      "empty": "Aucun lien pour l'instant.",
-      "add": "Ajouter un lien",
+      "hint": "Glisse la poignée, ou utilise les flèches du clavier, pour changer l’ordre.",
+      "empty": "Aucun lien pour l’instant.",
+      "addNetwork": "Ajouter un réseau",
+      "addCustom": "Ajouter un lien libre",
       "max": "Une carte a au plus 20 liens.",
-      "item": "Lien {index}",
-      "kind": "Type",
       "url": "Adresse",
       "label": "Intitulé",
-      "remove": "Supprimer le lien {index}",
-      "moveUp": "Monter le lien {index}",
-      "moveDown": "Descendre le lien {index}"
+      "move": "Déplacer {name}",
+      "remove": "Retirer {name}",
+      "customName": "Lien libre {index}",
+      "position": "{name}, position {position} sur {total}"
     },
     "template": {
       "beta": "bêta"

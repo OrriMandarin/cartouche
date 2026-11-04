@@ -211,6 +211,10 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     );
     expect(screen.getByTestId("editor-job_title")).toBeDisabled();
     expect(screen.getByTestId("link-url-0")).toBeDisabled();
+    expect(screen.getByTestId("link-handle-0")).toBeDisabled();
+    expect(screen.getByTestId("link-remove-0")).toBeDisabled();
+    expect(screen.getByTestId("link-add")).toBeDisabled();
+    expect(screen.getByTestId("link-add-network")).toBeDisabled();
     expect(screen.getByTestId("slug-input")).toBeDisabled();
     expect(screen.queryByTestId("editor-save")).toBeNull();
     expect(screen.queryByTestId("editor-save-bar")).toBeNull();
@@ -235,7 +239,8 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(preview.getByTestId("card-link-0")).toHaveTextContent("Portfolio");
     type("link-label-0", "Mon site");
     expect(preview.getByTestId("card-link-0")).toHaveTextContent("Mon site");
-    fireEvent.click(screen.getByTestId("link-add"));
+    fireEvent.pointerDown(screen.getByTestId("link-add-network"), { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Site web" }));
     type("link-url-1", "https://b.example.test");
     // TPL-027: icons by default, a website is an icon named after its kind and its address.
     expect(preview.getByTestId("card-link-1").textContent).toBe("");

@@ -114,6 +114,25 @@ test("EDI-015 PUB-022 invalid link is refused next to its field", async ({ page,
   await saveCard(page);
 });
 
+test("EDI-029 reordering links with the keyboard changes the public order", async ({ page, context }) => {
+  await page.goto(editorUrl());
+  await openEditorSection(page, "links");
+  await expect(page.getByTestId("link-row-0")).toContainText("LinkedIn");
+
+  const handle = page.getByRole("button", { name: "Déplacer Portfolio" });
+  await handle.focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByTestId("links-live")).toHaveText("Portfolio, position 1 sur 2");
+  await expect(page.getByTestId("link-handle-0")).toBeFocused();
+  await expect(page.getByTestId("link-label-0")).toHaveValue("Portfolio");
+  await saveCard(page);
+
+  const publicPage = await context.newPage();
+  await publicPage.goto("/c/alice-durand");
+  await expect(publicPage.getByTestId("card-link-0")).toContainText("Portfolio");
+  await expect(publicPage.getByTestId("card-link-1")).toHaveAttribute("href", "https://www.linkedin.com/in/alice");
+});
+
 test("LNK-020 LNK-022 a slug taken by someone else is flagged and cannot be saved", async ({ page }) => {
   await page.goto(editorUrl());
   await page.getByTestId("slug-input").fill("dan-moreau");
