@@ -158,11 +158,13 @@
     "slug": {
       "label": "Lien de la carte",
       "checking": "Vérification…",
-      "free": "Disponible",
+      "free": "Ce lien est disponible.",
       "current": "C'est le lien actuel de cette carte",
-      "taken": "Déjà pris",
+      "taken": "Ce lien est déjà pris. Choisis-en un autre.",
+      "takenWithSuggestions": "Ce lien est déjà pris. Choisis-en un autre ou prends une suggestion\u00a0:",
       "reserved": "Réservé",
-      "invalid": "Invalide"
+      "invalid": "Invalide",
+      "suggestionsLabel": "Suggestions de liens"
     },
     "duplicate": {
       "title": "Dupliquer la carte",
@@ -177,10 +179,13 @@
     },
     "new": {
       "title": "Nouvelle carte",
+      "subtitle": "Commence par l’essentiel\u00a0: tu compléteras le reste dans l’éditeur.",
       "firstName": "Prénom",
       "lastName": "Nom",
-      "submit": "Créer",
-      "back": "Retour au tableau de bord"
+      "slugHint": "Proposé à partir de ton nom. Choisis-le bien\u00a0: il sera inscrit dans tes tags NFC et tes QR codes. Lettres minuscules, chiffres et tirets.",
+      "slugHintShort": "Il sera inscrit dans tes tags NFC et tes QR codes.",
+      "submit": "Créer la carte",
+      "cancel": "Annuler"
     }
   },
   "support": {

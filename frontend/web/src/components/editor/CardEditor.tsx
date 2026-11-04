@@ -171,6 +171,7 @@ export function CardEditor({ card }: { card: CardView }) {
           <SlugField
             value={draft.slug}
             status={slugCheck.status}
+            suggestions={slugCheck.suggestions}
             error={messages.slug}
             onChange={(slug) => edit({ slug }, ["slug"])}
           />

@@ -12,6 +12,8 @@ test.beforeEach(async ({ api, loginAs }) => {
 
 const editorUrl = () => `/dashboard/cards/${aliceCardId}`;
 
+const TAKEN = "Ce lien est déjà pris. Choisis-en un autre ou prends une suggestion\u00a0:";
+
 test("EDI-003 form and preview are side by side on a wide screen, stacked on a phone", async ({ page }) => {
   await page.goto(editorUrl());
   const form = await page.getByRole("form", { name: "Formulaire de la carte" }).boundingBox();
@@ -95,7 +97,7 @@ test("EDI-015 PUB-022 invalid link is refused next to its field", async ({ page,
 test("LNK-020 LNK-022 a slug taken by someone else is flagged and cannot be saved", async ({ page }) => {
   await page.goto(editorUrl());
   await page.getByTestId("slug-input").fill("dan-moreau");
-  await expect(page.getByTestId("slug-status")).toHaveText("Déjà pris");
+  await expect(page.getByTestId("slug-status")).toHaveText(TAKEN);
   // The check already tells; the save button waits for a free slug.
   await expect(page.getByTestId("editor-save")).toBeDisabled();
 });
@@ -103,7 +105,7 @@ test("LNK-020 LNK-022 a slug taken by someone else is flagged and cannot be save
 test("LNK-003 changing the slug keeps the old link working", async ({ page }) => {
   await page.goto(editorUrl());
   await page.getByTestId("slug-input").fill("alice-d");
-  await expect(page.getByTestId("slug-status")).toHaveText("Disponible");
+  await expect(page.getByTestId("slug-status")).toHaveText("Ce lien est disponible.");
   await page.getByTestId("editor-save").click();
   await expect(page.getByTestId("editor-status")).toHaveText("Modifications enregistrées");
 

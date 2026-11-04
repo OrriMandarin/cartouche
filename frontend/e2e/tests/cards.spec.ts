@@ -9,6 +9,8 @@ test.beforeEach(async ({ api, loginAs }) => {
   await loginAs("seed-alice");
 });
 
+const TAKEN = "Ce lien est déjà pris. Choisis-en un autre ou prends une suggestion\u00a0:";
+
 test("EDI-013 LNK-001 LNK-019 create a card from a suggested slug", async ({ page }) => {
   await page.goto("/dashboard");
   await page.locator('[data-testid^="new-card"]:visible').click();
@@ -18,7 +20,7 @@ test("EDI-013 LNK-001 LNK-019 create a card from a suggested slug", async ({ pag
   await page.getByTestId("new-card-last-name").fill("Durand");
   // alice-durand is taken: the proposal is the first free suffix.
   await expect(page.getByTestId("slug-input")).toHaveValue("alice-durand-2");
-  await expect(page.getByTestId("slug-status")).toHaveText("Disponible");
+  await expect(page.getByTestId("slug-status")).toHaveText("Ce lien est disponible.");
   await page.getByTestId("new-card-submit").click();
 
   await expect(page).toHaveURL(/\/dashboard\/cards\/[0-9a-f-]{36}$/);
@@ -29,12 +31,29 @@ test("EDI-013 LNK-001 LNK-019 create a card from a suggested slug", async ({ pag
 test("LNK-020 taken slug is flagged before saving", async ({ page }) => {
   await page.goto("/dashboard/cards/new");
   await page.getByTestId("slug-input").fill("bob-martin");
-  await expect(page.getByTestId("slug-status")).toHaveText("Déjà pris");
+  await expect(page.getByTestId("slug-status")).toHaveText(TAKEN);
   await expect(page.getByTestId("new-card-submit")).toBeDisabled();
 
   await page.getByTestId("slug-input").fill("a");
   await expect(page.getByTestId("slug-status")).toHaveText("Invalide");
   await expect(page.getByTestId("new-card-submit")).toBeDisabled();
+});
+
+test("LNK-035 EDI-025 creating a card with a suggested slug", async ({ page }) => {
+  await page.goto("/dashboard/cards/new");
+  await page.getByTestId("new-card-first-name").fill("Alice");
+  await page.getByTestId("new-card-last-name").fill("Durand");
+  await page.getByTestId("slug-input").fill("alice-durand");
+  await expect(page.getByTestId("slug-status")).toHaveText("Réservé");
+  await expect(page.getByTestId("new-card-submit")).toBeDisabled();
+
+  await page.getByTestId("slug-suggestion-alice-durand-2").click();
+  await expect(page.getByTestId("slug-input")).toHaveValue("alice-durand-2");
+  await expect(page.getByTestId("slug-status")).toHaveText("Ce lien est disponible.");
+  await page.getByTestId("new-card-submit").click();
+
+  await expect(page).toHaveURL(/\/dashboard\/cards\/[0-9a-f-]{36}$/);
+  await expect(page.getByTestId("slug-input")).toHaveValue("alice-durand-2");
 });
 
 test("EDI-001 LNK-005 LNK-009 disable then enable", async ({ page }) => {
@@ -74,7 +93,7 @@ test("EDI-014 duplicate a card", async ({ page }) => {
   await openCardMenu(page, "alice-durand");
   await page.getByTestId("card-duplicate-alice-durand").click();
   await page.getByTestId("slug-input").fill("alice-bis");
-  await expect(page.getByTestId("slug-status")).toHaveText("Disponible");
+  await expect(page.getByTestId("slug-status")).toHaveText("Ce lien est disponible.");
   await page.getByTestId("card-duplicate-confirm").click();
 
   await expect(page.getByTestId("card-row-alice-bis")).toBeVisible();

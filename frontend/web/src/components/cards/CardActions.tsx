@@ -38,7 +38,7 @@ function DuplicateForm({
   const suggestion = useSlugSuggestion(card.content.first_name ?? "", card.content.last_name ?? "");
   const [typed, setTyped] = useState<string | null>(null);
   const slug = typed ?? suggestion ?? "";
-  const { status } = useSlugAvailability(slug);
+  const { status, suggestions } = useSlugAvailability(slug);
 
   return (
     <form
@@ -48,7 +48,7 @@ function DuplicateForm({
         if (status === "free") onConfirm(slug.trim());
       }}
     >
-      <SlugField value={slug} onChange={setTyped} status={status} />
+      <SlugField value={slug} onChange={setTyped} status={status} suggestions={suggestions} />
       <DialogFooter>
         <Button type="button" variant="secondary" data-testid="card-duplicate-cancel" onClick={onCancel}>
           {t("cancel")}

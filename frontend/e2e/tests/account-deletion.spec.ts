@@ -22,6 +22,8 @@ async function accountSubjects(api: TestApi): Promise<string[]> {
   return subjects;
 }
 
+const TAKEN = "Ce lien est déjà pris. Choisis-en un autre ou prends une suggestion\u00a0:";
+
 test("ACC-019 ACC-020 ACC-022 LNK-015 LNK-033 LNK-027 a user deletes their account", async ({ page, api, loginAs }) => {
   const { cards } = await api.seed("cards");
   const bobCard = cards.find((card) => card.owner === "seed-bob");
@@ -73,11 +75,11 @@ test("LNK-032 a blocked slug cannot be taken by anyone", async ({ page, api, log
   await page.getByTestId("new-card-first-name").fill("Bob");
   await page.getByTestId("new-card-last-name").fill("Martin");
   await expect(page.getByTestId("slug-input")).toHaveValue("bob-martin-2");
-  await expect(page.getByTestId("slug-status")).toHaveText("Disponible");
+  await expect(page.getByTestId("slug-status")).toHaveText("Ce lien est disponible.");
 
   // ...the availability check says it is taken (LNK-020)...
   await page.getByTestId("slug-input").fill("bob-martin");
-  await expect(page.getByTestId("slug-status")).toHaveText("Déjà pris");
+  await expect(page.getByTestId("slug-status")).toHaveText(TAKEN);
   await expect(page.getByTestId("new-card-submit")).toBeDisabled();
 
   // ...and the API refuses the claim (LNK-022).
