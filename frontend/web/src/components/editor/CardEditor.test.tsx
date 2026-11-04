@@ -16,7 +16,11 @@ const uploadMedia = vi.fn();
 vi.mock("@/lib/api", () => ({ useApi: () => ({ GET: get, PUT: put }), useUploadMedia: () => uploadMedia }));
 const showToast = vi.fn();
 vi.mock("@/lib/toast", () => ({ showToast: (...args: unknown[]) => showToast(...args) }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard/cards/0198c8a0-0000-7000-8000-000000000001" }));
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard/cards/0198c8a0-0000-7000-8000-000000000001",
+  useRouter: () => ({ push }),
+}));
 
 const avatar = {
   id: "0198a1a0-0000-7000-8000-000000000002",
@@ -439,34 +443,58 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     return allowed;
   }
 
-  test("EDI-016 the back link asks for confirmation only when there are unsaved changes", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  const dialog = () => screen.queryByRole("alertdialog");
+
+  test("EDI-016 EDI-028 the back link opens the leave dialog only when there are unsaved changes", () => {
     renderEditor();
     expect(backNavigates()).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
+    expect(dialog()).toBeNull();
 
     type("editor-job_title", "Directrice");
     expect(backNavigates()).toBe(false);
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("modifications non enregistrées"));
+    expect(dialog()).toHaveTextContent("Tu as modifié la carte de Alice Durand.");
+    fireEvent.click(screen.getByRole("button", { name: "Rester" }));
+    expect(dialog()).toBeNull();
+    expect(push).not.toHaveBeenCalled();
 
-    confirm.mockReturnValue(true);
-    expect(backNavigates()).toBe(true);
+    expect(backNavigates()).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Quitter sans enregistrer" }));
+    expect(push).toHaveBeenCalledWith("/dashboard");
   });
 
-  test("EDI-016 a link outside the editor, such as the page header, asks too", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  test("EDI-028 Enregistrer et quitter leaves only after the save", async () => {
+    put.mockResolvedValue({ data: card({ content: { first_name: "Alice", last_name: "Durand", job_title: "Directrice" } }) });
+    renderEditor();
+    type("editor-job_title", "Directrice");
+    backNavigates();
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer et quitter" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard"));
+    expect(put).toHaveBeenCalledTimes(1);
+  });
+
+  test("EDI-028 a refused save closes the dialog, shows the errors and does not leave", async () => {
+    put.mockRejectedValue(validationFailed([{ field: "content.email", code: "invalid_email" }]));
+    renderEditor();
+    type("editor-job_title", "Directrice");
+    backNavigates();
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer et quitter" }));
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByTestId("editor-error-count")).toBeInTheDocument();
+  });
+
+  test("EDI-016 a link outside the editor, such as the page header, opens the dialog too", () => {
     renderEditor();
     const header = document.body.appendChild(document.createElement("a"));
     header.href = "/account";
     header.dataset.testid = "outside-link";
     type("editor-job_title", "Directrice");
     expect(backNavigates("outside-link")).toBe(false);
-    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(dialog()).not.toBeNull();
     header.remove();
   });
 
   test("EDI-018 the events of the card are one link away, which also asks before leaving unsaved changes", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderEditor();
     expect(screen.getByTestId("editor-events")).toHaveAttribute(
       "href",
@@ -477,7 +505,7 @@ describe("CardEditor", { timeout: 15_000 }, () => {
 
     type("editor-job_title", "Directrice");
     expect(backNavigates("editor-events")).toBe(false);
-    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(dialog()).not.toBeNull();
   });
 
   test("EDI-016 reverting a setting leaves the editor clean", async () => {

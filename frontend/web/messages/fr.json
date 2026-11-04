@@ -379,10 +379,20 @@
       "back": "Retour à la carte"
     }
   },
+  "leaveDialog": {
+    "title": "Quitter sans enregistrer\u00a0?",
+    "stay": "Rester",
+    "discard": "Quitter sans enregistrer",
+    "saveAndLeave": "Enregistrer et quitter",
+    "saving": "Enregistrement…"
+  },
   "editor": {
     "title": "Modifier la carte",
     "loading": "Chargement de la carte…",
-    "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
+    "leave": {
+      "body": "Tu as modifié la carte de {name}. Si tu quittes maintenant, ces modifications seront perdues\u00a0; la page publique reste telle qu’elle était.",
+      "bodyPhone": "Tes modifications seront perdues\u00a0; la page publique reste telle qu’elle était."
+    },
     "formLabel": "Formulaire de la carte",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
@@ -584,7 +594,10 @@
       "save": "Enregistrer",
       "saving": "Enregistrement…",
       "unsaved": "Modifications non enregistrées",
-      "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
+      "leave": {
+        "body": "Tu as modifié l’événement «\u00a0{title}\u00a0». Si tu quittes maintenant, ces modifications seront perdues.",
+        "untitled": "sans titre"
+      },
       "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
       "sections": {
         "general": "Événement",

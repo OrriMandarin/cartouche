@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** The internal link a click went through, if it is one that leaves the current page. */
 function leavingLink(event: MouseEvent): HTMLAnchorElement | null {
@@ -15,12 +16,33 @@ function leavingLink(event: MouseEvent): HTMLAnchorElement | null {
   return samePage ? null : link;
 }
 
+export type LeaveGuard = {
+  /** A navigation is waiting for the owner's choice: the leave dialog is open. */
+  asking: boolean;
+  /** « Enregistrer et quitter » is saving. */
+  saving: boolean;
+  /** « Rester ». */
+  stay: () => void;
+  /** « Quitter sans enregistrer ». */
+  leave: () => void;
+  /** « Enregistrer et quitter »: leaves only once the save succeeded; a refused save closes the dialog. */
+  saveAndLeave: () => Promise<void>;
+};
+
 /**
- * spec: EDI-016, EDI-021. While `dirty`, leaving the page asks first: the browser asks before closing,
- * reloading or leaving the site, and a click on any internal link of the page, whoever renders it (the
- * editor itself, the page header), asks with `message`. A refusal cancels the click.
+ * spec: EDI-016, EDI-021, EDI-028. While `dirty`, leaving the page asks first: the browser asks before closing,
+ * reloading or leaving the site, and a click on any internal link of the page, whoever renders it (the editor,
+ * the shell's navigation), is held back and opens the leave dialog. `save` reports whether the save succeeded.
  */
-export function useLeaveGuard(dirty: boolean, message: string): void {
+export function useLeaveGuard({ dirty, save }: { dirty: boolean; save: () => Promise<boolean> }): LeaveGuard {
+  const router = useRouter();
+  const [destination, setDestination] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const saveRef = useRef(save);
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
+
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -28,16 +50,40 @@ export function useLeaveGuard(dirty: boolean, message: string): void {
       event.returnValue = "";
     };
     // Capture phase: the guard runs before the link's own handler (the router) sees the click.
-    const confirmLink = (event: MouseEvent) => {
-      if (!leavingLink(event) || window.confirm(message)) return;
+    const holdLink = (event: MouseEvent) => {
+      const link = leavingLink(event);
+      if (!link) return;
       event.preventDefault();
       event.stopPropagation();
+      setDestination(link.pathname + link.search + link.hash);
     };
     window.addEventListener("beforeunload", warn);
-    document.addEventListener("click", confirmLink, true);
+    document.addEventListener("click", holdLink, true);
     return () => {
       window.removeEventListener("beforeunload", warn);
-      document.removeEventListener("click", confirmLink, true);
+      document.removeEventListener("click", holdLink, true);
     };
-  }, [dirty, message]);
+  }, [dirty]);
+
+  const stay = useCallback(() => setDestination(null), []);
+
+  const leave = useCallback(() => {
+    if (destination === null) return;
+    setDestination(null);
+    router.push(destination);
+  }, [destination, router]);
+
+  const saveAndLeave = useCallback(async () => {
+    if (destination === null || saving) return;
+    setSaving(true);
+    try {
+      const saved = await saveRef.current();
+      setDestination(null);
+      if (saved) router.push(destination);
+    } finally {
+      setSaving(false);
+    }
+  }, [destination, router, saving]);
+
+  return { asking: destination !== null, saving, stay, leave, saveAndLeave };
 }

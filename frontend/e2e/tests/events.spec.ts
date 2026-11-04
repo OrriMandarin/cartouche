@@ -155,31 +155,46 @@ test("EVT-009 EVT-010 EDI-019 edit an event", async ({ page }) => {
   await expect((await eventButton(page, portes)).getByTestId("card-event-name")).toHaveText("Portes ouvertes ✨");
 });
 
-test("EDI-021 leaving the event editor with unsaved changes asks first", async ({ page }) => {
+test("EDI-021 EDI-028 event editor: leave dialog", async ({ page }) => {
   const mariage = idOf(MARIAGE);
   await page.goto(`${eventsUrl()}/${mariage}`);
   await expect(page.getByTestId("event-title")).toHaveValue(MARIAGE);
   await page.getByTestId("event-title").fill(`${MARIAGE} ✨`);
 
-  // A link of the editor, then the « Mon compte » link of the page header: both ask, and a refusal stays here.
-  const asked: string[] = [];
-  page.on("dialog", (dialog) => {
-    asked.push(dialog.type());
-    void dialog.dismiss();
-  });
+  // A link of the editor, then the « Mon compte » link of the page header: both open the dialog, Rester stays.
+  const dialog = page.getByRole("alertdialog", { name: "Quitter sans enregistrer\u00a0?" });
   const accountEntry = page.locator('[data-testid="account-link"]:visible, [data-testid="tab-account"]:visible');
   for (const link of [page.getByTestId("event-back"), accountEntry]) {
     await link.click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(`Tu as modifié l’événement «\u00a0${MARIAGE}\u00a0».`);
+    await expect(dialog.getByRole("button", { name: "Rester" })).toBeFocused();
+    await dialog.getByRole("button", { name: "Rester" }).click();
+    await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`/events/${mariage}$`));
     await expect(page.getByTestId("event-title")).toHaveValue(`${MARIAGE} ✨`);
   }
-  expect(asked).toEqual(["confirm", "confirm"]);
 
-  // After a successful save the redirect to the list asks nothing.
-  await page.getByTestId("event-save").click();
+  // Enregistrer et quitter saves, then goes where the link led.
+  await page.getByTestId("event-back").click();
+  await dialog.getByRole("button", { name: "Enregistrer et quitter" }).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(page.getByTestId(`event-title-${mariage}`)).toHaveText(`${MARIAGE} ✨`);
-  expect(asked).toHaveLength(2);
+
+  // Quitter sans enregistrer drops the change.
+  await page.goto(`${eventsUrl()}/${mariage}`);
+  await page.getByTestId("event-title").fill("Autre titre");
+  await page.getByTestId("event-back").click();
+  await dialog.getByRole("button", { name: "Quitter sans enregistrer" }).click();
+  await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
+  await expect(page.getByTestId(`event-title-${mariage}`)).toHaveText(`${MARIAGE} ✨`);
+
+  // After a plain save the redirect to the list asks nothing.
+  await page.goto(`${eventsUrl()}/${mariage}`);
+  await page.getByTestId("event-title").fill(`${MARIAGE} 🎉`);
+  await page.getByTestId("event-save").click();
+  await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
+  await expect(dialog).toHaveCount(0);
 });
 
 test("FRM-029 R-PF6 the default consent text is the server's, and follows the title", async ({ page }) => {

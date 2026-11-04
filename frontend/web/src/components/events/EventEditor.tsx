@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LeaveDialog } from "@/components/editor/LeaveDialog";
 import { describedBy, FieldMessage } from "@/components/editor/Field";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -59,7 +60,6 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
   const [failure, setFailure] = useState<unknown>(null);
   const listHref = `/dashboard/cards/${cardId}/events`;
   const dirty = isEventDraftDirty(saved, draft);
-  useLeaveGuard(dirty, t("events.editor.leaveConfirm"));
 
   const message = (key: string | undefined) => (key ? (t.has(key) ? t(key) : t("events.editor.invalid")) : undefined);
   const messages = Object.fromEntries(Object.entries(errors).map(([path, key]) => [path, message(key)!]));
@@ -71,8 +71,9 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
     setErrors((current) => clearErrors(current, fixed));
   }
 
-  async function save() {
-    if (busy) return;
+  /** Stores the event; tells whether it is stored (a refused or failed save keeps the editor open). */
+  async function persist(): Promise<boolean> {
+    if (busy) return false;
     setBusy(true);
     setFailure(null);
     setErrors({});
@@ -84,17 +85,25 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
       } else {
         await api.POST("/api/cards/{id}/events", { params: { path: { id: cardId } }, body });
       }
-      // What was sent is now the reference, so the redirect below does not ask (EDI-021).
+      // What was sent is now the reference (EDI-021).
       setSaved(sent);
       // The button stays disabled until the page changes: a second click cannot create a second event.
-      router.push(listHref);
+      return true;
     } catch (error) {
       const refused = eventFieldErrors(error);
       setErrors(refused);
       if (Object.keys(refused).length === 0) setFailure(error);
       setBusy(false);
+      return false;
     }
   }
+
+  async function save() {
+    if (await persist()) router.push(listHref);
+  }
+
+  // EDI-016, EDI-028: the browser asks before closing or reloading; a link of the page opens the leave dialog.
+  const leaveGuard = useLeaveGuard({ dirty, save: persist });
 
   const noEnd = draft.endsAt === "";
   const field = (path: string) => ({
@@ -113,6 +122,12 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
         void save();
       }}
     >
+      <LeaveDialog
+        guard={leaveGuard}
+        description={t("events.editor.leave.body", {
+          title: saved.title.trim() || t("events.editor.leave.untitled"),
+        })}
+      />
       <div className="bg-background/95 sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-b px-1 py-3 backdrop-blur">
         <Link href={listHref} data-testid="event-back" className="text-sm underline">
           {t("events.backToEvents")}

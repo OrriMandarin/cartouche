@@ -39,6 +39,7 @@ import { ContentFields } from "./ContentFields";
 import { EditorSectionPanel, EditorSectionTabs, type SectionTab } from "./EditorSections";
 import { ErrorSummary } from "./ErrorSummary";
 import { FieldMessage } from "./Field";
+import { LeaveDialog } from "./LeaveDialog";
 import { LinksEditor } from "./LinksEditor";
 import { MediaField } from "./MediaField";
 import { PhonePreview } from "./PhonePreview";
@@ -101,9 +102,6 @@ export function CardEditor({ card }: { card: CardView }) {
   const refused = errorFields(Object.keys(errors));
   const name = cardDisplayName(saved.content) ?? t("cards.untitled");
 
-  // EDI-016: the browser asks before closing, reloading or leaving the site, and every link of the page asks too.
-  useLeaveGuard(dirty, t("editor.leaveConfirm"));
-
   const message = (key: string | undefined) => (key ? (t.has(key) ? t(key) : t("editor.invalid")) : undefined);
   const messages = Object.fromEntries(Object.entries(errors).map(([path, key]) => [path, message(key)!]));
 
@@ -133,8 +131,9 @@ export function CardEditor({ card }: { card: CardView }) {
     document.getElementById(field.targetId)?.focus();
   }
 
-  async function save() {
-    if (!canSave) return;
+  /** Saves the draft; tells whether the card is now stored (a refused or failed save keeps the editor open). */
+  async function save(): Promise<boolean> {
+    if (!canSave) return false;
     setBusy(true);
     setFailure(null);
     setErrors({});
@@ -150,6 +149,7 @@ export function CardEditor({ card }: { card: CardView }) {
       // What the server stored (normalized) replaces the draft, unless the owner kept typing meanwhile.
       setDraft((current) => (isDirty(sent, current) ? current : stored));
       showToast(t("editor.savedToast"));
+      return true;
     } catch (error) {
       const refusedFields = fieldErrors(error);
       setErrors(refusedFields);
@@ -157,10 +157,14 @@ export function CardEditor({ card }: { card: CardView }) {
       // The sections holding an error unfold on a phone.
       const sections = errorFields(Object.keys(refusedFields)).map((field) => field.section);
       setOpenSections((current) => new Set([...current, ...sections]));
+      return false;
     } finally {
       setBusy(false);
     }
   }
+
+  // EDI-016, EDI-028: the browser asks before closing or reloading; a link of the page opens the leave dialog.
+  const leaveGuard = useLeaveGuard({ dirty, save });
 
   function selectMode(next: Mode) {
     setMode(next);
@@ -257,6 +261,11 @@ export function CardEditor({ card }: { card: CardView }) {
       className="grid flex-1 grid-cols-1 @min-[848px]:grid-cols-[minmax(0,1fr)_440px]"
     >
       <h1 className="sr-only">{t("editor.title")}</h1>
+      <LeaveDialog
+        guard={leaveGuard}
+        description={t("editor.leave.body", { name })}
+        phoneDescription={t("editor.leave.bodyPhone")}
+      />
 
       <div className="bg-app-surface border-app-border flex flex-col gap-2.5 border-b px-4 py-3 @min-[848px]:hidden">
         <div role="tablist" aria-label={t("editor.modes.label")} className="bg-app-surface-2 rounded-app flex gap-0.5 p-[3px]">

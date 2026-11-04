@@ -393,27 +393,44 @@ describe("EventEditor", () => {
     expect(screen.getByTestId("event-status")).toHaveTextContent("Modifications non enregistrées");
   });
 
-  test("EDI-021 every link of the page asks only when there are unsaved changes", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  test("EDI-021 EDI-028 every link of the page opens the leave dialog only when there are unsaved changes", () => {
     renderEditor(eventView());
     expect(screen.getByTestId("event-back")).toHaveAttribute("href", `/dashboard/cards/${CARD_ID}/events`);
     expect(linkNavigates("event-back")).toBe(true);
     expect(linkNavigates("account-link")).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
 
     type("event-title", "Salon de l’Artisanat 2028 ✨");
     expect(linkNavigates("event-back")).toBe(false);
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Tu as modifié l’événement « Salon de l’Artisanat ✨ ».");
+    fireEvent.click(screen.getByRole("button", { name: "Rester" }));
     expect(linkNavigates("account-link")).toBe(false);
-    expect(confirm).toHaveBeenCalledTimes(2);
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("modifications non enregistrées"));
+    fireEvent.click(screen.getByRole("button", { name: "Quitter sans enregistrer" }));
+    expect(push).toHaveBeenCalledWith("/account");
+  });
 
-    confirm.mockReturnValue(true);
-    expect(linkNavigates("event-back")).toBe(true);
-    expect(linkNavigates("account-link")).toBe(true);
+  test("EDI-028 Enregistrer et quitter saves the event, then goes where the link led", async () => {
+    put.mockResolvedValue({ data: {} });
+    renderEditor(eventView());
+    type("event-title", "Salon de l’Artisanat 2028 ✨");
+    linkNavigates("account-link");
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer et quitter" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/account"));
+    expect(put).toHaveBeenCalledTimes(1);
+  });
+
+  test("EDI-028 a refused save closes the dialog, shows the errors and stays", async () => {
+    put.mockRejectedValue(rejectWith(400, "validation_failed", [{ field: "title", code: "required" }]));
+    renderEditor(eventView());
+    type("event-title", "");
+    linkNavigates("account-link");
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer et quitter" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByTestId("event-error-summary")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 
   test("EDI-021 undoing the changes leaves the editor clean", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const stored = eventView();
     renderEditor(stored);
     type("event-title", "Autre titre");
@@ -421,18 +438,15 @@ describe("EventEditor", () => {
     expect(screen.getByTestId("event-status")).toBeEmptyDOMElement();
     expect(closesTheTab()).toBe(true);
     expect(linkNavigates("event-back")).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
   });
 
   test("EDI-021 after a save nothing is asked", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderEditor(eventView());
     type("event-title", "Salon de l’Artisanat 2028 ✨");
     fireEvent.click(screen.getByTestId("event-save"));
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/dashboard/cards/${CARD_ID}/events`));
     expect(closesTheTab()).toBe(true);
     expect(linkNavigates("account-link")).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
   });
 
   test("EDI-021 a refused save keeps the changes unsaved", async () => {

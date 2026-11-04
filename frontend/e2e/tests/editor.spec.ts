@@ -187,7 +187,7 @@ test("EDI-016 reload with unsaved changes asks for confirmation", async ({ page 
   await expect(page.getByTestId("editor-job_title")).toHaveValue("Directrice");
 });
 
-test("EDI-016 the back link asks before leaving with unsaved changes", async ({ page }) => {
+test("EDI-028 card editor: leave dialog", async ({ page }) => {
   // The breadcrumb on a computer, the app bar on a phone.
   const back = page.locator('[data-testid="editor-back"]:visible, [data-testid="shell-back"]:visible');
   await page.goto(editorUrl());
@@ -196,14 +196,31 @@ test("EDI-016 the back link asks before leaving with unsaved changes", async ({ 
 
   await page.goto(editorUrl());
   await page.getByTestId("editor-job_title").fill("Directrice");
-  page.once("dialog", (dialog) => void dialog.dismiss());
   await back.click();
+  const dialog = page.getByRole("alertdialog", { name: "Quitter sans enregistrer\u00a0?" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Rester" })).toBeFocused();
+
+  // Rester: nothing is lost.
+  await dialog.getByRole("button", { name: "Rester" }).click();
+  await expect(dialog).toHaveCount(0);
   await expect(page).toHaveURL(editorUrl());
   await expect(page.getByTestId("editor-job_title")).toHaveValue("Directrice");
 
-  page.once("dialog", (dialog) => void dialog.accept());
+  // Enregistrer et quitter: leaves after the save, and the change is stored.
   await back.click();
+  await dialog.getByRole("button", { name: "Enregistrer et quitter" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto(editorUrl());
+  await expect(page.getByTestId("editor-job_title")).toHaveValue("Directrice");
+
+  // Quitter sans enregistrer: leaves and the change is dropped.
+  await page.getByTestId("editor-job_title").fill("Présidente");
+  await back.click();
+  await dialog.getByRole("button", { name: "Quitter sans enregistrer" }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto(editorUrl());
+  await expect(page.getByTestId("editor-job_title")).toHaveValue("Directrice");
 });
 
 test("EDI-027 save feedback", async ({ page, context }) => {
