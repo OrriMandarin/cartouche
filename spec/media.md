@@ -1,12 +1,12 @@
 # Media
 
-> Status: implemented (plans 2, 3 and 6); the crop dialogs of EDI-026, EDI-034 and EDI-035: plan 6 (phase B)
+> Status: implemented (plans 2, 3 and 6)
 
 ## Header backgrounds and profile photo
 
 - **MED-001** — A card has a single header background, which is an image or a video.
 - **MED-002** — The header video is in MP4 format, limited to 30 s and 25 MB.
-- **MED-003** — When a video is uploaded or re-framed, the browser captures the whole frame at the poster time (MED-028) through a canvas and sends it as the placeholder image (see PUB-006 and MED-029).
+- **MED-003** — When a video is uploaded or re-framed, the browser captures the whole frame at the poster time (MED-028), or the video's last frame when the poster time is at or past its end, through a canvas and sends it as the placeholder image (see PUB-006 and MED-029).
 - **MED-021** — If the browser could not read a video chosen in the editor after 15 seconds, the upload is abandoned with a message, and the field becomes usable again.
 - **MED-004** — There is no server-side video transcoding in v1.
 - **MED-005** — A card has a single profile photo, square and shown in a circle. Its square is chosen in the editor (EDI-026) and cut by the server (MED-027).
@@ -41,7 +41,7 @@
 - **MED-026** — A crop is a rectangle `{x, y, width, height}` given in proportions of the source, from 0 to 1: x and y are at least 0, width and height are more than 0, x + width and y + height are at most 1. Measured in pixels of the source, it is 4:3 for the header and square for the profile photo, within 1%. Any other crop is rejected (`400`, field `crop`, code `invalid_crop`). When an upload carries no crop, the server takes the largest centered rectangle of the right shape.
 - **MED-027** — The files shown on the card (MED-015) are cut by the server from the source along the crop, so that the media can be re-framed later (MED-030).
 - **MED-028** — A header video carries a framing: its crop (MED-026), its loop `{start, end}` and its poster time, in seconds. The loop satisfies 0 ≤ start < end ≤ the video's duration as the server read it (MED-013), and end − start ≥ 1 unless the loop is the whole video; otherwise the upload is rejected (`400`, field `loop`, code `invalid_loop`). The poster time lies between 0 and the duration (field `poster_time`, code `invalid_poster_time`). Without them, the loop is the whole video and the poster time is 0.
-- **MED-029** — A video's placeholder image is the frame captured at its poster time (MED-003), cut by the server along the video's crop like a header image (MED-027).
+- **MED-029** — A video's placeholder image is the frame captured for its poster time (MED-003), cut by the server along the video's crop like a header image (MED-027).
 - **MED-030** — Re-framing a media (a new crop and, for a video, a new loop or poster time, with a newly captured frame when the poster time changes) creates a new media from the source of the previous one; the previous media and its files are not modified (MED-016). Like an upload, the new media is shown on the card only once a save attaches it (MED-018). A media uploaded before plan 6 has no source and cannot be re-framed (`409 media_not_reframable`): it must be replaced.
 - **MED-031** — A source is stored under a file name that cannot be guessed (it carries a random token, different for every media) and is only given to the card's owner in the dashboard, to re-frame the media: in local disk mode through a signed address (MED-023), in S3 mode at its bucket address, which cannot be derived from the addresses of the media's public files (see MED-024). It is never part of the public page, of the vCard or of the support views, and in local disk mode `/media/*` refuses it (404) without a valid signature, even when the card is served.
 - **MED-032** — The public page applies a video's crop when it displays it, without modifying the file (MED-004): only the cropped area fills the 4:3 header. Playback starts at the loop's start and goes back to it at the loop's end.

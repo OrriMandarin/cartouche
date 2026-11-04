@@ -1,10 +1,10 @@
 # Sign-up approval and support
 
-> Status: implemented (plans 1, 2 and 4); ADM-021: plan 6
+> Status: implemented (plans 1, 2, 4 and 6)
 
 ## Access and account management
 
-- **ADM-001** — The support page and the `/api/admin/*` routes are restricted to administrators; a non-administrator receives `403 forbidden` and the interface shows "Accès réservé" ("Access restricted").
+- **ADM-001** — The support page and the `/api/admin/*` routes are restricted to administrators; a non-administrator receives `403 forbidden` and the interface shows "Accès réservé" ("Access restricted"). Only administrators see the "Support" entry of the dashboard navigation (EDI-022), which leads to the support page; every support page belongs to that entry.
 - **ADM-002** — The support page lists users, filterable by status, and prominently displays the number of `pending` accounts.
 - **ADM-003** — Allowed status transitions: `pending → approved | rejected`, `rejected → approved`, `approved → suspended`, `suspended → approved`. Any other transition → `409 invalid_transition`.
 - **ADM-004** — An administrator cannot change the status of another administrator, or their own → `403 cannot_moderate_admin`.

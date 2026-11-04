@@ -1,6 +1,6 @@
 # Events
 
-> Status: implemented (plan 3)
+> Status: implemented (plans 3 and 6)
 
 ## Period
 
@@ -38,7 +38,7 @@
 
 ## Time zone
 
-- **EVT-022** — The user's time zone (EVT-007) is their browser's; if the browser does not provide one, it is Europe/Paris. The dashboard shows the name of this time zone next to the date fields. The API only exchanges UTC instants in RFC 3339 format.
+- **EVT-022** — The user's time zone (EVT-007) is their browser's; if the browser does not provide one, it is Europe/Paris. The dashboard names this time zone, and no other, under the title of a card's event list and next to the date fields of the event editor. The API only exchanges UTC instants in RFC 3339 format.
 - **EVT-023** — An entered time that does not exist in the time zone (switch to summer time) is moved forward one hour; a time that exists twice (switch back to winter time) designates the first of the two.
 
 ## Deletion and disabled card

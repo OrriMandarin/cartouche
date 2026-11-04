@@ -1,13 +1,13 @@
 # Leads and exports
 
-> Status: implemented (plans 3 and 4); LEA-033 to LEA-035: plan 6 (phase B)
+> Status: implemented (plans 3, 4 and 6)
 
 ## Viewing
 
 - **LEA-001** — The dashboard lists the leads by event, and offers a "toute la carte" ("whole card") view.
 - **LEA-002** — The owner can search among their leads.
 - **LEA-003** — The owner can open the detail view of a lead.
-- **LEA-004** — From the list or the detail view, the owner can mark a lead as spam and delete it (see ABU-003 and ABU-004).
+- **LEA-004** — From the detail view of a lead (LEA-003), the owner can mark it as spam, remove that mark, and delete it (see ABU-003, ABU-004 and ABU-009); the rows of a lead list carry no action of their own.
 - **LEA-005** — Deleting a lead also serves to answer a GDPR erasure request.
 - **LEA-013** — The "toute la carte" ("whole card") view (LEA-001) lists in a single list the leads of all the events of the card, newest first, each with the title of its event. It is reached from the card's event list (EDI-018).
 - **LEA-014** — A lead list, of an event or of the whole card, shows every lead of its scope at once, spam ones included with their label (ABU-009), with no pagination.
@@ -16,7 +16,7 @@
 - **LEA-017** — In a list, a lead is titled by its first and last name; without a name, by its email, which is then not repeated on its row; without either, "Contact sans nom" ("Unnamed contact").
 - **LEA-018** — The detail view (LEA-003) shows the title of the lead's event, its submission date and time, each standard field it answered, each of its custom answers with the label the field had at submission (FRM-022), those of fields deleted since included (FRM-023), the consent date and time with the exact consent text (FRM-008), and whether it is marked as spam. Dates and times are shown in the user's time zone (EVT-022).
 - **LEA-019** — In the detail view, a `checkbox` answer reads "Oui" ("Yes") or "Non" ("No"), a `date` answer and the date of birth are shown as French dates, a `number` answer in French number format, and a custom field left empty reads "Non renseigné" ("Not filled in").
-- **LEA-020** — When marking as spam, unmarking or deleting succeeds, from the list or from the detail view, the list shows the result at once (label changed, row removed), even if reloading the list afterwards fails. Deleting a lead closes its detail view.
+- **LEA-020** — When marking as spam, unmarking or deleting succeeds from the detail view (LEA-004), the list shows the result at once (label changed, row removed), even if reloading the list afterwards fails, and the detail view closes, so that the message of LEA-034 can be reached. When the action fails, the detail view stays open.
 - **LEA-034** — After a lead is marked or unmarked as spam (LEA-004), a short message confirms it with an "Annuler" ("Undo") button, which puts the lead back in its previous state.
 
 ## Exports

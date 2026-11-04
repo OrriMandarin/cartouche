@@ -1,6 +1,6 @@
 # Account and authentication
 
-> Status: implemented (plans 1, 2 and 4); ACC-025 to ACC-027: plan 6 (phase B)
+> Status: implemented (plans 1, 2, 4 and 6)
 
 ## Account creation and status
 
