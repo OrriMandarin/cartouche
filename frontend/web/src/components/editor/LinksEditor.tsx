@@ -7,7 +7,10 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragCancelEvent,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -45,7 +48,6 @@ interface RowProps {
   link: DraftLink;
   name: string;
   errors: Record<string, string>;
-  tKinds: Translate;
   t: Translate;
   onEdit: (index: number, patch: Partial<DraftLink>) => void;
   onMove: (index: number, by: -1 | 1) => void;
@@ -55,12 +57,14 @@ interface RowProps {
 /** One link: its handle, its icon, its fields and its removal. A free link has a label of its own. */
 function LinkRow({ id, index, link, name, errors, t, onEdit, onMove, onRemove }: RowProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+    useSortable({ id, attributes: { roleDescription: t("roleDescription") } });
   const urlPath = `links[${index}].url`;
   const labelPath = `links[${index}].label`;
   const isFree = link.kind === "custom";
   // A network whose label was set by an earlier editor keeps a field to edit it.
-  const showsLabel = isFree || link.label !== "" || Boolean(errors[labelPath]);
+  // Decided when the row appears, so that clearing the label does not remove the field being edited.
+  const [keepsLabel] = useState(() => link.label !== "");
+  const showsLabel = isFree || keepsLabel || Boolean(errors[labelPath]);
 
   function onHandleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     const by = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
@@ -223,17 +227,35 @@ export function LinksEditor({
     );
   }
 
-  function move(from: number, to: number) {
+  function move(from: number, to: number, announce = true) {
     if (to < 0 || to >= value.length) return;
     const moved = value[from]!;
-    setAnnounced(announcement(tAll, nameOf(moved, from), to + 1, value.length));
+    if (announce) setAnnounced(announcement(tAll, nameOf(moved, from), to + 1, value.length));
     focusAfter.current = `link-handle-${to}`;
     commit(moveItem(value, from, to), moveItem(rowIds, from, to));
   }
 
+  function nameOfId(id: string | number): string {
+    const index = rowIds.indexOf(String(id));
+    return index < 0 ? "" : nameOf(value[index]!, index);
+  }
+
+  /** The moved link's name and the place of the link it is over. */
+  function positionOf(movedId: string | number, overId: string | number): string {
+    return announcement(tAll, nameOfId(movedId), rowIds.indexOf(String(overId)) + 1, value.length);
+  }
+
+  const announcements = {
+    onDragStart: ({ active }: DragStartEvent) => t("dragStart", { name: nameOfId(active.id) }),
+    onDragOver: ({ active, over }: DragOverEvent) => (over ? positionOf(active.id, over.id) : undefined),
+    onDragEnd: ({ active, over }: DragEndEvent) => (over ? positionOf(active.id, over.id) : undefined),
+    onDragCancel: ({ active }: DragCancelEvent) => t("dragCancel", { name: nameOfId(active.id) }),
+  };
+
   function onDragEnd({ active, over }: DragEndEvent) {
     if (over === null || active.id === over.id) return;
-    move(rowIds.indexOf(String(active.id)), rowIds.indexOf(String(over.id)));
+    // dnd-kit announces the drop itself (see `announcements`).
+    move(rowIds.indexOf(String(active.id)), rowIds.indexOf(String(over.id)), false);
   }
 
   return (
@@ -248,7 +270,7 @@ export function LinksEditor({
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={onDragEnd}
-        accessibility={{ screenReaderInstructions: { draggable: t("hint") } }}
+        accessibility={{ announcements, screenReaderInstructions: { draggable: t("hint") } }}
       >
         <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
@@ -261,7 +283,6 @@ export function LinksEditor({
                 name={nameOf(link, index)}
                 errors={errors}
                 t={t}
-                tKinds={tKinds}
                 onEdit={edit}
                 onMove={(from, by) => move(from, from + by)}
                 onRemove={remove}

@@ -88,6 +88,10 @@ describe("LinksEditor", () => {
     await tick();
     fireEvent.keyDown(document, { key: " ", code: "Space" });
     await waitFor(() => expect(state().map((link) => link.url)).toEqual(["https://b.example", "https://a.example"]));
+    // The drag announcements are French and name the link, not its id.
+    const spoken = document.querySelector("[aria-live='assertive']")!.textContent;
+    expect(spoken).toBe("Site web, position 2 sur 2");
+    expect(handle).toHaveAttribute("aria-roledescription", "lien réordonnable");
     rect.mockRestore();
   });
 
@@ -112,5 +116,11 @@ describe("LinksEditor", () => {
     expect(url).toHaveAccessibleDescription("Cette adresse n'est pas valide.");
     expect(screen.getByTestId("link-label-0")).toHaveAccessibleDescription("Obligatoire.");
     expect(screen.getByTestId("link-url-0")).not.toHaveAttribute("aria-invalid");
+  });
+
+  test("EDI-029 clearing the label of a network keeps its field", () => {
+    renderWithIntl(<Harness initial={[{ kind: "linkedin", url: "https://l.example", label: "Moi" }]} />);
+    fireEvent.change(screen.getByTestId("link-label-0"), { target: { value: "" } });
+    expect(screen.getByTestId("link-label-0")).toBeVisible();
   });
 });

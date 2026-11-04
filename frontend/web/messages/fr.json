@@ -472,7 +472,10 @@
       "move": "Déplacer {name}",
       "remove": "Retirer {name}",
       "customName": "Lien libre {index}",
-      "position": "{name}, position {position} sur {total}"
+      "position": "{name}, position {position} sur {total}",
+      "roleDescription": "lien réordonnable",
+      "dragStart": "{name} saisi.",
+      "dragCancel": "Déplacement annulé\u00a0: {name} reste à sa place."
     },
     "template": {
       "beta": "bêta"
