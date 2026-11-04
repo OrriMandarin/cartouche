@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { formatEventDate, fromLocalInput, toLocalInput, userTimeZone, zoneLabel } from "./time";
+import { formatEventDate, fromLocalInput, joinLocalInput, splitLocalInput, toLocalInput, userTimeZone, zoneLabel } from "./time";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -69,5 +69,14 @@ describe("time", () => {
   test("EVT-022 the zone has a readable name", () => {
     expect(zoneLabel("Europe/Paris")).toBe("Europe/Paris");
     expect(zoneLabel("America/New_York")).toBe("America/New York");
+  });
+
+  test("EVT-007 EVT-022 a local date and time is split into its date and its time, and joined back", () => {
+    expect(splitLocalInput("2027-04-02T10:30")).toEqual({ date: "2027-04-02", time: "10:30" });
+    expect(splitLocalInput("")).toEqual({ date: "", time: "" });
+    expect(joinLocalInput("2027-04-02", "10:30")).toBe("2027-04-02T10:30");
+    // A date alone starts at midnight; a time without a date stands for nothing.
+    expect(joinLocalInput("2027-04-02", "")).toBe("2027-04-02T00:00");
+    expect(joinLocalInput("", "10:30")).toBe("");
   });
 });

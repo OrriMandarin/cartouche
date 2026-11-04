@@ -16,6 +16,17 @@ export function zoneLabel(zone: string): string {
   return zone.replaceAll("_", " ");
 }
 
+/** The date (`AAAA-MM-JJ`) and the time (`HH:mm`) of a local value; both empty for an empty value. */
+export function splitLocalInput(local: string): { date: string; time: string } {
+  const [date = "", time = ""] = local.split("T");
+  return { date, time };
+}
+
+/** The local value of a date and a time: a date alone starts at midnight, a time without a date stands for nothing. */
+export function joinLocalInput(date: string, time: string): string {
+  return date === "" ? "" : `${date}T${time || "00:00"}`;
+}
+
 /** An instant as the value of an `<input type="datetime-local">` in `zone`: `AAAA-MM-JJTHH:mm`. */
 export function toLocalInput(iso: string, zone: string): string {
   return format(new TZDate(iso, zone), "yyyy-MM-dd'T'HH:mm");

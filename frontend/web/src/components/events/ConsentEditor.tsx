@@ -36,9 +36,36 @@ export function ConsentEditor({
   const t = useTranslations("events.editor.consent");
   const preview = useConsentPreview(cardId, draft.title, knownDefault);
 
+  const text =
+    draft.consentMode === "default"
+      ? (preview.text ?? (preview.failed ? t("unavailable") : t("loading")))
+      : draft.consentText.trim();
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
+    <div className="flex flex-col gap-4">
+      <div
+        role="group"
+        aria-label={t("preview")}
+        data-testid="consent-preview"
+        className="bg-app-surface-2 rounded-app-lg flex items-start gap-3 p-4 text-[15px] leading-[1.45]"
+      >
+        <span
+          aria-hidden="true"
+          className="border-app-border-strong bg-app-surface mt-px size-[22px] flex-none rounded-[5px] border-2"
+        />
+        <span data-testid={draft.consentMode === "default" ? "consent-default-text" : "consent-custom-text"}>
+          {text}
+        </span>
+      </div>
+      <p className="text-app-muted text-[13px] leading-[1.4]">{t("always")}</p>
+
+      {draft.consentMode === "default" && !cardHasEmail(card.content) ? (
+        <Alert data-testid="consent-no-email">
+          <AlertDescription>{t("noEmail")}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="consent-mode">{t("mode")}</Label>
         <OptionSelect
           id="consent-mode"
@@ -49,20 +76,8 @@ export function ConsentEditor({
         />
       </div>
 
-      {draft.consentMode === "default" ? (
-        <div className="space-y-3">
-          <p className="text-muted-foreground text-sm">{t("defaultHint")}</p>
-          <blockquote data-testid="consent-default-text" className="bg-muted/50 rounded-md border-l-4 p-3 text-sm">
-            {preview.text ?? (preview.failed ? t("unavailable") : t("loading"))}
-          </blockquote>
-          {cardHasEmail(card.content) ? null : (
-            <Alert data-testid="consent-no-email">
-              <AlertDescription>{t("noEmail")}</AlertDescription>
-            </Alert>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
+      {draft.consentMode === "custom" ? (
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="consent-text">{t("custom")}</Label>
           <Textarea
             id="consent-text"
@@ -73,9 +88,9 @@ export function ConsentEditor({
             aria-describedby={describedBy("consent_text", error)}
             onChange={(e) => onChange({ consentText: e.target.value })}
           />
-          <p className="text-muted-foreground text-sm">{t("customHint")}</p>
+          <p className="text-app-muted text-[13px] leading-[1.4]">{t("customHint")}</p>
         </div>
-      )}
+      ) : null}
       <FieldMessage path="consent_text" message={error} />
     </div>
   );

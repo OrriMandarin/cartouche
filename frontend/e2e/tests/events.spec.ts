@@ -33,6 +33,24 @@ async function eventButton(page: Page, eventId: string) {
   return page.getByTestId(`event-button-${eventId}`);
 }
 
+// The save and cancel buttons are in the top bar on a computer and in the sticky bar on a phone.
+const SAVE = '[data-testid^="event-save"]:visible';
+const CANCEL = '[data-testid^="event-back"]:visible';
+
+/** Sets a date and a time in the pair of inputs of `testId` (`AAAA-MM-JJTHH:mm`). */
+async function fillDateTime(page: Page, testId: string, value: string) {
+  const [date = "", time = ""] = value.split("T");
+  await page.getByTestId(`${testId}-date`).fill(date);
+  await page.getByTestId(`${testId}-time`).fill(time);
+}
+
+/** Adds a custom field of that kind from the « Ajouter un champ » menu. */
+async function addField(page: Page, kind: string) {
+  // Opened with the keyboard: a pointer press near the bottom of a phone screen can let go over an item of the menu.
+  await page.getByTestId("custom-add").press("Enter");
+  await page.getByTestId(`custom-add-${kind}`).click();
+}
+
 const eventsUrl = () => `/dashboard/cards/${aliceCardId}/events`;
 const idOf = (title: string) => {
   const id = eventIds[title];
@@ -85,10 +103,10 @@ test("EVT-001 EVT-007 EVT-022 create an event in the user's time zone", async ({
   await expect(page.getByTestId("event-zone")).toContainText("Europe/Paris");
 
   await page.getByTestId("event-title").fill("Foire d’Automne ✨");
-  await page.getByTestId("event-starts-at").fill("2027-04-02T10:00");
+  await fillDateTime(page, "event-starts-at", "2027-04-02T10:00");
   await page.getByTestId("event-no-end").click();
-  await page.getByTestId("event-ends-at").fill("2027-04-02T18:00");
-  await page.getByTestId("event-save").click();
+  await fillDateTime(page, "event-ends-at", "2027-04-02T18:00");
+  await page.locator(SAVE).click();
 
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   const row = page.getByTestId("events-group-upcoming").getByTestId(/^event-row-/).filter({ hasText: "Foire d’Automne ✨" });
@@ -106,15 +124,15 @@ test("EVT-004 EVT-018 a fourth simultaneous event is refused", async ({ page, ap
   await page.goto(`${eventsUrl()}/new`);
   await page.getByTestId("event-title").fill("Quatrième événement");
   // 10:00 to 11:00 UTC: the three running events are all still on.
-  await page.getByTestId("event-starts-at").fill("2027-03-15T11:00");
+  await fillDateTime(page, "event-starts-at", "2027-03-15T11:00");
   await page.getByTestId("event-no-end").click();
-  await page.getByTestId("event-ends-at").fill("2027-03-15T12:00");
-  await page.getByTestId("event-save").click();
+  await fillDateTime(page, "event-ends-at", "2027-03-15T12:00");
+  await page.locator(SAVE).click();
 
   await expect(page.getByTestId("event-conflict")).toContainText("maximum d'événements en même temps");
   await expect(page).toHaveURL(/\/events\/new$/);
   await expect(page.getByTestId("event-title")).toHaveValue("Quatrième événement");
-  await expect(page.getByTestId("event-save")).toBeEnabled();
+  await expect(page.locator(SAVE)).toBeEnabled();
 
   const response = await api.get(`/api/cards/${aliceCardId}/events`, { headers: await api.authHeaders("seed-alice") });
   expect(((await response.json()) as { events: unknown[] }).events).toHaveLength(6);
@@ -142,14 +160,15 @@ test("EVT-009 EVT-010 EDI-019 edit an event", async ({ page }) => {
   await expect(page.getByTestId("event-title")).toHaveValue(PORTES);
   // The access code is shown in clear to its owner.
   await expect(page.getByTestId("event-access-code")).toHaveValue("Château");
-  await expect(page.getByTestId("event-starts-at")).toHaveValue("2027-03-15T10:00");
+  await expect(page.getByTestId("event-starts-at-date")).toHaveValue("2027-03-15");
+  await expect(page.getByTestId("event-starts-at-time")).toHaveValue("10:00");
   await expect(page.getByTestId("event-no-end")).toBeChecked();
   // The consent text of the event is its own.
   await expect(page.getByTestId("consent-mode")).toContainText("Texte personnalisé");
   await expect(page.getByTestId("consent-text")).toHaveValue(/Atelier Durand & Fils/);
 
   await page.getByTestId("event-title").fill("Portes ouvertes ✨");
-  await page.getByTestId("event-save").click();
+  await page.locator(SAVE).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(page.getByTestId(`event-title-${portes}`)).toHaveText("Portes ouvertes ✨");
 
@@ -164,8 +183,10 @@ test("EDI-021 EDI-028 event editor: leave dialog", async ({ page }) => {
 
   // A link of the editor, then the « Mon compte » link of the page header: both open the dialog, Rester stays.
   const dialog = page.getByRole("alertdialog", { name: "Quitter sans enregistrer\u00a0?" });
+  // A phone shows the save bar in place of the tab bar: « Annuler » is its only way out besides the back arrow.
   const accountEntry = page.locator('[data-testid="account-link"]:visible, [data-testid="tab-account"]:visible');
-  for (const link of [page.getByTestId("event-back"), accountEntry]) {
+  const links = [page.locator(CANCEL), ...((await accountEntry.count()) > 0 ? [accountEntry] : [])];
+  for (const link of links) {
     await link.click();
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(`Tu as modifié l’événement «\u00a0${MARIAGE} ✨\u00a0».`);
@@ -177,7 +198,7 @@ test("EDI-021 EDI-028 event editor: leave dialog", async ({ page }) => {
   }
 
   // Enregistrer et quitter saves, then goes where the link led.
-  await page.getByTestId("event-back").click();
+  await page.locator(CANCEL).click();
   await dialog.getByRole("button", { name: "Enregistrer et quitter" }).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(page.getByTestId(`event-title-${mariage}`)).toHaveText(`${MARIAGE} ✨`);
@@ -185,7 +206,7 @@ test("EDI-021 EDI-028 event editor: leave dialog", async ({ page }) => {
   // Quitter sans enregistrer drops the change.
   await page.goto(`${eventsUrl()}/${mariage}`);
   await page.getByTestId("event-title").fill("Autre titre");
-  await page.getByTestId("event-back").click();
+  await page.locator(CANCEL).click();
   await dialog.getByRole("button", { name: "Quitter sans enregistrer" }).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(page.getByTestId(`event-title-${mariage}`)).toHaveText(`${MARIAGE} ✨`);
@@ -193,7 +214,7 @@ test("EDI-021 EDI-028 event editor: leave dialog", async ({ page }) => {
   // After a plain save the redirect to the list asks nothing.
   await page.goto(`${eventsUrl()}/${mariage}`);
   await page.getByTestId("event-title").fill(`${MARIAGE} 🎉`);
-  await page.getByTestId("event-save").click();
+  await page.locator(SAVE).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
   await expect(dialog).toHaveCount(0);
 });
@@ -217,13 +238,22 @@ test("FRM-020 FRM-021 FRM-032 custom fields are saved in order", async ({ page, 
   await expect(page.getByTestId("custom-label-0")).toHaveValue("Date du mariage");
   await expect(page.getByTestId("custom-label-3")).toHaveValue("Recevoir la brochure");
 
-  await page.getByTestId("custom-add-single_choice").click();
+  await addField(page, "single_choice");
+  // The new field takes the focus, not the button of the menu.
+  await expect(page.getByTestId("custom-label-4")).toBeFocused();
   await page.getByTestId("custom-label-4").fill("Votre budget");
   await page.getByTestId("custom-option-4-0").fill("< 5 000 €");
   await page.getByTestId("custom-option-4-1").fill("> 5 000 €");
-  for (let i = 0; i < 4; i += 1) await page.getByTestId("custom-up-" + (4 - i)).click();
+  // The handle keeps the focus as the field moves up with the arrow key (EDI-029).
+  await page.getByTestId("custom-handle-4").focus();
+  for (let index = 3; index >= 0; index -= 1) {
+    await page.keyboard.press("ArrowUp");
+    // Wait for the move before the next key: the handle of the field is at its new place.
+    await expect(page.getByTestId(`custom-label-${index}`)).toHaveValue("Votre budget");
+  }
+  await expect(page.getByTestId("custom-handle-0")).toBeFocused();
   await expect(page.getByTestId("custom-label-0")).toHaveValue("Votre budget");
-  await page.getByTestId("event-save").click();
+  await page.locator(SAVE).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
 
   await page.reload();
@@ -245,17 +275,48 @@ test("FRM-020 FRM-021 FRM-032 custom fields are saved in order", async ({ page, 
   ]);
 });
 
+test("EDI-019 FRM-043 an event with a date and time field", async ({ page }) => {
+  const mariage = idOf(MARIAGE);
+  await page.goto(`${eventsUrl()}/${mariage}`);
+  await addField(page, "datetime");
+  await page.getByTestId("custom-label-4").fill("Rendez-vous souhaité");
+  await expect(page.getByTestId("custom-kind-4")).toContainText("Date et heure");
+  await page.locator(SAVE).click();
+  await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
+
+  await page.goto(`/c/alice-durand/e/${mariage}`);
+  await expect(page.getByLabel(/Rendez-vous souhaité/)).toHaveAttribute("type", "datetime-local");
+});
+
+test("EDI-019 EVT-006 EVT-024 the state panel of the editor ends and deletes the event", async ({ page, api }) => {
+  const demo = idOf(DEMO);
+  await page.goto(`${eventsUrl()}/${demo}`);
+  const panel = page.getByTestId("event-state-panel");
+  await expect(panel.getByTestId("event-state-phase")).toHaveText("En cours");
+  await expect(panel.getByTestId("event-state-contacts")).toHaveAttribute("href", `${eventsUrl()}/${demo}/leads`);
+
+  await panel.getByTestId("event-state-end-now").click();
+  await expect(panel.getByTestId("event-state-phase")).toHaveText("Passé");
+  await expect(panel.getByTestId("event-state-end-now")).toHaveCount(0);
+
+  await panel.getByTestId("event-state-delete").click();
+  await page.getByTestId("event-delete-confirm").click();
+  await expect(page).toHaveURL(new RegExp(`/dashboard/cards/${aliceCardId}/events$`));
+  await expect(page.getByTestId(`event-row-${demo}`)).toHaveCount(0);
+  await expect(api.leads("seed-alice", demo)).rejects.toThrow(/404/);
+});
+
 test("EDI-019 EDI-015 a rejected save keeps the input and shows the errors next to the fields", async ({ page }) => {
   await page.goto(`${eventsUrl()}/new`);
   await page.getByTestId("event-title").fill("Salon ✨");
-  await page.getByTestId("event-starts-at").fill("2027-05-02T10:00");
+  await fillDateTime(page, "event-starts-at", "2027-05-02T10:00");
   await page.getByTestId("event-no-end").click();
-  await page.getByTestId("event-ends-at").fill("2027-05-02T09:00");
+  await fillDateTime(page, "event-ends-at", "2027-05-02T09:00");
   await page.getByTestId("event-device-limit").fill("500");
-  await page.getByTestId("custom-add-single_choice").click();
+  await addField(page, "single_choice");
   await page.getByTestId("custom-option-0-0").fill("Poterie");
   await page.getByTestId("custom-option-0-1").fill("Poterie");
-  await page.getByTestId("event-save").click();
+  await page.locator(SAVE).click();
 
   await expect(page.getByTestId("field-error-ends-at")).toContainText("La fin doit être après le début.");
   await expect(page.getByTestId("field-error-device-limit")).toBeVisible();

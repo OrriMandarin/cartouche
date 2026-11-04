@@ -2,8 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { describedBy, FieldMessage } from "@/components/editor/Field";
-import { OptionSelect } from "@/components/editor/OptionSelect";
-import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { FIELD_MODES, STANDARD_FIELDS } from "@/lib/events/fields";
 import type { FieldMode, StandardFields } from "@/lib/events/types";
 
@@ -21,21 +20,36 @@ export function StandardFieldsEditor({
   const t = useTranslations("events.editor.standard");
 
   return (
-    <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{t("hint")}</p>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <div className="flex flex-col gap-2">
+      <div>
         {STANDARD_FIELDS.map((field) => (
-          <div key={field} className="space-y-2">
-            <Label htmlFor={`standard-field-${field}`}>{t(`labels.${field}`)}</Label>
-            <OptionSelect
-              id={`standard-field-${field}`}
-              testId={`standard-field-${field}`}
+          <div
+            key={field}
+            className="border-app-border grid min-h-[60px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t @max-[847px]:grid-cols-1 @max-[847px]:gap-1.5 @max-[847px]:py-2.5"
+          >
+            <span id={`standard-label-${field}`} className="font-semibold">
+              {t(`labels.${field}`)}
+            </span>
+            <RadioGroup
+              aria-labelledby={`standard-label-${field}`}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={describedBy("standard_fields", error)}
+              data-testid={`standard-field-${field}`}
               value={value[field]}
-              options={FIELD_MODES.map((mode) => ({ value: mode, label: t(`modes.${mode}`) }))}
-              invalid={error ? true : undefined}
-              describedBy={describedBy("standard_fields", error)}
               onValueChange={(mode) => onChange(field, mode as FieldMode)}
-            />
+              className="@max-[847px]:flex"
+            >
+              {FIELD_MODES.map((mode) => (
+                <RadioGroupItem
+                  key={mode}
+                  value={mode}
+                  data-testid={`standard-field-${field}-${mode}`}
+                  className="@max-[847px]:flex-1 @max-[847px]:px-1.5 @max-[847px]:text-[13px]"
+                >
+                  {t(`modes.${mode}`)}
+                </RadioGroupItem>
+              ))}
+            </RadioGroup>
           </div>
         ))}
       </div>

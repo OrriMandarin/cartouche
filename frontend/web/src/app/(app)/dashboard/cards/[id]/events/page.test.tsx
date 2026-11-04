@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { cardView } from "@/components/cards/card-view.fixture";
 import { renderWithIntl } from "@/components/editor/test-helpers";
 import { eventView } from "@/lib/events/event-view.fixture";
+import { userTimeZone, zoneLabel } from "@/lib/events/time";
 import CardEventsPage from "./page";
 
 const get = vi.fn();
@@ -37,7 +38,11 @@ describe("CardEventsPage", () => {
     renderWithIntl(<CardEventsPage />);
     expect(screen.getByTestId("events-loading")).toBeVisible();
     expect(await screen.findByTestId("list-stub")).toHaveTextContent("Salon ✨|Foire#3");
-    expect(screen.getByTestId("events-card-name")).toHaveTextContent(/^Carte alice-durand · heures de Paris \(/);
+    // EVT-022: the times follow the browser's zone, which is the only one the sub-header names.
+    expect(screen.getByTestId("events-card-name")).toHaveTextContent(
+      `Carte alice-durand · fuseau : ${zoneLabel(userTimeZone())}`,
+    );
+    expect(screen.getByTestId("events-card-name")).not.toHaveTextContent("Paris (");
     expect(screen.getByTestId("new-event")).toHaveAttribute("href", "/dashboard/cards/card-1/events/new");
     expect(get).toHaveBeenCalledWith("/api/cards/{id}/events", { params: { path: { id: "card-1" } } });
   });
