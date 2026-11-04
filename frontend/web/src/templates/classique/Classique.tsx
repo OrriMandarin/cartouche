@@ -20,12 +20,9 @@ import {
   type Indexed,
 } from "../link-display";
 import { HeaderMedia } from "../HeaderMedia";
+import { srcSet } from "../srcset";
 import "./classique.css";
 import type { ClassiqueSettings } from "./settings";
-
-function srcSet(media: MediaView): string {
-  return media.images.map((image) => `${image.url} ${image.width}w`).join(", ");
-}
 
 function largestImageUrl(media: MediaView): string | undefined {
   return media.images.at(-1)?.url;

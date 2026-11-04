@@ -17,6 +17,7 @@ import {
   type ThemePreset,
   type ThemeSettings,
 } from "@/lib/theme/presets";
+import { backgroundCss } from "@/lib/theme/background";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { ColorField } from "./ColorField";
 import { FieldMessage } from "./Field";
@@ -24,12 +25,6 @@ import { OptionSelect } from "./OptionSelect";
 import { SegmentedSelect } from "./SegmentedSelect";
 
 const BUTTON_SHAPES: readonly ButtonShape[] = ["square", "rounded", "pill"];
-
-function backgroundCss(background: ThemeBackground): string {
-  return background.kind === "solid"
-    ? background.color
-    : `linear-gradient(${background.angle}deg, ${background.from}, ${background.to})`;
-}
 
 /** The ratio as a French decimal; a whole minimum reads « 3 », not « 3,0 ». */
 function formatMinimum(minimum: number): string {

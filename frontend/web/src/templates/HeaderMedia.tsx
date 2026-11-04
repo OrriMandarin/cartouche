@@ -4,6 +4,7 @@ import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { loopRestart, videoCropStyle } from "@/lib/media/framing";
 import { TEMPLATE_TEST_IDS as TEST_IDS, type MediaView } from "./contract";
+import { srcSet } from "./srcset";
 
 export interface HeaderMediaLabels {
   pause: string;
@@ -27,10 +28,6 @@ function watchReducedMotion(onChange: () => void): () => void {
   const query = window.matchMedia?.(REDUCED_MOTION_QUERY);
   query?.addEventListener("change", onChange);
   return () => query?.removeEventListener("change", onChange);
-}
-
-function srcSet(media: MediaView): string {
-  return media.images.map((image) => `${image.url} ${image.width}w`).join(", ");
 }
 
 function EmptyBand() {

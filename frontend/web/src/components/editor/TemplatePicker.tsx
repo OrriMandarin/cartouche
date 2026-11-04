@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { DEFAULT_PRESET_ID, type ThemeSettings } from "@/lib/theme/presets";
+import { backgroundCss } from "@/lib/theme/background";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { getTemplate, listTemplates, type AnyTemplate } from "@/templates/registry";
 
@@ -13,12 +14,7 @@ function Miniature({ theme }: { theme: ThemeSettings }) {
   return (
     <span
       aria-hidden="true"
-      style={{
-        background:
-          background.kind === "solid"
-            ? background.color
-            : `linear-gradient(${background.angle}deg, ${background.from}, ${background.to})`,
-      }}
+      style={{ background: backgroundCss(background) }}
       className="flex h-[70px] w-[52px] flex-none flex-col overflow-hidden rounded-lg shadow-[0_0_0_1px_rgb(28_27_25/0.12)]"
     >
       <span style={{ background: accent }} className="block h-[30px] opacity-80" />
