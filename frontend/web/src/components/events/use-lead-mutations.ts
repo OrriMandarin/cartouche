@@ -36,6 +36,11 @@ export function useLeadMutations(actions: LeadActions | null, onChange: (change:
   const setSpam = (lead: LeadView, spam: boolean) =>
     run(async (a) => ({ kind: "updated", lead: await a.setSpam(lead, spam) }));
 
+  // The sheet is usually closed by then, so the failure of the undo is announced by a toast.
+  async function undoSpam(updated: LeadView) {
+    if ((await setSpam(updated, !updated.spam)) === null) showToast(t("undoFailed"));
+  }
+
   return {
     busy,
     error,
@@ -44,7 +49,7 @@ export function useLeadMutations(actions: LeadActions | null, onChange: (change:
       if (change?.kind !== "updated") return false;
       const updated = change.lead;
       showToast(updated.spam ? t("markedSpam") : t("unmarkedSpam"), {
-        action: { label: t("undo"), onClick: () => void setSpam(updated, !updated.spam) },
+        action: { label: t("undo"), onClick: () => void undoSpam(updated) },
       });
       return true;
     },

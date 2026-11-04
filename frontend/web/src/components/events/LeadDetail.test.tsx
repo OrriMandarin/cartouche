@@ -149,6 +149,16 @@ describe("LeadDetail", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
+  test("LEA-034 a failed « Annuler » of the spam toast announces the failure in a toast", async () => {
+    show();
+    fireEvent.click(screen.getByTestId("lead-detail-spam"));
+    await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
+    const action = showToast.mock.calls[0][1].action;
+    setSpam.mockRejectedValue(new ApiError({ status: 500, code: "internal_error", message: "Boom.", requestId: "req-undo" }));
+    action.onClick();
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith("L’annulation a échoué. Réessaie dans un instant."));
+  });
+
   test("LEA-004 LEA-020 deleting from the detail asks, then reports it and closes the detail", async () => {
     show();
     fireEvent.click(screen.getByTestId("lead-detail-delete"));

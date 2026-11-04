@@ -16,7 +16,6 @@
         "page": "Une page à ton image",
         "contacts": "Les contacts de tes salons, au même endroit"
       },
-      "previewLabel": "Exemple de carte Cartouche",
       "previewEvent": "Salon du Mariage Clermont 2027",
       "frame": "Connexion",
       "legal": "En continuant, tu acceptes les <terms>Conditions générales d’utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
@@ -631,7 +630,6 @@
     "notFound": "Événement introuvable",
     "newEvent": "Nouvel événement",
     "allLeads": "Tous les contacts de la carte",
-    "backToDashboard": "Retour au tableau de bord",
     "backToEvents": "Retour aux événements",
     "cancel": "Annuler",
     "close": "Fermer",
@@ -809,6 +807,7 @@
     "markedSpam": "Contact marqué comme spam",
     "unmarkedSpam": "Marquage spam retiré",
     "undo": "Annuler",
+    "undoFailed": "L’annulation a échoué. Réessaie dans un instant.",
     "delete": "Supprimer",
     "search": "Rechercher un contact",
     "searchPlaceholder": "Rechercher un nom, un e-mail, un téléphone",
