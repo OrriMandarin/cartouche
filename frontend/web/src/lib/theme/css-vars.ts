@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { ButtonShape } from "./presets";
 import type { ResolvedTheme } from "./resolve";
 
-const RADIUS: Record<ButtonShape, string> = { square: "2px", rounded: "12px", pill: "999px" };
+export const BUTTON_RADIUS: Record<ButtonShape, string> = { square: "2px", rounded: "12px", pill: "999px" };
 const DANGER = { light: "#B3261E", dark: "#FF8A80" };
 
 /**
@@ -23,7 +23,7 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     "--bg-angle": `${angle}deg`,
     "--c-text": theme.text,
     "--fade": String(theme.headerGradient),
-    "--radius-btn": RADIUS[theme.buttonShape],
+    "--radius-btn": BUTTON_RADIUS[theme.buttonShape],
     "--font-title": theme.fontPair.titleStack,
     "--font-body": theme.fontPair.bodyStack,
     "--title-weight": String(theme.fontPair.titleWeight),

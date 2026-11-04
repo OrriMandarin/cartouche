@@ -16,6 +16,7 @@ export function OptionSelect({
   testId,
   invalid,
   describedBy,
+  disabled,
 }: {
   id: string;
   value: string;
@@ -24,9 +25,10 @@ export function OptionSelect({
   testId?: string;
   invalid?: boolean;
   describedBy?: string | undefined;
+  disabled?: boolean | undefined;
 }) {
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger id={id} data-testid={testId} aria-invalid={invalid} aria-describedby={describedBy}>
         <SelectValue />
       </SelectTrigger>

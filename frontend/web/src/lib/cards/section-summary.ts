@@ -1,5 +1,4 @@
-import { THEME_PRESETS } from "@/lib/theme/presets";
-import { resolveTheme } from "@/lib/theme/resolve";
+import { themeSummary } from "@/lib/theme/summary";
 import { getTemplate } from "@/templates/registry";
 import { parseSettings } from "@/templates/settings-schema";
 import { cardDisplayName } from "./display-name";
@@ -49,17 +48,6 @@ function templateSummary(draft: CardDraft, t: Translate): string {
   return parts.join(SEPARATOR);
 }
 
-/** spec: EDI-030. The theme's name, followed by ", personnalisé" once one of its settings differs from it. */
-function themeSummary(draft: CardDraft, t: Translate): string {
-  const resolved = resolveTheme(draft.theme);
-  const preset = THEME_PRESETS.find((candidate) => candidate.id === resolved.presetId) ?? THEME_PRESETS[0]!;
-  const original = resolveTheme({ preset: preset.id });
-  // Both come out of resolveTheme with the same keys in the same order.
-  const customized = JSON.stringify(resolved) !== JSON.stringify(original);
-  const name = t(preset.nameKey);
-  return customized ? t("editor.summary.themeCustomized", { name }) : name;
-}
-
 /**
  * spec: EDI-003. The line under a folded section of the phone editor: what the section holds, in short.
  */
@@ -79,6 +67,6 @@ export function sectionSummary(section: EditorSection, draft: CardDraft, t: Tran
     case "template":
       return templateSummary(draft, t);
     case "theme":
-      return themeSummary(draft, t);
+      return themeSummary(draft.theme, t);
   }
 }

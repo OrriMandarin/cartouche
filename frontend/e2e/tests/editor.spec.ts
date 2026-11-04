@@ -159,8 +159,7 @@ test("TPL-004 template setting shows in the preview", async ({ page }) => {
   await expect(link).toHaveAttribute("aria-label", "LinkedIn — linkedin.com/in/alice");
 
   await openEditorSection(page, "template");
-  await page.getByTestId("setting-links_layout").click();
-  await page.getByRole("option", { name: "Liste" }).click();
+  await page.getByRole("radio", { name: "Liste" }).click();
   await expect(link).toContainText("LinkedIn");
   await expect(link).toContainText("linkedin.com/in/alice");
   await expect(link).not.toHaveAttribute("aria-label");
@@ -169,27 +168,53 @@ test("TPL-004 template setting shows in the preview", async ({ page }) => {
 test("TPL-027 the editor offers Icônes and Liste, Icônes by default", async ({ page }) => {
   await page.goto(editorUrl());
   await openEditorSection(page, "template");
-  const layout = page.getByTestId("setting-links_layout");
-  await expect(layout).toHaveText("Icônes");
-  await layout.click();
-  await expect(page.getByRole("option")).toHaveText(["Icônes", "Liste"]);
+  const layout = page.getByRole("radiogroup", { name: /Disposition des liens/ });
+  await expect(layout.getByRole("radio")).toHaveText(["Icônes", "Liste"]);
+  await expect(layout.getByRole("radio", { name: "Icônes" })).toBeChecked();
 });
 
-test("TPL-013 TPL-023 a low contrast warns in the editor and the save is refused", async ({
-  page,
-}) => {
+test("TPL-013 TPL-023 a server refusal of an unreadable theme shows the summary", async ({ page }) => {
   await page.goto(editorUrl());
-  await expect(page.getByTestId("contrast-warning")).toHaveCount(0);
   await openEditorSection(page, "theme");
-  await page.getByTestId("theme-text").fill("#ffffff");
-  await expect(page.getByTestId("contrast-warning")).toBeVisible();
-  await expect(editorSaveButton(page)).toBeEnabled();
-  const refused = page.waitForResponse(
-    (res) => res.request().method() === "PUT" && res.url().includes("/api/cards/"),
-  );
+  await expect(page.getByTestId("contrast-ok")).toBeVisible();
+  // Let the request through to the server: the browser check is bypassed by a route-free body edit.
+  await page.route("**/api/cards/*", async (route) => {
+    if (route.request().method() !== "PUT") return route.continue();
+    const body = route.request().postDataJSON() as { theme: Record<string, unknown> };
+    await route.continue({ postData: JSON.stringify({ ...body, theme: { ...body.theme, text: "#ffffff" } }) });
+  });
+  await page.getByTestId("editor-job_title").fill("Directrice");
+  const refused = page.waitForResponse((res) => res.request().method() === "PUT" && res.url().includes("/api/cards/"));
   await editorSaveButton(page).click();
   expect((await refused).status()).toBe(400);
-  await expect(page.getByText("Ces couleurs ne sont pas assez lisibles\u00a0: corrige-les pour enregistrer la carte.")).toBeVisible();
+  await expect(page.getByTestId("editor-error-summary")).toContainText("Rien n’a été enregistré");
+});
+
+test("TPL-013 TPL-024 EDI-030 contrast in the editor", async ({ page }) => {
+  await page.goto(editorUrl());
+  await openEditorSection(page, "theme");
+  await expect(page.getByTestId("contrast-ok")).toContainText("Lisible");
+
+  await page.getByRole("radio", { name: "Terracotta" }).click();
+  await page.getByLabel("Couleur du texte", { exact: true }).fill("#B89580");
+  await expect(page.getByTestId("editor-section-theme")).toContainText("Terracotta, personnalisé");
+  const alert = page.getByTestId("contrast-text");
+  await expect(alert).toContainText("Texte illisible sur ce fond.");
+  await expect(alert).toContainText("Contraste 2,0:1, il faut au moins 4,5:1.");
+
+  // The save is stopped in the browser, with the summary pointing at the theme.
+  let sent = false;
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && request.url().includes("/api/cards/")) sent = true;
+  });
+  await editorSaveButton(page).click();
+  await expect(page.getByTestId("editor-error-summary").getByRole("link", { name: "Thème" })).toBeVisible();
+  expect(sent).toBe(false);
+
+  await page.getByRole("button", { name: "Utiliser une couleur lisible (#3B2117)" }).click();
+  await expect(page.getByLabel("Couleur du texte", { exact: true })).toHaveValue("#3b2117");
+  await expect(page.getByTestId("contrast-ok")).toBeVisible();
+  await saveCard(page);
 });
 
 test("EDI-016 reload with unsaved changes asks for confirmation", async ({ page }) => {

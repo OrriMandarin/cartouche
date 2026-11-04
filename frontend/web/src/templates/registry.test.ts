@@ -36,7 +36,7 @@ describe("registry", () => {
 
   test("EDI-011 every template label is translated", () => {
     for (const template of listTemplates()) {
-      const keys = [template.nameKey];
+      const keys = [template.nameKey, template.descriptionKey];
       for (const field of template.settings.fields) {
         keys.push(field.labelKey);
         if (field.kind === "select") keys.push(...field.options.map((option) => option.labelKey));

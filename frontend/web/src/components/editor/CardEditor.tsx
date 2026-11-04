@@ -16,6 +16,7 @@ import { useApi, useUploadMedia } from "@/lib/api";
 import { cardDisplayName } from "@/lib/cards/display-name";
 import {
   applyTemplateChange,
+  blockingErrors,
   draftFromCard,
   draftToUpdateBody,
   fieldErrors,
@@ -131,9 +132,22 @@ export function CardEditor({ card }: { card: CardView }) {
     document.getElementById(field.targetId)?.focus();
   }
 
+  /** Shows the refused fields, unfolding the sections that hold them on a phone. */
+  function refuse(fields: Record<string, string>) {
+    setErrors(fields);
+    const sections = errorFields(Object.keys(fields)).map((field) => field.section);
+    setOpenSections((current) => new Set([...current, ...sections]));
+  }
+
   /** Saves the draft; tells whether the card is now stored (a refused or failed save keeps the editor open). */
   async function save(): Promise<boolean> {
     if (!canSave) return false;
+    // TPL-013: a theme failing a contrast check is not sent; the summary points at it.
+    const blocked = blockingErrors(draft);
+    if (Object.keys(blocked).length > 0) {
+      refuse(blocked);
+      return false;
+    }
     setBusy(true);
     setFailure(null);
     setErrors({});
@@ -152,11 +166,8 @@ export function CardEditor({ card }: { card: CardView }) {
       return true;
     } catch (error) {
       const refusedFields = fieldErrors(error);
-      setErrors(refusedFields);
+      refuse(refusedFields);
       if (Object.keys(refusedFields).length === 0) setFailure(error);
-      // The sections holding an error unfold on a phone.
-      const sections = errorFields(Object.keys(refusedFields)).map((field) => field.section);
-      setOpenSections((current) => new Set([...current, ...sections]));
       return false;
     } finally {
       setBusy(false);
@@ -377,6 +388,7 @@ export function CardEditor({ card }: { card: CardView }) {
         <EditorSectionPanel {...panel("template")}>
           <TemplatePicker
             value={draft.template}
+            theme={draft.theme}
             onChange={(id) => {
               const next = applyTemplateChange(draft, id);
               edit({ template: next.template, settings: next.settings }, ["template", "settings"]);
@@ -389,6 +401,8 @@ export function CardEditor({ card }: { card: CardView }) {
             <SettingsForm
               schema={template.settings}
               value={settings}
+              templateName={t(template.nameKey)}
+              disabled={readOnly}
               onChange={(key, value) => edit({ settings: { ...settings, [key]: value } }, ["settings"])}
             />
           )}
@@ -396,7 +410,12 @@ export function CardEditor({ card }: { card: CardView }) {
         </EditorSectionPanel>
 
         <EditorSectionPanel {...panel("theme")} note={summary("theme")}>
-          <ThemeEditor theme={draft.theme} error={messages.theme} onChange={(theme) => edit({ theme }, ["theme"])} />
+          <ThemeEditor
+            theme={draft.theme}
+            error={messages.theme}
+            disabled={readOnly}
+            onChange={(theme) => edit({ theme }, ["theme"])}
+          />
         </EditorSectionPanel>
       </form>
 

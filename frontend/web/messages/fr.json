@@ -262,6 +262,7 @@
   "templates": {
     "classique": {
       "name": "Classique",
+      "description": "En-tête plein cadre, photo ronde à cheval, boutons d’événement, liens.",
       "settings": {
         "links_layout": "Disposition des liens",
         "links_layout_icons": "Icônes",
@@ -481,28 +482,47 @@
       "beta": "bêta"
     },
     "settings": {
-      "none": "Ce template n'a pas de réglages."
+      "none": "Ce template n’a pas de réglages.",
+      "ofTemplate": "· réglage du template {name}"
     },
     "theme": {
-      "preset": "Thème",
-      "font": "Police",
-      "accent": "Couleur d'accent",
+      "presets": "Thèmes prêts à l’emploi",
+      "font": "Paire de polices",
+      "fontOption": "{name} · {title} + {body}",
+      "accent": "Couleur d’accent",
       "text": "Couleur du texte",
+      "pick": {
+        "accent": "Choisir la couleur d’accent",
+        "text": "Choisir la couleur du texte",
+        "background": "Choisir la couleur du fond",
+        "gradientFrom": "Choisir la couleur 1",
+        "gradientTo": "Choisir la couleur 2"
+      },
       "background": "Fond",
-      "backgroundSolid": "Couleur unie",
+      "backgroundSolid": "Uni",
       "backgroundGradient": "Dégradé",
       "backgroundColor": "Couleur du fond",
-      "gradientFrom": "Début du dégradé",
-      "gradientTo": "Fin du dégradé",
+      "gradientFrom": "Couleur 1",
+      "gradientTo": "Couleur 2",
       "gradientAngle": "Angle du dégradé",
-      "headerGradient": "Intensité du dégradé de l'en-tête",
+      "gradientAngleShort": "Angle",
+      "headerGradient": "Intensité du dégradé de l’en-tête",
       "buttonShape": "Forme des boutons",
       "shapes": {
         "square": "Carrée",
         "rounded": "Arrondie",
         "pill": "Pilule"
       },
-      "lowContrast": "Ces couleurs ne sont pas assez lisibles."
+      "contrast": {
+        "text": "Texte illisible sur ce fond.",
+        "mutedOnHover": "Texte secondaire illisible sur ce fond.",
+        "onAccent": "Texte illisible sur la couleur d’accent.",
+        "accentVsBg": "Couleur d’accent trop proche du fond.",
+        "detail": "Contraste {ratio}:1, il faut au moins {minimum}:1.",
+        "blocked": "La carte ne peut pas être enregistrée ainsi.",
+        "fix": "Utiliser une couleur lisible ({hex})",
+        "ok": "Lisible\u00a0: contraste du texte {text}:1, des boutons {buttons}:1."
+      }
     },
     "media": {
       "header": "En-tête",

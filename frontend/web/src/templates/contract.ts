@@ -70,6 +70,8 @@ export interface TemplateDefinition<S> {
   id: TemplateId;
   /** Message key of the display name. */
   nameKey: string;
+  /** Message key of the one-line description shown in the template picker. */
+  descriptionKey: string;
   beta: boolean;
   supportsTheme: boolean;
   media: { header: ("image" | "video")[]; avatar: boolean };

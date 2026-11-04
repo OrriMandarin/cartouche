@@ -5,7 +5,7 @@ import { cardView } from "@/components/cards/card-view.fixture";
 import { AppShell } from "@/components/shell/AppShell";
 import type { CardView } from "@/lib/cards/types";
 import { CardEditor } from "./CardEditor";
-import { chooseOption, renderWithIntl } from "./test-helpers";
+import { renderWithIntl } from "./test-helpers";
 
 // The slug check waits 300 ms.
 configure({ asyncUtilTimeout: 4000 });
@@ -247,7 +247,7 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(preview.getByTestId("card-link-1")).toHaveAttribute("aria-label", "Site web — b.example.test");
 
     // TPL-004: a setting of the template changes the preview.
-    await chooseOption(screen.getByLabelText("Disposition des liens"), "Liste");
+    fireEvent.click(screen.getByRole("radio", { name: "Liste" }));
     expect(preview.getByTestId("card-link-1")).toHaveTextContent("Site web");
     expect(preview.getByTestId("card-link-1")).not.toHaveAttribute("aria-label");
 
@@ -415,12 +415,37 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(screen.getByTestId("editor-save")).toBeDisabled();
   });
 
-  test("TPL-013 TPL-018 a low contrast warns and does not block saving", () => {
+  test("TPL-013 TPL-018 an unreadable theme warns, and the save is stopped in the browser with the summary", () => {
     renderEditor();
-    expect(screen.queryByTestId("contrast-warning")).toBeNull();
+    expect(screen.queryByTestId("contrast-text")).toBeNull();
     fireEvent.change(screen.getByTestId("theme-text"), { target: { value: "#ffffff" } });
-    expect(screen.getByTestId("contrast-warning")).toBeVisible();
+    expect(screen.getByTestId("contrast-text")).toBeVisible();
     expect(screen.getByTestId("editor-save")).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId("editor-save"));
+    expect(put).not.toHaveBeenCalled();
+    expect(screen.getByTestId("editor-error-summary")).toHaveTextContent("Rien n’a été enregistré");
+    expect(within(screen.getByTestId("editor-error-summary")).getByRole("link", { name: "Thème" })).toBeVisible();
+    expect(screen.getByTestId("field-error-theme")).toHaveTextContent("Ces couleurs ne sont pas assez lisibles");
+
+    // Fixing the colour clears the message; the save then goes through.
+    fireEvent.click(screen.getByTestId("contrast-fix-text"));
+    expect(screen.queryByTestId("editor-error-summary")).toBeNull();
+  });
+
+  test("EDI-030 the summary of the theme section says personnalisé after a change", () => {
+    renderEditor();
+    const section = screen.getByTestId("editor-section-theme");
+    expect(section).toHaveTextContent("Craie");
+    expect(section).not.toHaveTextContent("personnalisé");
+    fireEvent.change(screen.getByTestId("theme-accent"), { target: { value: "#ff0066" } });
+    expect(section).toHaveTextContent("Craie, personnalisé");
+  });
+
+  test("EDI-007 LNK-036 a blocked card has its sliders and segmented controls disabled", () => {
+    renderEditor(card({ status: "disabled_by_support" }));
+    expect(screen.getByRole("slider", { name: "Intensité du dégradé de l’en-tête" })).toHaveAttribute("data-disabled");
+    expect(screen.getByRole("radio", { name: "Liste" })).toBeDisabled();
   });
 
   test("EDI-016 leaving with unsaved changes asks first", () => {
@@ -513,12 +538,11 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     expect(dialog()).not.toBeNull();
   });
 
-  test("EDI-016 reverting a setting leaves the editor clean", async () => {
+  test("EDI-016 reverting a setting leaves the editor clean", () => {
     renderEditor();
-    const layout = screen.getByLabelText("Disposition des liens");
-    await chooseOption(layout, "Liste");
+    fireEvent.click(screen.getByRole("radio", { name: "Liste" }));
     expect(screen.getByTestId("editor-status")).toHaveTextContent("Modifications non enregistrées");
-    await chooseOption(layout, "Icônes");
+    fireEvent.click(screen.getByRole("radio", { name: "Icônes" }));
     expect(screen.getByTestId("editor-status")).toBeEmptyDOMElement();
     expect(screen.getByTestId("editor-save")).toBeDisabled();
     const event = new Event("beforeunload", { cancelable: true });

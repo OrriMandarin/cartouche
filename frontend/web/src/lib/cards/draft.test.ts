@@ -6,6 +6,7 @@ import type { CardView } from "./types";
 import {
   PREVIEW_EVENT_ID,
   applyTemplateChange,
+  blockingErrors,
   draftFromCard,
   draftToPublicCard,
   draftToUpdateBody,
@@ -223,5 +224,16 @@ describe("fieldErrors", () => {
     expect(
       fieldErrors(validationError([{ field: "slug", code: "invalid_slug" }, { field: "slug", code: "too_long" }])),
     ).toEqual({ slug: "fieldErrors.invalid_slug" });
+  });
+});
+
+describe("blockingErrors", () => {
+  test("TPL-013 an unreadable theme blocks the save with the low_contrast message", () => {
+    const unreadable = { ...draftFromCard(fullCard), theme: { preset: "terracotta", text: "#b89580" } };
+    expect(blockingErrors(unreadable)).toEqual({ theme: "fieldErrors.low_contrast" });
+  });
+
+  test("TPL-013 a readable theme blocks nothing", () => {
+    expect(blockingErrors(draftFromCard(fullCard))).toEqual({});
   });
 });
