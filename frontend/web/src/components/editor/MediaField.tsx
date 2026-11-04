@@ -124,7 +124,7 @@ function SlotField({
     // The server reads the duration again; this only spares the upload of a video it will refuse (MED-002).
     if (info.duration > MAX_VIDEO_SECONDS) setErrorKey("editor.media.errors.video_too_long");
     else if (needsCrop(info.width, info.height, HEADER_RATIO)) setFraming({ file, videoDuration: info.duration });
-    else void sendVideo(file, { posterTime: POSTER_SECONDS });
+    else void sendVideo(file, { posterTime: Math.min(POSTER_SECONDS, info.duration) });
   }
 
   /** spec: EDI-026, EDI-035. A photo off the slot's shape (4:3 header, square profile photo) is framed before it is sent. */

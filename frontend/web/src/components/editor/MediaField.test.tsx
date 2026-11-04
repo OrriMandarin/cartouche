@@ -198,6 +198,18 @@ describe("MediaField", () => {
     expect(capturePoster).toHaveBeenCalledWith(expect.any(File), 0.1);
   });
 
+  test("MED-028 a 4:3 video shorter than the default poster time gets its poster time clamped to its duration", async () => {
+    readVideoInfo.mockResolvedValue(video43(0.05));
+    const upload = vi.fn().mockResolvedValue(media("clip", "video"));
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-header-input", mp4());
+
+    await waitFor(() => expect(state().header).toBe("clip"));
+    expect(upload).toHaveBeenCalledWith("header", expect.any(File), expect.any(Blob), { posterTime: 0.05 });
+    expect(capturePoster).toHaveBeenCalledWith(expect.any(File), 0.05);
+  });
+
   test("EDI-026 EDI-034 MED-028 a video that is not 4:3 is framed first, then sent with its loop and its poster", async () => {
     readVideoInfo.mockResolvedValue(VIDEO_169);
     const upload = vi.fn().mockResolvedValue(media("clip", "video"));
