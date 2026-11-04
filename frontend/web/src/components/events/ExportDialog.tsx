@@ -24,15 +24,37 @@ const FORMATS = ["csv", "xlsx", "json"] as const satisfies readonly ExportFormat
  */
 export function ExportDialog({ scope }: { scope: ExportScope }) {
   const t = useTranslations("leads.export");
-  const download = useDownloadExport();
   const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button variant="outline" data-testid="export-open" onClick={() => setOpen(true)}>
+        {t("open")}
+      </Button>
+      <ExportDialogPanel scope={scope} open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+/** The export dialog without its button, opened by the caller (the confirmation of an event deletion, EDI-033). */
+export function ExportDialogPanel({
+  scope,
+  open,
+  onOpenChange,
+}: {
+  scope: ExportScope;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslations("leads.export");
+  const download = useDownloadExport();
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [includeSpam, setIncludeSpam] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   function changeOpen(next: boolean) {
-    setOpen(next);
+    onOpenChange(next);
     setError(null);
   }
 
@@ -41,7 +63,7 @@ export function ExportDialog({ scope }: { scope: ExportScope }) {
     setError(null);
     try {
       await download(exportPath(scope, format, includeSpam, userTimeZone()));
-      setOpen(false);
+      changeOpen(false);
     } catch (e) {
       setError(e);
     } finally {
@@ -50,52 +72,47 @@ export function ExportDialog({ scope }: { scope: ExportScope }) {
   }
 
   return (
-    <>
-      <Button variant="outline" data-testid="export-open" onClick={() => changeOpen(true)}>
-        {t("open")}
-      </Button>
-      <Dialog open={open} onOpenChange={changeOpen}>
-        <DialogContent closeLabel={t("close")}>
-          <DialogHeader>
-            <DialogTitle>{t("title")}</DialogTitle>
-            <DialogDescription>{t("description")}</DialogDescription>
-          </DialogHeader>
-          <fieldset className="space-y-2">
-            <legend className="mb-2 text-sm font-medium">{t("format")}</legend>
-            {FORMATS.map((value) => (
-              <label key={value} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="export-format"
-                  data-testid={`export-format-${value}`}
-                  checked={format === value}
-                  onChange={() => setFormat(value)}
-                />
-                {t(value)}
-              </label>
-            ))}
-            <p className="text-muted-foreground text-sm">{t("excelHint")}</p>
-          </fieldset>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              data-testid="export-include-spam"
-              checked={includeSpam}
-              onChange={(event) => setIncludeSpam(event.target.checked)}
-            />
-            {t("includeSpam")}
-          </label>
-          {error !== null ? <ErrorNotice error={error} /> : null}
-          <DialogFooter>
-            <Button variant="outline" data-testid="export-cancel" onClick={() => changeOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button data-testid="export-download" disabled={busy} onClick={() => void submit()}>
-              {t("download")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Dialog open={open} onOpenChange={changeOpen}>
+      <DialogContent closeLabel={t("close")}>
+        <DialogHeader>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
+        </DialogHeader>
+        <fieldset className="space-y-2">
+          <legend className="mb-2 text-sm font-medium">{t("format")}</legend>
+          {FORMATS.map((value) => (
+            <label key={value} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="export-format"
+                data-testid={`export-format-${value}`}
+                checked={format === value}
+                onChange={() => setFormat(value)}
+              />
+              {t(value)}
+            </label>
+          ))}
+          <p className="text-muted-foreground text-sm">{t("excelHint")}</p>
+        </fieldset>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            data-testid="export-include-spam"
+            checked={includeSpam}
+            onChange={(event) => setIncludeSpam(event.target.checked)}
+          />
+          {t("includeSpam")}
+        </label>
+        {error !== null ? <ErrorNotice error={error} /> : null}
+        <DialogFooter>
+          <Button variant="outline" data-testid="export-cancel" onClick={() => changeOpen(false)}>
+            {t("cancel")}
+          </Button>
+          <Button data-testid="export-download" disabled={busy} onClick={() => void submit()}>
+            {t("download")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -627,11 +627,28 @@
     "backToEvents": "Retour aux événements",
     "cancel": "Annuler",
     "close": "Fermer",
+    "backToCard": "Retour à la carte",
+    "subtitle": "Carte {slug} · heures de Paris ({zone})",
+    "info": "Pendant un événement en cours, ta carte affiche un bouton qui ouvre son formulaire. Jusqu’à {max} événements en cours en même temps.",
+    "limit": {
+      "title": "{max} événements en cours\u00a0: c’est le maximum par carte.",
+      "body": "Termine-en un pour en démarrer un nouveau. Tu peux toujours en programmer à venir."
+    },
+    "empty": {
+      "title": "Aucun événement",
+      "text": "Crée un événement pour ton prochain salon\u00a0: pendant ses dates, ta carte affiche un bouton qui ouvre un formulaire de contact.",
+      "create": "Créer un événement"
+    },
     "groups": {
       "running": "En cours",
       "upcoming": "À venir",
-      "past": "Passés",
-      "empty": "Aucun événement"
+      "past": "Passés"
+    },
+    "columns": {
+      "event": "Événement",
+      "dates": "Dates",
+      "state": "État",
+      "contacts": "Contacts"
     },
     "phase": {
       "running": "En cours",
@@ -639,21 +656,26 @@
       "past": "Passé"
     },
     "row": {
+      "start": "Début",
+      "end": "Fin",
       "starts": "Début : {date}",
       "ends": "Fin : {date}",
       "noEnd": "Sans fin",
+      "accessCode": "Code d’accès {code}",
+      "noAccessCode": "Sans code d’accès",
       "leads": "{count, plural, =0 {Aucun contact} one {# contact} other {# contacts}}"
     },
     "actions": {
       "edit": "Modifier",
-      "leads": "Contacts",
-      "endNow": "Terminer maintenant",
-      "delete": "Supprimer"
+      "endNow": "Terminer",
+      "delete": "Supprimer {title}"
     },
     "delete": {
-      "title": "Supprimer l'événement ?",
-      "description": "L'événement « {title} » sera supprimé définitivement. {count, plural, =0 {Il n'a aucun contact.} one {# contact sera supprimé avec lui.} other {# contacts seront supprimés avec lui.}}",
-      "confirm": "Supprimer définitivement"
+      "title": "Supprimer «\u00a0{title}\u00a0»\u00a0?",
+      "description": "{count, plural, =0 {Cet événement n’a collecté aucun contact. Il sera supprimé définitivement.} one {Le contact collecté pendant cet événement sera supprimé avec lui, définitivement.} other {Les # contacts collectés pendant cet événement seront supprimés avec lui, définitivement.}}",
+      "exportHint": "Exporte-les d’abord si tu veux les garder.",
+      "export": "Exporter les contacts",
+      "confirm": "{count, plural, =0 {Supprimer l’événement} one {Supprimer l’événement et # contact} other {Supprimer l’événement et # contacts}}"
     },
     "errors": {
       "too_many_simultaneous_events": "La carte a déjà le maximum d'événements en même temps sur cette période. Change les dates de cet événement ou termine-en un autre, puis réessaie.",

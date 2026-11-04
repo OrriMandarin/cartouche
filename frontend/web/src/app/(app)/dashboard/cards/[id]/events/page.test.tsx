@@ -10,9 +10,14 @@ const get = vi.fn();
 const api = { GET: get };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "card-1" }) }));
-vi.mock("@/components/account/AccountGate", () => ({ AccountGate: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("@/components/account/AccountGate", () => ({
+  AccountGate: ({ children }: { children: React.ReactNode }) => children,
+  useMe: () => ({ max_simultaneous_events: 3 }),
+}));
 vi.mock("@/components/events/EventList", () => ({
-  EventList: ({ events }: { events: { title: string }[] }) => <p data-testid="list-stub">{events.map((e) => e.title).join("|")}</p>,
+  EventList: ({ events, max }: { events: { title: string }[]; max: number }) => (
+    <p data-testid="list-stub">{events.map((e) => e.title).join("|")}{`#${max}`}</p>
+  ),
 }));
 
 beforeEach(() => {
@@ -31,8 +36,8 @@ describe("CardEventsPage", () => {
     );
     renderWithIntl(<CardEventsPage />);
     expect(screen.getByTestId("events-loading")).toBeVisible();
-    expect(await screen.findByTestId("list-stub")).toHaveTextContent("Salon ✨|Foire");
-    expect(screen.getByTestId("events-card-name")).toHaveTextContent("Alice Durand");
+    expect(await screen.findByTestId("list-stub")).toHaveTextContent("Salon ✨|Foire#3");
+    expect(screen.getByTestId("events-card-name")).toHaveTextContent(/^Carte alice-durand · heures de Paris \(/);
     expect(screen.getByTestId("new-event")).toHaveAttribute("href", "/dashboard/cards/card-1/events/new");
     expect(get).toHaveBeenCalledWith("/api/cards/{id}/events", { params: { path: { id: "card-1" } } });
   });

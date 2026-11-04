@@ -1,26 +1,20 @@
 "use client";
 
+import { Pencil, Square, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useApi } from "@/lib/api";
 import { eventErrorKey } from "@/lib/events/errors";
 import { canEndNow } from "@/lib/events/groups";
 import type { EventView } from "@/lib/events/types";
+import { DeleteEventDialog } from "./DeleteEventDialog";
 
 /**
- * spec: EVT-006, EVT-009, EVT-021, EVT-024. Edit, see the contacts of, end now and delete an event.
+ * spec: EVT-006, EVT-009, EVT-021, EVT-024, EDI-033. Edit, end now and delete an event (the contacts are one link away).
  * Every button stays disabled from the click until `onChanged` (which reloads the list) settles.
  */
 export function EventActions({ event, onChanged }: { event: EventView; onChanged: () => Promise<void> }) {
@@ -53,36 +47,34 @@ export function EventActions({ event, onChanged }: { event: EventView; onChanged
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button asChild size="sm" variant="outline">
+      <div className="flex items-center gap-1.5 @max-[847px]:[&>[data-slot=button]:not(:last-child)]:flex-1 @min-[848px]:justify-end">
+        <Button asChild variant="secondary" className="px-3">
           <Link href={base} data-testid={`event-edit-${event.id}`}>
+            <Pencil aria-hidden="true" />
             {t("actions.edit")}
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link href={`${base}/leads`} data-testid={`event-contacts-${event.id}`}>
-            {t("actions.leads")}
           </Link>
         </Button>
         {canEndNow(event) ? (
           <Button
-            size="sm"
-            variant="outline"
+            variant="secondary"
+            className="px-3"
             disabled={busy}
             data-testid={`event-end-now-${event.id}`}
             onClick={() => void run(() => api.POST("/api/events/{id}/end", params))}
           >
+            <Square aria-hidden="true" />
             {t("actions.endNow")}
           </Button>
         ) : null}
         <Button
-          size="sm"
-          variant="outline"
+          variant="dangerGhost"
+          size="icon"
           disabled={busy}
+          aria-label={t("actions.delete", { title: event.title })}
           data-testid={`event-delete-${event.id}`}
           onClick={() => setDeleting(true)}
         >
-          {t("actions.delete")}
+          <Trash2 aria-hidden="true" />
         </Button>
       </div>
       {knownError !== null ? (
@@ -93,30 +85,15 @@ export function EventActions({ event, onChanged }: { event: EventView; onChanged
         <ErrorNotice error={error} />
       ) : null}
 
-      <Dialog open={deleting} onOpenChange={setDeleting}>
-        <DialogContent closeLabel={t("close")}>
-          <DialogHeader>
-            <DialogTitle>{t("delete.title")}</DialogTitle>
-            <DialogDescription>{t("delete.description", { title: event.title, count: event.lead_count })}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" data-testid="event-delete-cancel" onClick={() => setDeleting(false)}>
-              {t("cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              data-testid="event-delete-confirm"
-              disabled={busy}
-              onClick={() => {
-                setDeleting(false);
-                void run(() => api.DELETE("/api/events/{id}", params));
-              }}
-            >
-              {t("delete.confirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteEventDialog
+        event={event}
+        open={deleting}
+        onOpenChange={setDeleting}
+        onConfirm={() => {
+          setDeleting(false);
+          void run(() => api.DELETE("/api/events/{id}", params));
+        }}
+      />
     </div>
   );
 }

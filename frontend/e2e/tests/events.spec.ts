@@ -79,7 +79,8 @@ test("EDI-018 the events are also one click away from the editor of the card", a
 
 test("EVT-001 EVT-007 EVT-022 create an event in the user's time zone", async ({ page, api }) => {
   await page.goto(eventsUrl());
-  await page.getByTestId("new-event").click();
+  // The button is in the page head on a computer, in the app bar on a phone.
+  await page.locator('[data-testid^="new-event"]:visible').click();
   await expect(page).toHaveURL(/\/events\/new$/);
   await expect(page.getByTestId("event-zone")).toContainText("Europe/Paris");
 
@@ -270,15 +271,36 @@ test("EVT-024 delete an event and its leads", async ({ page, api }) => {
   const paris = idOf(PARIS);
   await page.goto(eventsUrl());
   await page.getByTestId(`event-delete-${paris}`).click();
-  await expect(page.getByRole("dialog")).toContainText("1 contact");
+  await expect(page.getByRole("alertdialog")).toContainText("Le contact collecté pendant cet événement");
   await page.getByTestId("event-delete-cancel").click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
   await expect(page.getByTestId(`event-row-${paris}`)).toBeVisible();
 
   await page.getByTestId(`event-delete-${paris}`).click();
   await page.getByTestId("event-delete-confirm").click();
   await expect(page.getByTestId(`event-row-${paris}`)).toHaveCount(0);
   await expect(api.leads("seed-alice", paris)).rejects.toThrow(/404/);
+});
+
+test("EDI-032 EDI-033 Alice's events: the limit, the deletion dialog and its export", async ({ page }) => {
+  await page.goto(eventsUrl());
+  // Three events in progress: the maximum of the instance.
+  await expect(page.getByTestId("events-limit")).toContainText("3 événements en cours");
+  await expect(page.getByTestId("events-limit")).toContainText("Tu peux toujours en programmer à venir.");
+
+  const mariage = idOf(MARIAGE);
+  await page.getByRole("button", { name: `Supprimer ${MARIAGE}` }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toContainText(`Supprimer « ${MARIAGE} » ?`);
+  await expect(dialog).toContainText("Les 3 contacts collectés pendant cet événement seront supprimés avec lui, définitivement.");
+  await expect(dialog.getByTestId("event-delete-confirm")).toHaveText("Supprimer l’événement et 3 contacts");
+
+  await dialog.getByTestId("event-delete-export").click();
+  await expect(page.getByTestId("export-download")).toBeVisible();
+  await page.getByTestId("export-cancel").click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page.getByTestId("event-delete-cancel").click();
+  await expect(page.getByTestId(`event-row-${mariage}`)).toBeVisible();
 });
 
 test("EVT-025 LNK-008 events of a disabled card are still listed and editable", async ({ page }) => {

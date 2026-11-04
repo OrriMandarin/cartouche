@@ -1,22 +1,25 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AccountGate } from "@/components/account/AccountGate";
+import { AccountGate, useMe } from "@/components/account/AccountGate";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { CardScope } from "@/components/events/CardScope";
 import { EventList } from "@/components/events/EventList";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api";
-import { cardDisplayName } from "@/lib/cards/display-name";
 import type { CardView } from "@/lib/cards/types";
+import { userTimeZone, zoneLabel } from "@/lib/events/time";
 import type { EventView } from "@/lib/events/types";
 
 function EventsContent({ card }: { card: CardView }) {
   const t = useTranslations("events");
+  const me = useMe();
   const api = useApi();
+  const newEventHref = `/dashboard/cards/${card.id}/events/new`;
   const [events, setEvents] = useState<EventView[] | null>(null);
   const [error, setError] = useState<unknown>(null);
   const latestRequest = useRef(0);
@@ -42,25 +45,23 @@ function EventsContent({ card }: { card: CardView }) {
   }, [reload]);
 
   return (
-    <section className="space-y-6">
-      <Link href="/dashboard" data-testid="events-back" className="text-sm underline">
-        {t("backToDashboard")}
-      </Link>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-          <p data-testid="events-card-name" className="text-muted-foreground">
-            {cardDisplayName(card.content) ?? card.slug}
+    <section className="flex flex-1 flex-col gap-6 @max-[847px]:gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="text-[28px] leading-[1.2] font-bold tracking-[-0.02em] @max-[847px]:sr-only">{t("title")}</h1>
+          <p data-testid="events-card-name" className="text-app-muted">
+            {t("subtitle", { slug: card.slug, zone: zoneLabel(userTimeZone()) })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link href={`/dashboard/cards/${card.id}/leads`} data-testid="card-leads-link">
               {t("allLeads")}
             </Link>
           </Button>
-          <Button asChild>
-            <Link href={`/dashboard/cards/${card.id}/events/new`} data-testid="new-event">
+          <Button asChild className="@max-[847px]:hidden">
+            <Link href={newEventHref} data-testid="new-event">
+              <Plus aria-hidden="true" />
               {t("newEvent")}
             </Link>
           </Button>
@@ -74,7 +75,7 @@ function EventsContent({ card }: { card: CardView }) {
           </p>
         ) : null
       ) : (
-        <EventList events={events} onChanged={reload} />
+        <EventList events={events} max={me.max_simultaneous_events} newEventHref={newEventHref} onChanged={reload} />
       )}
     </section>
   );
@@ -89,7 +90,17 @@ export default function CardEventsPage() {
     <AccountGate
       title={t("events.title")}
       breadcrumb={[{ label: t("shell.cards"), href: "/dashboard" }, { label: t("events.title") }]}
-      back={{ href: "/dashboard", label: t("shell.cards") }}
+      back={{ href: `/dashboard/cards/${id}`, label: t("events.backToCard") }}
+      action={
+        <Link
+          href={`/dashboard/cards/${id}/events/new`}
+          aria-label={t("events.newEvent")}
+          data-testid="new-event-bar"
+          className="rounded-app focus-visible:outline-app-primary grid size-11 flex-none place-items-center focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          <Plus aria-hidden="true" className="size-5" />
+        </Link>
+      }
     >
       <CardScope cardId={id}>{(card) => <EventsContent card={card} />}</CardScope>
     </AccountGate>
