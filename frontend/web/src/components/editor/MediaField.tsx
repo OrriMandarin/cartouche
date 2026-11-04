@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { HEADER_RATIO, needsCrop } from "@/lib/media/framing";
+import { AVATAR_RATIO, HEADER_RATIO, needsCrop } from "@/lib/media/framing";
 import { readImageSize } from "@/lib/media/image";
 import {
   acceptedTypes,
@@ -23,7 +23,7 @@ import {
 import { capturePoster, POSTER_SECONDS, readVideoDuration } from "@/lib/media/video";
 import type { ResolvedTheme } from "@/lib/theme/resolve";
 import type { MediaView, TemplateDefinition } from "@/templates/contract";
-import { AvatarCropper } from "./AvatarCropper";
+import { AvatarCropDialog } from "./crop/AvatarCropDialog";
 import { HeaderCropDialog } from "./crop/HeaderCropDialog";
 
 interface MediaFieldProps {
@@ -40,7 +40,7 @@ interface MediaFieldProps {
   name: string | null;
 }
 
-/** What the header crop dialog frames: a file chosen, before its upload, or the source of the current media. */
+/** What a crop dialog frames: a file chosen, before its upload, or the source of the current media. */
 type Framing = { file: File } | { media: MediaView; source: string };
 
 function SlotField({
@@ -64,15 +64,15 @@ function SlotField({
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [cropping, setCropping] = useState<File | null>(null);
   const [framing, setFraming] = useState<Framing | null>(null);
   const hasVideo = kinds.includes("video");
   const hint = slot === "avatar" ? t("editor.media.avatarHint") : hasVideo ? t("editor.media.headerHintVideo") : t("editor.media.headerHintImage");
   const thumbnail = value?.images[0]?.url;
   const inputId = `media-${slot}-input`;
   const cropHintId = `media-${slot}-crop-hint`;
-  // The header video gets its own dialog (EDI-034); the profile photo goes through its cropper on upload.
-  const canOfferCrop = slot === "header" && value?.kind === "image";
+  // The header video gets its own dialog (EDI-034).
+  const canOfferCrop = value?.kind === "image";
+  const ratio = slot === "avatar" ? AVATAR_RATIO : HEADER_RATIO;
   const reframable = Boolean(value?.source);
 
   /** Runs an upload or a re-framing; its media replaces the draft's, a refusal is shown. */
@@ -108,8 +108,8 @@ function SlotField({
     await send(file, poster, { posterTime: POSTER_SECONDS });
   }
 
-  /** spec: EDI-026. A header photo that is not 4:3 is framed before it is sent; a 4:3 one goes as it is. */
-  async function sendHeaderImage(file: File) {
+  /** spec: EDI-026, EDI-035. A photo off the slot's shape (4:3 header, square profile photo) is framed before it is sent. */
+  async function sendImage(file: File) {
     setBusy(true);
     let size: { width: number; height: number };
     try {
@@ -120,7 +120,7 @@ function SlotField({
       return;
     }
     setBusy(false);
-    if (needsCrop(size.width, size.height, HEADER_RATIO)) setFraming({ file });
+    if (needsCrop(size.width, size.height, ratio)) setFraming({ file });
     else void send(file);
   }
 
@@ -129,16 +129,14 @@ function SlotField({
     const refused = checkBeforeUpload(file, slot, kinds);
     if (refused) {
       setErrorKey(`editor.media.errors.${refused}`);
-    } else if (slot === "avatar") {
-      setCropping(file);
     } else if (file.type === VIDEO_TYPE) {
       void sendVideo(file);
     } else {
-      void sendHeaderImage(file);
+      void sendImage(file);
     }
   }
 
-  /** spec: EDI-026, MED-030. The new file is uploaded with its crop; the current media is re-framed from its source. */
+  /** spec: EDI-026, EDI-035, MED-005, MED-030. The new file is uploaded with its crop; the current media is re-framed from its source. */
   function apply(crop: CropRect) {
     if (!framing) return;
     setFraming(null);
@@ -245,21 +243,15 @@ function SlotField({
           {t(errorKey)}
         </p>
       ) : null}
-      {cropping ? (
-        <AvatarCropper
-          file={cropping}
-          onCancel={() => setCropping(null)}
-          onError={() => {
-            setCropping(null);
-            setErrorKey("editor.media.errors.unreadable");
-          }}
-          onConfirm={(square) => {
-            setCropping(null);
-            void send(square);
-          }}
+      {framing && slot === "avatar" ? (
+        <AvatarCropDialog
+          source={"file" in framing ? framing.file : framing.source}
+          initialCrop={"media" in framing ? framing.media.crop : null}
+          onApply={apply}
+          onCancel={() => setFraming(null)}
         />
       ) : null}
-      {framing ? (
+      {framing && slot === "header" ? (
         <HeaderCropDialog
           source={"file" in framing ? framing.file : framing.source}
           initialCrop={"media" in framing ? framing.media.crop : null}
@@ -275,9 +267,9 @@ function SlotField({
 }
 
 /**
- * spec: MED-001, MED-005, TPL-004, EDI-026, MED-030. One field per media the template declares: the header (an
- * image, and a video when the template takes one), framed in its dialog and re-framed with « Recadrer », and the
- * profile photo. An upload or a re-framing replaces the draft's media; it reaches the card only on save (MED-018).
+ * spec: MED-001, MED-005, TPL-004, EDI-026, EDI-035, MED-030. One field per media the template declares: the header
+ * (an image, and a video when the template takes one) and the profile photo, each framed in its dialog and
+ * re-framed with « Recadrer ». An upload or a re-framing replaces the draft's media; it reaches the card only on save (MED-018).
  */
 export function MediaField({ media, header, avatar, onChange, upload, reframe, theme, name }: MediaFieldProps) {
   const preview = { theme, name, avatarUrl: avatar?.images.at(-1)?.url };

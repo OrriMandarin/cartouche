@@ -24,7 +24,7 @@ async function openMedia(page: import("@playwright/test").Page) {
 test("MED-005 MED-006 PUB-014 avatar is cropped, published as WebP and in the vCard", async ({ page, api }) => {
   await openMedia(page);
   await page.getByTestId("media-avatar-input").setInputFiles(fixture("avatar.jpg"));
-  await page.getByTestId("avatar-crop-confirm").click();
+  await page.getByTestId("avatar-crop-apply").click();
   await expect(page.getByTestId("media-avatar-current")).toBeVisible();
   await showEditorView(page, "Aperçu");
   await expect(page.getByTestId("phone-preview").getByTestId("card-avatar")).toBeVisible();
@@ -124,6 +124,41 @@ test("EDI-026 MED-030 re-framing the header photo", async ({ page, api }) => {
   expect(second).not.toBe(first);
 });
 
+test("EDI-035 MED-005 cropping the profile photo", async ({ page }) => {
+  await openMedia(page);
+  await page.getByTestId("media-avatar-input").setInputFiles(fixture("avatar.jpg"));
+
+  // An 800 × 600 photo is not square: the dialog opens by itself, with both preview sizes.
+  const dialog = page.getByRole("dialog", { name: "Recadrer la photo de profil" });
+  await expect(dialog).toBeVisible();
+  // The labelled previews are for the desktop dialog; the phone shows them smaller, without labels.
+  if (test.info().project.name === "desktop") {
+    await expect(dialog.getByText("Sur la carte · 112 px")).toBeVisible();
+    await expect(dialog.getByText("Dans l’app · 36 px")).toBeVisible();
+  }
+  await dialog.getByRole("application").focus();
+  await page.keyboard.press("+");
+  await expect(dialog.getByRole("slider", { name: "Zoom" })).toHaveAttribute("aria-valuetext", "110\u00a0%");
+  await dialog.getByRole("button", { name: "Appliquer" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("media-avatar-current")).toBeVisible();
+  await saveCard(page);
+
+  await page.goto("/c/alice-durand");
+  const avatar = page.getByTestId("card-avatar");
+  await expect(avatar).toBeVisible();
+  await expect.poll(() => avatar.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+  const ratio = await avatar.evaluate((img: HTMLImageElement) => img.naturalWidth / img.naturalHeight);
+  expect(Math.abs(ratio - 1)).toBeLessThan(0.01);
+
+  // « Recadrer » re-frames from the kept source.
+  await openMedia(page);
+  await page.getByTestId("media-avatar-crop").click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(dialog).toBeHidden();
+});
+
 test("MED-013 too long video is refused before upload", async ({ page }) => {
   const uploads: string[] = [];
   page.on("request", (request) => {
@@ -174,7 +209,7 @@ test("MED-012 uploads above 10 MB pass the web rewrite", async ({ api }) => {
 test("MED-018 EDI-006 an unsaved upload does not reach the public page", async ({ page, context }) => {
   await openMedia(page);
   await page.getByTestId("media-avatar-input").setInputFiles(fixture("avatar.jpg"));
-  await page.getByTestId("avatar-crop-confirm").click();
+  await page.getByTestId("avatar-crop-apply").click();
   await expect(page.getByTestId("media-avatar-current")).toBeVisible();
   await expect(page.getByTestId("editor-status")).toHaveText("Modifications non enregistrées");
 

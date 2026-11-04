@@ -125,6 +125,24 @@ describe("HeaderCropDialog", () => {
     expect(zoomSlider()).toHaveAttribute("aria-valuetext", percent(110));
   });
 
+  test("EDI-026 the stage has the focus as the dialog opens", () => {
+    renderDialog();
+    expect(stage()).toHaveFocus();
+  });
+
+  test("EDI-026 plus and minus with Ctrl, Cmd or Alt are left to the browser", () => {
+    renderDialog();
+    for (const modifier of ["ctrlKey", "metaKey", "altKey"] as const) {
+      for (const key of ["+", "=", "-"]) {
+        const notPrevented = fireEvent.keyDown(stage(), { key, [modifier]: true });
+        expect(notPrevented).toBe(true);
+      }
+    }
+    expect(zoomSlider()).toHaveAttribute("aria-valuetext", percent(100));
+    expect(fireEvent.keyDown(stage(), { key: "+" })).toBe(false);
+    expect(zoomSlider()).toHaveAttribute("aria-valuetext", percent(110));
+  });
+
   test("EDI-026 MED-030 a stored crop is where re-framing starts, « Réinitialiser » goes back to the default", () => {
     const { onApply } = renderDialog({ initialCrop: { x: 0.3, y: 0.2, width: 0.375, height: 0.5 } });
     expect(zoomSlider()).toHaveAttribute("aria-valuetext", percent(200));

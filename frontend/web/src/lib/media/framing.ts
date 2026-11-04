@@ -30,8 +30,9 @@ export function loopRestart(currentTime: number, loop: VideoLoop | null | undefi
   return null;
 }
 
-/** The header is 4:3 (MED-015); the profile photo is square. */
+/** The header is 4:3 (MED-015); the profile photo is square (MED-026). */
 export const HEADER_RATIO = 4 / 3;
+export const AVATAR_RATIO = 1;
 /** Zoom bounds of the crop dialogs (EDI-026): 100 % shows the largest rectangle of the source, 300 % a third of it. */
 export const MIN_ZOOM = 1;
 export const MAX_ZOOM = 3;

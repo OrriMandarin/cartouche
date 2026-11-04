@@ -566,14 +566,16 @@
           "legendRound": "Photo de profil et bouton pause",
           "preview": "Sur ta carte",
           "phoneHint": "Pince pour zoomer, glisse pour déplacer."
+        },
+        "avatar": {
+          "title": "Recadrer la photo de profil",
+          "stage": "Zone de recadrage de la photo de profil",
+          "preview": "Aperçu",
+          "previewCard": "Sur la carte · 112 px",
+          "previewApp": "Dans l’app · 36 px",
+          "hint": "Centre le visage et laisse un peu d’air au-dessus de la tête\u00a0: le cercle est bordé par le fond de la carte.",
+          "phoneHint": "Pince pour zoomer, glisse pour centrer le visage."
         }
-      },
-      "cropper": {
-        "title": "Recadrer la photo",
-        "description": "Déplace et zoome la photo : la partie dans le cercle sera gardée.",
-        "zoom": "Zoom",
-        "confirm": "Valider",
-        "cancel": "Annuler"
       },
       "errors": {
         "unsupported": "Ce format n'est pas accepté",
