@@ -49,7 +49,6 @@ function HeaderVideo({
 }: { media: MediaView; labels: HeaderMediaLabels } & Pick<HeaderMediaProps, "reducedMotion">) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
-  const [started, setStarted] = useState(false);
   // Null until the visitor, or the video, says otherwise: it then follows the motion preference.
   const [playingState, setPlaying] = useState<boolean | null>(null);
   const reduced = useSyncExternalStore(watchReducedMotion, reducedMotion ?? prefersReducedMotion, () => false);
@@ -63,11 +62,25 @@ function HeaderVideo({
     el.muted = true;
     if (loop) el.currentTime = loop.start;
     if ((reducedMotion ?? prefersReducedMotion)()) return;
-    // jsdom's play() returns undefined and a browser may refuse an autoplay: neither is an error.
-    Promise.resolve(el.play()).catch(() => {});
+    start(el);
     // Played once on mount: the framing of a media does not change under the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // jsdom's play() returns undefined and a browser may refuse an autoplay: neither is an error, but a refused
+  // play leaves the video paused and the button must say so.
+  function start(el: HTMLVideoElement) {
+    Promise.resolve(el.play()).catch(() => setPlaying(false));
+  }
+
+  // At the end of the file the browser pauses and a seek does not resume it: loop by hand (MED-032, MED-033).
+  function onEnded() {
+    const el = videoRef.current;
+    if (!el) return;
+    el.currentTime = loop?.start ?? 0;
+    setPlaying(true);
+    start(el);
+  }
 
   function onTimeUpdate() {
     const el = videoRef.current;
@@ -83,14 +96,13 @@ function HeaderVideo({
       el.pause();
       setPlaying(false);
     } else {
-      setStarted(true);
       setPlaying(true);
-      Promise.resolve(el.play()).catch(() => {});
+      start(el);
     }
   }
 
   const loading = !ready;
-  const showPoster = poster !== undefined && (loading || (reduced && !started));
+  const showPoster = poster !== undefined && loading;
   return (
     <div className={loading ? "cc-media is-loading" : "cc-media"} aria-busy={loading}>
       {showPoster && (
@@ -110,12 +122,13 @@ function HeaderVideo({
         style={videoCropStyle(media.crop)}
         onTimeUpdate={onTimeUpdate}
         onCanPlay={() => setReady(true)}
+        onEnded={onEnded}
         onPlaying={() => {
           setReady(true);
-          setStarted(true);
           setPlaying(true);
         }}
-        onPause={() => setPlaying(false)}
+        // The pause that precedes `ended` is not the visitor's.
+        onPause={(event) => setPlaying(event.currentTarget.ended)}
       />
       <button
         type="button"

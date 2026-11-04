@@ -239,6 +239,17 @@ test("MED-032 the video starts at its loop start", async ({ page, api }) => {
   await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime >= 0.5 && !el.paused)).toBe(true);
 });
 
+test("MED-033 a video without a stored loop keeps playing past its end", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, {});
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => !el.paused)).toBe(true);
+  // The file lasts 2 s: after 2.5 s it went through its end at least once.
+  await page.waitForTimeout(2500);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(false);
+  await expect(page.getByTestId("header-video-toggle")).toHaveAccessibleName("Mettre la vidéo en pause");
+});
+
 test("PUB-005 reduced motion keeps the poster", async ({ page, api }) => {
   await giveAliceFramedVideo(api, { loop: { start: 0.5, end: 1.8 } });
   await page.emulateMedia({ reducedMotion: "reduce" });

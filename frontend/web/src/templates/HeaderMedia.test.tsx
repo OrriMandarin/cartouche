@@ -84,4 +84,27 @@ describe("HeaderMedia", () => {
     });
     expect(video().currentTime).toBe(0.8);
   });
+
+  test("MED-033 PUB-031 at the end of the file the video restarts and still reads as playing", () => {
+    render(<HeaderMedia media={{ ...sampleVideoHeader, loop: null }} labels={labels} reducedMotion={() => false} />);
+    video().currentTime = 5;
+    play.mockClear();
+    fireEvent.pause(video());
+    fireEvent.ended(video());
+    expect(video().currentTime).toBe(0);
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("header-video-toggle")).toHaveAccessibleName(labels.pause);
+  });
+
+  test("MED-032 at the end of the file the video restarts at its loop start", () => {
+    render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    fireEvent.ended(video());
+    expect(video().currentTime).toBe(0.8);
+  });
+
+  test("PUB-031 a refused autoplay leaves the button on play", async () => {
+    play.mockRejectedValue(new Error("NotAllowedError"));
+    render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    expect(await screen.findByRole("button", { name: labels.play })).toBeInTheDocument();
+  });
 });
