@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartouche — états du formulaire d’événement</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&amp;family=Playfair+Display:wght@400..800&amp;family=Source+Sans+3:wght@400..800&amp;display=swap">
+<style>
+body{margin:0}
+.t-craie{--c-accent:#2F55D4;--c-on-accent:#FFFFFF;--c-bg:#F7F6F2;--c-bg-2:#F7F6F2;--bg-angle:180deg;--c-text:#1B1A17}
+.t-minuit{--c-accent:#E9C988;--c-on-accent:#111111;--c-bg:#0D1A2C;--c-bg-2:#1B2A44;--bg-angle:180deg;--c-text:#EEF1F6}
+.f-sobre{--font-title:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--font-body:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--title-weight:700;--title-tracking:-0.025em}
+.f-editoriale{--font-title:'Playfair Display',Georgia,'Times New Roman',serif;--font-body:'Source Sans 3',system-ui,-apple-system,'Segoe UI',sans-serif;--title-weight:600;--title-tracking:-0.005em}
+.s-carree{--radius-btn:2px}.s-arrondie{--radius-btn:12px}.s-pilule{--radius-btn:999px}
+.cc{
+  --c-muted:color-mix(in oklab,var(--c-text) 78%,var(--c-bg));
+  --c-focus:var(--c-text);
+  --c-field:color-mix(in oklab,var(--c-text) 4%,transparent);
+  --c-field-border:color-mix(in oklab,var(--c-text) 60%,var(--c-bg));
+  --c-danger:#B3261E;
+  --radius-field:min(var(--radius-btn),12px);
+  --radius-panel:min(var(--radius-btn),20px);
+  color-scheme:light;
+  position:relative;box-sizing:border-box;width:100%;max-width:28rem;margin:0 auto;overflow:hidden;
+  background:linear-gradient(var(--bg-angle),var(--c-bg),var(--c-bg-2));
+  color:var(--c-text);font-family:var(--font-body);font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.cc.t-encre,.cc.t-minuit{--c-danger:#FF8A80;color-scheme:dark}
+.cc *,.cc *::before,.cc *::after{box-sizing:border-box}
+.cc a{text-decoration:none}
+.cc svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cc a:focus-visible,.cc button:focus-visible{outline:3px solid var(--c-focus);outline-offset:3px}
+.cc-dot{position:relative;width:8px;height:8px;border-radius:999px;background:currentColor;flex:none}
+.cc-dot::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid currentColor;animation:cc-ping 1.6s ease-out infinite}
+@keyframes cc-ping{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.cc-dot::after{animation:none}}
+.cc-save{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:0 24px;border-radius:var(--radius-btn);background:var(--c-text);color:var(--c-bg);font-size:16px;font-weight:700}
+.fm{display:flex;flex-direction:column;gap:20px;padding:12px 20px 40px}
+.fm-back{display:inline-flex;align-items:center;gap:10px;min-height:44px;align-self:flex-start;padding-right:10px;border-radius:999px;color:var(--c-text);font-size:15px;font-weight:600}
+.fm-back-av{width:32px;height:32px;border-radius:999px;overflow:hidden;flex:none}
+.fm-back-av img{width:100%;height:100%;object-fit:cover;display:block}
+.fm-head{display:flex;flex-direction:column;gap:8px;padding:22px 20px;border-radius:var(--radius-panel);background:var(--c-accent);color:var(--c-on-accent)}
+.fm-live{display:inline-flex;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;line-height:1.2}
+.fm-title{margin:0;font-family:var(--font-title);font-weight:var(--title-weight);letter-spacing:var(--title-tracking);font-size:28px;line-height:1.15;text-wrap:balance}
+.fm-intro{margin:0;font-size:15px;line-height:1.5;text-wrap:pretty}
+.fm-form{display:flex;flex-direction:column;gap:28px}
+.fm-note{margin:0;font-size:14px;line-height:1.4;color:var(--c-muted)}
+.fm-alert{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;border:2px solid var(--c-danger);border-radius:var(--radius-field);font-size:15px;font-weight:600;line-height:1.4}
+.fm-alert svg.ic{color:var(--c-danger);margin-top:1px}
+.fm-set{border:0;margin:0;padding:0;min-width:0}
+.fm-legend{padding:0;margin:0 0 14px;font-family:var(--font-title);font-weight:var(--title-weight);letter-spacing:var(--title-tracking);font-size:21px;line-height:1.2}
+.fm-fields{display:flex;flex-direction:column;gap:18px}
+.fm-row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fm-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fm-label{font-size:15px;font-weight:600;line-height:1.3}
+.fm-opt{font-weight:400;color:var(--c-muted)}
+.fm-hint{margin:0;font-size:13px;line-height:1.4;color:var(--c-muted)}
+.fm-input{width:100%;min-height:52px;padding:12px 14px;border:1px solid var(--c-field-border);border-radius:var(--radius-field);background:var(--c-field);color:var(--c-text);font:inherit;font-size:16px;line-height:1.3}
+.fm-input[type=text],.fm-input[type=email],.fm-input[type=tel],textarea.fm-input{-webkit-appearance:none;appearance:none}
+textarea.fm-input{min-height:116px;resize:vertical}
+.fm-input:focus-visible,.fm-input.is-focus{outline:3px solid var(--c-focus);outline-offset:2px;border-color:var(--c-text)}
+.fm-input[aria-invalid="true"]{border:2px solid var(--c-danger);padding:11px 13px}
+.fm-error{display:flex;gap:6px;align-items:flex-start;margin:0;font-size:14px;font-weight:600;line-height:1.35;color:var(--c-danger)}
+.cc .fm-error svg.ic{width:18px;height:18px;margin-top:1px}
+.fm-check{display:flex;gap:12px;align-items:flex-start}
+.fm-check input{width:24px;height:24px;margin:1px 0 0;flex:none;accent-color:var(--c-accent)}
+.fm-check label{font-size:15px;line-height:1.45}
+.fm-submit{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;padding:0 24px;border:0;border-radius:var(--radius-btn);background:var(--c-accent);color:var(--c-on-accent);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+.fm-privacy{margin:0;font-size:13px;line-height:1.45;color:var(--c-muted);text-align:center;text-wrap:pretty}
+.fm-privacy a{color:var(--c-text);text-decoration:underline}
+.fm-done{min-height:600px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center}
+.fm-done-mark{width:72px;height:72px;border-radius:999px;display:grid;place-items:center;background:var(--c-accent);color:var(--c-on-accent);margin-bottom:4px}
+.cc .fm-done-mark svg.ic{width:32px;height:32px;stroke-width:2.5}
+.fm-done-text{margin:0;max-width:32ch;font-size:16px;line-height:1.5;text-wrap:pretty}
+.fm-done .cc-save{align-self:stretch;margin-top:12px}
+.fm-link{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;color:var(--c-text);font-weight:600;text-decoration:underline !important}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position: absolute; overflow: hidden" aria-hidden="true">
+<defs>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path><path d="m21.854 2.147-10.94 10.939"></path></symbol>
+<symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6"></path><path d="M22 11h-6"></path></symbol>
+</defs>
+</svg>
+
+<div style="width: 2227px; min-height: 1880px; box-sizing: border-box; padding: 64px; background: #E7E6E1; color: #1B1A17; font-family: 'Inter', system-ui, sans-serif; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); column-gap: 56px; align-items: start">
+<sc-for list="{{states}}" as="s" hint-placeholder-count="5">
+<section style="display: flex; flex-direction: column; gap: 20px">
+  <div style="display: flex; flex-direction: column; gap: 6px; min-height: 84px">
+    <h2 style="margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.01em">{{s.title}}</h2>
+    <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #4E4C47">{{s.note}}</p>
+  </div>
+  <div style="width: 375px; border-radius: 36px; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08), 0 24px 48px -28px rgb(0 0 0 / 0.35)">
+  <article class="cc {{s.cls}}">
+  <div class="fm">
+    <a class="fm-back" href="#"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"></use></svg><span class="fm-back-av"><img src="/_blob/af5bc97ce1ad324cc4b6c13a0ceb04da" alt=""></span><span>Camille Roche</span></a>
+
+    <sc-if value="{{s.form}}" hint-placeholder-val="{{true}}">
+    <header class="fm-head">
+      <p class="fm-live"><span class="cc-dot" aria-hidden="true"></span>Événement en cours</p>
+      <h1 class="fm-title">Salon du Mariage Clermont 2027</h1>
+      <p class="fm-intro">Laissez-moi vos coordonnées&nbsp;: je vous recontacte après le salon pour parler de votre mariage.</p>
+    </header>
+    <form class="fm-form" noValidate="{{true}}">
+      <p class="fm-note">Tous les champs sont obligatoires, sauf mention «&nbsp;facultatif&nbsp;».</p>
+      <sc-if value="{{s.hasErrors}}" hint-placeholder-val="{{false}}">
+        <div class="fm-alert" role="alert"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg><span>{{s.errCount}}</span></div>
+      </sc-if>
+      <fieldset class="fm-set">
+        <legend class="fm-legend">Vos coordonnées</legend>
+        <div class="fm-fields">
+          <div class="fm-row2">
+            <div class="fm-field">
+              <label class="fm-label" for="{{s.id}}-prenom">Prénom</label>
+              <input class="fm-input" id="{{s.id}}-prenom" type="text" value="{{s.v.prenom}}" readOnly="{{true}}" aria-invalid="{{s.h.prenom}}">
+              <sc-if value="{{s.h.prenom}}" hint-placeholder-val="{{false}}"><p class="fm-error"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg>{{s.e.prenom}}</p></sc-if>
+            </div>
+            <div class="fm-field">
+              <label class="fm-label" for="{{s.id}}-nom">Nom</label>
+              <input class="fm-input" id="{{s.id}}-nom" type="text" value="{{s.v.nom}}" readOnly="{{true}}" aria-invalid="{{s.h.nom}}">
+              <sc-if value="{{s.h.nom}}" hint-placeholder-val="{{false}}"><p class="fm-error"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg>{{s.e.nom}}</p></sc-if>
+            </div>
+          </div>
+          <div class="fm-field">
+            <label class="fm-label" for="{{s.id}}-email">E-mail</label>
+            <input class="fm-input" id="{{s.id}}-email" type="email" value="{{s.v.email}}" readOnly="{{true}}" aria-invalid="{{s.h.email}}">
+            <sc-if value="{{s.h.email}}" hint-placeholder-val="{{false}}"><p class="fm-error"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg>{{s.e.email}}</p></sc-if>
+          </div>
+          <div class="fm-field">
+            <label class="fm-label" for="{{s.id}}-tel">Téléphone <span class="fm-opt">(facultatif)</span></label>
+            <input class="fm-input" id="{{s.id}}-tel" type="tel" value="{{s.v.tel}}" readOnly="{{true}}">
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="fm-set">
+        <legend class="fm-legend">Votre projet</legend>
+        <div class="fm-fields">
+          <div class="fm-field">
+            <label class="fm-label" for="{{s.id}}-date">Date du mariage</label>
+            <p class="fm-hint">Pas encore fixée&nbsp;? Indiquez une date approximative.</p>
+            <input class="fm-input" id="{{s.id}}-date" type="date" value="{{s.v.date}}" readOnly="{{true}}" aria-invalid="{{s.h.date}}">
+            <sc-if value="{{s.h.date}}" hint-placeholder-val="{{false}}"><p class="fm-error"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg>{{s.e.date}}</p></sc-if>
+          </div>
+          <div class="fm-field">
+            <label class="fm-label" for="{{s.id}}-rdv">Rendez-vous découverte souhaité <span class="fm-opt">(facultatif)</span></label>
+            <input class="fm-input" id="{{s.id}}-rdv" type="datetime-local" value="{{s.v.rdv}}" readOnly="{{true}}">
+          </div>
+          <div class="fm-field">
+            <label class="fm-label" for="{{s.id}}-invites">Nombre d’invités</label>
+            <input class="fm-input" id="{{s.id}}-invites" type="number" value="{{s.v.invites}}" readOnly="{{true}}" aria-invalid="{{s.h.invites}}">
+            <sc-if value="{{s.h.invites}}" hint-placeholder-val="{{false}}"><p class="fm-error"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg>{{s.e.invites}}</p></sc-if>
+          </div>
+          <div class="fm-field">
+            <label class="fm-label" for="{{s.id}}-lieu">Lieu de réception <span class="fm-opt">(facultatif)</span></label>
+            <input class="fm-input" id="{{s.id}}-lieu" type="text" value="{{s.v.lieu}}" readOnly="{{true}}">
+          </div>
+          <div class="fm-field">
+            <label class="fm-label" for="{{s.id}}-msg">Message <span class="fm-opt">(facultatif)</span></label>
+            <textarea class="fm-input {{s.msgCls}}" id="{{s.id}}-msg" rows="4" value="{{s.v.msg}}" readOnly="{{true}}"></textarea>
+          </div>
+        </div>
+      </fieldset>
+      <div class="fm-field">
+        <div class="fm-check">
+          <input id="{{s.id}}-consent" type="checkbox" checked="{{s.v.consent}}" readOnly="{{true}}" aria-invalid="{{s.h.consent}}">
+          <label for="{{s.id}}-consent">J’accepte que Camille Roche utilise ces informations pour me recontacter au sujet de mon mariage.</label>
+        </div>
+        <sc-if value="{{s.h.consent}}" hint-placeholder-val="{{false}}"><p class="fm-error"><svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg>{{s.e.consent}}</p></sc-if>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 14px">
+        <button class="fm-submit" type="button"><svg class="ic" aria-hidden="true"><use href="#i-send"></use></svg>Envoyer mes coordonnées</button>
+        <p class="fm-privacy">Vos informations sont transmises uniquement à Camille Roche. <a href="#">Vos données personnelles</a></p>
+      </div>
+    </form>
+    </sc-if>
+
+    <sc-if value="{{s.sent}}" hint-placeholder-val="{{false}}">
+    <div class="fm-done" role="status">
+      <div class="fm-done-mark"><svg class="ic" aria-hidden="true"><use href="#i-check"></use></svg></div>
+      <h1 class="fm-title">Merci Inès, c’est envoyé&nbsp;!</h1>
+      <p class="fm-done-text">Camille Roche a bien reçu vos coordonnées et vous recontactera après le Salon du Mariage Clermont 2027.</p>
+      <a class="cc-save" href="#"><svg class="ic" aria-hidden="true"><use href="#i-userplus"></use></svg>Enregistrer le contact de Camille</a>
+      <a class="fm-link" href="#">Retour à la carte</a>
+    </div>
+    </sc-if>
+  </div>
+  </article>
+  </div>
+</section>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2227,"height":1880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var EMPTY = { prenom: '', nom: '', email: '', tel: '', date: '', rdv: '', invites: '', lieu: '', msg: '', consent: false };
+    var FULL = {
+      prenom: 'Inès', nom: 'Martin', email: 'ines.martin@laposte.net', tel: '06 39 98 17 52',
+      date: '2027-09-18', rdv: '2027-02-06T14:30', invites: '120', lieu: 'Grange du Lac, Aydat',
+      msg: 'Cérémonie laïque en extérieur. On aimerait un reportage de 14 h jusqu’à la soirée.', consent: true
+    };
+    var NOERR = { prenom: false, nom: false, email: false, date: false, invites: false, consent: false };
+    var ERRMSG = {
+      prenom: '', nom: 'Indiquez votre nom.',
+      email: 'Vérifiez l’adresse e-mail (exemple : nom@domaine.fr).',
+      date: 'Indiquez la date du mariage, même approximative.',
+      invites: 'Indiquez un nombre entier supérieur à 0, par exemple 80.',
+      consent: 'Cochez cette case pour envoyer vos coordonnées.'
+    };
+    var S = function (id, title, note, o) {
+      return Object.assign({
+        id: id, title: title, note: note, cls: 't-craie f-sobre s-arrondie',
+        form: true, sent: false, v: EMPTY, h: NOERR, e: ERRMSG, hasErrors: false, errCount: '', msgCls: ''
+      }, o);
+    };
+    return {
+      states: [
+        S('vide', 'Vide', 'Ouvert depuis le bouton d’événement. Le bandeau reprend la couleur d’accent du bouton.', {}),
+        S('erreurs', 'Erreurs à l’envoi', 'Récapitulatif en haut, message sous chaque champ, focus placé sur le premier champ en erreur.', {
+          v: Object.assign({}, EMPTY, { prenom: 'Inès', email: 'ines.martin@', invites: '0' }),
+          h: { prenom: false, nom: true, email: true, date: true, invites: true, consent: true },
+          hasErrors: true, errCount: 'Vos coordonnées n’ont pas été envoyées : 5 champs sont à corriger.'
+        }),
+        S('rempli', 'Rempli', 'Champs personnalisés : date, date et heure, nombre, texte. Sélecteurs natifs du téléphone. Focus visible sur le message.', { v: FULL, msgCls: 'is-focus' }),
+        S('envoye', 'Envoyé', 'Confirmation, puis enregistrement du contact proposé tout de suite.', { form: false, sent: true }),
+        S('minuit', 'Thème sombre (Minuit)', 'Les sélecteurs de date passent en sombre (color-scheme) ; la couleur d’erreur s’éclaircit.', { cls: 't-minuit f-editoriale s-carree', v: FULL })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
