@@ -26,18 +26,19 @@ test("ACC-004: rejected user sees rejected notice", async ({ page, loginAs }) =>
   await expect(page.getByTestId("dashboard-empty")).toHaveCount(0);
 });
 
-test("ACC-004: approved user sees empty dashboard without support link", async ({ page, loginAs }) => {
+test("ACC-004: approved user sees empty dashboard without support entry", async ({ page, loginAs }) => {
   await loginAs("seed-alice");
   await page.goto("/dashboard");
   await expect(page.getByTestId("dashboard-empty")).toBeVisible();
   await expect(page.getByTestId("nav-support")).toHaveCount(0);
+  await expect(page.getByTestId("tab-support")).toHaveCount(0);
 });
 
-test("ACC-004: admin sees the support link on the dashboard", async ({ page, loginAs }) => {
+test("ACC-004 ADM-001: admin sees the support entry of the navigation", async ({ page, loginAs }) => {
   await loginAs("seed-admin");
   await page.goto("/dashboard");
   await expect(page.getByTestId("dashboard-empty")).toBeVisible();
-  await expect(page.getByTestId("nav-support")).toBeVisible();
+  await expect(page.locator('[data-testid="nav-support"]:visible, [data-testid="tab-support"]:visible')).toBeVisible();
 });
 
 test("ACC-001: brand-new subject lands on pending notice", async ({ page, loginAs }) => {

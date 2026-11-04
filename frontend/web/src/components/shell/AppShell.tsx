@@ -48,10 +48,11 @@ export function useShellSlots(slots: ShellSlots): void {
  */
 export function AppShell({
   user,
+  isAdmin = false,
   onSignOut,
   children,
   ...pageSlots
-}: ShellSlots & { user: ShellUser; onSignOut: () => void; children: ReactNode }) {
+}: ShellSlots & { user: ShellUser; isAdmin?: boolean; onSignOut: () => void; children: ReactNode }) {
   const current = currentNavKey(usePathname());
   const [ownSlots, setOwnSlots] = useState<ShellSlots>({});
   const slots = { ...pageSlots, ...withoutUndefined(ownSlots) };
@@ -59,7 +60,7 @@ export function AppShell({
     <ShellSlotsContext.Provider value={setOwnSlots}>
       <div className="@container">
         <div className="grid min-h-dvh grid-cols-1 @min-[848px]:grid-cols-[248px_minmax(0,1fr)]">
-          <SideNav current={current} user={user} onSignOut={onSignOut} />
+          <SideNav current={current} user={user} isAdmin={isAdmin} onSignOut={onSignOut} />
           <div className="flex min-w-0 flex-col">
             <TopBar
               breadcrumb={slots.breadcrumb}
@@ -83,7 +84,7 @@ export function AppShell({
                 {slots.saveBar}
               </div>
             ) : (
-              <TabBar current={current} />
+              <TabBar current={current} isAdmin={isAdmin} />
             )}
           </div>
         </div>

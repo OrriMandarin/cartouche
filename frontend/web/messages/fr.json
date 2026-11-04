@@ -111,8 +111,7 @@
   },
   "dashboard": {
     "title": "Mes cartes",
-    "summary": "{total, plural, one {# carte} other {# cartes}} · {active, plural, one {# active} other {# actives}}",
-    "support": "Support"
+    "summary": "{total, plural, one {# carte} other {# cartes}} · {active, plural, one {# active} other {# actives}}"
   },
   "cards": {
     "title": "Mes cartes",
@@ -197,7 +196,10 @@
   },
   "support": {
     "title": "Support",
-    "backToDashboard": "Retour au tableau de bord",
+    "crumbs": {
+      "user": "Compte",
+      "card": "Carte"
+    },
     "forbidden": "Accès réservé",
     "loading": "Chargement…",
     "empty": "Aucun compte dans ce statut.",
@@ -224,14 +226,13 @@
     },
     "cards": {
       "title": "Cartes",
-      "empty": "Cet utilisateur n'a aucune carte.",
+      "empty": "Cet utilisateur n’a aucune carte.",
       "untitled": "Carte sans nom",
       "view": "Voir",
-      "owner": "Propriétaire :",
+      "owner": "Propriétaire\u00a0:",
       "disable": "Désactiver (support)",
       "enable": "Lever le blocage",
-      "backToSupport": "Retour au support",
-      "userNotFound": "Utilisateur introuvable",
+        "userNotFound": "Utilisateur introuvable",
       "cardNotFound": "Carte introuvable"
     },
     "events": {
@@ -245,7 +246,7 @@
     "leads": {
       "title": "Contacts",
       "cardTitle": "Contacts — toute la carte",
-      "notice": "Consultation en lecture seule, enregistrée dans le journal d'audit",
+      "notice": "Consultation en lecture seule, enregistrée dans le journal d’audit",
       "backToEvents": "Retour aux événements",
       "eventNotFound": "Événement introuvable"
     }
@@ -916,6 +917,7 @@
     "cards": "Mes cartes",
     "contacts": "Contacts",
     "account": "Mon compte",
+    "support": "Support",
     "signOut": "Se déconnecter",
     "back": "Retour",
     "newCard": "Nouvelle carte",

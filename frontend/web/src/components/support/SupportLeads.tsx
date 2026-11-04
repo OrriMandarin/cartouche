@@ -1,9 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LeadList } from "@/components/events/LeadList";
+import { SupportBackLink } from "./SupportBackLink";
+import { SupportTitle } from "./SupportTitle";
 import type { LeadView } from "@/lib/events/types";
 
 /**
@@ -27,19 +29,18 @@ export function SupportLeads({
   const t = useTranslations("support.leads");
 
   return (
-    <section className="space-y-6">
-      <header className="space-y-2">
-        <Link href={backHref} data-testid="support-back" className="text-sm underline">
-          {t("backToEvents")}
-        </Link>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+    <section className="flex flex-col gap-5">
+      <header className="flex flex-col gap-1">
+        <SupportBackLink href={backHref}>{t("backToEvents")}</SupportBackLink>
+        <SupportTitle>{title}</SupportTitle>
         {subtitle ? (
-          <p data-testid="support-leads-subtitle" className="text-muted-foreground">
+          <p data-testid="support-leads-subtitle" className="text-app-muted">
             {subtitle}
           </p>
         ) : null}
       </header>
-      <Alert role="note" data-testid="support-leads-notice">
+      <Alert variant="info" role="note" data-testid="support-leads-notice">
+        <Info aria-hidden="true" />
         <AlertDescription>{t("notice")}</AlertDescription>
       </Alert>
       <LeadList load={load} actions={null} showEvent={showEvent} />

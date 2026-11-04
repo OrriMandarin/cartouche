@@ -10,7 +10,7 @@ export function SupportGuard({ children }: { children: ReactNode }) {
   const me = useMe();
   if (!me.is_admin) {
     return (
-      <p data-testid="support-forbidden" className="text-muted-foreground py-10 text-center text-lg">
+      <p data-testid="support-forbidden" className="text-app-muted py-10 text-center text-lg">
         {t("forbidden")}
       </p>
     );

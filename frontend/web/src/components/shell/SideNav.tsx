@@ -5,12 +5,22 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { BrandMark } from "./BrandMark";
 import { NAV_ICONS } from "./navItems";
-import { NAV_ENTRIES, type NavKey } from "@/lib/shell/nav";
+import { navEntries, type NavKey } from "@/lib/shell/nav";
 
 export type ShellUser = { name: string; email?: string | null };
 
 /** Side bar of the computer layout: brand, navigation, and the user at the bottom. */
-export function SideNav({ current, user, onSignOut }: { current: NavKey | null; user: ShellUser; onSignOut: () => void }) {
+export function SideNav({
+  current,
+  user,
+  isAdmin,
+  onSignOut,
+}: {
+  current: NavKey | null;
+  user: ShellUser;
+  isAdmin: boolean;
+  onSignOut: () => void;
+}) {
   const t = useTranslations("shell");
   return (
     <aside className="bg-app-surface border-app-border sticky top-0 hidden h-dvh flex-col gap-7 border-r px-3.5 py-5 @min-[848px]:flex">
@@ -19,7 +29,7 @@ export function SideNav({ current, user, onSignOut }: { current: NavKey | null; 
         {t("brand")}
       </span>
       <nav aria-label={t("navLabel")} className="flex flex-col gap-0.5">
-        {NAV_ENTRIES.map(({ key, href }) => {
+        {navEntries(isAdmin).map(({ key, href }) => {
           const Icon = NAV_ICONS[key];
           const active = current === key;
           return (

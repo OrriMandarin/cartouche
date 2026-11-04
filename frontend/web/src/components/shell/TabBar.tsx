@@ -3,17 +3,19 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { NAV_ICONS } from "./navItems";
-import { NAV_ENTRIES, type NavKey } from "@/lib/shell/nav";
+import { navEntries, type NavKey } from "@/lib/shell/nav";
 
-/** Bottom tab bar of the phone layout, with the same three entries as the side bar. */
-export function TabBar({ current }: { current: NavKey | null }) {
+/** Bottom tab bar of the phone layout, with the same entries as the side bar (four columns for an administrator). */
+export function TabBar({ current, isAdmin }: { current: NavKey | null; isAdmin: boolean }) {
   const t = useTranslations("shell");
+  const entries = navEntries(isAdmin);
   return (
     <nav
       aria-label={t("navLabel")}
-      className="bg-app-surface border-app-border sticky bottom-0 z-10 grid grid-cols-3 border-t px-2 pt-1.5 pb-2.5 @min-[848px]:hidden"
+      style={{ gridTemplateColumns: `repeat(${entries.length}, minmax(0, 1fr))` }}
+      className="bg-app-surface border-app-border sticky bottom-0 z-10 grid border-t px-2 pt-1.5 pb-2.5 @min-[848px]:hidden"
     >
-      {NAV_ENTRIES.map(({ key, href }) => {
+      {entries.map(({ key, href }) => {
         const Icon = NAV_ICONS[key];
         const active = current === key;
         return (

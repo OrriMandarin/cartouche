@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AccountGate, useMe } from "@/components/account/AccountGate";
+import { AccountGate } from "@/components/account/AccountGate";
 import { CardList, CardListEmpty, CardListSkeleton } from "@/components/cards/CardList";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import type { CardView } from "@/lib/cards/types";
 function DashboardContent() {
   const t = useTranslations("dashboard");
   const tCards = useTranslations("cards");
-  const me = useMe();
   const api = useApi();
   const [cards, setCards] = useState<CardView[] | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -54,13 +53,6 @@ function DashboardContent() {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          {me.is_admin ? (
-            <Button asChild variant="secondary">
-              <Link href="/support" data-testid="nav-support">
-                {t("support")}
-              </Link>
-            </Button>
-          ) : null}
           {cards !== null && cards.length > 0 ? (
             <Button asChild className="@max-[847px]:hidden">
               <Link href="/dashboard/cards/new" data-testid="new-card">

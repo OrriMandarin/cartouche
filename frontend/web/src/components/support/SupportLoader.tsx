@@ -56,13 +56,13 @@ export function SupportLoader<T>({
   switch (state.kind) {
     case "loading":
       return (
-        <p data-testid="support-loading" className="text-muted-foreground py-6 text-center">
+        <p data-testid="support-loading" className="text-app-muted py-6 text-center">
           {t("loading")}
         </p>
       );
     case "not-found":
       return (
-        <p data-testid="support-not-found" className="text-muted-foreground py-10 text-center text-lg">
+        <p data-testid="support-not-found" className="text-app-muted py-10 text-center text-lg">
           {notFound}
         </p>
       );

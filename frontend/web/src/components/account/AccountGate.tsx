@@ -170,7 +170,7 @@ export function AccountGate({ children, ...shell }: ShellSlots & { children: Rea
 
   if (state.kind === "ready" && state.me.status === "approved") {
     return (
-      <AppShell user={{ name, email: state.me.email }} onSignOut={() => void signOut()} {...shell}>
+      <AppShell user={{ name, email: state.me.email }} isAdmin={state.me.is_admin} onSignOut={() => void signOut()} {...shell}>
         <MeContext.Provider value={state.me}>{children}</MeContext.Provider>
       </AppShell>
     );

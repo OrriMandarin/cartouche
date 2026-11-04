@@ -42,7 +42,7 @@ describe("SupportLeads", () => {
     show();
 
     expect(screen.getByTestId("support-leads-notice")).toHaveTextContent(
-      "Consultation en lecture seule, enregistrée dans le journal d'audit",
+      "Consultation en lecture seule, enregistrée dans le journal d’audit",
     );
     expect(await screen.findByTestId("lead-row-lead-zoe")).toHaveTextContent("Zoé Lefèvre ✨");
     expect(screen.getByTestId("lead-row-lead-bot")).toBeVisible();

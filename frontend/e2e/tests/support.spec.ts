@@ -7,6 +7,37 @@ test("ADM-001: non-admin sees access restricted", async ({ page, loginAs }) => {
   await expect(page.getByTestId("count-pending")).toHaveCount(0);
 });
 
+test("ADM-001 the Support entry is not offered to a user who is not an administrator", async ({ page, loginAs }) => {
+  await loginAs("seed-alice");
+  await page.goto("/dashboard");
+  await expect(page.getByTestId("dashboard-empty")).toBeVisible();
+  await expect(page.getByTestId("nav-support")).toHaveCount(0);
+  await expect(page.getByTestId("tab-support")).toHaveCount(0);
+});
+
+test("ADM-001 the Support entry shows for administrators and marks the support pages", async ({ page, loginAs }, testInfo) => {
+  const phone = testInfo.project.name === "mobile";
+  const visibleEntry = page.getByTestId(phone ? "tab-support" : "nav-support");
+
+  await loginAs("seed-admin");
+  await page.goto("/dashboard");
+  await expect(visibleEntry).toBeVisible();
+  await visibleEntry.click();
+  await expect(page).toHaveURL(/\/support$/);
+  await expect(visibleEntry).toHaveAttribute("aria-current", "page");
+  if (phone) await expect(page.getByTestId("shell-title")).toHaveText("Support");
+  await page.getByTestId("tab-approved").click();
+  await page.getByTestId("user-link-seed-alice").click();
+  await expect(page).toHaveURL(/\/support\/users\//);
+  await expect(visibleEntry).toHaveAttribute("aria-current", "page");
+  if (phone) {
+    await page.getByTestId("shell-back").click();
+  } else {
+    await page.getByRole("navigation", { name: "Fil d’Ariane" }).getByRole("link", { name: "Support" }).click();
+  }
+  await expect(page).toHaveURL(/\/support$/);
+});
+
 test("ADM-002: admin sees pending count", async ({ page, loginAs }) => {
   await loginAs("seed-admin");
   await page.goto("/support");

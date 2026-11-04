@@ -34,6 +34,26 @@ describe("AppShell", () => {
     expect(within(side!).getByTestId("account-link")).toHaveAttribute("href", "/dashboard/account");
   });
 
+  test("ADM-001 the Support entry shows only for administrators, in the side bar and the tab bar", () => {
+    const { unmount } = renderShell("/dashboard");
+    expect(screen.queryByTestId("nav-support")).toBeNull();
+    expect(screen.queryByTestId("tab-support")).toBeNull();
+    unmount();
+
+    renderShell("/support/users/u1", { isAdmin: true });
+    const [side] = screen.getAllByRole("navigation", { name: "Navigation principale" });
+    expect(within(side!).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Mes cartes",
+      "Contacts",
+      "Mon compte",
+      "Support",
+    ]);
+    expect(screen.getByTestId("nav-support")).toHaveAttribute("href", "/support");
+    expect(screen.getByTestId("nav-support")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByTestId("tab-support")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByTestId("account-link")).not.toHaveAttribute("aria-current");
+  });
+
   test("EDI-022 the pages of a card keep Mes cartes current", () => {
     renderShell("/dashboard/cards/abc/events");
     expect(screen.getByTestId("nav-cards")).toHaveAttribute("aria-current", "page");

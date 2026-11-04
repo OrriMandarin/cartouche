@@ -43,7 +43,7 @@ describe("UserCards", () => {
 
   test("ADM-006 an account without card says so", () => {
     renderWithIntl(<UserCards user={alice} cards={[]} />);
-    expect(screen.getByTestId("support-user-no-cards")).toHaveTextContent("Cet utilisateur n'a aucune carte.");
+    expect(screen.getByTestId("support-user-no-cards")).toHaveTextContent("Cet utilisateur n’a aucune carte.");
   });
 
   test("ADM-016 each card links to its events", () => {

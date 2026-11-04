@@ -21,14 +21,17 @@ export function UserCards({ user, cards }: { user: AdminUser; cards: CardView[] 
 
   return (
     <div className="space-y-6">
-      <dl className="bg-card grid gap-2 rounded-lg border p-4 sm:grid-cols-[auto_1fr]" data-testid="support-user-profile">
-        <dt className="text-muted-foreground">{t("columns.name")}</dt>
+      <dl
+        className="bg-app-surface border-app-border rounded-app-lg shadow-app-sm grid items-center gap-x-6 gap-y-2 border p-4 @min-[600px]:grid-cols-[auto_1fr] @min-[600px]:p-6"
+        data-testid="support-user-profile"
+      >
+        <dt className="text-app-muted">{t("columns.name")}</dt>
         <dd data-testid="support-user-name" className="font-medium">
           {user.display_name || user.email || user.subject}
         </dd>
-        <dt className="text-muted-foreground">{t("columns.email")}</dt>
+        <dt className="text-app-muted">{t("columns.email")}</dt>
         <dd data-testid="support-user-email">{user.email}</dd>
-        <dt className="text-muted-foreground">{t("columns.status")}</dt>
+        <dt className="text-app-muted">{t("columns.status")}</dt>
         <dd>
           <Badge variant={STATUS_VARIANT[user.status]} data-testid="support-user-status">
             {t(`status.${user.status}`)}
@@ -36,31 +39,31 @@ export function UserCards({ user, cards }: { user: AdminUser; cards: CardView[] 
         </dd>
       </dl>
 
-      <h2 className="text-xl font-semibold">{t("cards.title")}</h2>
+      <h2 className="text-xl leading-[1.3] font-[650] tracking-[-0.01em]">{t("cards.title")}</h2>
       {cards.length === 0 ? (
-        <p data-testid="support-user-no-cards" className="text-muted-foreground py-6 text-center">
+        <p data-testid="support-user-no-cards" className="text-app-muted rounded-app-lg border border-dashed p-4 text-sm">
           {t("cards.empty")}
         </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="flex flex-col gap-3">
           {cards.map((card) => (
             <li
               key={card.id}
               data-testid={`support-card-row-${card.slug}`}
-              className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
+              className="bg-app-surface border-app-border rounded-app-lg shadow-app-sm flex flex-wrap items-center justify-between gap-3 border p-4"
             >
               <div className="min-w-0">
                 <p className="truncate font-semibold">{cardDisplayName(card.content) ?? t("cards.untitled")}</p>
-                <p className="text-muted-foreground font-mono text-xs">{card.slug}</p>
+                <p className="text-app-muted font-mono text-xs">{card.slug}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <CardStatusBadge status={card.status} slug={card.slug} />
-                <Button asChild size="sm" variant="outline">
+                <Button asChild size="sm" variant="secondary">
                   <Link href={`/support/cards/${card.id}`} data-testid={`support-card-view-${card.slug}`}>
                     {t("cards.view")}
                   </Link>
                 </Button>
-                <Button asChild size="sm" variant="outline">
+                <Button asChild size="sm" variant="secondary">
                   <Link href={`/support/cards/${card.id}/events`} data-testid={`support-card-events-${card.slug}`}>
                     {t("events.open")}
                   </Link>
