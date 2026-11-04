@@ -13,7 +13,6 @@ import {
   FONT_PAIRS,
   THEME_PRESETS,
   type ButtonShape,
-  type ThemeBackground,
   type ThemePreset,
   type ThemeSettings,
 } from "@/lib/theme/presets";
