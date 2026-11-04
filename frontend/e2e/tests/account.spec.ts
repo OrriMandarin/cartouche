@@ -58,3 +58,28 @@ test("ACC-001: signed-out visitor is sent to the login page", async ({ page }) =
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId("login-as-seed-alice")).toBeVisible();
 });
+
+test("ACC-011 ACC-026 a pending account sees its email and can sign out", async ({ page, loginAs }) => {
+  await loginAs("seed-carol");
+  await page.goto("/dashboard");
+  await expect(page.getByTestId("account-pending")).toContainText("Ton compte est en attente de validation");
+  await expect(page.getByTestId("account-pending")).toContainText("carole@example.test");
+  await page.getByTestId("sign-out").click();
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test("ACC-026 a suspended account can contact support", async ({ page, loginAs }) => {
+  await loginAs("seed-dan");
+  await page.goto("/dashboard");
+  // The address is percent-encoded by `supportMailto()`.
+  await expect(page.getByTestId("account-support")).toHaveAttribute(
+    "href",
+    /^mailto:support(@|%40)cartouche\.invalid$/,
+  );
+});
+
+test("ACC-025 the sign-in page links to the terms and the privacy policy", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.getByRole("link", { name: "Conditions générales d’utilisation" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Politique de confidentialité" })).toBeVisible();
+});

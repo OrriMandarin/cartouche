@@ -3,6 +3,7 @@
 import { ClerkProvider, useAuth as useClerkAuth, useClerk, useUser } from "@clerk/nextjs";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { AuthContext } from "../context";
+import { clerkAppearance } from "../clerk-appearance";
 import type { AuthContextValue } from "../types";
 
 function ClerkBridge({ children }: { children: ReactNode }) {
@@ -49,7 +50,7 @@ function ClerkBridge({ children }: { children: ReactNode }) {
 /** spec: ACC-014. Default adapter. Client-side hooks only: no Clerk secret is needed at runtime. */
 export function ClerkAuthAdapter({ children }: { children: ReactNode }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={clerkAppearance}>
       <ClerkBridge>{children}</ClerkBridge>
     </ClerkProvider>
   );
