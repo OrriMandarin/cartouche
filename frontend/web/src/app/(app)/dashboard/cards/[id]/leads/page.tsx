@@ -11,6 +11,7 @@ import { LeadList } from "@/components/events/LeadList";
 import { useApi } from "@/lib/api";
 import { cardDisplayName } from "@/lib/cards/display-name";
 import type { CardView } from "@/lib/cards/types";
+import { countLeads } from "@/lib/events/export-count";
 import { ownerLeadActions } from "@/lib/events/lead-actions";
 
 function CardLeads({ card }: { card: CardView }) {
@@ -38,7 +39,16 @@ function CardLeads({ card }: { card: CardView }) {
         load={load}
         actions={actions}
         showEvent
-        toolbar={<ExportDialog scope={{ kind: "card", id: card.id }} />}
+        toolbar={(leads) =>
+          leads === null ? null : (
+            <div>
+              <ExportDialog
+                scope={{ kind: "card", id: card.id }}
+                summary={{ cardSlug: card.slug, eventTitle: null, counts: countLeads(leads) }}
+              />
+            </div>
+          )
+        }
       />
     </section>
   );

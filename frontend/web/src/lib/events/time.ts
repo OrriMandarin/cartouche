@@ -61,3 +61,27 @@ export function formatEventDate(iso: string, zone: string): string {
     new Date(iso),
   );
 }
+
+const shortDate = (zone: string, weekday: boolean) =>
+  new Intl.DateTimeFormat("fr-FR", {
+    weekday: weekday ? "short" : undefined,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: zone,
+  });
+const shortTime = (zone: string) =>
+  new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+
+/** A contact's date in the table, in French and in `zone`: « 7 févr. 2027 · 16:42 » (LEA-014). */
+export function formatLeadRowDate(iso: string, zone: string): string {
+  const date = new Date(iso);
+  return `${shortDate(zone, false).format(date)} · ${shortTime(zone).format(date)}`;
+}
+
+/** A moment of a contact in `zone`: « Dim. 7 févr. 2027 à 16:42 » with the weekday, « 7 févr. 2027 à 16:42 » without (LEA-003). */
+export function formatLeadMoment(iso: string, zone: string, withWeekday: boolean): string {
+  const date = new Date(iso);
+  const day = shortDate(zone, withWeekday).format(date);
+  return `${day.charAt(0).toLocaleUpperCase("fr-FR")}${day.slice(1)} à ${shortTime(zone).format(date)}`;
+}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { formatEventDate, fromLocalInput, joinLocalInput, splitLocalInput, toLocalInput, userTimeZone, zoneLabel } from "./time";
+import { formatEventDate, formatLeadMoment, formatLeadRowDate, fromLocalInput, joinLocalInput, splitLocalInput, toLocalInput, userTimeZone, zoneLabel } from "./time";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -78,5 +78,14 @@ describe("time", () => {
     // A date alone starts at midnight; a time without a date stands for nothing.
     expect(joinLocalInput("2027-04-02", "")).toBe("2027-04-02T00:00");
     expect(joinLocalInput("", "10:30")).toBe("");
+  });
+
+  test("LEA-014 a contact's date in the table is short, in the user's zone", () => {
+    expect(formatLeadRowDate("2027-02-07T15:42:00Z", "Europe/Paris")).toBe("7 févr. 2027 · 16:42");
+  });
+
+  test("LEA-003 a contact's moment: with the weekday as the sheet title line, without it for the consent", () => {
+    expect(formatLeadMoment("2027-02-07T15:42:00Z", "Europe/Paris", true)).toBe("Dim. 7 févr. 2027 à 16:42");
+    expect(formatLeadMoment("2027-02-07T15:42:00Z", "Europe/Paris", false)).toBe("7 févr. 2027 à 16:42");
   });
 });

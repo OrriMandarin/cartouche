@@ -16,7 +16,17 @@ vi.mock("@/lib/api", () => ({ useApi: () => api }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "card-1" }) }));
 vi.mock("@/components/account/AccountGate", () => ({ AccountGate: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("@/components/events/ExportDialog", () => ({
-  ExportDialog: ({ scope }: { scope: { kind: string; id: string } }) => <p data-testid="export-stub">{`${scope.kind}:${scope.id}`}</p>,
+  ExportDialog: ({
+    scope,
+    summary,
+  }: {
+    scope: { kind: string; id: string };
+    summary: { cardSlug: string; eventTitle: string | null; counts: { total: number } };
+  }) => (
+    <p data-testid="export-stub">
+      {[scope.kind, scope.id, summary.cardSlug, summary.eventTitle, summary.counts.total].filter((part) => part !== null).join(":")}
+    </p>
+  ),
 }));
 const lead = leadView({ id: "lead-1" });
 vi.mock("@/components/events/LeadList", () => ({
@@ -29,10 +39,10 @@ vi.mock("@/components/events/LeadList", () => ({
     load: () => Promise<LeadView[]>;
     actions: LeadActions | null;
     showEvent: boolean;
-    toolbar?: React.ReactNode;
+    toolbar?: (leads: LeadView[] | null) => React.ReactNode;
   }) => (
     <div data-testid="lead-list-stub" data-show-event={String(showEvent)}>
-      {toolbar}
+      {toolbar?.([lead])}
       <button data-testid="stub-load" onClick={() => void load()} />
       <button data-testid="stub-spam" onClick={() => void actions?.setSpam(lead, true)} />
       <button data-testid="stub-remove" onClick={() => void actions?.remove(lead)} />
@@ -80,7 +90,7 @@ describe("CardLeadsPage", () => {
   test("LEA-021 LNK-008 the toolbar exports the whole card, whatever its status", async () => {
     get.mockResolvedValue({ data: cardView({ id: "card-1", status: "disabled" }) });
     renderWithIntl(<CardLeadsPage />);
-    expect(await screen.findByTestId("export-stub")).toHaveTextContent("card:card-1");
+    expect(await screen.findByTestId("export-stub")).toHaveTextContent("card:card-1:alice-durand:1");
   });
 
   test("ACC-017 the card of someone else or a missing one reads as « Carte introuvable »", async () => {

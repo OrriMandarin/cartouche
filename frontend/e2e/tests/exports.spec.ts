@@ -144,7 +144,8 @@ test("LEA-005 a deleted lead is not exported", async ({ page, api }) => {
   const zoe = (await api.leads("seed-alice", mariageId)).find((lead) => lead.answers.first_name === "Zoé");
   if (!zoe) throw new Error("no seeded contact named Zoé");
   await page.goto(eventLeadsUrl());
-  await page.getByTestId(`lead-delete-${zoe.id}`).click();
+  await page.getByTestId(`lead-open-${zoe.id}`).click();
+  await page.getByTestId("lead-detail-delete").click();
   await page.getByTestId("lead-delete-confirm").click();
   await expect(page.getByTestId(`lead-row-${zoe.id}`)).toHaveCount(0);
 
