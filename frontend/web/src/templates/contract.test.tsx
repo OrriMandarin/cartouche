@@ -114,18 +114,19 @@ describe.each(listTemplates())("template $id", (template) => {
     expect(screen.queryByTestId(IDS.headerVideo)).toBeNull();
   });
 
-  test("PUB-004 PUB-005 PUB-006 header video is muted, looping, inline, with poster", () => {
+  test("PUB-004 PUB-005 PUB-006 header video is muted, inline, not looping by attribute, with poster", () => {
     const html = renderToString(element(template, { card: { header: sampleVideoHeader } }));
-    for (const attribute of ["autoplay", "loop", "muted", "playsinline"]) {
-      expect(html.toLowerCase()).toMatch(new RegExp(`<video[^>]* ${attribute}(=|\\s|>)`));
+    expect(html.toLowerCase()).toMatch(/<video[^>]* playsinline(=|\s|>)/);
+    for (const attribute of ["autoplay", "loop"]) {
+      expect(html.toLowerCase()).not.toMatch(new RegExp(`<video[^>]* ${attribute}(=|\\s|>)`));
     }
 
     render(element(template, { card: { header: sampleVideoHeader } }));
     const video = screen.getByTestId(IDS.headerVideo) as HTMLVideoElement;
     expect(video.tagName).toBe("VIDEO");
     expect(video.muted).toBe(true);
-    expect(video.loop).toBe(true);
-    expect(video.autoplay).toBe(true);
+    expect(video.loop).toBe(false);
+    expect(video.autoplay).toBe(false);
     expect(video).toHaveAttribute("playsinline");
     expect(video).toHaveAttribute("src", sampleVideoHeader.video_url);
     expect(video).toHaveAttribute("poster", "https://media.example.test/cards/c1/v1/w1080.webp");

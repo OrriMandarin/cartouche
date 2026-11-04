@@ -19,6 +19,7 @@ import {
   splitLinksForIcons,
   type Indexed,
 } from "../link-display";
+import { HeaderMedia } from "../HeaderMedia";
 import "./classique.css";
 import type { ClassiqueSettings } from "./settings";
 
@@ -28,43 +29,6 @@ function srcSet(media: MediaView): string {
 
 function largestImageUrl(media: MediaView): string | undefined {
   return media.images.at(-1)?.url;
-}
-
-/** The header image or video; without media, a short band tinted with the accent (PUB-004, PUB-023). */
-function HeaderMedia({ header }: { header: MediaView | null | undefined }) {
-  if (header?.kind === "video" && header.video_url) {
-    return (
-      <div className="cc-media">
-        <video
-          data-testid={TEST_IDS.headerVideo}
-          src={header.video_url}
-          poster={largestImageUrl(header)}
-          autoPlay
-          muted
-          loop
-          playsInline
-          aria-hidden="true"
-        />
-      </div>
-    );
-  }
-  const src = header ? largestImageUrl(header) : undefined;
-  if (!header || !src) {
-    return <div className="cc-media is-empty" data-testid={TEST_IDS.headerEmpty} aria-hidden="true" />;
-  }
-  return (
-    <div className="cc-media">
-      {/* A plain img: media URLs are absolute and external, and next/image would add an optimizer hop. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        data-testid={TEST_IDS.headerImage}
-        src={src}
-        srcSet={srcSet(header)}
-        sizes="(min-width: 40rem) 28rem, 100vw"
-        alt=""
-      />
-    </div>
-  );
 }
 
 function sortedByStart(events: PublicEvent[]): PublicEvent[] {
@@ -147,7 +111,7 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
   return (
     <article className="cc" data-mode={mode} data-shape={theme.buttonShape} style={themeToCssVars(theme)}>
       <header className="cc-head">
-        <HeaderMedia header={card.header} />
+        <HeaderMedia media={card.header} labels={{ pause: labels.pauseVideo, play: labels.playVideo }} />
         {card.avatar && avatarSrc ? (
           <div className="cc-avatar">
             {/* eslint-disable-next-line @next/next/no-img-element -- see the header image */}

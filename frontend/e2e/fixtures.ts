@@ -4,6 +4,13 @@ import { promisify } from "node:util";
 import { test as base, expect, request, type APIRequestContext } from "@playwright/test";
 import { API_URL, EVENTS_NOW } from "./env";
 
+/** How a media is framed on upload (MED-026, MED-028); what is left out takes the server's default. */
+export interface UploadFraming {
+  crop?: { x: number; y: number; width: number; height: number };
+  loop?: { start: number; end: number };
+  posterTime?: number;
+}
+
 const execFileAsync = promisify(execFile);
 
 const COMPOSE_FILE = "../../compose.test.yml";
@@ -170,13 +177,14 @@ export type TestApi = APIRequestContext & {
   updateEvent(subject: string, id: string, patch: Record<string, unknown>): Promise<EventView>;
   /** The contacts of an event as its owner sees them, newest first, spam ones included. */
   leads(subject: string, eventId: string): Promise<LeadView[]>;
-  /** Uploads a header or avatar media (with `poster` for a video); the card shows it once saved with its id. */
+  /** Uploads a header or avatar media (with `poster` for a video, and optionally its `framing`); the card shows it once saved with its id. */
   uploadMedia(
     subject: string,
     cardId: string,
     slot: "header" | "avatar",
     file: UploadFile,
     poster?: UploadFile,
+    framing?: UploadFraming,
   ): Promise<MediaView>;
 };
 
@@ -277,10 +285,18 @@ async function createApi(): Promise<TestApi> {
       slot: "header" | "avatar",
       file: UploadFile,
       poster?: UploadFile,
+      framing: UploadFraming = {},
     ) {
       const response = await context.post(`/api/cards/${cardId}/media`, {
         headers: await authHeaders(subject),
-        multipart: { slot, file, ...(poster ? { poster } : {}) },
+        multipart: {
+          slot,
+          file,
+          ...(poster ? { poster } : {}),
+          ...(framing.crop ? { crop: JSON.stringify(framing.crop) } : {}),
+          ...(framing.loop ? { loop: JSON.stringify(framing.loop) } : {}),
+          ...(framing.posterTime !== undefined ? { poster_time: String(framing.posterTime) } : {}),
+        },
       });
       await ensureOk(`POST /api/cards/${cardId}/media`, response);
       return (await response.json()) as MediaView;

@@ -49,7 +49,7 @@ test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page 
   await expect(video).toBeVisible();
   expect(await video.getAttribute("poster")).toMatch(/\.webp$/);
   await expect(video).toHaveJSProperty("muted", true);
-  await expect(video).toHaveJSProperty("loop", true);
+  await expect(video).toHaveJSProperty("loop", false);
   await expect(video).toHaveAttribute("playsinline", "");
 });
 

@@ -1,6 +1,7 @@
 // Template contract (TPL-002, TPL-014). A template is a plain function component: no hook, no event
 // handler, no server-only or browser-only API, so a Server Component (public page) and the client
-// preview of the editor render it unchanged. Fixed texts come in through `labels`, translated by the
+// preview of the editor render it unchanged. A template may render the client components of `src/templates/`
+// (the header video needs state), but stays free of hooks itself. Fixed texts come in through `labels`, translated by the
 // caller; the CSS variables of `themeToCssVars` carry the theme.
 import type { components } from "@cartouche/api-client";
 import type { ReactElement } from "react";

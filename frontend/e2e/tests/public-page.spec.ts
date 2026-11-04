@@ -2,8 +2,9 @@ import type { Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { TEMPLATE_IDS } from "../../web/src/templates/ids";
 import { WEB_URL } from "../env";
-import { expect, test } from "../fixtures";
+import { expect, test, type TestApi, type UploadFraming } from "../fixtures";
 
+const fixture = (name: string) => new URL(`../fixtures/${name}`, import.meta.url).pathname;
 const UNAVAILABLE_TITLE = "Cette carte n’est pas disponible";
 const UNAVAILABLE_TEXT = "Le lien est peut-être incorrect, ou la carte n’est plus active.";
 const MARIAGE = "Salon du Mariage Clermont 2027";
@@ -204,6 +205,48 @@ test("PUB-038 reduced motion stops the event sheen and the pulse", async ({ page
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
   expect(await animations()).toEqual({ sheen: "none", dot: "none" });
+});
+
+/** Gives Alice's card a framed video header and returns once the card is saved with it. */
+async function giveAliceFramedVideo(api: TestApi, framing: UploadFraming) {
+  const media = await api.uploadMedia(
+    "seed-alice",
+    aliceCardId,
+    "header",
+    { name: "header-2s.mp4", mimeType: "video/mp4", buffer: await readFile(fixture("header-2s.mp4")) },
+    { name: "poster.jpg", mimeType: "image/jpeg", buffer: await readFile(fixture("avatar.jpg")) },
+    framing,
+  );
+  await api.updateCard("seed-alice", aliceCardId, { header_media_id: media.id });
+}
+
+test("PUB-031 the pause button pauses the header video", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, { loop: { start: 0.5, end: 1.8 } });
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  const toggle = page.getByTestId("header-video-toggle");
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => !el.paused)).toBe(true);
+  await expect(toggle).toHaveAccessibleName("Mettre la vidéo en pause");
+  await toggle.click();
+  await expect(toggle).toHaveAccessibleName("Lire la vidéo");
+  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(true);
+});
+
+test("MED-032 the video starts at its loop start", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, { loop: { start: 0.5, end: 1.8 } });
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime >= 0.5 && !el.paused)).toBe(true);
+});
+
+test("PUB-005 reduced motion keeps the poster", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, { loop: { start: 0.5, end: 1.8 } });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect(page.getByTestId("header-video-toggle")).toHaveAccessibleName("Lire la vidéo");
+  await page.waitForTimeout(500);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(true);
 });
 
 test.describe("without JavaScript", () => {
