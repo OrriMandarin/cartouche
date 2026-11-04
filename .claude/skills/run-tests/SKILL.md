@@ -69,6 +69,12 @@ These tests depend on the clock: in Rust the harness (`tests/common/`) provides 
 - Fonts: listen to `page.on("request")` and keep the URLs ending in `.woff2`; the public page must download only the files of its pair (TPL-012), and wait for `networkidle` before asserting (see `public-page.spec.ts`).
 - Reduced motion: call `page.emulateMedia({ reducedMotion: "reduce" })` before `page.goto` (PUB-005, PUB-038); the header video then shows its poster and the animations stop.
 
+## Toasts, Radix dialogs and browsers in e2e
+
+- Toasts are raised through `lib/toast.ts` and rendered by the Radix toaster; assert on the toast text with `getByText` or `getByRole("status")`.
+- Radix dialogs (alert dialog, sheet, dropdown menu) render in a portal. The shell shows one set of controls per breakpoint (side bar on a desktop, tab bar on a phone), so a test id can exist twice in the DOM: target the visible one, for example `[data-testid^="new-card"]:visible`.
+- The Playwright browsers must match the pinned Playwright version; after a version bump, install them with `pnpm --dir frontend --filter e2e exec playwright install chromium webkit`.
+
 ## Support access, account deletion and blocked slugs
 
 Rules: `ADM-007`, `ADM-008`, `ADM-016` to `ADM-020` (`spec/admin-support.md`, support views of events and leads and their audit), `ACC-018` to `ACC-024` (`spec/account-auth.md`, account deletion), `LNK-015`, `LNK-031` to `LNK-033` (`spec/card-links.md`, blocked slugs).
