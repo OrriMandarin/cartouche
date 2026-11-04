@@ -8,7 +8,7 @@ const get = vi.fn();
 const post = vi.fn();
 const api = { GET: get, POST: post };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), usePathname: () => "/support" }));
 
 import SupportPage from "./page";
 

@@ -167,8 +167,9 @@ test("EDI-021 leaving the event editor with unsaved changes asks first", async (
     asked.push(dialog.type());
     void dialog.dismiss();
   });
-  for (const link of ["event-back", "account-link"]) {
-    await page.getByTestId(link).click();
+  const accountEntry = page.locator('[data-testid="account-link"]:visible, [data-testid="tab-account"]:visible');
+  for (const link of [page.getByTestId("event-back"), accountEntry]) {
+    await link.click();
     await expect(page).toHaveURL(new RegExp(`/events/${mariage}$`));
     await expect(page.getByTestId("event-title")).toHaveValue(`${MARIAGE} ✨`);
   }

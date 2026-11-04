@@ -10,7 +10,7 @@ const get = vi.fn();
 const api = { GET: get, DELETE: vi.fn() };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
 const replace = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname: () => "/dashboard" }));
 
 import { AccountGate, useMe } from "./AccountGate";
 
@@ -100,12 +100,12 @@ describe("AccountGate", () => {
     expect(screen.queryByTestId("child")).toBeNull();
   });
 
-  test("header shows the signed-in name and signs out", async () => {
+  test("the shell shows the signed-in name and signs out", async () => {
     get.mockResolvedValue(me("approved"));
     const signOut = vi.fn(async () => undefined);
     renderGate({ signOut });
     await screen.findByTestId("child");
-    expect(screen.getByTestId("account-header")).toHaveTextContent("Alice");
+    expect(screen.getByTestId("shell-user-name")).toHaveTextContent("Alice");
     fireEvent.click(screen.getByTestId("sign-out"));
     expect(signOut).toHaveBeenCalledTimes(1);
   });
@@ -114,10 +114,12 @@ describe("AccountGate", () => {
     get.mockResolvedValue(me("pending"));
     renderGate();
     await screen.findByTestId("account-pending");
+    expect(screen.getByTestId("account-header")).toHaveTextContent("Alice");
+    expect(screen.queryByTestId("account-link")).toBeNull();
     expect(screen.getByTestId("sign-out")).toBeInTheDocument();
   });
 
-  test("ACC-019 the header links to Mon compte", async () => {
+  test("ACC-019 EDI-022 the navigation links to Mon compte", async () => {
     get.mockResolvedValue(me("approved"));
     renderGate();
     await screen.findByTestId("child");

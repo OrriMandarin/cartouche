@@ -62,9 +62,14 @@ function EditorLoader({ id }: { id: string }) {
 /** spec: EDI-003. The editor of one card of the signed-in user. */
 export default function EditCardPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations("shell");
 
   return (
-    <AccountGate>
+    <AccountGate
+      title={t("editCard")}
+      breadcrumb={[{ label: t("cards"), href: "/dashboard" }, { label: t("editCard") }]}
+      back={{ href: "/dashboard", label: t("cards") }}
+    >
       <EditorLoader id={id} />
     </AccountGate>
   );

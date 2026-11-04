@@ -2,11 +2,11 @@
 
 import { ApiError, type components } from "@cartouche/api-client";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { DeleteAccount } from "@/components/account/DeleteAccount";
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { AppShell, type ShellSlots } from "@/components/shell/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useApi } from "@/lib/api";
@@ -61,8 +61,9 @@ function Notice({
 /**
  * spec: ACC-004. Loads GET /api/me and only renders its children for an approved account;
  * the other statuses get a dedicated screen. Redirects to /login when signed out.
+ * An approved account is rendered inside the dashboard shell (EDI-022), configured by the slot props.
  */
-export function AccountGate({ children }: { children: ReactNode }) {
+export function AccountGate({ children, ...shell }: ShellSlots & { children: ReactNode }) {
   const t = useTranslations("account");
   const router = useRouter();
   const api = useApi();
@@ -106,38 +107,38 @@ export function AccountGate({ children }: { children: ReactNode }) {
     );
   }
 
+  const name =
+    (state.kind === "ready" ? state.me.display_name : null) ?? user?.name ?? user?.email ?? user?.subject ?? "";
+
+  if (state.kind === "ready" && state.me.status === "approved") {
+    return (
+      <AppShell user={{ name, email: state.me.email }} onSignOut={() => void signOut()} {...shell}>
+        <MeContext.Provider value={state.me}>{children}</MeContext.Provider>
+      </AppShell>
+    );
+  }
+
   let body: ReactNode;
   if (state.kind === "signup-closed") {
     body = <Notice testId="signup-closed" title={t("signupClosed.title")} description={t("signupClosed.description")} />;
   } else if (state.kind === "error") {
     body = <ErrorNotice error={state.error} />;
-  } else if (state.me.status === "pending") {
+  } else if (state.kind === "ready" && state.me.status === "pending") {
     body = <Notice testId="account-pending" title={t("pending.title")} description={t("pending.description")} deletable />;
-  } else if (state.me.status === "rejected") {
+  } else if (state.kind === "ready" && state.me.status === "rejected") {
     body = <Notice testId="account-rejected" title={t("rejected.title")} description={t("rejected.description")} deletable />;
-  } else if (state.me.status === "suspended") {
+  } else if (state.kind === "ready" && state.me.status === "suspended") {
     body = <Notice testId="account-suspended" title={t("suspended.title")} description={t("suspended.description")} deletable />;
-  } else {
-    body = <MeContext.Provider value={state.me}>{children}</MeContext.Provider>;
   }
 
-  const name =
-    (state.kind === "ready" ? state.me.display_name : null) ?? user?.name ?? user?.email ?? user?.subject ?? "";
-
+  // The accounts that do not reach the dashboard get a plain header, with the sign-out.
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       <header data-testid="account-header" className="mb-8 flex items-center justify-between gap-4 border-b pb-4">
         <span className="font-semibold">{t("header.signedInAs", { name })}</span>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard/account" data-testid="account-link">
-              {t("nav.account")}
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" data-testid="sign-out" onClick={() => void signOut()}>
-            {t("header.signOut")}
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" data-testid="sign-out" onClick={() => void signOut()}>
+          {t("header.signOut")}
+        </Button>
       </header>
       {body}
     </div>

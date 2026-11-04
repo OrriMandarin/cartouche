@@ -7,7 +7,7 @@ import { AuthContext } from "@/lib/auth/context";
 const get = vi.fn();
 const api = { GET: get, DELETE: vi.fn() };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), usePathname: () => "/dashboard/account" }));
 
 import AccountPage from "./page";
 

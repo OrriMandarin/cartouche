@@ -83,9 +83,14 @@ function EventsContent({ card }: { card: CardView }) {
 /** spec: EDI-009, EDI-010, EDI-018, EVT-025, LEA-013. The events of one card of the signed-in user, in three groups. */
 export default function CardEventsPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations();
 
   return (
-    <AccountGate>
+    <AccountGate
+      title={t("events.title")}
+      breadcrumb={[{ label: t("shell.cards"), href: "/dashboard" }, { label: t("events.title") }]}
+      back={{ href: "/dashboard", label: t("shell.cards") }}
+    >
       <CardScope cardId={id}>{(card) => <EventsContent card={card} />}</CardScope>
     </AccountGate>
   );

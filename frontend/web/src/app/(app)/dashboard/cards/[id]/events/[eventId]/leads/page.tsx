@@ -44,9 +44,19 @@ function EventLeads({ eventId }: { eventId: string }) {
 /** spec: EDI-020, LEA-021. The contacts of one event of one card of the signed-in user. */
 export default function EventLeadsPage() {
   const { id, eventId } = useParams<{ id: string; eventId: string }>();
+  const t = useTranslations();
+  const eventsHref = `/dashboard/cards/${id}/events`;
 
   return (
-    <AccountGate>
+    <AccountGate
+      title={t("leads.title")}
+      breadcrumb={[
+        { label: t("shell.cards"), href: "/dashboard" },
+        { label: t("events.title"), href: eventsHref },
+        { label: t("leads.title") },
+      ]}
+      back={{ href: eventsHref, label: t("events.title") }}
+    >
       <CardScope cardId={id}>
         {(card) => (
           <EventScope card={card} eventId={eventId}>

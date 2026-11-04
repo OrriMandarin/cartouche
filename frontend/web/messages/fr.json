@@ -58,9 +58,6 @@
       "message": "Réessaie dans un instant. Si le problème persiste, communique l'identifiant ci-dessous au support.",
       "requestId": "Identifiant de requête :"
     },
-    "nav": {
-      "account": "Mon compte"
-    },
     "page": {
       "title": "Mon compte",
       "email": "Adresse e-mail",
@@ -664,5 +661,25 @@
     "no_fields": "Le formulaire doit demander au moins un champ : choisis un champ standard ou ajoute un champ personnalisé.",
     "too_many_fields": "Un événement a au plus 30 champs personnalisés.",
     "duplicate_field_id": "Ce champ est en double : retire-le et ajoute-le à nouveau."
+  },
+  "shell": {
+    "brand": "Cartouche",
+    "navLabel": "Navigation principale",
+    "breadcrumbLabel": "Fil d’Ariane",
+    "cards": "Mes cartes",
+    "contacts": "Contacts",
+    "account": "Mon compte",
+    "signOut": "Se déconnecter",
+    "back": "Retour",
+    "newCard": "Nouvelle carte",
+    "editCard": "Modifier la carte",
+    "newEvent": "Nouvel événement",
+    "event": "Événement"
+  },
+  "contactsPage": {
+    "title": "Contacts",
+    "description": "Choisis une carte pour consulter tous ses contacts.",
+    "empty": "Aucune carte pour l’instant.",
+    "loading": "Chargement…"
   }
 }

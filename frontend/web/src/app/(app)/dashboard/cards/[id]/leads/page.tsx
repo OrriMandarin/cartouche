@@ -47,9 +47,19 @@ function CardLeads({ card }: { card: CardView }) {
 /** spec: LEA-001, LEA-013, LEA-021. The contacts of all the events of one card of the signed-in user, with their export. */
 export default function CardLeadsPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations();
+  const eventsHref = `/dashboard/cards/${id}/events`;
 
   return (
-    <AccountGate>
+    <AccountGate
+      title={t("leads.title")}
+      breadcrumb={[
+        { label: t("shell.cards"), href: "/dashboard" },
+        { label: t("events.title"), href: eventsHref },
+        { label: t("leads.title") },
+      ]}
+      back={{ href: eventsHref, label: t("events.title") }}
+    >
       <CardScope cardId={id}>{(card) => <CardLeads card={card} />}</CardScope>
     </AccountGate>
   );

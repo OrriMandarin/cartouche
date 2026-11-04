@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -76,8 +77,20 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
+  const t = useTranslations("shell");
   return (
-    <AccountGate>
+    <AccountGate
+      title={t("cards")}
+      action={
+        <Link
+          href="/dashboard/cards/new"
+          aria-label={t("newCard")}
+          className="rounded-app grid size-11 flex-none place-items-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-app-primary"
+        >
+          <Plus aria-hidden="true" className="size-5" />
+        </Link>
+      }
+    >
       <DashboardContent />
     </AccountGate>
   );

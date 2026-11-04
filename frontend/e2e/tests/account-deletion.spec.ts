@@ -37,7 +37,7 @@ test("ACC-019 ACC-020 ACC-022 LNK-015 LNK-033 LNK-027 a user deletes their accou
 
   await loginAs("seed-bob");
   await page.goto("/dashboard");
-  await page.getByTestId("account-link").click();
+  await page.locator('[data-testid="account-link"]:visible, [data-testid="tab-account"]:visible').click();
   await expect(page).toHaveURL(/\/dashboard\/account$/);
   await expect(page.getByTestId("account-email")).toHaveText("bob@example.test");
 
@@ -125,7 +125,7 @@ test("ACC-021 a pending account can delete itself", async ({ page, api, loginAs 
 test("ACC-021 an administrator cannot delete their account", async ({ page, loginAs }) => {
   await loginAs("seed-admin");
   await page.goto("/dashboard");
-  await page.getByTestId("account-link").click();
+  await page.locator('[data-testid="account-link"]:visible, [data-testid="tab-account"]:visible').click();
   await expect(page).toHaveURL(/\/dashboard\/account$/);
   await expect(page.getByTestId("delete-account-admin")).toContainText("ADMIN_USER_IDS");
   await expect(page.getByTestId("delete-account-open")).toHaveCount(0);
