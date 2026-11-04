@@ -1,6 +1,6 @@
 //! Token verification (no database). The verifier is driven directly with a frozen clock.
 
-mod common;
+use crate::common;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -25,9 +25,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use url::Url;
 
-const TEST_JWKS: &str = include_str!("../test-keys/jwks.json");
-const RSA_PRIVATE_KEY_PEM: &str = include_str!("../test-keys/rsa-test-private.pem");
-const RSA_JWKS: &str = include_str!("../test-keys/rsa-jwks.json");
+const TEST_JWKS: &str = include_str!("../../test-keys/jwks.json");
+const RSA_PRIVATE_KEY_PEM: &str = include_str!("../../test-keys/rsa-test-private.pem");
+const RSA_JWKS: &str = include_str!("../../test-keys/rsa-jwks.json");
 const RSA_KID: &str = "cartouche-test-rsa-1";
 
 /// A JWKS holding both the ES256 test key and the RSA test key.

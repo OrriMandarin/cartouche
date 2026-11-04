@@ -1,7 +1,7 @@
 //! The feature-gated test support: token issuer, JWKS, reset, seed and controllable clock.
 #![cfg(feature = "test-support")]
 
-mod common;
+use crate::common;
 
 use std::sync::Arc;
 

@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use axum::http::StatusCode;
 use common::cards::{cards_app, create_card, put_card, token};

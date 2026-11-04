@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use axum::http::StatusCode;
 use cartouche_api::openapi::ApiDoc;
