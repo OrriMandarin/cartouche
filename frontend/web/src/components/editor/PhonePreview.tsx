@@ -58,7 +58,7 @@ export function PhonePreview({
         onClickCapture={blockLinks}
       >
         <div
-          // The template fills a screen (`min-h-screen`); here the screen is the phone's.
+          // The template fills a screen (`min-height: 100svh`); here the screen is the phone's.
           className="origin-top-left [&_article]:min-h-[844px]"
           style={{ width: SCREEN.width, transform: `scale(${SCALE})` }}
         >

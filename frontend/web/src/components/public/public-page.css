@@ -47,6 +47,8 @@
 .cc-stage { min-height: inherit; background: linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2)); }
 @container (min-width: 40rem) {
   .cc-stage { padding: 56px 24px 80px; background: color-mix(in oklab, var(--c-bg) 86%, var(--c-text)); }
+  /* The neutral page fits the viewport inside the stage: no scrollbar (56px above, 80px below). */
+  .cc-stage .cc-off { min-height: calc(100svh - 136px); }
   .cc-stage .cc { border-radius: 28px; box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 28px 64px -28px rgb(0 0 0 / .45); }
 }
 

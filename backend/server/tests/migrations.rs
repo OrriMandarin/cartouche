@@ -66,7 +66,7 @@ async fn card_foreign_keys_are_indexed(pool: PgPool) {
     }
 }
 
-// spec: TPL-025, Review Focus 8
+// spec: TPL-025
 #[sqlx::test(migrations = "./migrations")]
 async fn theme_identifiers_are_renamed(pool: PgPool) {
     let owner = insert_user(&pool, "themes", "approved").await.unwrap();

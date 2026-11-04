@@ -71,8 +71,9 @@ pub struct AnswerSnapshot {
     pub field_id: Uuid,
     pub label: String,
     pub kind: CustomFieldKind,
-    /// A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`), a number
-    /// (`number`), a boolean (`checkbox`) or `null` when left empty.
+    /// A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`, `datetime` as
+    /// `AAAA-MM-JJTHH:MM`), a number (`number`),
+    /// a boolean (`checkbox`) or `null` when left empty.
     pub value: Value,
 }
 

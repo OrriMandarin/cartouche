@@ -314,15 +314,17 @@ export function LeadForm({ form, ownerName, draft, errors, attempt, disabled, no
     );
   }
 
+  const errorTotal = errorCount(errors);
+
   return (
     <>
       <FormHead title={form.title} description={form.description} live />
       <form ref={ref} data-testid="event-form" noValidate onSubmit={submit} className="fm-form">
         <p className="fm-note">{t("note")}</p>
-        {errorCount(errors) > 0 && (
+        {errorTotal > 0 && (
           <div role="alert" data-testid="event-form-summary" className="fm-alert">
             <CircleAlert className="ic" aria-hidden="true" />
-            <p>{t("summary", { count: errorCount(errors) })}</p>
+            <p>{t("summary", { count: errorTotal })}</p>
           </div>
         )}
         <fieldset disabled={disabled} className="fm-set fm-form">

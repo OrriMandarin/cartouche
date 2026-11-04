@@ -172,7 +172,7 @@ test("FRM-003 FRM-012 FRM-013 FRM-015 FRM-004 FRM-016 fill, fix, send, confirm",
   await page.getByTestId("confirmation-back").click();
   await expect(page).toHaveURL(/\/c\/alice-durand$/);
 });
- 
+
 test("FRM-046 four errors: summary, focus and messages", async ({ page }) => {
   await page.goto(formUrl(MARIAGE));
   await field(page, "answers.first_name").fill("Inès");
