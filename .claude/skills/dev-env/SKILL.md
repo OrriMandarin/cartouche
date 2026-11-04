@@ -22,7 +22,7 @@ Local machine: `export PATH="$HOME/.local/bin:$PATH"` (pnpm) and `source ~/.carg
 
 ```bash
 make setup     # once: pnpm install (frontend/), cargo fetch, sqlx-cli
-make dev-db    # dev PostgreSQL, port 54320
+make dev-db    # dev PostgreSQL, port 54320 (or DEV_DB_PORT, one server per worktree that runs Rust tests)
 make api       # API on :8080, feature test-support, migrations applied at startup
 make web       # site on :3000
 ```
@@ -119,6 +119,6 @@ A `CARTOUCHE_BUILD_PROFILE=production` build refuses the `test` adapter (ACC-008
 
 ## Ports
 
-Dev: Postgres 54320, API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000. Both can run together.
+Dev: Postgres 54320 (`DEV_DB_PORT`), API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000. Both can run together.
 
 **The test stack is shared by every worktree of the machine**: `compose.test.yml` is the docker compose project `cartouche-test` with fixed ports, so two worktrees running `make e2e` at the same time tear down each other's containers (and database). Run `make e2e` from one worktree at a time.

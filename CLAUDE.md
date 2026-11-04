@@ -23,7 +23,7 @@ Cartouche is an open-source digital business card application (Rust backend, Nex
 | Command | Effect |
 |---|---|
 | `make setup` | Installs the dependencies (pnpm, `cargo fetch`, `sqlx-cli`). |
-| `make dev-db` | Starts the development PostgreSQL (port 54320). |
+| `make dev-db` | Starts the development PostgreSQL (port 54320, or `DEV_DB_PORT`). The Rust `#[sqlx::test]` databases are named after the test path only, so two worktrees running Rust tests at the same time on the same server destroy each other's databases (flaky `404`s and `testing/mod.rs` panics): each worktree that runs tests gives itself its own server with `DEV_DB_PORT` and a matching `DATABASE_URL` in its `.env`. |
 | `make api` / `make web` | Runs the API (8080, with `test-support`) / the site (3000). |
 | `make seed [SCENARIO=base]` | Fills the database with a data scenario. `cards` extends `base` and `events` extends `cards`: load `base`, then `cards`, then `events` (see the `dev-env` skill). |
 | `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (linter tests) + `spec-lint`. |
