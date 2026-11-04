@@ -60,18 +60,17 @@ pub async fn suggest_slug(
     let Some(base) = suggest_base(&first_name, &last_name) else {
         return Ok(Json(SlugSuggestion { slug: None }));
     };
-    let candidates = std::iter::once(base.clone())
-        .chain((2..=MAX_SUGGESTION_SUFFIX).map(|n| with_suffix(&base, n)));
-    for candidate in candidates {
-        let existing = slugs::find(&state.db, candidate.as_str()).await?;
-        let blocked = blocked_slugs::is_blocked(&state.db, candidate.as_str()).await?;
-        if decide_claim(existing.as_ref(), blocked, me.user.id, None).is_ok() {
-            return Ok(Json(SlugSuggestion {
-                slug: Some(candidate.as_str().to_owned()),
-            }));
-        }
-    }
-    Ok(Json(SlugSuggestion { slug: None }))
+    let first = claimable_candidates(
+        &state,
+        std::iter::once(base.clone()).chain(suffixed(&base)),
+        me.user.id,
+        None,
+        1,
+    )
+    .await?
+    .into_iter()
+    .next();
+    Ok(Json(SlugSuggestion { slug: first }))
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -109,6 +108,30 @@ pub struct SlugAvailability {
     pub suggestions: Vec<String>,
 }
 
+/// `<slug>-2` to `<slug>-100`.
+fn suffixed(slug: &Slug) -> impl Iterator<Item = Slug> + '_ {
+    (2..=MAX_SUGGESTION_SUFFIX).map(|n| with_suffix(slug, n))
+}
+
+/// The first `limit` of the candidates, in order, that the caller can claim (LNK-031, LNK-032). Their
+/// holders and blocked state are read in one query.
+async fn claimable_candidates(
+    state: &AppState,
+    candidates: impl Iterator<Item = Slug>,
+    owner_id: Uuid,
+    card_id: Option<Uuid>,
+    limit: usize,
+) -> Result<Vec<String>, ApiError> {
+    let candidates: Vec<String> = candidates.map(|slug| slug.as_str().to_owned()).collect();
+    let statuses = slugs::candidate_statuses(&state.db, &candidates).await?;
+    Ok(statuses
+        .into_iter()
+        .filter(|c| decide_claim(c.existing.as_ref(), c.blocked, owner_id, card_id).is_ok())
+        .map(|c| c.slug)
+        .take(limit)
+        .collect())
+}
+
 /// The first `ALTERNATIVES` slugs among `<slug>-2`, `<slug>-3`, ... that the caller can claim.
 async fn alternatives(
     state: &AppState,
@@ -116,19 +139,7 @@ async fn alternatives(
     slug: &Slug,
     card_id: Option<Uuid>,
 ) -> Result<Vec<String>, ApiError> {
-    let mut found = Vec::with_capacity(ALTERNATIVES);
-    for n in 2..=MAX_SUGGESTION_SUFFIX {
-        let candidate = with_suffix(slug, n);
-        let existing = slugs::find(&state.db, candidate.as_str()).await?;
-        let blocked = blocked_slugs::is_blocked(&state.db, candidate.as_str()).await?;
-        if decide_claim(existing.as_ref(), blocked, owner_id, card_id).is_ok() {
-            found.push(candidate.as_str().to_owned());
-            if found.len() == ALTERNATIVES {
-                break;
-            }
-        }
-    }
-    Ok(found)
+    claimable_candidates(state, suffixed(slug), owner_id, card_id, ALTERNATIVES).await
 }
 
 /// Tells whether the caller can use a slug on a card.

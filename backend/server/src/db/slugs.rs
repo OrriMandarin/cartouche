@@ -52,6 +52,44 @@ pub async fn find(pool: &PgPool, slug: &str) -> Result<Option<SlugRecord>, sqlx:
     Ok(row.map(SlugRecord::from))
 }
 
+/// What `decide_claim` needs to know about a candidate slug.
+pub struct CandidateStatus {
+    pub slug: String,
+    pub existing: Option<SlugRecord>,
+    pub blocked: bool,
+}
+
+/// Reads the holder and the blocked state of every candidate in one query, in the order given.
+pub async fn candidate_statuses(
+    pool: &PgPool,
+    candidates: &[String],
+) -> Result<Vec<CandidateStatus>, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"select c.slug as "slug!", s.owner_id as "owner_id?", s.card_id, s.is_current as "is_current?",
+                  exists (
+                      select 1 from blocked_slugs b where b.slug_hash = sha256(convert_to(c.slug, 'UTF8'))
+                  ) as "blocked!"
+           from unnest($1::text[]) with ordinality as c(slug, position)
+           left join card_slugs s on s.slug = c.slug
+           order by c.position"#,
+        candidates,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| CandidateStatus {
+            existing: row.owner_id.map(|owner_id| SlugRecord {
+                owner_id,
+                card_id: row.card_id,
+                is_current: row.is_current.unwrap_or(false),
+            }),
+            slug: row.slug,
+            blocked: row.blocked,
+        })
+        .collect())
+}
+
 /// Carries out a claim decided by `decide_claim`: the card's current slug, if any, stops
 /// being current, then the slug is inserted (`New`) or attached to the card
 /// (`ReclaimOwn`, `AttachReserved`). `AlreadyCurrent` changes nothing.
