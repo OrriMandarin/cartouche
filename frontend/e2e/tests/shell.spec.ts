@@ -21,7 +21,10 @@ test("EDI-022 navigation on a computer and on a phone", async ({ page }, testInf
 
   await entry("nav-contacts", "tab-contacts").click();
   await expect(page).toHaveURL(/\/dashboard\/contacts$/);
-  await expect(page.getByRole("heading", { name: "Contacts" })).toBeVisible();
+  // The title is a heading on a computer and the top bar title on a phone.
+  await (phone
+    ? expect(page.getByTestId("shell-title")).toHaveText("Contacts")
+    : expect(page.getByRole("heading", { name: "Contacts" })).toBeVisible());
   await expect(entry("nav-contacts", "tab-contacts")).toHaveAttribute("aria-current", "page");
 
   await entry("account-link", "tab-account").click();
