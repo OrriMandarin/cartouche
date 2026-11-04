@@ -364,11 +364,11 @@ describe("CardEditor", { timeout: 15_000 }, () => {
     fireEvent.click(screen.getByTestId("editor-save"));
 
     const urlError = await screen.findByTestId("field-error-links-0-url");
-    expect(urlError).toHaveTextContent("Cette adresse n'est pas valide");
+    expect(urlError).toHaveTextContent("Cette adresse n’est pas valide");
     expect(screen.getByTestId("link-url-0")).toHaveAttribute("aria-describedby", urlError.id);
     expect(screen.getByTestId("link-url-0")).toHaveValue("javascript:alert(1)");
-    expect(screen.getByTestId("field-error-content-email")).toHaveTextContent("adresse e-mail n'est pas valide");
-    expect(screen.getByTestId("editor-email")).toHaveAccessibleDescription(/adresse e-mail n'est pas valide/);
+    expect(screen.getByTestId("field-error-content-email")).toHaveTextContent("adresse e-mail n’est pas valide");
+    expect(screen.getByTestId("editor-email")).toHaveAccessibleDescription(/adresse e-mail n’est pas valide/);
     expect(screen.getByTestId("editor-email")).toHaveValue("pas-un-email");
     expect(screen.getByTestId("editor-job_title")).toHaveValue("Directrice");
     expect(screen.getByTestId("editor-error-summary")).toBeVisible();

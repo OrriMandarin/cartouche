@@ -23,7 +23,7 @@
       "signedInAs": "Connecté en tant que {name}",
       "signOut": "Se déconnecter",
       "loading": "Chargement…",
-      "redirecting": "Redirection vers le fournisseur d'identité…",
+      "redirecting": "Redirection vers le fournisseur d’identité…",
       "toDashboard": "Redirection vers ton tableau de bord…",
       "dashboardLink": "Y aller maintenant",
       "error": "La connexion a échoué. Réessaie dans un instant."
@@ -65,12 +65,12 @@
     },
     "signupClosed": {
       "title": "Les inscriptions sont fermées",
-      "description": "Cette instance n'accepte pas de nouveaux comptes pour l'instant."
+      "description": "Cette instance n’accepte pas de nouveaux comptes pour l’instant."
     },
     "error": {
       "title": "Une erreur est survenue",
-      "message": "Réessaie dans un instant. Si le problème persiste, communique l'identifiant ci-dessous au support.",
-      "requestId": "Identifiant de requête :"
+      "message": "Réessaie dans un instant. Si le problème persiste, communique l’identifiant ci-dessous au support.",
+      "requestId": "Identifiant de requête\u00a0:"
     },
     "page": {
       "title": "Mon compte",
@@ -101,8 +101,8 @@
     "deleted": {
       "title": "Ton compte a été supprimé",
       "description": "Tes cartes, leurs médias, tes événements et tes contacts ont été supprimés. Les liens de tes cartes restent bloqués.",
-      "identityProvider": "Ton compte chez le fournisseur d'identité existe toujours : si tu veux aussi le supprimer, fais-le chez lui. Te reconnecter avec ce compte créera un nouveau compte Cartouche, vide.",
-      "home": "Retour à l'accueil"
+      "identityProvider": "Ton compte chez le fournisseur d’identité existe toujours\u00a0: si tu veux aussi le supprimer, fais-le chez lui. Te reconnecter avec ce compte créera un nouveau compte Cartouche, vide.",
+      "home": "Retour à l’accueil"
     },
     "actions": {
       "signOut": "Se déconnecter",
@@ -165,7 +165,7 @@
       "label": "Lien de la carte",
       "checking": "Vérification…",
       "free": "Ce lien est disponible.",
-      "current": "C'est le lien actuel de cette carte",
+      "current": "C’est le lien actuel de cette carte",
       "taken": "Ce lien est déjà pris. Choisis-en un autre.",
       "takenWithSuggestions": "Ce lien est déjà pris. Choisis-en un autre ou prends une suggestion\u00a0:",
       "reserved": "Réservé",
@@ -174,7 +174,7 @@
     },
     "duplicate": {
       "title": "Dupliquer la carte",
-      "description": "Choisis le lien de la copie. Le contenu, les liens et l'apparence de la carte sont repris.",
+      "description": "Choisis le lien de la copie. Le contenu, les liens et l’apparence de la carte sont repris.",
       "confirm": "Dupliquer"
     },
     "delete": {
@@ -232,7 +232,7 @@
       "owner": "Propriétaire\u00a0:",
       "disable": "Désactiver (support)",
       "enable": "Lever le blocage",
-        "userNotFound": "Utilisateur introuvable",
+      "userNotFound": "Utilisateur introuvable",
       "cardNotFound": "Carte introuvable"
     },
     "events": {
@@ -408,7 +408,7 @@
     "saving": "Enregistrement…",
     "savedToast": "Carte enregistrée et publiée",
     "unsaved": "Modifications non enregistrées",
-    "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+    "invalid": "Certains champs sont invalides\u00a0: corrige-les pour enregistrer.",
     "errorCount": "{count, plural, one {# erreur à corriger} other {# erreurs à corriger}}",
     "errorSummary": "Rien n’a été enregistré\u00a0: {count, plural, one {# point à corriger} other {# points à corriger}}.",
     "errorFields": {
@@ -542,7 +542,7 @@
       "replace": "Remplacer",
       "remove": "Retirer",
       "uploading": "Envoi en cours…",
-      "current": "Fichier actuel : {kind}",
+      "current": "Fichier actuel\u00a0: {kind}",
       "kinds": {
         "image": "image",
         "video": "vidéo"
@@ -601,17 +601,17 @@
         }
       },
       "errors": {
-        "unsupported": "Ce format n'est pas accepté",
+        "unsupported": "Ce format n’est pas accepté",
         "too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
         "unreadable": "Ce fichier ne peut pas être lu par le navigateur",
         "video_too_long": "La vidéo dépasse 30 secondes",
         "image_too_large": "Cette image est trop grande (40 millions de pixels au plus)",
-        "poster_required": "L'image d'attente de la vidéo est manquante : réessaie",
+        "poster_required": "L’image d’attente de la vidéo est manquante\u00a0: réessaie",
         "payload_too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
-        "unsupported_media_type": "Ce fichier n'est pas une image JPEG, PNG ou WebP ni une vidéo MP4, ou il est abîmé",
+        "unsupported_media_type": "Ce fichier n’est pas une image JPEG, PNG ou WebP ni une vidéo MP4, ou il est abîmé",
         "media_not_reframable": "Remplace ce média pour pouvoir le recadrer.",
         "invalid_crop": "Ce recadrage n’est pas accepté\u00a0: réessaie.",
-        "generic": "L'envoi a échoué : réessaie dans un instant"
+        "generic": "L’envoi a échoué\u00a0: réessaie dans un instant"
       }
     },
     "preview": {
@@ -666,8 +666,8 @@
     "row": {
       "start": "Début",
       "end": "Fin",
-      "starts": "Début : {date}",
-      "ends": "Fin : {date}",
+      "starts": "Début\u00a0: {date}",
+      "ends": "Fin\u00a0: {date}",
       "noEnd": "Sans fin",
       "accessCode": "Code d’accès {code}",
       "noAccessCode": "Sans code d’accès",
@@ -686,8 +686,8 @@
       "confirm": "{count, plural, =0 {Supprimer l’événement} one {Supprimer l’événement et # contact} other {Supprimer l’événement et # contacts}}"
     },
     "errors": {
-      "too_many_simultaneous_events": "La carte a déjà le maximum d'événements en même temps sur cette période. Change les dates de cet événement ou termine-en un autre, puis réessaie.",
-      "event_not_running": "Cet événement n'est pas en cours : il ne peut pas être terminé maintenant. Recharge la page pour voir son état actuel."
+      "too_many_simultaneous_events": "La carte a déjà le maximum d’événements en même temps sur cette période. Change les dates de cet événement ou termine-en un autre, puis réessaie.",
+      "event_not_running": "Cet événement n’est pas en cours\u00a0: il ne peut pas être terminé maintenant. Recharge la page pour voir son état actuel."
     },
     "state": {
       "title": "État",
@@ -708,10 +708,10 @@
       "saving": "Enregistrement…",
       "unsaved": "Modifications non enregistrées",
       "leave": {
-        "body": "Tu as modifié l’événement « {title} ». Si tu quittes maintenant, ces modifications seront perdues.",
+        "body": "Tu as modifié l’événement «\u00a0{title}\u00a0». Si tu quittes maintenant, ces modifications seront perdues.",
         "untitled": "sans titre"
       },
-      "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+      "invalid": "Certains champs sont invalides\u00a0: corrige-les pour enregistrer.",
       "optional": "(facultatif)",
       "sections": {
         "general": "Informations",
@@ -732,9 +732,9 @@
       "endTime": "Heure de fin ({zone})",
       "noEnd": "Sans fin",
       "noEndHint": "(tu le termineras à la main)",
-      "zone": "Fuseau : {zone}",
+      "zone": "Fuseau\u00a0: {zone}",
       "accessCode": "Code d’accès",
-      "accessCodeHint": "Affiché en clair. Donne-le aux visiteurs de ton stand ; sans code, le formulaire est ouvert à tous.",
+      "accessCodeHint": "Affiché en clair. Donne-le aux visiteurs de ton stand\u00a0; sans code, le formulaire est ouvert à tous.",
       "deviceLimit": "Envois par appareil",
       "deviceLimitHint": "Nombre de fois qu’un même téléphone peut envoyer le formulaire. 1 par défaut.",
       "standard": {
@@ -767,7 +767,7 @@
         },
         "kind": "Type",
         "add": "Ajouter un champ",
-        "addHint": "Types : texte, texte long, date, date et heure, nombre, choix unique, case à cocher.",
+        "addHint": "Types\u00a0: texte, texte long, date, date et heure, nombre, choix unique, case à cocher.",
         "label": "Libellé",
         "help": "Aide",
         "required": "Obligatoire",
@@ -779,22 +779,22 @@
         "remove": "Supprimer le champ {name}",
         "roleDescription": "champ réordonnable",
         "dragStart": "{name} saisi.",
-        "dragCancel": "Déplacement annulé : {name} reste à sa place.",
+        "dragCancel": "Déplacement annulé\u00a0: {name} reste à sa place.",
         "max": "Un événement a au plus 30 champs personnalisés."
       },
       "consent": {
         "preview": "Aperçu de la case de consentement",
-        "always": "Toujours affichée et obligatoire. Le nom vient de ta carte ; la date et le texte acceptés sont conservés avec chaque contact.",
+        "always": "Toujours affichée et obligatoire. Le nom vient de ta carte\u00a0; la date et le texte acceptés sont conservés avec chaque contact.",
         "mode": "Texte de consentement",
         "modes": {
           "default": "Texte par défaut",
           "custom": "Texte personnalisé"
         },
         "loading": "Chargement du texte…",
-        "unavailable": "Le texte par défaut n'a pas pu être chargé.",
+        "unavailable": "Le texte par défaut n’a pas pu être chargé.",
         "custom": "Ton texte",
-        "customHint": "Il s'affiche tel quel, sans variable (3 000 caractères au plus). Vide, il revient au texte par défaut.",
-        "noEmail": "Ta carte n'a pas d'e-mail : le texte par défaut renvoie les demandes d'accès et de suppression vers toi, sans adresse. Ajoute un e-mail à la carte pour que les prospects sachent où écrire."
+        "customHint": "Il s’affiche tel quel, sans variable (3 000 caractères au plus). Vide, il revient au texte par défaut.",
+        "noEmail": "Ta carte n’a pas d’e-mail\u00a0: le texte par défaut renvoie les demandes d’accès et de suppression vers toi, sans adresse. Ajoute un e-mail à la carte pour que les prospects sachent où écrire."
       }
     }
   },
@@ -842,7 +842,7 @@
       "jsonHint": "Pour un outil ou un script",
       "includeSpam": "Inclure les contacts marqués comme spam ({count})",
       "includeSpamPlain": "Inclure les contacts marqués comme spam",
-      "hint": "Une ligne par contact ; une colonne par champ, champs personnalisés et consentement compris.",
+      "hint": "Une ligne par contact\u00a0; une colonne par champ, champs personnalisés et consentement compris.",
       "download": "{count, plural, one {Exporter # contact} other {Exporter # contacts}}",
       "downloadPlain": "Exporter",
       "cancel": "Annuler",
@@ -872,7 +872,7 @@
       "address": "Adresse"
     },
     "deleteDialog": {
-      "title": "Supprimer ce contact ?",
+      "title": "Supprimer ce contact\u00a0?",
       "description": "Ce contact sera supprimé définitivement.",
       "confirm": "Supprimer définitivement",
       "cancel": "Annuler",
@@ -886,29 +886,29 @@
     "invalid_slug": "Le lien ne peut contenir que des lettres minuscules, des chiffres et des tirets, entre 3 et 64 caractères.",
     "slug_taken": "Ce lien est déjà pris.",
     "slug_reserved": "Ce lien est réservé.",
-    "invalid_email": "Cette adresse e-mail n'est pas valide.",
-    "invalid_phone": "Ce numéro de téléphone n'est pas valide.",
-    "invalid_date": "Cette date n'est pas valide.",
+    "invalid_email": "Cette adresse e-mail n’est pas valide.",
+    "invalid_phone": "Ce numéro de téléphone n’est pas valide.",
+    "invalid_date": "Cette date n’est pas valide.",
     "invalid_number": "Saisissez un nombre, par exemple 12,5.",
-    "invalid_choice": "Choisissez l'une des options proposées.",
-    "invalid_value": "Cette réponse n'est pas valide.",
-    "invalid_url": "Cette adresse n'est pas valide : elle doit commencer par https:// ou http://.",
+    "invalid_choice": "Choisissez l’une des options proposées.",
+    "invalid_value": "Cette réponse n’est pas valide.",
+    "invalid_url": "Cette adresse n’est pas valide\u00a0: elle doit commencer par https:// ou http://.",
     "too_many_links": "Une carte a au plus 20 liens.",
-    "invalid_template": "Ce template n'existe pas.",
-    "invalid_theme": "Cette apparence n'est pas valide.",
+    "invalid_template": "Ce template n’existe pas.",
+    "invalid_theme": "Cette apparence n’est pas valide.",
     "invalid_settings": "Ces réglages ne sont pas valides.",
-    "invalid_media": "Ce fichier n'est pas utilisable ici.",
+    "invalid_media": "Ce fichier n’est pas utilisable ici.",
     "image_too_large": "Cette image est trop grande.",
     "video_too_long": "Cette vidéo est trop longue.",
-    "poster_required": "Une image d'attente est nécessaire pour la vidéo.",
+    "poster_required": "Une image d’attente est nécessaire pour la vidéo.",
     "out_of_range": "Cette valeur est en dehors des limites autorisées.",
     "end_before_start": "La fin doit être après le début.",
     "duplicate_option": "Cette option est déjà dans la liste.",
     "too_few_options": "Un choix unique a au moins 2 options.",
     "too_many_options": "Un choix unique a au plus 20 options.",
-    "no_fields": "Le formulaire doit demander au moins un champ : choisis un champ standard ou ajoute un champ personnalisé.",
+    "no_fields": "Le formulaire doit demander au moins un champ\u00a0: choisis un champ standard ou ajoute un champ personnalisé.",
     "too_many_fields": "Un événement a au plus 30 champs personnalisés.",
-    "duplicate_field_id": "Ce champ est en double : retire-le et ajoute-le à nouveau."
+    "duplicate_field_id": "Ce champ est en double\u00a0: retire-le et ajoute-le à nouveau."
   },
   "shell": {
     "brand": "Cartouche",
@@ -930,7 +930,7 @@
     "description": "Les personnes qui ont rempli le formulaire d’un de tes événements, de la plus récente à la plus ancienne.",
     "export": "Exporter",
     "exportBar": "Exporter les contacts",
-    "card": "Carte : <b>{slug}</b>",
+    "card": "Carte\u00a0: <b>{slug}</b>",
     "cardLabel": "Carte",
     "noCards": "Aucune carte pour l’instant.",
     "loading": "Chargement…",

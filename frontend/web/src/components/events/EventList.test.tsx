@@ -103,7 +103,7 @@ describe("EventList", () => {
     post.mockRejectedValue(new ApiError({ status: 409, code: "event_not_running", message: "no", requestId: "r1" }));
     const onChanged = renderList();
     fireEvent.click(screen.getByTestId("event-end-now-running-1"));
-    expect(await screen.findByTestId("event-action-error")).toHaveTextContent("n'est pas en cours");
+    expect(await screen.findByTestId("event-action-error")).toHaveTextContent("n’est pas en cours");
     expect(onChanged).not.toHaveBeenCalled();
     expect(screen.getByTestId("event-end-now-running-1")).toBeEnabled();
   });

@@ -259,7 +259,7 @@ describe("MediaField", () => {
     renderWithIntl(<Harness upload={upload} />);
 
     pick("media-header-input", new File(["gif"], "a.gif", { type: "image/gif" }));
-    expect(await screen.findByTestId("media-header-error")).toHaveTextContent("Ce format n'est pas accepté");
+    expect(await screen.findByTestId("media-header-error")).toHaveTextContent("Ce format n’est pas accepté");
 
     const heavy = jpeg();
     Object.defineProperty(heavy, "size", { value: 11 * 1024 * 1024 });

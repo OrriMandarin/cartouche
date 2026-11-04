@@ -129,7 +129,7 @@ test("EVT-004 EVT-018 a fourth simultaneous event is refused", async ({ page, ap
   await fillDateTime(page, "event-ends-at", "2027-03-15T12:00");
   await page.locator(SAVE).click();
 
-  await expect(page.getByTestId("event-conflict")).toContainText("maximum d'événements en même temps");
+  await expect(page.getByTestId("event-conflict")).toContainText("maximum d’événements en même temps");
   await expect(page).toHaveURL(/\/events\/new$/);
   await expect(page.getByTestId("event-title")).toHaveValue("Quatrième événement");
   await expect(page.locator(SAVE)).toBeEnabled();

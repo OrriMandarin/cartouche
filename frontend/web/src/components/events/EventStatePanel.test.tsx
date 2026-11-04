@@ -75,7 +75,7 @@ describe("EventStatePanel", () => {
     post.mockRejectedValue(new ApiError({ status: 409, code: "event_not_running", message: "no", requestId: "r1" }));
     renderPanel();
     fireEvent.click(screen.getByTestId("event-state-end-now"));
-    expect(await screen.findByTestId("event-state-error")).toHaveTextContent("n'est pas en cours");
+    expect(await screen.findByTestId("event-state-error")).toHaveTextContent("n’est pas en cours");
     expect(screen.getByTestId("event-state-end-now")).toBeEnabled();
   });
 
