@@ -19,7 +19,7 @@ export function LoginCardPreview({ className }: { className?: string }) {
       // `inert`: the card holds links and buttons that must not take the focus.
       inert
       data-testid="login-card-preview"
-      className={`shadow-app-lg overflow-hidden rounded-[36px] border-8 border-[#1C1B19] bg-white ${className ?? ""}`}
+      className={`shadow-app-lg overflow-hidden rounded-[36px] border-8 border-app-text bg-app-surface ${className ?? ""}`}
     >
       {renderTemplate({
         template: loginPreviewCard.template,

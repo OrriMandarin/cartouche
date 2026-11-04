@@ -261,6 +261,7 @@ export function VideoCropDialog({
                 aria-valuenow={playhead}
                 aria-valuetext={valueText(playhead)}
                 onKeyDown={onKey("playhead", playhead)}
+                // The playhead yellow is the mockup's own value: no --app-* token matches it.
                 className="pointer-events-none absolute -inset-y-1 z-20 w-0.5 -translate-x-1/2 bg-[#FFD54A] shadow-[0_0_0_1px_rgb(0_0_0/.4)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-ring)]"
                 style={{ left: percent(playhead) }}
               />
