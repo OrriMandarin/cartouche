@@ -8,9 +8,9 @@ import { formatEventDate, userTimeZone } from "@/lib/events/time";
 import type { EventPhase, EventView } from "@/lib/events/types";
 
 const PHASE_VARIANT = {
-  running: "default",
-  upcoming: "secondary",
-  past: "outline",
+  running: "success",
+  upcoming: "info",
+  past: "neutral",
 } as const satisfies Record<EventPhase, string>;
 
 /**

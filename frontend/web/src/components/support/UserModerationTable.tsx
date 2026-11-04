@@ -16,10 +16,10 @@ export type ModerationUser = components["schemas"]["AdminUserView"];
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" });
 
 export const STATUS_VARIANT = {
-  pending: "outline",
-  approved: "default",
-  rejected: "destructive",
-  suspended: "secondary",
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
+  suspended: "neutral",
 } as const;
 
 function actionKey(from: UserStatus, to: UserStatus): "approve" | "reject" | "suspend" | "reactivate" {
@@ -95,7 +95,7 @@ export function UserModerationTable({
                     </span>
                   </Link>
                   {user.is_admin ? (
-                    <Badge variant="secondary" className="ml-2" data-testid={`admin-badge-${user.subject}`}>
+                    <Badge variant="info" className="ml-2" data-testid={`admin-badge-${user.subject}`}>
                       {t("admin")}
                     </Badge>
                   ) : null}

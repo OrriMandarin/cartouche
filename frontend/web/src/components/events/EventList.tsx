@@ -10,9 +10,9 @@ import { EventActions } from "./EventActions";
 const GROUPS = ["running", "upcoming", "past"] as const satisfies readonly EventPhase[];
 
 const PHASE_VARIANT = {
-  running: "default",
-  upcoming: "secondary",
-  past: "outline",
+  running: "success",
+  upcoming: "info",
+  past: "neutral",
 } as const satisfies Record<EventPhase, string>;
 
 function EventRow({ event, zone, onChanged }: { event: EventView; zone: string; onChanged: () => Promise<void> }) {

@@ -63,7 +63,7 @@ function SupportContent() {
             <TabsTrigger key={status} value={status} data-testid={`tab-${status}`}>
               {t(`status.${status}`)}
               <Badge
-                variant={status === "pending" && (counts?.pending ?? 0) > 0 ? "default" : "secondary"}
+                variant={status === "pending" && (counts?.pending ?? 0) > 0 ? "warning" : "neutral"}
                 data-testid={`count-${status}`}
               >
                 {counts?.[status] ?? "–"}

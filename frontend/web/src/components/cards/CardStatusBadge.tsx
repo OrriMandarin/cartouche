@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { cardStatusLabelKey, type CardStatus } from "@/lib/cards/status";
 
 const VARIANT = {
-  active: "default",
-  disabled: "secondary",
-  disabled_by_support: "destructive",
+  active: "success",
+  disabled: "neutral",
+  disabled_by_support: "warning",
 } as const satisfies Record<CardStatus, string>;
 
 /** spec: EDI-012. The state of a card: active, disabled or disabled by the support. */

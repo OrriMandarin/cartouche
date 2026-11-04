@@ -35,7 +35,7 @@ export function TemplatePicker({
           />
           <span className="font-medium">{t(template.nameKey)}</span>
           {template.beta ? (
-            <Badge variant="secondary" data-testid={`template-beta-${template.id}`}>
+            <Badge variant="info" data-testid={`template-beta-${template.id}`}>
               {t("editor.template.beta")}
             </Badge>
           ) : null}

@@ -45,7 +45,7 @@ function LeadRow({
           {heading.kind === "unnamed" ? t("unnamed") : heading.text}
         </p>
         {lead.spam ? (
-          <Badge variant="destructive" data-testid={`lead-spam-badge-${lead.id}`}>
+          <Badge variant="danger" data-testid={`lead-spam-badge-${lead.id}`}>
             {t("spamBadge")}
           </Badge>
         ) : null}
