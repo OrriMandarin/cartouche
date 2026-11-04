@@ -298,7 +298,9 @@ test("FRM-005 FRM-039 the form works with the keyboard alone", async ({ page, br
   await email.focus();
   await page.keyboard.type("clavier@example.test");
   await page.keyboard.press(next);
-  // The trap field is out of the way.
+  // The trap field is out of the way: the next stop is the optional "Rendez-vous souhaité" field, then the consent.
+  await expect(page.getByTestId("field-answers.custom.0198c8a1-0000-7000-8000-000000000005")).toBeFocused();
+  await page.keyboard.press(next);
   await expect(page.getByTestId("consent-checkbox")).toBeFocused();
   await page.keyboard.press("Space");
   await expect(page.getByTestId("consent-checkbox")).toBeChecked();

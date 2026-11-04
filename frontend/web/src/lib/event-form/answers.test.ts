@@ -140,6 +140,32 @@ describe("checkLeadDraft", () => {
     expect(custom("2099-01-01")).toBeUndefined();
   });
 
+  test("FRM-043 the browser checks a datetime answer as the server does", () => {
+    const id = "0198c8a1-0000-7000-8000-000000000005";
+    const form = withFields(publicEventForm().standard_fields, [
+      { id, label: "Rendez-vous souhaité", kind: "datetime", required: false, help: null, options: [] },
+    ]);
+    const check = (value: string) =>
+      checkLeadDraft(form, filled(form, (d) => (d.custom[id] = value)), TODAY)[`answers.custom.${id}`];
+    for (const good of ["2027-03-20T14:30", "1900-01-01T00:00", "2100-12-31T23:59", ""]) {
+      expect(check(good), good).toBeUndefined();
+    }
+    for (const bad of [
+      "2027-02-30T10:00",
+      "2027-02-06T24:00",
+      "2027-02-06T14:60",
+      "2027-02-06T14:30:00",
+      "2027-02-06 14:30",
+      "1899-12-31T10:00",
+      "2027-02-06T14:30Z",
+      "2027-02-06",
+    ]) {
+      expect(check(bad), bad).toBe("fieldErrors.invalid_date");
+    }
+    const body = draftToSubmission(form, filled(form, (d) => (d.custom[id] = " 2027-03-20T14:30 ")), DEVICE, null);
+    expect(body.answers.custom?.[id]).toBe("2027-03-20T14:30");
+  });
+
   test("FRM-036 numbers take a point or a comma, choices one of the options", () => {
     const form = publicEventForm();
     const number = (value: string) =>

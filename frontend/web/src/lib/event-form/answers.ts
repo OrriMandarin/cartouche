@@ -149,6 +149,14 @@ function isCalendarDate(value: string): boolean {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
+/** A date and time `AAAA-MM-JJTHH:MM`, with no seconds and no zone, the date as `isCalendarDate` (FRM-043). */
+export function isCalendarDateTime(value: string): boolean {
+  const match = /^(.{10})T([0-9]{2}):([0-9]{2})$/.exec(value);
+  if (!match) return false;
+  const [, date = "", hour = "", minute = ""] = match;
+  return isCalendarDate(date) && Number(hour) < 24 && Number(minute) < 60;
+}
+
 const DECIMAL = /^[-+]?[0-9]+(?:[.,][0-9]+)?$/;
 
 /** The answers the form asks, checked as the server will (FRM-033 to FRM-037); the server stays the judge. */
@@ -220,6 +228,8 @@ function checkCustomText(field: PublicCustomField, raw: string, text: TextChecke
   switch (field.kind) {
     case "date":
       return isCalendarDate(value) ? null : "invalid_date";
+    case "datetime":
+      return isCalendarDateTime(value) ? null : "invalid_date";
     case "number":
       return DECIMAL.test(value) ? null : "invalid_number";
     case "single_choice":

@@ -455,6 +455,7 @@
           "text": "Texte",
           "long_text": "Texte long",
           "date": "Date",
+          "datetime": "Date et heure",
           "number": "Nombre",
           "single_choice": "Choix unique",
           "checkbox": "Case à cocher"

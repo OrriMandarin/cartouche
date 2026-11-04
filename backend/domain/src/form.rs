@@ -41,6 +41,7 @@ pub enum CustomFieldKind {
     Text,
     LongText,
     Date,
+    Datetime,
     Number,
     SingleChoice,
     Checkbox,

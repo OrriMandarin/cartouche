@@ -147,6 +147,7 @@ pub fn submission(form: &Value, overrides: Value) -> Value {
                 "text" => json!("Zoé Lefèvre ✨"),
                 "long_text" => json!("Une réception de 120 personnes."),
                 "date" => json!("2027-06-12"),
+                "datetime" => json!("2027-06-12T14:30"),
                 "number" => json!(120),
                 "single_choice" => field["options"][0].clone(),
                 "checkbox" => json!(true),

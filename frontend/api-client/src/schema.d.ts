@@ -786,7 +786,7 @@ export interface components {
          * @description The types of custom field (FRM-021).
          * @enum {string}
          */
-        CustomFieldKind: "text" | "long_text" | "date" | "number" | "single_choice" | "checkbox";
+        CustomFieldKind: "text" | "long_text" | "date" | "datetime" | "number" | "single_choice" | "checkbox";
         /** @description The slug of a duplicate. */
         DuplicateCardBody: {
             slug: string;

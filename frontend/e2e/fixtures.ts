@@ -56,7 +56,7 @@ export type FieldMode = "off" | "optional" | "required";
 export interface CustomFieldView {
   id: string;
   label: string;
-  kind: "text" | "long_text" | "date" | "number" | "single_choice" | "checkbox";
+  kind: "text" | "long_text" | "date" | "datetime" | "number" | "single_choice" | "checkbox";
   required: boolean;
   help: string | null;
   options: string[];

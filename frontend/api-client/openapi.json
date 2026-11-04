@@ -4103,6 +4103,7 @@
           "text",
           "long_text",
           "date",
+          "datetime",
           "number",
           "single_choice",
           "checkbox"
