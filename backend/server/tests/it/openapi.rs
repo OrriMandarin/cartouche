@@ -3,7 +3,7 @@
 //! The committed `frontend/api-client/openapi.json` must equal the document the code
 //! generates. `UPDATE_OPENAPI=1` rewrites it (this is what `make openapi` does).
 
-mod common;
+use crate::common;
 
 use std::path::PathBuf;
 

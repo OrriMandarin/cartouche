@@ -1,7 +1,7 @@
 //! Content sniffing, MP4 duration, variant planning and the image pipeline: source, crop and
 //! cut variants (Task 7, plan 6).
 
-mod common;
+use crate::common;
 
 use std::io::Cursor;
 use std::time::{Duration, Instant};

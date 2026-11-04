@@ -1,7 +1,5 @@
 //! The media storage service over an in-memory store (Task 7).
 
-mod common;
-
 use bytes::Bytes;
 use cartouche_api::media::MediaService;
 use url::Url;

@@ -59,7 +59,7 @@ lint:
 	$(PNPM) -r typecheck
 
 openapi:
-	cd backend && UPDATE_OPENAPI=1 cargo test -p cartouche-api --all-features --test openapi && $(PNPM) --filter @cartouche/api-client generate
+	cd backend && UPDATE_OPENAPI=1 cargo test -p cartouche-api --all-features --test it openapi:: && $(PNPM) --filter @cartouche/api-client generate
 
 # After adding or changing a query or a migration: regenerates the committed .sqlx/ cache.
 sqlx-prepare:
