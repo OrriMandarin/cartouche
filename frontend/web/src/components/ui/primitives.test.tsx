@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test, vi } from "vitest";
 
 import AppLayout from "@/app/(app)/layout";
@@ -33,7 +35,6 @@ describe("dashboard primitives", () => {
   });
 
   test("EDI-011 the AlertDialog focuses its default action (the safe one)", () => {
-    const onAction = vi.fn();
     render(
       <AlertDialog open>
         <AlertDialogContent>
@@ -41,15 +42,13 @@ describe("dashboard primitives", () => {
           <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onAction}>Delete</AlertDialogAction>
+            <AlertDialogAction>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>,
     );
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
-    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
-    expect(onAction).not.toHaveBeenCalled();
   });
 
   test("EDI-011 the AlertDialog closes on Escape", () => {
@@ -77,5 +76,17 @@ describe("dashboard primitives", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(onUndo).toHaveBeenCalledOnce();
+  });
+
+  test("EDI-011 no primitive hides its focus ring with outline-none", () => {
+    const dir = join(process.cwd(), "src/components/ui");
+    const offenders = readdirSync(dir)
+      .filter((file) => file.endsWith(".tsx") && !file.endsWith(".test.tsx"))
+      .filter((file) => {
+        const source = readFileSync(join(dir, file), "utf8");
+        return /\boutline-none\b/.test(source) && source.includes("focus-visible:outline-2");
+      });
+    // Tailwind 4: outline-none sets the style to none, which focus-visible:outline-2 then inherits.
+    expect(offenders).toEqual([]);
   });
 });

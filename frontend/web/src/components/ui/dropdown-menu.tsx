@@ -38,7 +38,7 @@ function DropdownMenuItem({
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
       className={cn(
-        "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium outline-none select-none",
+        "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium select-none",
         "data-[highlighted]:bg-app-surface-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
         "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--app-ring)]",
         "[&_svg]:size-5 [&_svg]:shrink-0",
