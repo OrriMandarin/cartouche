@@ -71,6 +71,10 @@ api clock '{"now":null}'                       # back to real time
 
 A sign-in token signed before moving the clock may be expired for the new time: sign in again (`/login`) after each change. See "Controlling the API clock" below. For the Playwright tests, `api.seedEvents()` does all of this (see `add-seed-scenario`).
 
+## Changing a seeded card's theme
+
+To try another ready-made theme or font pair on a seeded card, save the card through the API (the body replaces the whole card; start from `GET /api/cards/<id>`): set `"theme": {"preset": "minuit"}` (ids: `craie`, `ivoire`, `terracotta`, `sauge`, `bonbon`, `lagon`, `encre`, `minuit`; see `frontend/web/src/lib/theme/themes.json` for their colours and font pairs). In Playwright use `api.updateCard("seed-alice", id, { theme: { preset: "bonbon" } })`. The server refuses an unreadable colour combination (`400 low_contrast`).
+
 ## Signing in locally (`test` adapter)
 
 The site offers a test sign-in panel on `/login` (users `seed-admin`, `seed-alice`, …); a visitor who is already signed in and opens `/login` is redirected to `/dashboard`. For a token by hand:
@@ -109,5 +113,7 @@ For OIDC: `NEXT_PUBLIC_OIDC_AUTHORITY` and `NEXT_PUBLIC_OIDC_CLIENT_ID` instead 
 A `CARTOUCHE_BUILD_PROFILE=production` build refuses the `test` adapter (ACC-008); never work around this.
 
 ## Ports
+
+The web contact points (`NEXT_PUBLIC_SUPPORT_EMAIL`, `NEXT_PUBLIC_TERMS_URL`, `NEXT_PUBLIC_PRIVACY_URL`) default to placeholders; set them in `.env` to see real ones.
 
 Dev: Postgres 54320, API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000. Both can run together.

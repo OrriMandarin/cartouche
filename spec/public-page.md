@@ -1,6 +1,6 @@
 # Public page and vCard
 
-> Status: implemented (plans 2 and 3); PUB-004 to PUB-008 and PUB-023 amended, PUB-030 to PUB-038: plan 6 (phase A)
+> Status: implemented (plans 2, 3 and 6)
 
 This page describes the behavior of the public page, whatever the template (see TPL-003). The visuals are those of the "Classique" ("Classic") template, the reference template.
 

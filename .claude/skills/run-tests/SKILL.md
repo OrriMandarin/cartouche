@@ -62,6 +62,11 @@ Rules: `EVT-*` (`spec/events.md`), `FRM-*` (`spec/event-form.md`), `ABU-*` (`spe
 
 These tests depend on the clock: in Rust the harness (`tests/common/`) provides a frozen clock (`ManualClock`) and `request_from(ip, …)` to set the client's address; in e2e, `api.seedEvents()` freezes the clock at `EVENTS_NOW` (2027-03-15 10:00 UTC) **before** any sign-in. An event test that fails with an expired token forgot this order (see `add-seed-scenario`). The concurrency tests (`join_all`) live in `tests/events.rs` (concurrent events) and `tests/leads_submit.rs` (double submission).
 
+## Fonts and reduced motion in e2e
+
+- Fonts: listen to `page.on("request")` and keep the URLs ending in `.woff2`; the public page must download only the files of its pair (TPL-012), and wait for `networkidle` before asserting (see `public-page.spec.ts`).
+- Reduced motion: call `page.emulateMedia({ reducedMotion: "reduce" })` before `page.goto` (PUB-005, PUB-038); the header video then shows its poster and the animations stop.
+
 ## The full suite (before concluding a task)
 
 ```bash

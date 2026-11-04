@@ -68,3 +68,34 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 ## Review findings deferred
 
 (Filled during execution.)
+
+## Execution rulings (phase A)
+
+- Ruling E-A1: the stacking with plan 4 changes: at phase B, if plan 4 has an open PR saying it is complete, its branch is merged into this one locally and a stacked PR is opened against it; otherwise phase A is pushed, a PR is opened against `main` and the work stops — instruction of the parent session, the owner reviews merges themselves — cost if wrong: phase B is delayed.
+- Ruling E-A2: the planner's deviation in A13 is accepted: the current, not yet restyled event editor gets a "Date et heure" option so that a seeded `datetime` field stays usable on the dashboard — it keeps the dashboard working until phase B — cost if wrong: one small conflict with plan 4's change of the editor (EDI-021), resolved in Task B1.
+- Ruling E-A3: the e2e wrapper resets the shared test stack volume (`down -v`) before and after each plan 6 run, only under its lock and when no other worktree runs Playwright — the shared database would keep the other worktree's migrations and the API refuses to start — cost if wrong: plan 4's next e2e run rebuilds from scratch (it builds with `--build` anyway).
+- Ruling E-A4: plan 6 uses its own Postgres container `cartouche-plan6-db` on `127.0.0.1:54326` (`.env` updated, migrations 1 to 5 and 7 applied) instead of the shared `:54320` — two worktrees on one server make their `sqlx` tests drop each other's databases — cost if wrong: one extra container, to remove at the end of the plan.
+- Ruling E-A5: the crop computation of A9 takes the avatar slot (`crop_pixels` gains `slot: Slot`) and A10 passes it, because the brief contradicted itself (squaring an avatar versus a signature without a slot) — cost if wrong: none.
+- Ruling E-A6: a loop or a poster time sent with an image upload is refused with `400 invalid_request` (A10) — a strict input keeps the framing meaningful for each media kind — cost if wrong: a client that sends extra fields gets a 400.
+- Ruling E-A7: A11 moves the video framing defaults and the merge of their errors into one domain function shared by upload and re-frame (A10's deferred finding) — it avoids duplicating logic in two handlers — cost if wrong: a small refactor of A10's route.
+- Ruling E-A8: a video re-framed without a loop gets the default loop (the whole video), not the previous one (A11) — the video dialog of B17 always sends the loop — cost if wrong: an API client that omits the loop resets it.
+- Ruling E-A9: the e2e test "TPL-003 TPL-020 FRM-001 FRM-006" on Classique broke when A8 moved the `--c-*` variables from the form's `<main>` to `CardStage`, and A8's targeted run did not catch it; it was carried into A14, which rebuilds the form markup and its tests — cost if wrong: the e2e suite was red between A8 and A14.
+- Ruling E-A10: in A14 the single-choice select stays a native `<select>` as drawn in `Formulaire.dc.html` (desktop WebKit ignores `min-height: 52px` on it) — the handoff wants native controls and dark `color-scheme` support — cost if wrong: a slightly shorter select on desktop Safari.
+
+## Deferred minor findings (phase A)
+
+Raised by the task reviews and not fixed. Items marked fixed were closed by the cleanup commit of Task A16.
+
+- A1: the `--c-` check in `tokens.test.ts` is vacuous before the implementation; the `@theme inline` variables are not covered by the `--app-` test.
+- A2: the TPL-024 test lacks the `#111111` and `#FFFFFF` fallback cases and compares with `toLowerCase()` instead of the literal `"#3b2117"`; the TPL-021 tie-to-white case is untested; the `stopsOf` cast is awkward; `formatRatio` floors with a possible floating-point edge case; `color.test` lacks a mid-point mix case.
+- A4: the `editor.spec.ts` `low_contrast` message locator is not scoped to the theme section and a line exceeds 100 columns; `theme/mod.rs` reads `presets.json` twice in a test; `impl Theme` is split in two blocks.
+- A5: the `migrations.rs` comment carried a "Review Focus 8" token (fixed); the themes closure takes `PgPool` by value.
+- A6: `linkIcon` mixes a boolean and a value; a test line exceeds 100 columns; the icons are not render-tested; Classique's local `LINK_ICONS` was left untouched (A7 was to switch to `linkIcon`).
+- A7: the stale `min-h-screen` comment in `PhonePreview.tsx` (fixed); the dead selector `.cc-events > :nth-child(2) .cc-event::after`, copied from the tokens, remains.
+- A8: `.cc-off` used `min-height: 100svh` inside the padded stage, giving a scrollbar from 40rem (fixed); `neutralTheme()` casts a JSON value; the TPL-012 font e2e test was not written RED-first; the form still sits inside the stage until A14; the neutral page uses `Link2Off` rather than `Unlink` (matches the design).
+- A9: the zero-dimension preconditions of the crop functions are undocumented; there is no test for a short loop at the end of a long video.
+- A10: the default poster time is a literal and the loop and poster errors are merged in the route (A11 moved the framing defaults and errors into one domain function); `MediaField` sends `posterTime` 0.1 even for videos of 0.1 s or less; the `upload.test` case named "without framing" contradicts what it checks; `FRAMING_FIELD_LIMIT` and a loop sent with an image are untested; `resize_exact` stretches crops that are up to 1 % off the ratio.
+- A11: `keep_source` removes position 0 positionally and wastes an encode; decode errors of a stored source are reported on the `crop` field; a copy race gives 500 instead of 404; the web tests were not written RED-first; the cleanup of `store()` after a failed put or copy is untested.
+- A12: the `srcSet` helper is duplicated between `HeaderMedia` and Classique; no e2e test uses a non-null video crop (it is unit-tested).
+- A13: `AnswerSnapshot.value` did not document the `datetime` shape (fixed); `parse_datetime` returns `Option<()>` rather than `Option<String>`; the keyboard e2e tests (FRM-005, FRM-039) had to be revisited in A14 because `datetime-local` has several tab stops.
+- A15: `flow.ts` has unrelated re-wrapped hunks; the trailing space in `event-form.spec.ts` (fixed); some assertions are long or mixed; `errorCount` was computed twice in `LeadForm` (fixed); the component tests were not written RED-first; a server error on a path that is not rendered is counted without a message.

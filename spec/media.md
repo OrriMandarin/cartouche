@@ -1,6 +1,6 @@
 # Media
 
-> Status: implemented (plans 2 and 3); MED-003, MED-005 and MED-015 amended, MED-025 to MED-033: plan 6 (phase A, except the crop dialogs of EDI-026: phase B)
+> Status: implemented (plans 2, 3 and 6); the crop dialogs of EDI-026, EDI-034 and EDI-035: plan 6 (phase B)
 
 ## Header backgrounds and profile photo
 

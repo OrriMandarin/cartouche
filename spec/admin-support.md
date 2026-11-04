@@ -1,6 +1,6 @@
 # Sign-up approval and support
 
-> Status: implemented: ADM-001 to ADM-006 and ADM-009 to ADM-015 (plans 1 and 2); ADM-007 and ADM-008: plan 4; ADM-021: plan 6 (phase A)
+> Status: implemented: ADM-001 to ADM-006 and ADM-009 to ADM-015 (plans 1 and 2); ADM-007 and ADM-008: plan 4; ADM-021: plan 6
 
 ## Access and account management
 

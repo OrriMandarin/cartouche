@@ -1,6 +1,6 @@
 # Public card link
 
-> Status: implemented (plans 2 and 3); LNK-015 and LNK-016: plan 4; LNK-006, LNK-023 and LNK-027 amended, LNK-034: plan 6 (phase A); LNK-035 and LNK-036: plan 6 (phase B)
+> Status: implemented (plans 2, 3 and 6 phase A); LNK-015 and LNK-016: plan 4; LNK-035 and LNK-036: plan 6 (phase B)
 
 ## Format and uniqueness
 

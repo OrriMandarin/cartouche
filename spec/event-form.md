@@ -1,6 +1,6 @@
 # Event form
 
-> Status: implemented (plan 3); FRM-021 and FRM-039 amended, FRM-043 to FRM-049: plan 6 (phase A)
+> Status: implemented (plans 3 and 6)
 
 ## Prospect journey
 

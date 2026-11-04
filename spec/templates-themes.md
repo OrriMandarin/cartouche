@@ -1,6 +1,6 @@
 # Templates and themes
 
-> Status: implemented (plans 2 and 3); TPL-009, TPL-011, TPL-012, TPL-013 and TPL-018 amended, TPL-021 to TPL-027: plan 6 (phase A)
+> Status: implemented (plans 2, 3 and 6 phase A); TPL-013 and TPL-024 in the editor (message with the ratio, fix button): plan 6 (phase B, Task B14)
 
 ## Templates
 
