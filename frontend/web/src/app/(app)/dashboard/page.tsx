@@ -9,6 +9,7 @@ import { CardList, CardListEmpty, CardListSkeleton } from "@/components/cards/Ca
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api";
+import { countActive } from "@/lib/cards/status";
 import type { CardView } from "@/lib/cards/types";
 
 function DashboardContent() {
@@ -40,7 +41,6 @@ function DashboardContent() {
     })();
   }, [reload]);
 
-  const active = cards?.filter((card) => card.status === "active").length ?? 0;
 
   return (
     <section className="space-y-6">
@@ -49,7 +49,7 @@ function DashboardContent() {
           <h1 className="@max-[847px]:sr-only text-[28px] leading-[1.2] font-bold tracking-[-0.02em]">{t("title")}</h1>
           {cards !== null && cards.length > 0 ? (
             <p data-testid="dashboard-summary" className="text-app-muted">
-              {t("summary", { total: cards.length, active })}
+              {t("summary", { total: cards.length, active: countActive(cards) })}
             </p>
           ) : null}
         </div>
@@ -62,7 +62,7 @@ function DashboardContent() {
             </Button>
           ) : null}
           {cards !== null && cards.length > 0 ? (
-            <Button asChild>
+            <Button asChild className="@max-[847px]:hidden">
               <Link href="/dashboard/cards/new" data-testid="new-card">
                 <Plus aria-hidden="true" />
                 {tCards("create")}
@@ -85,13 +85,15 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   const t = useTranslations("shell");
+  const tCards = useTranslations("cards");
   return (
     <AccountGate
       title={t("cards")}
       action={
         <Link
           href="/dashboard/cards/new"
-          aria-label={t("newCard")}
+          aria-label={tCards("create")}
+          data-testid="new-card-bar"
           className="rounded-app grid size-11 flex-none place-items-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-app-primary"
         >
           <Plus aria-hidden="true" className="size-5" />

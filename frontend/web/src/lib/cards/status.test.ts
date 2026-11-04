@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { canDuplicate, canToggle, cardStatusLabelKey } from "./status";
+import { canDuplicate, canToggle, cardStatusLabelKey, countActive } from "./status";
 
 describe("card status", () => {
   test("EDI-012 LNK-011 status labels and toggling", () => {
@@ -11,5 +11,12 @@ describe("card status", () => {
     expect(canToggle("disabled_by_support")).toBe(false);
     expect(canDuplicate("disabled")).toBe(true);
     expect(canDuplicate("disabled_by_support")).toBe(false);
+  });
+});
+
+describe("countActive", () => {
+  test("EDI-023 counts only the active cards", () => {
+    expect(countActive([{ status: "active" }, { status: "disabled" }, { status: "disabled_by_support" }, { status: "active" }])).toBe(2);
+    expect(countActive([])).toBe(0);
   });
 });

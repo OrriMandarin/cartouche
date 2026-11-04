@@ -14,7 +14,7 @@ import { CardThumbnail } from "./CardThumbnail";
 import { CopyLinkButton } from "./ShareCard";
 
 const GRID =
-  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 @min-[848px]:grid-cols-[56px_minmax(0,1fr)_minmax(0,1.7fr)_150px_210px_150px] @min-[848px]:gap-x-4 @min-[848px]:px-5";
+  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 @min-[848px]:grid-cols-[56px_minmax(0,1.2fr)_minmax(0,1.4fr)_128px_180px_140px] @min-[848px]:gap-x-4 @min-[848px]:px-5";
 
 function EventsSummary({ card }: { card: CardView }) {
   const t = useTranslations("cards.events");

@@ -30,3 +30,8 @@ export function canDuplicate(status: CardStatus): boolean {
 export function canEdit(status: CardStatus): boolean {
   return status !== "disabled_by_support";
 }
+
+/** The number of cards that are active, for the summary of the card list. */
+export function countActive(cards: readonly { status: CardStatus }[]): number {
+  return cards.filter((card) => card.status === "active").length;
+}

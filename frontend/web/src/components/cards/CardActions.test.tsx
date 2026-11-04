@@ -1,4 +1,4 @@
-import { configure, act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, configure, act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiError } from "@cartouche/api-client";
@@ -7,6 +7,8 @@ import { cardView } from "./card-view.fixture";
 
 // The slug checks wait 300 ms each; leave room when the machine is busy.
 configure({ asyncUtilTimeout: 4000 });
+
+type CardCounts = { events: number; leads: number };
 
 const get = vi.fn();
 const post = vi.fn();
@@ -124,6 +126,21 @@ describe("CardActions", { timeout: 15_000 }, () => {
     fireEvent.click(await screen.findByTestId("card-delete-confirm"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/cards/{id}", { params: { path: { id: "card-1" } } }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+  });
+
+  test("EDI-024 the deletion dialog reads well with one, zero and no contents", async () => {
+    const cases: [CardCounts, string][] = [
+      [{ events: 1, leads: 1 }, "La carte alice-durand, son événement et son contact seront supprimés définitivement."],
+      [{ events: 0, leads: 3 }, "La carte alice-durand, aucun événement et ses 3 contacts seront supprimés définitivement."],
+      [{ events: 0, leads: 0 }, "La carte alice-durand sera supprimée définitivement."],
+    ];
+    for (const [{ events, leads }, sentence] of cases) {
+      renderActions(cardView({ event_counts: { running: 0, upcoming: events, past: 0 }, lead_count: leads }));
+      openMenu();
+      fireEvent.click(screen.getByTestId("card-delete-alice-durand"));
+      expect(await screen.findByRole("alertdialog")).toHaveTextContent(sentence);
+      cleanup();
+    }
   });
 
   test("EDI-014 duplicate asks for a slug, proposed by the server", async () => {

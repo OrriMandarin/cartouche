@@ -11,7 +11,7 @@ test.beforeEach(async ({ api, loginAs }) => {
 
 test("EDI-013 LNK-001 LNK-019 create a card from a suggested slug", async ({ page }) => {
   await page.goto("/dashboard");
-  await page.getByTestId("new-card").click();
+  await page.locator('[data-testid^="new-card"]:visible').click();
   await expect(page).toHaveURL(/\/dashboard\/cards\/new$/);
 
   await page.getByTestId("new-card-first-name").fill("Alice");
