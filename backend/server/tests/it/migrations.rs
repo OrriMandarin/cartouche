@@ -103,13 +103,13 @@ async fn theme_identifiers_are_renamed(pool: PgPool) {
         .map(|(_, after)| serde_json::from_str(after).unwrap())
         .collect();
 
-    sqlx::raw_sql(include_str!("../migrations/0007_theme_ids.sql"))
+    sqlx::raw_sql(include_str!("../../migrations/0007_theme_ids.sql"))
         .execute(&pool)
         .await
         .unwrap();
     assert_eq!(themes(pool.clone(), ids.clone()).await, expected);
 
-    sqlx::raw_sql(include_str!("../migrations/0007_theme_ids.sql"))
+    sqlx::raw_sql(include_str!("../../migrations/0007_theme_ids.sql"))
         .execute(&pool)
         .await
         .unwrap();

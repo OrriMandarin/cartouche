@@ -160,5 +160,5 @@ pub fn quadrants_png(width: u32, height: u32) -> Vec<u8> {
 
 /// A real two-second H.264 clip (the e2e fixture); its container says a little more than 2 s.
 pub fn header_clip() -> Vec<u8> {
-    include_bytes!("../../../../frontend/e2e/fixtures/header-2s.mp4").to_vec()
+    include_bytes!("../../../../../frontend/e2e/fixtures/header-2s.mp4").to_vec()
 }
