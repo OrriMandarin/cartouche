@@ -1,6 +1,5 @@
 //! Shared integration-test harness: the real router driven in-process (no socket),
 //! with a frozen clock. Later tasks extend it (key source for tokens, test clock).
-#![allow(dead_code)] // each test binary uses a different subset
 
 pub mod cards;
 pub mod events;
@@ -95,13 +94,8 @@ fn multipart_body(parts: &[Part]) -> Vec<u8> {
     body
 }
 
-/// Configuration used by every integration test (`APP_ENV=test`, test issuer).
-pub fn test_config() -> Config {
-    test_config_with(&[])
-}
-
-/// Like `test_config`, with environment variables overridden (e.g. `SIGNUP_MODE`,
-/// `ADMIN_USER_IDS`).
+/// Configuration used by every integration test (`APP_ENV=test`, test issuer), with
+/// environment variables overridden (e.g. `SIGNUP_MODE`, `ADMIN_USER_IDS`).
 pub fn test_config_with(overrides: &[(&str, &str)]) -> Config {
     Config::from_vars(|name| {
         if let Some((_, value)) = overrides.iter().find(|(key, _)| *key == name) {
@@ -123,11 +117,11 @@ pub fn test_config_with(overrides: &[(&str, &str)]) -> Config {
 /// Key id of the test signing key. Always this value, in tokens and in the key source.
 pub const TEST_KID: &str = "cartouche-test-1";
 /// Test only, never trusted in production: see `test-keys/README.md`.
-pub const TEST_PRIVATE_KEY_PEM: &str = include_str!("../../test-keys/es256-private.pem");
-pub const TEST_PUBLIC_KEY_PEM: &str = include_str!("../../test-keys/es256-public.pem");
+pub const TEST_PRIVATE_KEY_PEM: &str = include_str!("../../../test-keys/es256-private.pem");
+pub const TEST_PUBLIC_KEY_PEM: &str = include_str!("../../../test-keys/es256-public.pem");
 /// A key no verifier trusts.
 pub const UNTRUSTED_PRIVATE_KEY_PEM: &str =
-    include_str!("../../test-keys/untrusted-es256-private.pem");
+    include_str!("../../../test-keys/untrusted-es256-private.pem");
 
 pub fn test_decoding_key() -> DecodingKey {
     DecodingKey::from_ec_pem(TEST_PUBLIC_KEY_PEM.as_bytes()).expect("valid test public key")
@@ -204,7 +198,7 @@ pub async fn test_app(pool: PgPool) -> TestApp {
     TestApp::from_state(state, clock)
 }
 
-/// A test app whose configuration differs from `test_config` by `overrides`.
+/// A test app whose configuration differs from the default test configuration by `overrides`.
 pub async fn test_app_with(pool: PgPool, overrides: &[(&str, &str)]) -> TestApp {
     let (state, clock) = test_state_with(pool, overrides);
     TestApp::from_state(state, clock)

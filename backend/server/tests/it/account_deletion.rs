@@ -1,6 +1,6 @@
 //! Account deletion: `DELETE /api/me` (Task 8 of plan 4).
 
-mod common;
+use crate::common;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;

@@ -22,8 +22,10 @@ Local machine: `export PATH="$HOME/.local/bin:$PATH"` and `source ~/.cargo/env` 
 ## A targeted test
 
 ```bash
-# Rust: file tests/<file>.rs, filter on the test name
-cd backend && cargo test -p cartouche-api --all-features --test account approved_user
+# Rust: the integration tests are one binary, `it` (tests/it/main.rs); filter on <file>::<test name>
+cd backend && cargo test -p cartouche-api --all-features --test it account::approved_user
+cd backend && cargo test -p cartouche-api --all-features --test it account::  # a whole file
+# The filter is a substring: `cards::` also runs `admin_cards::`, `db_cards::` and `public_cards::`.
 cd backend && cargo test -p cartouche-domain                      # pure business logic
 cd backend && cargo test -p cartouche-api --all-features --lib    # inline tests in src/
 
@@ -47,13 +49,13 @@ A test cites its rule (`// spec: ACC-004` in Rust, `ACC-004` in the name in Type
 grep -rn "ACC-004" backend frontend --include='*.rs' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.next
 ```
 
-Then run each file found (Rust: `--test <file without .rs>` for `backend/server/tests/<file>.rs`, or `--lib` for `src/`; web: `pnpm -C frontend --filter web test <file>`; e2e: `make e2e ARGS="-g ACC-004"`). A rule without a test shows up with `node scripts/spec-lint.mjs --coverage`.
+Then run each file found (Rust: `--test it <file without .rs>::` for `backend/server/tests/it/<file>.rs`, or `--lib` for `src/`; web: `pnpm -C frontend --filter web test <file>`; e2e: `make e2e ARGS="-g ACC-004"`). A rule without a test shows up with `node scripts/spec-lint.mjs --coverage`.
 
 ## The tests of events and leads
 
 Rules: `EVT-*` (`spec/events.md`), `FRM-*` (`spec/event-form.md`), `ABU-*` (`spec/anti-abuse.md`), `LEA-*` (`spec/leads-exports.md`, leads and exports).
 
-| Topic | Rust (`backend/server/tests/`, `--test <file>`) | Web (vitest, file pattern) | e2e (`make e2e ARGS=…`) |
+| Topic | Rust (`backend/server/tests/it/`, `--test it <file>::`) | Web (vitest, file pattern) | e2e (`make e2e ARGS=…`) |
 |---|---|---|---|
 | Owner's events (creation, duration, concurrent, code) | `events`, `db_events`; domain: `cargo test -p cartouche-domain` | `src/lib/events`, `src/components/events` (`EventEditor`, `EventList`) | `tests/events.spec.ts` |
 | Leads (list, whole-card list, spam, deletion) | `leads`, `db_events` | `LeadList`, `LeadDetail`, `src/lib/events/leads`, `lead-search`, `lead-answers`, `lead-actions` | `tests/leads.spec.ts` (LEA-002 to LEA-020, ACC-017) |
@@ -62,13 +64,13 @@ Rules: `EVT-*` (`spec/events.md`), `FRM-*` (`spec/event-form.md`), `ABU-*` (`spe
 | Per-IP limit, address used, honeypot field | `client_ip`, `leads_submit`, `public_events`; sliding window: `cargo test -p cartouche-domain` | | `tests/event-form.spec.ts` (`-g ABU-`) |
 | Signed media URLs (MED-023, MED-024) | `media`; signature: `cargo test -p cartouche-api --all-features --lib` | | |
 
-These tests depend on the clock: in Rust the harness (`tests/common/`) provides a frozen clock (`ManualClock`) and `request_from(ip, …)` to set the client's address; in e2e, `api.seedEvents()` freezes the clock at `EVENTS_NOW` (2027-03-15 10:00 UTC) **before** any sign-in. An event test that fails with an expired token forgot this order (see `add-seed-scenario`). The concurrency tests (`join_all`) live in `tests/events.rs` (concurrent events) and `tests/leads_submit.rs` (double submission).
+These tests depend on the clock: in Rust the harness (`tests/it/common/`) provides a frozen clock (`ManualClock`) and `request_from(ip, …)` to set the client's address; in e2e, `api.seedEvents()` freezes the clock at `EVENTS_NOW` (2027-03-15 10:00 UTC) **before** any sign-in. An event test that fails with an expired token forgot this order (see `add-seed-scenario`). The concurrency tests (`join_all`) live in `tests/it/events.rs` (concurrent events) and `tests/it/leads_submit.rs` (double submission).
 
 ## Support access, account deletion and blocked slugs
 
 Rules: `ADM-007`, `ADM-008`, `ADM-016` to `ADM-020` (`spec/admin-support.md`, support views of events and leads and their audit), `ACC-018` to `ACC-024` (`spec/account-auth.md`, account deletion), `LNK-015`, `LNK-031` to `LNK-033` (`spec/card-links.md`, blocked slugs).
 
-| Topic | Rust (`backend/server/tests/`, `--test <file>`) | Web (vitest, file pattern) | e2e (`make e2e ARGS=…`) |
+| Topic | Rust (`backend/server/tests/it/`, `--test it <file>::`) | Web (vitest, file pattern) | e2e (`make e2e ARGS=…`) |
 |---|---|---|---|
 | Support views of events and leads, audit | `admin_leads` (audit rows included); other support actions: `admin_cards` | `src/components/support` (`SupportEventList`, `SupportLeads`), the pages under `src/app/(app)/support/cards` | `tests/support-leads.spec.ts` (`-g ADM-007`) |
 | Account deletion | `account_deletion` (all-or-nothing: media storage failure), `account` | `DeleteAccount`, `src/lib/account/deletion`, `src/app/(app)/account-deleted/page.test.tsx` | `tests/account-deletion.spec.ts` (`-g ACC-02`) |

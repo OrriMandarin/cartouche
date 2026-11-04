@@ -1,6 +1,6 @@
 //! The `ClientIp` extractor on real requests (headers, connection, configuration).
 
-mod common;
+use crate::common;
 
 use std::net::SocketAddr;
 

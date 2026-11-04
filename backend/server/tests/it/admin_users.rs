@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use axum::http::StatusCode;
 use common::{TestApp, TestResponse, sign_test_token, test_app_with};

@@ -9,7 +9,7 @@ Basic rule: **reproduce with a test first, fix second.** If the bug reveals a mi
 
 ## 1. Write a reproducing test
 
-At the lowest level that shows the defect: domain (`cartouche-domain`), integration (`backend/server/tests/`), component (vitest), and e2e only if the defect is in the browser + API sequence. Cite it with its rule (`// spec: XXX-NNN` or `XXX-NNN` in the name). See it fail **for the right reason**. Commands: skill `run-tests`.
+At the lowest level that shows the defect: domain (`cartouche-domain`), integration (`backend/server/tests/it/`), component (vitest), and e2e only if the defect is in the browser + API sequence. Cite it with its rule (`// spec: XXX-NNN` or `XXX-NNN` in the name). See it fail **for the right reason**. Commands: skill `run-tests`.
 
 ## 2. Follow a request end to end
 
@@ -43,7 +43,7 @@ Rerun a single test: `make e2e ARGS="-g <title or rule>"`. If the stack keeps a 
 
 ## 4. Rust / vitest failure
 
-- Rust: `cd backend && cargo test -p cartouche-api --all-features --test <file> <name> -- --nocapture`, with `DATABASE_URL` exported (see `run-tests`). `RUST_BACKTRACE=1` for the stack trace.
+- Rust: `cd backend && cargo test -p cartouche-api --all-features --test it <file>::<name> -- --nocapture`, with `DATABASE_URL` exported (see `run-tests`). `RUST_BACKTRACE=1` for the stack trace.
 - Vitest: `pnpm -C frontend --filter web test <file>`; add `--reporter=verbose` if needed.
 
 ## 5. Fix, then widen
