@@ -275,6 +275,24 @@ mod tests {
         );
     }
 
+    // spec: LEA-033
+    #[test]
+    fn json_keeps_a_datetime_answer_as_recorded() {
+        let events = [event()];
+        let mut first = lead(11, "2027-03-01T10:00:00Z", false);
+        first.custom = vec![snapshot(
+            25,
+            "Rendez-vous souhaité",
+            CustomFieldKind::Datetime,
+            json!("2027-03-20T14:30"),
+        )];
+        let document = rendered(ExportScope::Event, &events, &[first], false);
+        assert_eq!(
+            document["leads"][0]["custom"][0]["value"],
+            json!("2027-03-20T14:30")
+        );
+    }
+
     // spec: LEA-012, LEA-030
     #[test]
     fn json_card_scope_has_no_event_and_can_include_spam() {

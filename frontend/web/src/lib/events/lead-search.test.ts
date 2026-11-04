@@ -56,6 +56,17 @@ describe("filterLeads", () => {
     expect(filterLeads(all, "lilas")).toEqual([]);
   });
 
+  test("LEA-033 the search ignores datetime answers", () => {
+    const withAppointment = leadView({
+      id: "lead-rdv",
+      answers: { first_name: "Inès" },
+      custom: [{ field_id: "f7", kind: "datetime", label: "Rendez-vous", value: "2027-03-20T14:30" }],
+    });
+    expect(filterLeads([withAppointment], "2027-03-20")).toEqual([]);
+    expect(filterLeads([withAppointment], "14:30")).toEqual([]);
+    expect(filterLeads([withAppointment], "ines")).toEqual([withAppointment]);
+  });
+
   test("LEA-016 a phone-like word matches the phone digits without leading zeros", () => {
     const all = [eloise, zoe, nameless];
     expect(filterLeads(all, "0612")).toEqual([eloise]);
