@@ -154,3 +154,64 @@ export function coveredZones(headerGradient: number): { fade: FrameZone; avatar:
     },
   };
 }
+
+/** The shortest loop of a header video, in seconds, unless it is the whole video (MED-028). */
+export const MIN_LOOP_SECONDS = 1;
+/** An arrow moves a time of the strip by a tenth of a second, a second with Shift (EDI-034). */
+const TIME_STEP = 0.1;
+const TIME_STEP_SHIFT = 1;
+
+/** A time rounded to the tenth of a second the dialog shows, kept within 0 and the duration. */
+function tenth(seconds: number, min: number, max: number): number {
+  return clamp(Math.round(seconds * 10) / 10, min, max);
+}
+
+/** The whole video: the default loop (MED-028). */
+export function wholeLoop(duration: number): VideoLoop {
+  return { start: 0, end: duration };
+}
+
+/** spec: EDI-034, MED-028. The loop once its start handle is at `start`: at least a second before its end. */
+export function setLoopStart(loop: VideoLoop, start: number, duration: number): VideoLoop {
+  if (duration <= MIN_LOOP_SECONDS) return wholeLoop(duration);
+  return { start: tenth(start, 0, loop.end - MIN_LOOP_SECONDS), end: loop.end };
+}
+
+/** spec: EDI-034, MED-028. The loop once its end handle is at `end`: at least a second after its start. */
+export function setLoopEnd(loop: VideoLoop, end: number, duration: number): VideoLoop {
+  if (duration <= MIN_LOOP_SECONDS) return wholeLoop(duration);
+  return { start: loop.start, end: tenth(end, loop.start + MIN_LOOP_SECONDS, duration) };
+}
+
+/** spec: EDI-034. A time of the strip (the playhead) moved to `seconds`, within the video. */
+export function clampTime(seconds: number, duration: number): number {
+  return tenth(seconds, 0, duration);
+}
+
+const TIME_KEYS: Record<string, 1 | -1> = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 };
+
+/** spec: EDI-034. How far an arrow moves a handle or the playhead, in seconds, or null for any other key. */
+export function stepTime(key: { key: string; shiftKey: boolean }): number | null {
+  const direction = TIME_KEYS[key.key];
+  if (!direction) return null;
+  return direction * (key.shiftKey ? TIME_STEP_SHIFT : TIME_STEP);
+}
+
+/** spec: EDI-034. Seconds with one decimal and a comma: 7.5 → « 7,5 ». */
+export function formatSeconds(seconds: number): string {
+  const tenths = Math.round(seconds * 10);
+  return `${Math.floor(tenths / 10)},${tenths % 10}`;
+}
+
+/** spec: EDI-034. A time of the video as minutes, seconds and tenths: 2.9 → « 0:02,9 ». */
+export function formatClock(seconds: number): string {
+  const tenths = Math.round(seconds * 10);
+  const minutes = Math.floor(tenths / 600);
+  const rest = tenths % 600;
+  return `${minutes}:${String(Math.floor(rest / 10)).padStart(2, "0")},${rest % 10}`;
+}
+
+/** spec: EDI-034. When the frames of the strip are taken: the middle of `count` equal parts of the video. */
+export function frameTimes(duration: number, count: number): number[] {
+  return Array.from({ length: count }, (_, index) => ((index + 0.5) * duration) / count);
+}

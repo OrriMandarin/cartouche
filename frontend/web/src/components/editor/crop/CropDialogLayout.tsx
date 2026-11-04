@@ -2,7 +2,7 @@
 
 import { Check, Minus, Plus, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRef, type ReactNode } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 import Cropper from "react-easy-crop";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -18,7 +18,11 @@ interface CropDialogLayoutProps {
   aspect: number;
   /** A round mask over a square frame (the profile photo). */
   round?: boolean;
-  title: string;
+  /** Frames a video rather than a photo (EDI-034): the stage plays it, paused until the owner plays it. */
+  video?: boolean;
+  /** The stage's video element, to seek and play it (EDI-034). */
+  setVideoRef?: (ref: RefObject<HTMLVideoElement | null>) => void;
+  title: ReactNode;
   stageLabel: string;
   phoneHint: string;
   testId: string;
@@ -27,6 +31,8 @@ interface CropDialogLayoutProps {
   frameOverlay?: ReactNode;
   /** The side panel above the zoom (the preview). */
   preview: ReactNode;
+  /** Under the stage (the video's strip of frames). */
+  belowStage?: ReactNode;
   /** The side panel between the zoom and « Réinitialiser ». */
   afterZoom?: ReactNode;
   onApply: (crop: CropRect) => void;
@@ -43,6 +49,8 @@ export function CropDialogLayout({
   initialCrop,
   aspect,
   round,
+  video,
+  setVideoRef,
   title,
   stageLabel,
   phoneHint,
@@ -50,6 +58,7 @@ export function CropDialogLayout({
   applyTestId,
   frameOverlay,
   preview,
+  belowStage,
   afterZoom,
   onApply,
   onCancel,
@@ -79,46 +88,56 @@ export function CropDialogLayout({
         </DialogTitle>
 
         <div className="col-[1/4] row-[2] grid gap-6 min-[848px]:grid-cols-[minmax(0,680px)_minmax(0,1fr)] max-[847px]:flex max-[847px]:min-h-0 max-[847px]:flex-col max-[847px]:gap-0">
-          <div
-            ref={stage}
-            role="application"
-            aria-label={stageLabel}
-            tabIndex={0}
-            onKeyDownCapture={framing.onKey}
-            className="bg-app-stage relative aspect-[680/500] w-full touch-none overflow-hidden rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-ring)] max-[847px]:aspect-auto max-[847px]:min-h-64 max-[847px]:flex-1 max-[847px]:rounded-none"
-          >
-            {url ? (
-              <Cropper
-                image={url}
-                crop={position}
-                zoom={zoom}
-                minZoom={MIN_ZOOM}
-                maxZoom={MAX_ZOOM}
-                aspect={aspect}
-                cropShape={round ? "round" : "rect"}
-                showGrid={!round}
-                initialCroppedAreaPercentages={initialCrop ? percentagesFromCrop(initialCrop) : undefined}
-                onCropChange={framing.setPosition}
-                onZoomChange={framing.setZoom}
-                onCropAreaChange={framing.setArea}
-                onCropComplete={framing.setArea}
-                onCropSizeChange={framing.setFrameSize}
-                onMediaLoaded={framing.setMediaSize}
-                cropperProps={{ tabIndex: -1 }}
-                style={{
-                  containerStyle: { background: "var(--app-stage)" },
-                  cropAreaStyle: { border: "2px solid var(--app-on-stage)", color: "var(--app-stage-dim)" },
-                }}
-              />
-            ) : null}
-            {frameSize && frameOverlay ? (
-              <div
-                className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ width: frameSize.width, height: frameSize.height }}
-              >
-                {frameOverlay}
-              </div>
-            ) : null}
+          <div className="flex min-w-0 flex-col gap-3 max-[847px]:min-h-0 max-[847px]:flex-1 max-[847px]:gap-0">
+            <div
+              ref={stage}
+              role="application"
+              aria-label={stageLabel}
+              tabIndex={0}
+              onKeyDownCapture={framing.onKey}
+              className="bg-app-stage relative aspect-[680/500] w-full touch-none overflow-hidden rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-ring)] max-[847px]:aspect-auto max-[847px]:min-h-64 max-[847px]:flex-1 max-[847px]:rounded-none"
+            >
+              {url ? (
+                <Cropper
+                  {...(video
+                    ? {
+                        video: url,
+                        // Paused on its first frame: the owner plays the extract (EDI-034).
+                        mediaProps: { autoPlay: false, loop: false, muted: true, playsInline: true, preload: "auto" },
+                        setVideoRef,
+                      }
+                    : { image: url })}
+                  crop={position}
+                  zoom={zoom}
+                  minZoom={MIN_ZOOM}
+                  maxZoom={MAX_ZOOM}
+                  aspect={aspect}
+                  cropShape={round ? "round" : "rect"}
+                  showGrid={!round}
+                  initialCroppedAreaPercentages={initialCrop ? percentagesFromCrop(initialCrop) : undefined}
+                  onCropChange={framing.setPosition}
+                  onZoomChange={framing.setZoom}
+                  onCropAreaChange={framing.setArea}
+                  onCropComplete={framing.setArea}
+                  onCropSizeChange={framing.setFrameSize}
+                  onMediaLoaded={framing.setMediaSize}
+                  cropperProps={{ tabIndex: -1 }}
+                  style={{
+                    containerStyle: { background: "var(--app-stage)" },
+                    cropAreaStyle: { border: "2px solid var(--app-on-stage)", color: "var(--app-stage-dim)" },
+                  }}
+                />
+              ) : null}
+              {frameSize && frameOverlay ? (
+                <div
+                  className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                  style={{ width: frameSize.width, height: frameSize.height }}
+                >
+                  {frameOverlay}
+                </div>
+              ) : null}
+            </div>
+            {belowStage}
           </div>
 
           <div className="flex min-w-0 flex-col gap-[18px] max-[847px]:bg-app-surface max-[847px]:gap-3 max-[847px]:p-4">

@@ -8,13 +8,16 @@ import type { MediaView, TemplateDefinition } from "@/templates/contract";
 import { MediaField } from "./MediaField";
 import { renderWithIntl } from "./test-helpers";
 
-const readVideoDuration = vi.fn();
+const readVideoInfo = vi.fn();
 const capturePoster = vi.fn();
 vi.mock("@/lib/media/video", () => ({
-  readVideoDuration: (file: File) => readVideoDuration(file),
-  capturePoster: (file: File) => capturePoster(file),
+  readVideoInfo: (file: File) => readVideoInfo(file),
+  capturePoster: (source: File | string, atSeconds: number) => capturePoster(source, atSeconds),
   POSTER_SECONDS: 0.1,
 }));
+/** What the browser reads of a 4:3 video and of a 16:9 one. */
+const video43 = (duration: number) => ({ duration, width: 640, height: 480 });
+const VIDEO_169 = { duration: 2, width: 640, height: 360 };
 
 const readImageSize = vi.fn();
 vi.mock("@/lib/media/image", () => ({ readImageSize: (file: File) => readImageSize(file) }));
@@ -37,6 +40,45 @@ vi.mock("./crop/HeaderCropDialog", () => ({
     <div data-testid="header-crop-dialog" data-source={typeof source === "string" ? source : source.name} data-initial={JSON.stringify(initialCrop ?? null)}>
       <button type="button" onClick={() => onApply(DIALOG_CROP)}>
         Appliquer
+      </button>
+      <button type="button" onClick={onCancel}>
+        Annuler
+      </button>
+    </div>
+  ),
+}));
+
+// The video dialog stands in the same way, handing back a framing whose poster is new or kept.
+const VIDEO_FRAMING = { crop: DIALOG_CROP, loop: { start: 0.5, end: 1.8 }, posterTime: 1.2 };
+vi.mock("./crop/VideoCropDialog", () => ({
+  VideoCropDialog: ({
+    video,
+    duration,
+    initialCrop,
+    initialLoop,
+    initialPosterTime,
+    onApply,
+    onCancel,
+  }: {
+    video: File | string;
+    duration: number;
+    initialCrop?: CropRect | null;
+    initialLoop?: unknown;
+    initialPosterTime?: number | null;
+    onApply: (framing: typeof VIDEO_FRAMING & { newPoster: boolean }) => void;
+    onCancel: () => void;
+  }) => (
+    <div
+      data-testid="video-crop-dialog"
+      data-video={typeof video === "string" ? video : video.name}
+      data-duration={duration}
+      data-initial={JSON.stringify({ crop: initialCrop ?? null, loop: initialLoop ?? null, posterTime: initialPosterTime ?? null })}
+    >
+      <button type="button" onClick={() => onApply({ ...VIDEO_FRAMING, newPoster: false })}>
+        Appliquer
+      </button>
+      <button type="button" onClick={() => onApply({ ...VIDEO_FRAMING, newPoster: true })}>
+        Appliquer avec l’image
       </button>
       <button type="button" onClick={onCancel}>
         Annuler
@@ -84,6 +126,15 @@ const reframable = (id: string): MediaView => ({
   source: { url: `https://media.example.test/${id}/source.webp?sig=1`, width: 1200, height: 1125 },
 });
 
+const reframableVideo = (id: string): MediaView => ({
+  ...media(id, "video"),
+  crop: { x: 0, y: 0.1, width: 1, height: 0.8 },
+  loop: { start: 1, end: 4 },
+  poster_time: 2,
+  duration_seconds: 7.5,
+  source: { url: `https://media.example.test/${id}/source.webp?sig=1`, width: 1080, height: 1920 },
+});
+
 function Harness({
   declared = ALL,
   upload,
@@ -120,7 +171,7 @@ const mp4 = () => new File(["mp4"], "clip.mp4", { type: "video/mp4" });
 
 beforeEach(() => {
   readImageSize.mockReset().mockResolvedValue({ width: 800, height: 600 });
-  readVideoDuration.mockReset().mockResolvedValue(2);
+  readVideoInfo.mockReset().mockResolvedValue(video43(2));
   capturePoster.mockReset().mockResolvedValue(new Blob(["poster"], { type: "image/jpeg" }));
 });
 
@@ -136,7 +187,7 @@ describe("MediaField", () => {
     expect(upload).toHaveBeenCalledWith("header", expect.any(File), undefined, undefined);
   });
 
-  test("MED-003 MED-028 a video is sent with the poster captured from it and its time", async () => {
+  test("MED-003 MED-028 a 4:3 video is sent as it is, with the poster captured from it and its time", async () => {
     const upload = vi.fn().mockResolvedValue(media("clip", "video"));
     renderWithIntl(<Harness upload={upload} />);
 
@@ -144,10 +195,43 @@ describe("MediaField", () => {
 
     await waitFor(() => expect(state().header).toBe("clip"));
     expect(upload).toHaveBeenCalledWith("header", expect.any(File), expect.any(Blob), { posterTime: 0.1 });
+    expect(capturePoster).toHaveBeenCalledWith(expect.any(File), 0.1);
+  });
+
+  test("EDI-026 EDI-034 MED-028 a video that is not 4:3 is framed first, then sent with its loop and its poster", async () => {
+    readVideoInfo.mockResolvedValue(VIDEO_169);
+    const upload = vi.fn().mockResolvedValue(media("clip", "video"));
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-header-input", mp4());
+
+    const dialog = await screen.findByTestId("video-crop-dialog");
+    expect(dialog).toHaveAttribute("data-video", "clip.mp4");
+    expect(dialog).toHaveAttribute("data-duration", "2");
+    expect(upload).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer" }));
+
+    await waitFor(() => expect(state().header).toBe("clip"));
+    // A new video always comes with its waiting image (MED-013), here at the time kept by the dialog.
+    expect(capturePoster).toHaveBeenCalledWith(expect.any(File), 1.2);
+    expect(upload).toHaveBeenCalledWith("header", expect.any(File), expect.any(Blob), VIDEO_FRAMING);
+  });
+
+  test("EDI-034 cancelling the video dialog sends nothing", async () => {
+    readVideoInfo.mockResolvedValue(VIDEO_169);
+    const upload = vi.fn();
+    renderWithIntl(<Harness upload={upload} />);
+
+    pick("media-header-input", mp4());
+    fireEvent.click(await screen.findByRole("button", { name: "Annuler" }));
+
+    expect(screen.queryByTestId("video-crop-dialog")).toBeNull();
+    expect(upload).not.toHaveBeenCalled();
+    expect(capturePoster).not.toHaveBeenCalled();
   });
 
   test("MED-013 a video above 30 seconds is refused before any upload", async () => {
-    readVideoDuration.mockResolvedValue(31);
+    readVideoInfo.mockResolvedValue(video43(31));
     const upload = vi.fn();
     renderWithIntl(<Harness upload={upload} />);
 
@@ -159,7 +243,7 @@ describe("MediaField", () => {
   });
 
   test("MED-021 an unreadable video shows a message and the field is usable again", async () => {
-    readVideoDuration.mockRejectedValue(new Error("The video cannot be read."));
+    readVideoInfo.mockRejectedValue(new Error("The video cannot be read."));
     const upload = vi.fn();
     renderWithIntl(<Harness upload={upload} />);
 
@@ -275,12 +359,12 @@ describe("MediaField", () => {
     const upload = vi.fn().mockResolvedValue(media("clip", "video"));
     renderWithIntl(<Harness upload={upload} />);
 
-    readVideoDuration.mockResolvedValue(30.2);
+    readVideoInfo.mockResolvedValue(video43(30.2));
     pick("media-header-input", mp4());
     expect(await screen.findByTestId("media-header-error")).toHaveTextContent("La vidéo dépasse 30 secondes");
     expect(upload).not.toHaveBeenCalled();
 
-    readVideoDuration.mockResolvedValue(30.05);
+    readVideoInfo.mockResolvedValue(video43(30.05));
     pick("media-header-input", mp4());
     await waitFor(() => expect(state().header).toBe("clip"));
     expect(upload).toHaveBeenCalledTimes(1);
@@ -383,6 +467,40 @@ describe("MediaField", () => {
     expect(crop).toBeDisabled();
     expect(crop).toHaveAccessibleDescription("Remplace ce média pour pouvoir le recadrer.");
     expect(screen.getByRole("button", { name: "Remplacer" })).toBeEnabled();
+  });
+
+  test("EDI-034 MED-030 « Recadrer » re-frames the header video from its file, keeping its waiting image", async () => {
+    const reframe = vi.fn().mockResolvedValue(media("reframed", "video"));
+    renderWithIntl(<Harness upload={vi.fn()} reframe={reframe} initial={{ header: reframableVideo("current"), avatar: null }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Recadrer" }));
+
+    const dialog = screen.getByTestId("video-crop-dialog");
+    expect(dialog).toHaveAttribute("data-video", "https://media.example.test/current/video.mp4");
+    expect(dialog).toHaveAttribute("data-duration", "7.5");
+    expect(JSON.parse(dialog.getAttribute("data-initial")!)).toEqual({
+      crop: { x: 0, y: 0.1, width: 1, height: 0.8 },
+      loop: { start: 1, end: 4 },
+      posterTime: 2,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer" }));
+
+    await waitFor(() => expect(state().header).toBe("reframed"));
+    // The loop is always sent: without it, a re-framed video would loop whole.
+    expect(reframe).toHaveBeenCalledWith("current", VIDEO_FRAMING, undefined);
+    expect(capturePoster).not.toHaveBeenCalled();
+  });
+
+  test("EDI-034 MED-003 MED-030 the box sends the frame at the playhead as the new waiting image", async () => {
+    const reframe = vi.fn().mockResolvedValue(media("reframed", "video"));
+    renderWithIntl(<Harness upload={vi.fn()} reframe={reframe} initial={{ header: reframableVideo("current"), avatar: null }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Recadrer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer avec l’image" }));
+
+    await waitFor(() => expect(state().header).toBe("reframed"));
+    expect(capturePoster).toHaveBeenCalledWith("https://media.example.test/current/video.mp4", 1.2);
+    expect(reframe).toHaveBeenCalledWith("current", VIDEO_FRAMING, expect.any(Blob));
   });
 
   test("EDI-026 the header shows its kind and the length of a video", () => {

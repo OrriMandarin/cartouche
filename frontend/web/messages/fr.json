@@ -575,6 +575,21 @@
           "previewApp": "Dans l’app · 36 px",
           "hint": "Centre le visage et laisse un peu d’air au-dessus de la tête\u00a0: le cercle est bordé par le fond de la carte.",
           "phoneHint": "Pince pour zoomer, glisse pour centrer le visage."
+        },
+        "video": {
+          "title": "Recadrer la vidéo d’en-tête",
+          "titlePhone": "Recadrer la vidéo",
+          "stage": "Zone de recadrage de la vidéo. Flèches pour déplacer, plus et moins pour zoomer.",
+          "play": "Lire l’extrait",
+          "strip": "Extrait en boucle",
+          "start": "Début de l’extrait",
+          "end": "Fin de l’extrait",
+          "playhead": "Tête de lecture",
+          "seconds": "{s}\u00a0s",
+          "loop": "Boucle de {d}\u00a0s",
+          "playheadAt": "tête de lecture à {t}",
+          "poster": "Utiliser l’image à {t} comme image d’attente",
+          "posterPhone": "Cette image comme image d’attente"
         }
       },
       "errors": {

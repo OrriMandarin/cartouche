@@ -2,10 +2,16 @@ import { describe, expect, test } from "vitest";
 import {
   coveredZones,
   cropFromPercentages,
+  formatClock,
+  formatSeconds,
+  frameTimes,
   HEADER_RATIO,
   loopRestart,
   needsCrop,
   nudge,
+  setLoopEnd,
+  setLoopStart,
+  stepTime,
   videoCropStyle,
   zoomStep,
 } from "./framing";
@@ -100,5 +106,42 @@ describe("framing", () => {
 
     expect(coveredZones(0).fade).toEqual({ left: 0, top: 1, width: 1, height: 0 });
     expect(coveredZones(100).fade).toEqual({ left: 0, top: 0, width: 1, height: 1 });
+  });
+
+  test("EDI-034 MED-028 the loop handles keep at least one second between them, within the video", () => {
+    const whole = { start: 0, end: 7.5 };
+    expect(setLoopStart(whole, 0.84, 7.5)).toEqual({ start: 0.8, end: 7.5 });
+    expect(setLoopStart({ start: 0, end: 3 }, 2.6, 7.5)).toEqual({ start: 2, end: 3 });
+    expect(setLoopStart(whole, -1, 7.5)).toEqual({ start: 0, end: 7.5 });
+    expect(setLoopEnd({ start: 2, end: 7.5 }, 2.4, 7.5)).toEqual({ start: 2, end: 3 });
+    expect(setLoopEnd(whole, 9, 7.5)).toEqual({ start: 0, end: 7.5 });
+    // Rounded to the tenth, but never past the duration the browser reads.
+    expect(setLoopEnd({ start: 0, end: 2.002 }, 1.902, 2.002)).toEqual({ start: 0, end: 1.9 });
+    expect(setLoopEnd({ start: 0, end: 1.9 }, 2.05, 2.002)).toEqual({ start: 0, end: 2.002 });
+    // A video shorter than a second loops whole (MED-028).
+    expect(setLoopStart({ start: 0, end: 0.8 }, 0.3, 0.8)).toEqual({ start: 0, end: 0.8 });
+  });
+
+  test("EDI-034 the arrows move a time by a tenth of a second, a second with Shift", () => {
+    expect(stepTime({ key: "ArrowRight", shiftKey: false })).toBe(0.1);
+    expect(stepTime({ key: "ArrowUp", shiftKey: false })).toBe(0.1);
+    expect(stepTime({ key: "ArrowLeft", shiftKey: true })).toBe(-1);
+    expect(stepTime({ key: "ArrowDown", shiftKey: false })).toBe(-0.1);
+    expect(stepTime({ key: "Enter", shiftKey: false })).toBeNull();
+  });
+
+  test("EDI-034 times are written the French way", () => {
+    expect(formatSeconds(7.5)).toBe("7,5");
+    expect(formatSeconds(0.84)).toBe("0,8");
+    expect(formatSeconds(2)).toBe("2,0");
+    expect(formatClock(0.8)).toBe("0:00,8");
+    expect(formatClock(2.9)).toBe("0:02,9");
+    expect(formatClock(29.97)).toBe("0:30,0");
+    expect(formatClock(62.35)).toBe("1:02,4");
+  });
+
+  test("EDI-034 the strip shows frames spread evenly over the video", () => {
+    expect(frameTimes(8, 4)).toEqual([1, 3, 5, 7]);
+    expect(frameTimes(2, 8)).toEqual([0.125, 0.375, 0.625, 0.875, 1.125, 1.375, 1.625, 1.875]);
   });
 });

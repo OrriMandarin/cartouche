@@ -43,6 +43,8 @@ test("MED-005 MED-006 PUB-014 avatar is cropped, published as WebP and in the vC
 test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page }) => {
   await openMedia(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-2s.mp4"));
+  // A 16:9 video is framed first (EDI-034).
+  await page.getByTestId("video-crop-apply").click();
   await expect(page.getByTestId("media-header-current")).toContainText("Vidéo");
   await saveCard(page);
 
@@ -53,6 +55,59 @@ test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page 
   await expect(video).toHaveJSProperty("muted", true);
   await expect(video).toHaveJSProperty("loop", false);
   await expect(video).toHaveAttribute("playsinline", "");
+});
+
+test("EDI-034 MED-028 framing the header video", async ({ page, api }) => {
+  await openMedia(page);
+  await page.getByTestId("media-header-input").setInputFiles(fixture("header-2s.mp4"));
+
+  const dialog = page.getByTestId("video-crop-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId("video-crop-frame")).toHaveCount(8);
+  const start = dialog.getByRole("slider", { name: "Début de l’extrait" });
+  const end = dialog.getByRole("slider", { name: "Fin de l’extrait" });
+  await start.focus();
+  for (let i = 0; i < 5; i += 1) await page.keyboard.press("ArrowRight");
+  await expect(start).toHaveAttribute("aria-valuetext", "0,5\u00a0s");
+  await end.focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(end).toHaveAttribute("aria-valuetext", "1,8\u00a0s");
+  await expect(dialog.getByText("Boucle de 1,3\u00a0s")).toBeVisible();
+  await dialog.getByTestId("video-crop-poster").check();
+  await dialog.getByRole("button", { name: "Appliquer" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("media-header-current")).toContainText("Vidéo");
+  await saveCard(page);
+
+  const response = await api.get(`/api/cards/${aliceCardId}`, { headers: await api.authHeaders("seed-alice") });
+  const header = ((await response.json()) as { header: { loop: unknown; poster_time: number } }).header;
+  expect(header.loop).toEqual({ start: 0.5, end: 1.8 });
+  // The playhead followed the end handle: its frame is the waiting image.
+  expect(header.poster_time).toBeCloseTo(1.8);
+
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime >= 0.5 && !el.paused)).toBe(true);
+
+  // « Recadrer » starts from the stored loop; a new waiting image is captured from the stored video (MED-030).
+  const first = await storedHeaderId(api);
+  await openMedia(page);
+  await page.getByTestId("media-header-crop").click();
+  await expect(start).toHaveAttribute("aria-valuetext", "0,5\u00a0s");
+  await expect(end).toHaveAttribute("aria-valuetext", "1,8\u00a0s");
+  await start.focus();
+  await page.keyboard.press("ArrowRight");
+  await dialog.getByTestId("video-crop-poster").check();
+  await dialog.getByRole("button", { name: "Appliquer" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("editor-status")).toHaveText("Modifications non enregistrées");
+  await saveCard(page);
+  const reframed = await api.get(`/api/cards/${aliceCardId}`, { headers: await api.authHeaders("seed-alice") });
+  const second = ((await reframed.json()) as { header: { id: string; loop: unknown; poster_time: number } }).header;
+  expect(second.id).not.toBe(first);
+  expect(second.loop).toEqual({ start: 0.6, end: 1.8 });
+  expect(second.poster_time).toBeCloseTo(0.6);
 });
 
 /** A 1280 × 720 (16:9) JPEG drawn by the browser: a header photo that is not 4:3. */

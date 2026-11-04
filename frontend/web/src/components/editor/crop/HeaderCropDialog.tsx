@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { HEADER_RATIO, videoCropStyle } from "@/lib/media/framing";
@@ -35,7 +35,6 @@ export function HeaderCropDialog({ source, initialCrop, theme, avatarUrl, name, 
   const t = useTranslations("editor.media.crop");
   const framing = useCropFraming(source, initialCrop);
   const [showZones, setShowZones] = useState(true);
-  const fadeTo = theme.background.kind === "solid" ? theme.background.color : theme.background.to;
 
   return (
     <CropDialogLayout
@@ -49,91 +48,107 @@ export function HeaderCropDialog({ source, initialCrop, theme, avatarUrl, name, 
       applyTestId="header-crop-apply"
       onApply={onApply}
       onCancel={onCancel}
-      frameOverlay={
-        <>
-          {showZones ? <CoveredZones headerGradient={theme.headerGradient} fadeTo={fadeTo} /> : null}
-          {["-top-2 -left-2", "-top-2 -right-2", "-bottom-2 -left-2", "-bottom-2 -right-2"].map((corner) => (
-            <span
-              key={corner}
-              aria-hidden="true"
-              className={`bg-app-on-stage absolute size-4 rounded-[4px] shadow-[0_1px_3px_rgb(0_0_0/.45)] ${corner}`}
-            />
-          ))}
-        </>
-      }
+      frameOverlay={<HeaderFrameOverlay theme={theme} showZones={showZones} />}
       preview={
-        <section className="flex flex-col gap-2.5 max-[847px]:hidden" aria-labelledby="header-crop-preview">
-          <h3 id="header-crop-preview" className="text-[15px] leading-[1.35] font-[650]">
-            {t("header.preview")}
-          </h3>
-          <CardPreview url={framing.url} crop={framing.crop} theme={theme} avatarUrl={avatarUrl} name={name} />
-        </section>
+        <CardPreview theme={theme} avatarUrl={avatarUrl} name={name}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- an object URL or a signed media URL */}
+          {framing.url ? <img src={framing.url} alt="" className="block" style={videoCropStyle(framing.crop)} /> : null}
+        </CardPreview>
       }
-      afterZoom={
-        <>
-          <div className="flex min-h-11 items-center gap-3 max-[847px]:flex-row-reverse max-[847px]:justify-between">
-            <Switch id="header-crop-zones" checked={showZones} onCheckedChange={setShowZones} />
-            <Label htmlFor="header-crop-zones" className="text-sm font-semibold">
-              {t("showZones")}
-            </Label>
-          </div>
-          {showZones ? (
-            <ul className="text-app-muted flex flex-col gap-1.5 text-[13px] max-[847px]:hidden">
-              <li className="flex items-center gap-2">
-                <i aria-hidden="true" className="border-app-border-strong inline-block h-3 w-[18px] rounded-[3px] border-2 border-dashed" />
-                {t("header.legendFade")}
-              </li>
-              <li className="flex items-center gap-2">
-                <i aria-hidden="true" className="border-app-border-strong inline-block size-3.5 rounded-full border-2 border-dashed" />
-                {t("header.legendRound")}
-              </li>
-            </ul>
-          ) : null}
-        </>
-      }
+      afterZoom={<CoveredZonesSwitch showZones={showZones} onChange={setShowZones} />}
     />
   );
 }
 
-/** spec: EDI-026. « Sur ta carte »: the top of the card with the header cut along the crop and its fade. */
-function CardPreview({
-  url,
-  crop,
+/** spec: EDI-026. Over the 4:3 frame: the zones the card covers, when shown, and the frame's corner handles. */
+export function HeaderFrameOverlay({ theme, showZones }: { theme: ResolvedTheme; showZones: boolean }) {
+  const fadeTo = theme.background.kind === "solid" ? theme.background.color : theme.background.to;
+  return (
+    <>
+      {showZones ? <CoveredZones headerGradient={theme.headerGradient} fadeTo={fadeTo} /> : null}
+      {["-top-2 -left-2", "-top-2 -right-2", "-bottom-2 -left-2", "-bottom-2 -right-2"].map((corner) => (
+        <span
+          key={corner}
+          aria-hidden="true"
+          className={`bg-app-on-stage absolute size-4 rounded-[4px] shadow-[0_1px_3px_rgb(0_0_0/.45)] ${corner}`}
+        />
+      ))}
+    </>
+  );
+}
+
+/** spec: EDI-026. « Afficher les zones couvertes », and the legend of the zones while they show. */
+export function CoveredZonesSwitch({ showZones, onChange }: { showZones: boolean; onChange: (show: boolean) => void }) {
+  const t = useTranslations("editor.media.crop");
+  return (
+    <>
+      <div className="flex min-h-11 items-center gap-3 max-[847px]:flex-row-reverse max-[847px]:justify-between">
+        <Switch id="header-crop-zones" checked={showZones} onCheckedChange={onChange} />
+        <Label htmlFor="header-crop-zones" className="text-sm font-semibold">
+          {t("showZones")}
+        </Label>
+      </div>
+      {showZones ? (
+        <ul className="text-app-muted flex flex-col gap-1.5 text-[13px] max-[847px]:hidden">
+          <li className="flex items-center gap-2">
+            <i aria-hidden="true" className="border-app-border-strong inline-block h-3 w-[18px] rounded-[3px] border-2 border-dashed" />
+            {t("header.legendFade")}
+          </li>
+          <li className="flex items-center gap-2">
+            <i aria-hidden="true" className="border-app-border-strong inline-block size-3.5 rounded-full border-2 border-dashed" />
+            {t("header.legendRound")}
+          </li>
+        </ul>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * spec: EDI-026. « Sur ta carte »: the top of the card with the header (`children`, the photo or the video cut
+ * along the crop) and its fade, the profile photo and the name. Desktop only.
+ */
+export function CardPreview({
   theme,
   avatarUrl,
   name,
+  children,
 }: {
-  url: string | null;
-  crop: CropRect | null;
   theme: ResolvedTheme;
   avatarUrl?: string;
   name?: string | null;
+  children: ReactNode;
 }) {
+  const t = useTranslations("editor.media.crop");
   const fade = "linear-gradient(to bottom, #000 calc(100% - var(--fade) * 1%), transparent 100%)";
   return (
-    <div
-      data-testid="header-crop-preview"
-      className="w-[272px] max-w-full overflow-hidden rounded-2xl shadow-[0_0_0_1px_rgb(28_27_25/.12)]"
-      style={{ ...themeToCssVars(theme), background: "linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2))" }}
-    >
-      <div className="relative aspect-[4/3] overflow-hidden" style={{ maskImage: fade, WebkitMaskImage: fade }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- an object URL or a signed media URL */}
-        {url ? <img src={url} alt="" className="block" style={videoCropStyle(crop)} /> : null}
-      </div>
-      {avatarUrl ? (
-        <div className="relative mx-auto -mt-[46px] size-[82px] overflow-hidden rounded-full shadow-[0_0_0_3px_var(--c-bg)]">
-          {/* eslint-disable-next-line @next/next/no-img-element -- media URLs are absolute and external */}
-          <img src={avatarUrl} alt="" className="block size-full object-cover" />
+    <section className="flex flex-col gap-2.5 max-[847px]:hidden" aria-labelledby="header-crop-preview">
+      <h3 id="header-crop-preview" className="text-[15px] leading-[1.35] font-[650]">
+        {t("header.preview")}
+      </h3>
+      <div
+        data-testid="header-crop-preview"
+        className="w-[272px] max-w-full overflow-hidden rounded-2xl shadow-[0_0_0_1px_rgb(28_27_25/.12)]"
+        style={{ ...themeToCssVars(theme), background: "linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2))" }}
+      >
+        <div className="relative aspect-[4/3] overflow-hidden" style={{ maskImage: fade, WebkitMaskImage: fade }}>
+          {children}
         </div>
-      ) : null}
-      {name ? (
-        <p
-          className="px-3 pt-2 pb-4 text-center text-xl font-semibold"
-          style={{ fontFamily: "var(--font-title)", color: "var(--c-text)" }}
-        >
-          {name}
-        </p>
-      ) : null}
-    </div>
+        {avatarUrl ? (
+          <div className="relative mx-auto -mt-[46px] size-[82px] overflow-hidden rounded-full shadow-[0_0_0_3px_var(--c-bg)]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- media URLs are absolute and external */}
+            <img src={avatarUrl} alt="" className="block size-full object-cover" />
+          </div>
+        ) : null}
+        {name ? (
+          <p
+            className="px-3 pt-2 pb-4 text-center text-xl font-semibold"
+            style={{ fontFamily: "var(--font-title)", color: "var(--c-text)" }}
+          >
+            {name}
+          </p>
+        ) : null}
+      </div>
+    </section>
   );
 }
