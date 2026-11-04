@@ -6,7 +6,11 @@ export
 
 # Dev defaults, usable without Clerk (test auth provider, test JWKS served by the API).
 APP_ENV ?= development
-DATABASE_URL ?= postgres://cartouche:cartouche@localhost:54320/cartouche
+# `#[sqlx::test]` names its databases after the test path only: two checkouts running the Rust
+# tests on the same server at the same time drop each other's databases. A worktree that runs
+# tests alongside others starts its own server on another port (`DEV_DB_PORT` in `.env`).
+DEV_DB_PORT ?= 54320
+DATABASE_URL ?= postgres://cartouche:cartouche@localhost:$(DEV_DB_PORT)/cartouche
 AUTH_ISSUER ?= cartouche-test-issuer
 AUTH_JWKS_URL ?= http://localhost:8080/api/test/jwks.json
 PUBLIC_BASE_URL ?= http://localhost:3000

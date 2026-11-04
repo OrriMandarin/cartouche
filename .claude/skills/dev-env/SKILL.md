@@ -22,7 +22,7 @@ Local machine: `export PATH="$HOME/.local/bin:$PATH"` (pnpm) and `source ~/.carg
 
 ```bash
 make setup     # once: pnpm install (frontend/), cargo fetch, sqlx-cli
-make dev-db    # dev PostgreSQL, port 54320
+make dev-db    # dev PostgreSQL, port 54320 (or DEV_DB_PORT, one server per worktree that runs Rust tests)
 make api       # API on :8080, feature test-support, migrations applied at startup
 make web       # site on :3000
 ```
@@ -71,6 +71,15 @@ api clock '{"now":null}'                       # back to real time
 
 A sign-in token signed before moving the clock may be expired for the new time: sign in again (`/login`) after each change. See "Controlling the API clock" below. For the Playwright tests, `api.seedEvents()` does all of this (see `add-seed-scenario`).
 
+### Leads, exports, support views and account deletion locally
+
+With the three scenarios loaded (`make seed && make seed SCENARIO=cards && make seed SCENARIO=events`), sign in as `seed-alice`:
+
+- **Whole-card lead view**: from the card's events page (`/dashboard/cards/<card ID>/events`), the "Tous les contacts de la carte" link (`card-leads-link`) opens `/dashboard/cards/<card ID>/leads` for `alice-durand`: contacts of every event, with their event, a search box and the detail view.
+- **Exports**: the export button of an event's contacts or of the whole-card view opens a dialog (format CSV, XLSX or JSON, spam included or not) and downloads the file. The browser sends its time zone as `tz` (`Europe/Paris` when missing or unknown). Without the site, by hand: `curl -s -D - -o /tmp/leads.csv "localhost:8080/api/cards/<card ID>/leads/export?format=csv&include_spam=true&tz=Europe/Paris" -H "authorization: Bearer $TOKEN"` (token as below). The contacts of the events scenario contain accents and emojis; open the XLSX in a spreadsheet to check them. The file name carries the day, read from the API's clock.
+- **Support views** (read-only, audited): sign in as `seed-admin`, open `/support`, the "approved" tab, Alice's user page (`user-link-seed-alice`), then the "Événements" button of her card (`/support/cards/<card ID>/events`), then the contacts of an event or of the whole card. Each load of a contact list writes one `leads.viewed` audit row (identifiers and count only). The lead list loads once on mount; in `next dev`, React StrictMode mounts components twice, so a visit in development can write **two** rows where production writes one: that is not a bug.
+- **Account deletion**: sign in as `seed-bob`, open the account page (`/dashboard/account`, `account-link` in the header) and delete the account. The site lands on `/account-deleted` (outside the account gate on purpose, so it sends no API request that would recreate an empty account). `seed-admin` cannot delete their account (`403 cannot_delete_admin`). To get Bob back, reseed: `make seed && make seed SCENARIO=cards`. **Blocked slugs survive a reseed** (`blocked_slugs` is not touched by scenarios): `bob-martin` stays unavailable to a new card, whereas `POST /api/test/reset` (or `cartouche-seed reset`) empties the table with the rest.
+
 ## Signing in locally (`test` adapter)
 
 The site offers a test sign-in panel on `/login` (users `seed-admin`, `seed-alice`, …); a visitor who is already signed in and opens `/login` is redirected to `/dashboard`. For a token by hand:
@@ -105,9 +114,11 @@ Put these variables in the root `.env` (the `Makefile` exports them), then resta
 | `AUTH_AUDIENCE` | optional |
 | `ADMIN_USER_IDS` | Clerk `sub` of the administrators (comma-separated) |
 
-For OIDC: `NEXT_PUBLIC_OIDC_AUTHORITY` and `NEXT_PUBLIC_OIDC_CLIENT_ID` instead of the Clerk keys. To go back to test: remove these lines from `.env`.
+For OIDC: `NEXT_PUBLIC_OIDC_AUTHORITY` and `NEXT_PUBLIC_OIDC_CLIENT_ID` instead of the Clerk keys. The OIDC client must also allow, as post-logout redirect URIs, the site's origin and `<site origin>/account-deleted`: after deleting an account the site signs out with `signOut({ redirectTo: "/account-deleted" })` (the auth module's `signOut(opts?: { redirectTo?: string })`; the test adapter ignores it), and the identity provider refuses a redirect it does not know (documented in `.env.example`). To go back to test: remove these lines from `.env`.
 A `CARTOUCHE_BUILD_PROFILE=production` build refuses the `test` adapter (ACC-008); never work around this.
 
 ## Ports
 
-Dev: Postgres 54320, API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000. Both can run together.
+Dev: Postgres 54320 (`DEV_DB_PORT`), API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000. Both can run together.
+
+**The test stack is shared by every worktree of the machine**: `compose.test.yml` is the docker compose project `cartouche-test` with fixed ports, so two worktrees running `make e2e` at the same time tear down each other's containers (and database). Run `make e2e` from one worktree at a time.

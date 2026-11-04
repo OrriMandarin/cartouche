@@ -11,5 +11,9 @@ export interface AuthContextValue {
   getToken(): Promise<string | null>;
   /** `subject` is only meaningful for the test adapter. Other adapters start their own flow. */
   signIn(opts?: { subject?: string }): Promise<void>;
-  signOut(): Promise<void>;
+  /**
+   * Ends the session. `redirectTo` (a path of this site) is where the identity provider sends the browser back
+   * afterwards; without it, the adapter's default (the home page). The test adapter ignores it.
+   */
+  signOut(opts?: { redirectTo?: string }): Promise<void>;
 }

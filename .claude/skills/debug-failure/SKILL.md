@@ -23,6 +23,10 @@ docker compose -f compose.test.yml logs api | grep <request_id>    # test stack 
 In dev (`make api`), the logs are readable in the API terminal: look for the same identifier. In the browser, the identifier of an API error is also in the Network tab (response header) and in the Sentry tag `request_id`.
 The error `code` already says a lot: `token_invalid` / `token_expired` (401), `auth_unavailable` (503), `account_pending|rejected|suspended` (403), `internal_error` (500, detail only in the logs).
 
+**Support reads leave a trace**: each load of a support contact list (`/api/admin/events/{id}/leads`, `/api/admin/cards/{id}/leads`) writes one `leads.viewed` row in `audit_log` before the contacts are sent (ADM-019); if that write fails the request is a `500` and no contact is sent. So an unexpected `500` on a support list is first an audit write failure (look for its `request_id` in the logs). Two rows for one visit in `next dev` come from React StrictMode mounting the list twice, not from a bug; production writes one.
+
+**A download that fails**: an export answers a file, not JSON, so the browser console shows nothing useful: take the `x-request-id` from the response header in the Network tab (or from the error notice) and look for it in the API logs. Prospects' data never appears in the logs (identifiers and counts only): an export error names the card.
+
 ## 3. Playwright failure
 
 The artifacts of a failed test are in `frontend/e2e/test-results/<test-folder>/`: `trace.zip`, screenshot, video, `api-logs.txt` (attachment `api-logs`: API logs during the test, with the `request_id`s).

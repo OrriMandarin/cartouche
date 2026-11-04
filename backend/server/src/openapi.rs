@@ -8,8 +8,8 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
 use crate::routes::{
-    admin_cards, admin_users, card_media, cards, events, health, leads, me, public_cards,
-    public_events, slugs,
+    account, admin_cards, admin_leads, admin_users, card_media, cards, events, health,
+    lead_exports, leads, me, public_cards, public_events, slugs,
 };
 
 struct BearerAuth;
@@ -40,12 +40,16 @@ impl Modify for BearerAuth {
     paths(
         health::health,
         me::me,
+        account::delete_me,
         admin_users::list_users,
         admin_users::set_user_status,
         admin_cards::get_user,
         admin_cards::get_card,
         admin_cards::support_disable_card,
         admin_cards::support_enable_card,
+        admin_leads::list_card_events,
+        admin_leads::list_event_leads,
+        admin_leads::list_card_leads,
         cards::list_cards,
         cards::create_card,
         cards::get_card,
@@ -62,7 +66,10 @@ impl Modify for BearerAuth {
         events::end_event,
         events::delete_event,
         events::consent_preview,
+        leads::list_card_leads,
         leads::list_event_leads,
+        lead_exports::export_event_leads,
+        lead_exports::export_card_leads,
         leads::set_lead_spam,
         leads::delete_lead,
         slugs::suggest_slug,
@@ -73,7 +80,12 @@ impl Modify for BearerAuth {
         public_events::unlock_public_event,
         public_events::submit_lead,
     ),
-    components(schemas(crate::error::ErrorBody, crate::error::ErrorDetail)),
+    components(schemas(
+        crate::error::ErrorBody,
+        crate::error::ErrorDetail,
+        cartouche_domain::export::ExportFormat,
+        lead_exports::ExportFileBody,
+    )),
     modifiers(&BearerAuth),
     tags(
         (name = "health", description = "Service health"),

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into blocked_slugs (slug_hash) select sha256(convert_to(slug, 'UTF8')) from card_slugs where owner_id = $1 on conflict do nothing",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b02417bd1e3845dceea7824c5c0f8162adfc2340548cd0c7c47ad6d30a260f75"
+}

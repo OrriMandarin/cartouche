@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "update leads l set spam_at = $3 from events e, cards c where l.id = $1 and e.id = l.event_id and c.id = e.card_id and c.owner_id = $2 returning l.id, l.event_id, l.device_id, l.submitted_at, l.first_name, l.last_name, l.birth_date, l.email, l.phone, l.street, l.postal_code, l.city, l.country, l.custom_answers, l.consent_at, l.consent_text, l.spam_at",
+  "query": "update leads l set spam_at = case when $3::timestamptz is null then null else coalesce(l.spam_at, $3) end from events e, cards c where l.id = $1 and e.id = l.event_id and c.id = e.card_id and c.owner_id = $2 returning l.id, l.event_id, e.title as event_title, l.device_id, l.submitted_at, l.first_name, l.last_name, l.birth_date, l.email, l.phone, l.street, l.postal_code, l.city, l.country, l.custom_answers, l.consent_at, l.consent_text, l.spam_at",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,17 @@
       },
       {
         "ordinal": 2,
+        "name": "event_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "events",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
         "name": "device_id",
         "type_info": "Uuid",
         "origin": {
@@ -37,7 +48,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "submitted_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -48,7 +59,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "first_name",
         "type_info": "Text",
         "origin": {
@@ -59,7 +70,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "last_name",
         "type_info": "Text",
         "origin": {
@@ -70,7 +81,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "birth_date",
         "type_info": "Date",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "email",
         "type_info": "Text",
         "origin": {
@@ -92,7 +103,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "phone",
         "type_info": "Text",
         "origin": {
@@ -103,7 +114,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "street",
         "type_info": "Text",
         "origin": {
@@ -114,7 +125,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "postal_code",
         "type_info": "Text",
         "origin": {
@@ -125,7 +136,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "city",
         "type_info": "Text",
         "origin": {
@@ -136,7 +147,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "country",
         "type_info": "Text",
         "origin": {
@@ -147,7 +158,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "custom_answers",
         "type_info": "Jsonb",
         "origin": {
@@ -158,7 +169,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "consent_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -169,7 +180,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "consent_text",
         "type_info": "Text",
         "origin": {
@@ -180,7 +191,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "spam_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -203,6 +214,7 @@
       false,
       false,
       false,
+      false,
       true,
       true,
       true,
@@ -218,5 +230,5 @@
       true
     ]
   },
-  "hash": "4a0e86f90806b337a5bfd1e1b2e0b975ea31913978aa25fad9d67aa1a4087536"
+  "hash": "769a678abd2d8398892734df8fc40dd3d0f946370c00d786d1cd2a4e3a5ce63a"
 }

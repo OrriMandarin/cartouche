@@ -22,6 +22,7 @@ Domain concepts, as the spec uses them.
 | **Current slug** | A card's present slug, the one in its public link. |
 | **Former slug** | A slug a card used before its current slug; it redirects to the current slug (see LNK-003). |
 | **Reserved slug** | A slug of a deleted card: it stays with its former owner, who can attach it to a new card (see LNK-013 and LNK-014). |
+| **Blocked slug** | A slug of a deleted account, kept only as a hash so that nobody can ever take it again (see LNK-015 and LNK-031). |
 | **Neutral page** | The "Cette carte n'est plus active" ("This card is no longer active") page, shown at the link of a card that is not served (see LNK-026 and LNK-027). |
 | **Media** | A card's header background (image or video) or profile photo, kept in the media storage. |
 | **Event state** | "À venir" ("upcoming"), "en cours" ("in progress") or "passé" ("past"), computed by the server (see EVT-020). |
@@ -29,3 +30,6 @@ Domain concepts, as the spec uses them.
 | **Device identifier** | A random identifier kept by the prospect's browser, used for the per-device submission limit (see EVT-028). |
 | **Honeypot field** | A form field invisible to a human; a bot that fills it in is ignored (see ABU-002). |
 | **Font pair** | A heading font and a body font, chosen together for a theme (see TPL-011). |
+| **Whole-card view** | The list of the leads of all the events of a card, "toute la carte" in the interface (see LEA-013). |
+| **Export** | A file (CSV, XLSX or JSON) of the leads of an event or of a whole card, downloaded from the dashboard (see LEA-006 and LEA-021). |
+| **Audit log** | The append-only record of administrator actions and of their views of leads (see ADM-005 and ADM-008). |

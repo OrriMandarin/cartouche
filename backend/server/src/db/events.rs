@@ -40,20 +40,20 @@ pub struct PublicCandidate {
 }
 
 /// An `events` row as the database returns it.
-struct EventRow {
-    id: Uuid,
-    card_id: Uuid,
-    title: String,
-    description: Option<String>,
-    starts_at: DateTime<Utc>,
-    ends_at: Option<DateTime<Utc>>,
-    access_code: Option<String>,
-    device_limit: i32,
-    standard_fields: serde_json::Value,
-    custom_fields: serde_json::Value,
-    consent_text: Option<String>,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
+pub(super) struct EventRow {
+    pub(super) id: Uuid,
+    pub(super) card_id: Uuid,
+    pub(super) title: String,
+    pub(super) description: Option<String>,
+    pub(super) starts_at: DateTime<Utc>,
+    pub(super) ends_at: Option<DateTime<Utc>>,
+    pub(super) access_code: Option<String>,
+    pub(super) device_limit: i32,
+    pub(super) standard_fields: serde_json::Value,
+    pub(super) custom_fields: serde_json::Value,
+    pub(super) consent_text: Option<String>,
+    pub(super) created_at: DateTime<Utc>,
+    pub(super) updated_at: DateTime<Utc>,
 }
 
 fn decode_error(

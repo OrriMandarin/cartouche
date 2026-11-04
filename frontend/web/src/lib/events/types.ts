@@ -13,3 +13,6 @@ export type FieldMode = Schemas["FieldMode"];
 
 /** A contact collected by an event, as its owner sees it. */
 export type LeadView = Schemas["LeadView"];
+
+/** A custom answer as recorded with a contact: the label and the kind the field had when it was sent (FRM-022). */
+export type AnswerSnapshot = Schemas["AnswerSnapshot"];

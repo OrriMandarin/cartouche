@@ -4,6 +4,7 @@
 
 pub mod cards;
 pub mod events;
+pub mod failing_store;
 pub mod media_fixtures;
 
 use std::sync::{Arc, Mutex};

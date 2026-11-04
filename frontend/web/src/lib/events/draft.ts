@@ -94,16 +94,13 @@ function deviceLimitOf(text: string): number {
   return text.trim() !== "" && Number.isInteger(limit) ? limit : 0;
 }
 
-/**
- * The body of `POST`/`PUT` for an event, its dates read in `zone` (EVT-007). A missing start goes as `null`
- * and the server reports it as `starts_at: required`.
- */
-export function draftToBody(draft: EventDraft, zone: string): EventInput {
+/** The body of an event as the server reads it, the instants given by `instantOf` (empty dates are absent). */
+function bodyOf(draft: EventDraft, instantOf: (local: string) => string): EventInput {
   return {
     title: draft.title,
     description: orNull(draft.description),
-    starts_at: draft.startsAt === "" ? null : fromLocalInput(draft.startsAt, zone),
-    ends_at: draft.endsAt === "" ? null : fromLocalInput(draft.endsAt, zone),
+    starts_at: draft.startsAt === "" ? null : instantOf(draft.startsAt),
+    ends_at: draft.endsAt === "" ? null : instantOf(draft.endsAt),
     access_code: orNull(draft.accessCode),
     device_limit: deviceLimitOf(draft.deviceLimit),
     standard_fields: draft.standardFields,
@@ -117,6 +114,25 @@ export function draftToBody(draft: EventDraft, zone: string): EventInput {
     })),
     consent_text: draft.consentMode === "custom" ? orNull(draft.consentText) : null,
   };
+}
+
+/**
+ * The body of `POST`/`PUT` for an event, its dates read in `zone` (EVT-007). A missing start goes as `null`
+ * and the server reports it as `starts_at: required`.
+ */
+export function draftToBody(draft: EventDraft, zone: string): EventInput {
+  return bodyOf(draft, (local) => fromLocalInput(local, zone));
+}
+
+/**
+ * spec: EDI-021. Whether `draft` differs from the `saved` one as the server would read them (an empty text is
+ * an absent one, abandoned custom consent text is ignored): undoing an edit makes the draft clean again.
+ * The dates are compared as typed, so a value the browser accepts but no instant stands for (a five-digit
+ * year) is a change, not an error: this runs on every render.
+ */
+export function isEventDraftDirty(saved: EventDraft, draft: EventDraft): boolean {
+  const asTyped = (local: string) => local;
+  return JSON.stringify(bodyOf(saved, asTyped)) !== JSON.stringify(bodyOf(draft, asTyped));
 }
 
 /**

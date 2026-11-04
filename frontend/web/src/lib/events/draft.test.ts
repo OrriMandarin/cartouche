@@ -10,6 +10,7 @@ import {
   draftToBody,
   enableEnd,
   eventFieldErrors,
+  isEventDraftDirty,
   moveCustomField,
   newEventDraft,
   removeCustomField,
@@ -280,5 +281,42 @@ describe("eventFieldErrors", () => {
   test("EDI-015 a failure that is not a validation error has no field errors", () => {
     expect(eventFieldErrors(new Error("boom"))).toEqual({});
     expect(eventFieldErrors(undefined)).toEqual({});
+  });
+});
+
+describe("isEventDraftDirty", () => {
+  test("EDI-021 equal event drafts are clean, any edit is dirty, undoing is clean", () => {
+    const saved = draftFromEvent(fullEvent, PARIS);
+    expect(isEventDraftDirty(saved, draftFromEvent(fullEvent, PARIS))).toBe(false);
+
+    const edited = { ...saved, title: "Salon de l’Artisanat 2028 ✨" };
+    expect(isEventDraftDirty(saved, edited)).toBe(true);
+    expect(isEventDraftDirty(saved, { ...edited, title: saved.title })).toBe(false);
+
+    const moved = { ...saved, startsAt: "2027-04-02T11:00" };
+    expect(isEventDraftDirty(saved, moved)).toBe(true);
+    const renamedField = addCustomField(saved, "text");
+    expect(isEventDraftDirty(saved, renamedField)).toBe(true);
+    expect(isEventDraftDirty(saved, removeCustomField(renamedField, saved.customFields.length))).toBe(false);
+  });
+
+  test("EDI-021 what the server reads the same way is no change", () => {
+    const saved = draftFromEvent(fullEvent, PARIS);
+    // An empty text is an absent one, and the default consent text is stored as no text.
+    expect(isEventDraftDirty({ ...saved, description: "" }, { ...saved, description: "  " })).toBe(false);
+    expect(
+      isEventDraftDirty(
+        { ...saved, consentMode: "default", consentText: "" },
+        { ...saved, consentMode: "default", consentText: "Texte abandonné" },
+      ),
+    ).toBe(false);
+  });
+
+  test("EDI-021 a date no instant stands for is a change and does not throw", () => {
+    const saved = draftFromEvent(fullEvent, PARIS);
+    // A datetime-local input accepts a five-digit year after one extra keystroke.
+    expect(isEventDraftDirty(saved, { ...saved, startsAt: "20277-03-15T10:00" })).toBe(true);
+    expect(isEventDraftDirty(saved, { ...saved, endsAt: "20277-03-15T10:00" })).toBe(true);
+    expect(isEventDraftDirty({ ...saved, startsAt: "20277-03-15T10:00" }, saved)).toBe(true);
   });
 });

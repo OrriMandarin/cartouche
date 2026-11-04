@@ -25,26 +25,6 @@ async fn users_issuer_and_subject_are_unique(pool: PgPool) {
     assert!(insert_user(&pool, "same", "pending").await.is_err());
 }
 
-#[sqlx::test(migrations = "./migrations")]
-async fn audit_log_requires_an_existing_actor(pool: PgPool) {
-    let insert = |actor: Uuid| {
-        let pool = pool.clone();
-        async move {
-            sqlx::query(
-                "insert into audit_log (actor_user_id, action, target_type, target_id) \
-                 values ($1, 'approve', 'user', $2)",
-            )
-            .bind(actor)
-            .bind(Uuid::now_v7())
-            .execute(&pool)
-            .await
-        }
-    };
-    assert!(insert(Uuid::now_v7()).await.is_err());
-    let actor = insert_user(&pool, "admin", "approved").await.unwrap();
-    insert(actor).await.unwrap();
-}
-
 // Deleting a card or a media checks the foreign keys that point at it: each needs an index.
 #[sqlx::test(migrations = "./migrations")]
 async fn card_foreign_keys_are_indexed(pool: PgPool) {
