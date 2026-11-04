@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname:
 import { AccountGate, useMe } from "./AccountGate";
 
 function me(status: string, extra: Record<string, unknown> = {}) {
-  return { data: { id: "u1", email: "alice@example.test", display_name: "Alice", status, is_admin: false, ...extra } };
+  return { data: { id: "u1", email: "alice@example.test", display_name: "Alice", status, is_admin: false, totals: { cards: 0, events: 0, leads: 0 }, ...extra } };
 }
 
 function Child() {
@@ -187,7 +187,7 @@ describe("AccountGate", () => {
       renderGate();
       await screen.findByTestId(`account-${status}`);
       fireEvent.click(screen.getByTestId("delete-account-open"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
       expect(screen.getByTestId("delete-account-confirm")).toBeDisabled();
     },
   );

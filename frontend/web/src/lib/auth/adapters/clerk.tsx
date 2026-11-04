@@ -28,20 +28,24 @@ function ClerkBridge({ children }: { children: ReactNode }) {
     [clerk],
   );
 
+  const manageProfile = useCallback(() => clerk.openUserProfile(), [clerk]);
+
   const status: AuthContextValue["status"] = !isLoaded ? "loading" : isSignedIn ? "signed-in" : "signed-out";
   const email = user?.primaryEmailAddress?.emailAddress;
   const name = user?.fullName ?? undefined;
   const userId = user?.id;
+  const provider = user?.externalAccounts?.[0]?.provider;
 
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
-      user: status === "signed-in" && userId ? { subject: userId, email, name } : null,
+      user: status === "signed-in" && userId ? { subject: userId, email, name, provider } : null,
       getToken,
       signIn,
       signOut,
+      manageProfile,
     }),
-    [status, userId, email, name, getToken, signIn, signOut],
+    [status, userId, email, name, provider, getToken, signIn, signOut, manageProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

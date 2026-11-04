@@ -74,22 +74,29 @@
     },
     "page": {
       "title": "Mon compte",
-      "email": "Adresse e-mail",
-      "displayName": "Nom affiché",
-      "notProvided": "Non renseigné"
+      "profile": "Profil",
+      "notProvided": "Non renseigné",
+      "signedInWith": "Connexion avec {provider}",
+      "manageProfile": "Gérer l’e-mail et la connexion"
     },
     "delete": {
-      "open": "Supprimer mon compte",
-      "title": "Supprimer ton compte ?",
-      "consequences": "Tes cartes, leurs médias, tes événements et tes contacts seront supprimés pour toujours. Les liens de tes cartes resteront bloqués définitivement : personne, toi compris, ne pourra les reprendre.",
-      "identityProvider": "Ton compte chez le fournisseur d'identité ne sera pas supprimé : tu devras le supprimer toi-même chez lui.",
+      "zoneTitle": "Supprimer mon compte",
+      "summary": "Supprime définitivement ton compte et toutes ses données\u00a0: <b>{cards, plural, one {# carte} other {# cartes}}, {events, plural, one {# événement} other {# événements}} et {leads, plural, one {# contact} other {# contacts}}</b>. Les liens de tes cartes, tags NFC et QR codes compris, cesseront de fonctionner.",
+      "exportFirst": "Exporter mes contacts d’abord",
+      "open": "Supprimer mon compte…",
+      "title": "Supprimer ton compte\u00a0?",
+      "intro": "Tout sera supprimé, sans retour possible\u00a0:",
+      "listCards": "{count, plural, =0 {aucune carte} one {ta carte et sa page publique} other {tes # cartes et leurs pages publiques}}\u00a0;",
+      "listEvents": "{count, plural, =0 {aucun événement} one {ton événement et son formulaire} other {tes # événements et leurs formulaires}}\u00a0;",
+      "listLeads": "{count, plural, =0 {aucun contact collecté} one {le contact collecté} other {les # contacts collectés}}.",
+      "consequences": "Les médias de tes cartes sont supprimés aussi. Les liens de tes cartes resteront bloqués définitivement\u00a0: personne, toi compris, ne pourra les reprendre.",
+      "identityProvider": "Ton compte chez le fournisseur d’identité ne sera pas supprimé\u00a0: tu devras le supprimer toi-même chez lui.",
       "confirmWord": "SUPPRIMER",
-      "inputLabel": "Tape {word} pour confirmer",
+      "inputLabel": "Pour confirmer, tape <code>{word}</code>",
       "cancel": "Annuler",
       "confirm": "Supprimer définitivement",
-      "close": "Fermer",
-      "admin": "Un administrateur ne peut pas supprimer son compte. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS.",
-      "adminRefused": "Ton compte est celui d'un administrateur : il ne peut pas être supprimé. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS."
+      "admin": "Un administrateur ne peut pas supprimer son compte. Demande à l’opérateur de l’instance de te retirer de ADMIN_USER_IDS.",
+      "adminRefused": "Ton compte est celui d’un administrateur\u00a0: il ne peut pas être supprimé. Demande à l’opérateur de l’instance de te retirer de ADMIN_USER_IDS."
     },
     "deleted": {
       "title": "Ton compte a été supprimé",

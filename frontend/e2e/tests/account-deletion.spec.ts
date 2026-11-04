@@ -44,8 +44,9 @@ test("ACC-019 ACC-020 ACC-022 LNK-015 LNK-033 LNK-027 a user deletes their accou
   await expect(page.getByTestId("account-email")).toHaveText("bob@example.test");
 
   await page.getByTestId("delete-account-open").click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("supprimés pour toujours");
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toContainText("sans retour possible");
+  await expect(dialog).toContainText("Les médias de tes cartes");
   await expect(dialog).toContainText("bloqués définitivement");
   await expect(dialog).toContainText("ne sera pas supprimé");
   await expect(page.getByTestId("delete-account-confirm")).toBeDisabled();
@@ -62,6 +63,28 @@ test("ACC-019 ACC-020 ACC-022 LNK-015 LNK-033 LNK-027 a user deletes their accou
   await expect(page.getByTestId("card-unavailable").getByRole("heading", { level: 1 })).toHaveText(UNAVAILABLE_TITLE);
   await expect(page.getByTestId("card-name")).toHaveCount(0);
   expect(await accountSubjects(api)).not.toContain("seed-bob");
+});
+
+test("ACC-027 Alice's account page counts her data and leads to the export", async ({ page, api, loginAs }) => {
+  await api.seedEvents();
+  await loginAs("seed-alice");
+  await page.goto("/dashboard/account");
+
+  const zone = page.getByTestId("delete-account-zone");
+  await expect(zone).toContainText("2 cartes, 7 événements et 4 contacts");
+  await zone.getByRole("link", { name: "Exporter mes contacts d’abord" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/contacts$/);
+
+  await page.goto("/dashboard/account");
+  await page.getByTestId("delete-account-open").click();
+  const items = page.getByRole("alertdialog").getByRole("listitem");
+  await expect(items).toHaveText([
+    "tes 2 cartes et leurs pages publiques\u00a0;",
+    "tes 7 événements et leurs formulaires\u00a0;",
+    "les 4 contacts collectés.",
+  ]);
+  await page.getByTestId("delete-account-cancel").click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
 });
 
 test("LNK-032 a blocked slug cannot be taken by anyone", async ({ page, api, loginAs }) => {

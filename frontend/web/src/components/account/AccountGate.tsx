@@ -5,7 +5,7 @@ import { CircleX, Clock, Lock, LogOut, Mail, type LucideIcon } from "lucide-reac
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { DeleteAccount } from "@/components/account/DeleteAccount";
+import { DeleteAccount, type AccountTotals } from "@/components/account/DeleteAccount";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { AppShell, type ShellSlots } from "@/components/shell/AppShell";
 import { BrandMark } from "@/components/shell/BrandMark";
@@ -52,6 +52,7 @@ function StatusNotice({
   title,
   description,
   withSupport,
+  totals,
   onSignOut,
 }: {
   testId: string;
@@ -61,6 +62,7 @@ function StatusNotice({
   title: string;
   description: string;
   withSupport: boolean;
+  totals: AccountTotals;
   onSignOut: () => void;
 }) {
   const t = useTranslations("account");
@@ -95,7 +97,7 @@ function StatusNotice({
       </div>
       {/* Offers the deletion of the account under the screen (ACC-021): the screens of an existing account only. */}
       <div className="flex justify-center">
-        <DeleteAccount isAdmin={false} />
+        <DeleteAccount isAdmin={false} totals={totals} />
       </div>
     </div>
   );
@@ -192,6 +194,7 @@ export function AccountGate({ children, ...shell }: ShellSlots & { children: Rea
         title={t(`${props.key}.title`)}
         description={props.description}
         withSupport={props.withSupport}
+        totals={state.kind === "ready" ? state.me.totals : { cards: 0, events: 0, leads: 0 }}
         onSignOut={() => void signOut()}
       />
     );
