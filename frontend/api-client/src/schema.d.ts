@@ -701,7 +701,7 @@ export interface paths {
         };
         /**
          * Check a slug
-         * @description Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. Never says who holds a taken slug.
+         * @description Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. When it is taken or reserved, three available alternatives are proposed. Never says who holds a taken slug.
          */
         get: operations["slug_availability"];
         put?: never;
@@ -1296,6 +1296,11 @@ export interface components {
             /** @description The slug as normalized; `null` when it is invalid. */
             slug?: string | null;
             status: components["schemas"]["SlugAvailabilityStatus"];
+            /**
+             * @description When the slug is taken or reserved: the first three available slugs of `<slug>-2`,
+             *     `<slug>-3`, ... (blocked slugs skipped, LNK-035); empty otherwise.
+             */
+            suggestions: string[];
         };
         /** @enum {string} */
         SlugAvailabilityStatus: "free" | "current" | "reserved" | "taken" | "invalid";

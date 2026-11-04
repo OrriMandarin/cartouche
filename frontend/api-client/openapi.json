@@ -4046,7 +4046,7 @@
           "cards"
         ],
         "summary": "Check a slug",
-        "description": "Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. Never says who holds a taken slug.",
+        "description": "Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. When it is taken or reserved, three available alternatives are proposed. Never says who holds a taken slug.",
         "operationId": "slug_availability",
         "parameters": [
           {
@@ -5911,7 +5911,8 @@
       "SlugAvailability": {
         "type": "object",
         "required": [
-          "status"
+          "status",
+          "suggestions"
         ],
         "properties": {
           "slug": {
@@ -5923,6 +5924,13 @@
           },
           "status": {
             "$ref": "#/components/schemas/SlugAvailabilityStatus"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "When the slug is taken or reserved: the first three available slugs of `<slug>-2`,\n`<slug>-3`, ... (blocked slugs skipped, LNK-035); empty otherwise."
           }
         }
       },

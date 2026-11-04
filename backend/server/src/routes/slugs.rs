@@ -16,6 +16,9 @@ use crate::state::AppState;
 /// Highest numeric suffix tried by the suggestion (`base`, `base-2`, ..., `base-100`).
 const MAX_SUGGESTION_SUFFIX: u32 = 100;
 
+/// Number of alternatives proposed when a slug is taken (LNK-035).
+const ALTERNATIVES: usize = 3;
+
 #[derive(Debug, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct SuggestionQuery {
@@ -101,6 +104,31 @@ pub struct SlugAvailability {
     /// The slug as normalized; `null` when it is invalid.
     pub slug: Option<String>,
     pub status: SlugAvailabilityStatus,
+    /// When the slug is taken or reserved: the first three available slugs of `<slug>-2`,
+    /// `<slug>-3`, ... (blocked slugs skipped, LNK-035); empty otherwise.
+    pub suggestions: Vec<String>,
+}
+
+/// The first `ALTERNATIVES` slugs among `<slug>-2`, `<slug>-3`, ... that the caller can claim.
+async fn alternatives(
+    state: &AppState,
+    owner_id: Uuid,
+    slug: &Slug,
+    card_id: Option<Uuid>,
+) -> Result<Vec<String>, ApiError> {
+    let mut found = Vec::with_capacity(ALTERNATIVES);
+    for n in 2..=MAX_SUGGESTION_SUFFIX {
+        let candidate = with_suffix(slug, n);
+        let existing = slugs::find(&state.db, candidate.as_str()).await?;
+        let blocked = blocked_slugs::is_blocked(&state.db, candidate.as_str()).await?;
+        if decide_claim(existing.as_ref(), blocked, owner_id, card_id).is_ok() {
+            found.push(candidate.as_str().to_owned());
+            if found.len() == ALTERNATIVES {
+                break;
+            }
+        }
+    }
+    Ok(found)
 }
 
 /// Tells whether the caller can use a slug on a card.
@@ -108,7 +136,7 @@ pub struct SlugAvailability {
     get,
     path = "/api/slugs/availability",
     summary = "Check a slug",
-    description = "Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. Never says who holds a taken slug.",
+    description = "Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. When it is taken or reserved, three available alternatives are proposed. Never says who holds a taken slug.",
     tag = "cards",
     security(("bearer" = [])),
     params(AvailabilityQuery),
@@ -130,6 +158,7 @@ pub async fn slug_availability(
         return Ok(Json(SlugAvailability {
             slug: None,
             status: SlugAvailabilityStatus::Invalid,
+            suggestions: Vec::new(),
         }));
     };
     let existing = slugs::find(&state.db, slug.as_str()).await?;
@@ -140,8 +169,15 @@ pub async fn slug_availability(
         Err(SlugClaimError::Reserved) => SlugAvailabilityStatus::Reserved,
         Err(SlugClaimError::Taken) => SlugAvailabilityStatus::Taken,
     };
+    let suggestions = match status {
+        SlugAvailabilityStatus::Taken | SlugAvailabilityStatus::Reserved => {
+            alternatives(&state, me.user.id, &slug, query.card_id).await?
+        }
+        _ => Vec::new(),
+    };
     Ok(Json(SlugAvailability {
         slug: Some(slug.as_str().to_owned()),
         status,
+        suggestions,
     }))
 }

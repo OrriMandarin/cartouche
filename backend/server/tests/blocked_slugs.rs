@@ -160,10 +160,8 @@ async fn a_blocked_slug_cannot_be_claimed(pool: PgPool) {
             None,
         )
         .await;
-    assert_eq!(
-        availability.json,
-        json!({ "slug": "bob-martin", "status": "taken" })
-    );
+    assert_eq!(availability.json["slug"], "bob-martin");
+    assert_eq!(availability.json["status"], "taken");
 
     let suggestion = app
         .request(
