@@ -1,7 +1,9 @@
 mod common;
 
 use axum::http::StatusCode;
+use chrono::TimeZone;
 use common::cards::{cards_app, create_card, put_card, save_body, token};
+use common::events::{create_event, event_body, get_leads, put_spam, send_lead};
 use common::{TestApp, TestResponse, test_app_with};
 use futures_util::future::join_all;
 use serde_json::{Value, json};
@@ -513,4 +515,121 @@ async fn pending_user_cannot_create(pool: PgPool) {
         )
         .await;
     assert_eq!(anonymous.status, StatusCode::UNAUTHORIZED);
+}
+
+/// Creates an event of the default form on the card, from `starts_at` to `ends_at`.
+async fn add_event(
+    app: &TestApp,
+    sub: &str,
+    card_id: &str,
+    starts_at: &str,
+    ends_at: Option<&str>,
+) -> String {
+    let event = create_event(app, sub, card_id, event_body(starts_at, ends_at)).await;
+    event["id"].as_str().unwrap().to_string()
+}
+
+// spec: EDI-023, EVT-020
+#[sqlx::test(migrations = "./migrations")]
+async fn cards_count_their_events_by_phase_at_the_server_clock(pool: PgPool) {
+    // The frozen clock reads 2026-01-15 12:00 UTC.
+    let app = cards_app(pool).await;
+    let busy = create_card(&app, "alice", "alice-busy").await;
+    let busy_id = busy["id"].as_str().unwrap();
+    let empty = create_card(&app, "alice", "alice-empty").await;
+    add_event(&app, "alice", busy_id, "2026-01-10T08:00:00Z", None).await;
+    add_event(
+        &app,
+        "alice",
+        busy_id,
+        "2026-01-15T08:00:00Z",
+        Some("2026-01-15T12:30:00Z"),
+    )
+    .await;
+    add_event(&app, "alice", busy_id, "2026-02-01T08:00:00Z", None).await;
+    add_event(
+        &app,
+        "alice",
+        busy_id,
+        "2026-01-01T08:00:00Z",
+        Some("2026-01-02T08:00:00Z"),
+    )
+    .await;
+
+    let expected = json!({ "running": 2, "upcoming": 1, "past": 1 });
+    let list = app
+        .request("GET", "/api/cards", Some(&token("alice")), None)
+        .await;
+    assert_eq!(list.json["cards"][0]["event_counts"], expected);
+    assert_eq!(
+        list.json["cards"][1]["event_counts"],
+        json!({ "running": 0, "upcoming": 0, "past": 0 })
+    );
+    assert_eq!(
+        get_card(&app, "alice", busy_id).await.json["event_counts"],
+        expected
+    );
+    assert_eq!(
+        get_card(&app, "alice", empty["id"].as_str().unwrap())
+            .await
+            .json["event_counts"],
+        json!({ "running": 0, "upcoming": 0, "past": 0 })
+    );
+
+    // The phase follows the clock.
+    app.clock.set(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 15, 12, 45, 0)
+            .unwrap(),
+    );
+    let later = get_card(&app, "alice", busy_id).await;
+    assert_eq!(
+        later.json["event_counts"],
+        json!({ "running": 1, "upcoming": 1, "past": 2 })
+    );
+}
+
+// spec: EDI-024
+#[sqlx::test(migrations = "./migrations")]
+async fn cards_count_their_leads_spam_included(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-leads").await;
+    let other = create_card(&app, "alice", "alice-none").await;
+    let card_id = card["id"].as_str().unwrap();
+    let first = add_event(&app, "alice", card_id, "2026-01-10T08:00:00Z", None).await;
+    let second = add_event(&app, "alice", card_id, "2026-01-11T08:00:00Z", None).await;
+    send_lead(&app, "alice-leads", &first, json!({})).await;
+    send_lead(
+        &app,
+        "alice-leads",
+        &first,
+        json!({ "device_id": uuid::Uuid::now_v7() }),
+    )
+    .await;
+    send_lead(
+        &app,
+        "alice-leads",
+        &second,
+        json!({ "device_id": uuid::Uuid::now_v7() }),
+    )
+    .await;
+    let leads = get_leads(&app, "alice", &first).await;
+    let lead_id = leads.json["leads"][0]["id"].as_str().unwrap();
+    assert_eq!(
+        put_spam(&app, "alice", lead_id, true).await.status,
+        StatusCode::OK
+    );
+
+    assert_eq!(get_card(&app, "alice", card_id).await.json["lead_count"], 3);
+    let list = app
+        .request("GET", "/api/cards", Some(&token("alice")), None)
+        .await;
+    assert_eq!(list.json["cards"][0]["lead_count"], 3);
+    assert_eq!(list.json["cards"][1]["lead_count"], 0);
+    assert_eq!(
+        get_card(&app, "alice", other["id"].as_str().unwrap())
+            .await
+            .json["lead_count"],
+        0
+    );
 }

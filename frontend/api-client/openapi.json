@@ -4236,6 +4236,29 @@
   },
   "components": {
     "schemas": {
+      "AccountTotals": {
+        "type": "object",
+        "description": "Number of cards, events and leads of an account.",
+        "required": [
+          "cards",
+          "events",
+          "leads"
+        ],
+        "properties": {
+          "cards": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "events": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leads": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "AddressInput": {
         "type": "object",
         "description": "The postal address as typed by the prospect.",
@@ -4555,6 +4578,8 @@
           "theme",
           "content",
           "links",
+          "event_counts",
+          "lead_count",
           "created_at",
           "updated_at"
         ],
@@ -4577,6 +4602,10 @@
             "type": "string",
             "format": "date-time"
           },
+          "event_counts": {
+            "$ref": "#/components/schemas/EventCounts",
+            "description": "The card's events by phase, computed with the server clock (EVT-020, EDI-023)."
+          },
           "header": {
             "oneOf": [
               {
@@ -4591,6 +4620,11 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "lead_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Every contact of the card's events, spam ones included (EDI-024)."
           },
           "links": {
             "type": "array",
@@ -4911,6 +4945,32 @@
           "request_id": {
             "type": "string",
             "description": "Id of the failed request, also sent in the `x-request-id` response header."
+          }
+        }
+      },
+      "EventCounts": {
+        "type": "object",
+        "description": "Number of events of a card in each phase.",
+        "required": [
+          "running",
+          "upcoming",
+          "past"
+        ],
+        "properties": {
+          "past": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "running": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "upcoming": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
           }
         }
       },
@@ -5358,7 +5418,9 @@
         "required": [
           "id",
           "status",
-          "is_admin"
+          "is_admin",
+          "max_simultaneous_events",
+          "totals"
         ],
         "properties": {
           "display_name": {
@@ -5381,8 +5443,18 @@
             "type": "boolean",
             "description": "Evaluated from `ADMIN_USER_IDS`, never stored."
           },
+          "max_simultaneous_events": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Events in progress at once that a card may have (EVT-019); the dashboard says when a\ncard reaches it (EDI-032).",
+            "minimum": 0
+          },
           "status": {
             "$ref": "#/components/schemas/UserStatus"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AccountTotals",
+            "description": "What the account holds, for the account deletion area (ACC-027); zeros until the\naccount is approved."
           }
         }
       },

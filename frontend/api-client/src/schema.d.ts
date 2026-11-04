@@ -736,6 +736,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Number of cards, events and leads of an account. */
+        AccountTotals: {
+            /** Format: int64 */
+            cards: number;
+            /** Format: int64 */
+            events: number;
+            /** Format: int64 */
+            leads: number;
+        };
         /** @description The postal address as typed by the prospect. */
         AddressInput: {
             city?: string | null;
@@ -832,9 +841,16 @@ export interface components {
             content: components["schemas"]["ContentView"];
             /** Format: date-time */
             created_at: string;
+            /** @description The card's events by phase, computed with the server clock (EVT-020, EDI-023). */
+            event_counts: components["schemas"]["EventCounts"];
             header?: null | components["schemas"]["MediaView"];
             /** Format: uuid */
             id: string;
+            /**
+             * Format: int64
+             * @description Every contact of the card's events, spam ones included (EDI-024).
+             */
+            lead_count: number;
             links: components["schemas"]["LinkView"][];
             /** @description Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`. */
             public_url: string;
@@ -934,6 +950,15 @@ export interface components {
             message: string;
             /** @description Id of the failed request, also sent in the `x-request-id` response header. */
             request_id: string;
+        };
+        /** @description Number of events of a card in each phase. */
+        EventCounts: {
+            /** Format: int32 */
+            past: number;
+            /** Format: int32 */
+            running: number;
+            /** Format: int32 */
+            upcoming: number;
         };
         /** @description Everything an owner submits for an event; also the body of the event routes. */
         EventInput: {
@@ -1114,7 +1139,18 @@ export interface components {
             id: string;
             /** @description Evaluated from `ADMIN_USER_IDS`, never stored. */
             is_admin: boolean;
+            /**
+             * Format: int32
+             * @description Events in progress at once that a card may have (EVT-019); the dashboard says when a
+             *     card reaches it (EDI-032).
+             */
+            max_simultaneous_events: number;
             status: components["schemas"]["UserStatus"];
+            /**
+             * @description What the account holds, for the account deletion area (ACC-027); zeros until the
+             *     account is approved.
+             */
+            totals: components["schemas"]["AccountTotals"];
         };
         /** @enum {string} */
         MediaKind: "image" | "video";

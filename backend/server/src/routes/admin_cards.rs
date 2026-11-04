@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::auth::AdminUser;
 use crate::db::audit::{self, AuditEntry};
-use crate::db::{admin_cards, media, users};
+use crate::db::{admin_cards, cards, media, users};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::ApiPath;
 use crate::routes::admin_users::AdminUserView;
@@ -65,11 +65,14 @@ pub async fn get_user(
     let ids: Vec<Uuid> = owned.iter().map(|card| card.id).collect();
     let attached = media::list_attached(&state.db, id, &ids).await?;
     let now = state.clock.now();
+    let mut counts = cards::counts_for_owner(&state.db, id, &ids, now).await?;
     let cards = owned
         .into_iter()
         .map(|card| {
+            let card_counts = counts.remove(&card.id).unwrap_or_default();
             CardView::new(
                 card,
+                card_counts,
                 &attached,
                 &state.config,
                 &state.media,
@@ -117,13 +120,13 @@ pub async fn get_card(
         .ok_or_else(|| ApiError::Internal(format!("card {id} has no owner")))?;
     let attached = media::list_attached(&state.db, card.owner_id, &[id]).await?;
     Ok(Json(AdminCardDetail {
-        card: CardView::new(
+        card: CardView::load(
+            &state,
             card,
             &attached,
-            &state.config,
-            &state.media,
             Audience::Support(state.clock.now()),
-        )?,
+        )
+        .await?,
         owner: AdminUserView::new(owner, &state),
     }))
 }
@@ -162,13 +165,15 @@ async fn set_support_block(
     .await?;
     let attached = media::list_attached(&mut *tx, card.owner_id, &[id]).await?;
     tx.commit().await?;
-    Ok(Json(CardView::new(
-        updated,
-        &attached,
-        &state.config,
-        &state.media,
-        Audience::Support(state.clock.now()),
-    )?))
+    Ok(Json(
+        CardView::load(
+            state,
+            updated,
+            &attached,
+            Audience::Support(state.clock.now()),
+        )
+        .await?,
+    ))
 }
 
 /// Disables a card on behalf of support (ADM-009, ADM-014).

@@ -173,3 +173,31 @@ pub async fn set_status(
     .await?
     .try_into()
 }
+
+/// What deleting an account would remove (ACC-027).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Totals {
+    pub cards: i64,
+    pub events: i64,
+    pub leads: i64,
+}
+
+/// The numbers of cards, events and leads of the owner.
+pub async fn totals_for_owner(pool: &PgPool, owner_id: Uuid) -> Result<Totals, sqlx::Error> {
+    let row = sqlx::query!(
+        r#"select
+               (select count(*) from cards where owner_id = $1) as "cards!",
+               (select count(*) from events e join cards c on c.id = e.card_id
+                 where c.owner_id = $1) as "events!",
+               (select count(*) from leads l join events e on e.id = l.event_id
+                  join cards c on c.id = e.card_id where c.owner_id = $1) as "leads!""#,
+        owner_id,
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(Totals {
+        cards: row.cards,
+        events: row.events,
+        leads: row.leads,
+    })
+}

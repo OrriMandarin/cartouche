@@ -12,12 +12,13 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::config::Config;
-use crate::db::cards::Card;
+use crate::db::cards::{self, Card, CardCounts};
 use crate::db::events::{Event, EventWithCount, PublicCandidate};
 use crate::db::leads::Lead;
 use crate::db::media::MediaRecord;
 use crate::error::ApiError;
 use crate::media::MediaService;
+use crate::state::AppState;
 
 /// A card as its owner sees it.
 #[derive(Debug, Serialize, ToSchema)]
@@ -40,8 +41,20 @@ pub struct CardView {
     pub header: Option<MediaView>,
     /// The profile photo, once attached by a save (MED-018).
     pub avatar: Option<MediaView>,
+    /// The card's events by phase, computed with the server clock (EVT-020, EDI-023).
+    pub event_counts: EventCounts,
+    /// Every contact of the card's events, spam ones included (EDI-024).
+    pub lead_count: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// Number of events of a card in each phase.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EventCounts {
+    pub running: u32,
+    pub upcoming: u32,
+    pub past: u32,
 }
 
 /// An event as its owner sees it: the access code is shown in clear (EVT-010).
@@ -475,11 +488,35 @@ impl From<Link> for LinkView {
 }
 
 impl CardView {
+    /// Like `new`, with the counts of the card read from the database (the card's owner
+    /// filters them, ACC-017) and the phases computed at the server clock.
+    pub async fn load(
+        state: &AppState,
+        card: Card,
+        attached: &[MediaRecord],
+        audience: Audience,
+    ) -> Result<CardView, ApiError> {
+        let counts =
+            cards::counts_for_owner(&state.db, card.owner_id, &[card.id], state.clock.now())
+                .await?
+                .remove(&card.id)
+                .unwrap_or_default();
+        CardView::new(
+            card,
+            counts,
+            attached,
+            &state.config,
+            &state.media,
+            audience,
+        )
+    }
+
     /// `attached` holds the card's header and avatar records (others are ignored); the files'
     /// addresses are those of `audience`, the owner or support (MED-023, MED-031). Fails only
     /// if the stored theme is no longer valid, which is a bug of ours.
     pub fn new(
         card: Card,
+        counts: CardCounts,
         attached: &[MediaRecord],
         config: &Config,
         media: &MediaService,
@@ -492,6 +529,12 @@ impl CardView {
             header: view_of(card.header_media_id),
             avatar: view_of(card.avatar_media_id),
             public_url: public_url(config, &card.slug),
+            event_counts: EventCounts {
+                running: counts.running,
+                upcoming: counts.upcoming,
+                past: counts.past,
+            },
+            lead_count: counts.lead_count,
             id: card.id,
             slug: card.slug,
             status,

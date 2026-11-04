@@ -1,7 +1,9 @@
 //! The `cards` table. Every function takes the owner and puts it in the `where`; a card of
 //! another owner is simply absent.
 
-use cartouche_domain::{CardContent, CardStatus, Link, ValidCard};
+use std::collections::HashMap;
+
+use cartouche_domain::{CardContent, CardStatus, EventPhase, Link, Period, ValidCard};
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
@@ -125,6 +127,62 @@ async fn select_cards(
     .into_iter()
     .map(Card::try_from)
     .collect()
+}
+
+/// What the card list shows of a card's events and leads (EDI-023).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CardCounts {
+    pub running: u32,
+    pub upcoming: u32,
+    pub past: u32,
+    /// Every lead of the card's events, spam ones included.
+    pub lead_count: i64,
+}
+
+/// The counts of the owner's cards `card_ids`, the phases of the events being those of `now`
+/// (EVT-020). A card without event or lead gets the default (zero) counts.
+pub async fn counts_for_owner(
+    pool: &PgPool,
+    owner_id: Uuid,
+    card_ids: &[Uuid],
+    now: DateTime<Utc>,
+) -> Result<HashMap<Uuid, CardCounts>, sqlx::Error> {
+    let mut counts: HashMap<Uuid, CardCounts> = HashMap::new();
+    let events = sqlx::query!(
+        "select e.card_id, e.starts_at, e.ends_at \
+         from events e join cards c on c.id = e.card_id \
+         where c.owner_id = $1 and e.card_id = any($2)",
+        owner_id,
+        card_ids,
+    )
+    .fetch_all(pool)
+    .await?;
+    for event in events {
+        let period = Period {
+            starts_at: event.starts_at,
+            ends_at: event.ends_at,
+        };
+        let entry = counts.entry(event.card_id).or_default();
+        match period.phase(now) {
+            EventPhase::Running => entry.running += 1,
+            EventPhase::Upcoming => entry.upcoming += 1,
+            EventPhase::Past => entry.past += 1,
+        }
+    }
+    let leads = sqlx::query!(
+        r#"select e.card_id, count(*) as "count!"
+           from leads l join events e on e.id = l.event_id join cards c on c.id = e.card_id
+           where c.owner_id = $1 and e.card_id = any($2)
+           group by e.card_id"#,
+        owner_id,
+        card_ids,
+    )
+    .fetch_all(pool)
+    .await?;
+    for lead in leads {
+        counts.entry(lead.card_id).or_default().lead_count = lead.count;
+    }
+    Ok(counts)
 }
 
 pub async fn list_for_owner(pool: &PgPool, owner_id: Uuid) -> Result<Vec<Card>, sqlx::Error> {

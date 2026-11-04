@@ -53,11 +53,14 @@ pub async fn list_cards(
     let ids: Vec<Uuid> = owned.iter().map(|card| card.id).collect();
     let attached = media::list_attached(&state.db, me.user.id, &ids).await?;
     let now = state.clock.now();
+    let mut counts = cards::counts_for_owner(&state.db, me.user.id, &ids, now).await?;
     let cards = owned
         .into_iter()
         .map(|card| {
+            let card_counts = counts.remove(&card.id).unwrap_or_default();
             CardView::new(
                 card,
+                card_counts,
                 &attached,
                 &state.config,
                 &state.media,
@@ -149,13 +152,7 @@ pub async fn create_card(
     tx.commit().await.map_err(slug_race)?;
     Ok((
         StatusCode::CREATED,
-        Json(CardView::new(
-            card,
-            &[],
-            &state.config,
-            &state.media,
-            Audience::Owner(state.clock.now()),
-        )?),
+        Json(CardView::load(&state, card, &[], Audience::Owner(state.clock.now())).await?),
     ))
 }
 
@@ -187,13 +184,9 @@ pub async fn get_card(
         .await?
         .ok_or(ApiError::NotFound)?;
     let attached = media::list_attached(&state.db, me.user.id, &[id]).await?;
-    Ok(Json(CardView::new(
-        card,
-        &attached,
-        &state.config,
-        &state.media,
-        Audience::Owner(state.clock.now()),
-    )?))
+    Ok(Json(
+        CardView::load(&state, card, &attached, Audience::Owner(state.clock.now())).await?,
+    ))
 }
 
 /// The whole editable content of a card; it replaces what is stored.
@@ -300,13 +293,9 @@ pub async fn update_card(
     let attached = media::list_attached(&mut *tx, owner_id, &[id]).await?;
     tx.commit().await?;
     remove_media_files(&state.media, &removed).await;
-    Ok(Json(CardView::new(
-        card,
-        &attached,
-        &state.config,
-        &state.media,
-        Audience::Owner(state.clock.now()),
-    )?))
+    Ok(Json(
+        CardView::load(&state, card, &attached, Audience::Owner(state.clock.now())).await?,
+    ))
 }
 
 /// Deletes the files of media whose rows are gone. Rows are authoritative: a file that
@@ -380,13 +369,9 @@ async fn set_disabled(
         .ok_or(ApiError::NotFound)?;
     let attached = media::list_attached(&mut *tx, owner_id, &[id]).await?;
     tx.commit().await?;
-    Ok(Json(CardView::new(
-        card,
-        &attached,
-        &state.config,
-        &state.media,
-        Audience::Owner(state.clock.now()),
-    )?))
+    Ok(Json(
+        CardView::load(state, card, &attached, Audience::Owner(state.clock.now())).await?,
+    ))
 }
 
 /// Disables a card: its public page stops being served (LNK-005).
@@ -608,13 +593,9 @@ pub async fn duplicate_card(
     match record_duplicate(tx, owner_id, id, new_id, &slug, claim, &copies).await {
         Ok((card, attached)) => Ok((
             StatusCode::CREATED,
-            Json(CardView::new(
-                card,
-                &attached,
-                &state.config,
-                &state.media,
-                Audience::Owner(state.clock.now()),
-            )?),
+            Json(
+                CardView::load(&state, card, &attached, Audience::Owner(state.clock.now())).await?,
+            ),
         )),
         Err(error) => {
             remove_copied_files(&state.media, &copies).await;

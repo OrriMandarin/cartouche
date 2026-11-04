@@ -12,6 +12,8 @@ export function cardView(overrides: Partial<CardView> = {}): CardView {
     theme: { preset: "craie" },
     content: { first_name: "Éloïse", last_name: "D'Aubigné-Müller" },
     links: [],
+    event_counts: { running: 0, upcoming: 0, past: 0 },
+    lead_count: 0,
     created_at: "2026-03-05T12:00:00Z",
     updated_at: "2026-03-05T12:00:00Z",
     ...overrides,
