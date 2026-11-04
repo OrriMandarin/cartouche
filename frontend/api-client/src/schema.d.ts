@@ -300,6 +300,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cards/{id}/media/{media_id}/reframe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-frame a media
+         * @description Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used.
+         */
+        post: operations["reframe_media"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/{id}": {
         parameters: {
             query?: never;
@@ -1066,6 +1086,27 @@ export interface components {
         PublicStandardField: {
             field: components["schemas"]["StandardField"];
             required: boolean;
+        };
+        /** @description Shape of the re-framing form, for the API description only. */
+        ReframeMediaBody: {
+            /**
+             * @description JSON `{x, y, width, height}` in proportions of the source: 4:3 for the header, square
+             *     for the avatar.
+             */
+            crop: string;
+            /** @description Video only. JSON `{start, end}` in seconds. Default: the whole video. */
+            loop?: string | null;
+            /**
+             * Format: binary
+             * @description Video only. The newly captured whole frame at `poster_time`, which becomes the new
+             *     source. Without it, the files are cut from the stored source.
+             */
+            poster?: string | null;
+            /**
+             * Format: double
+             * @description Video only. The time of the waiting image, in seconds, as a decimal. Default: 0.
+             */
+            poster_time?: number | null;
         };
         /** @description The status to move an account to. */
         SetStatusBody: {
@@ -2669,6 +2710,116 @@ export interface operations {
                 };
             };
             /** @description The content is not a supported image or video (`unsupported_media_type`). */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reframe_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+                /** @description Id of the media of this card to re-frame. */
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReframeMediaBody"];
+            };
+        };
+        responses: {
+            /** @description The new media. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaView"];
+                };
+            };
+            /** @description Malformed request or form, a framing field that does not parse, or a loop, poster time or new frame sent for an image (`invalid_request`), or refused framing (`validation_failed`: `crop` is `required` or `invalid_crop`; `poster` is `image_too_large`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card or media of this card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The new frame is too heavy (`payload_too_large`). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The new frame is not a supported image (`unsupported_media_type`). */
             415: {
                 headers: {
                     [name: string]: unknown;

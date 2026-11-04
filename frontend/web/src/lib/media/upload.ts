@@ -52,6 +52,24 @@ export function checkBeforeUpload(
   return "unsupported";
 }
 
+/** Appends the framing fields given; whatever is left out takes the server's default. */
+function appendFraming(form: FormData, framing: UploadFraming): void {
+  if (framing.crop) form.append("crop", JSON.stringify(framing.crop));
+  if (framing.loop) form.append("loop", JSON.stringify(framing.loop));
+  if (framing.posterTime !== undefined) form.append("poster_time", String(framing.posterTime));
+}
+
+/** Posts a media form to `path` as the current session; a refusal is thrown as an `ApiError`. */
+async function postMediaForm(getToken: () => Promise<string | null>, path: string, form: FormData): Promise<MediaView> {
+  const headers = new Headers();
+  const token = await getToken();
+  if (token) headers.set("authorization", `Bearer ${token}`);
+  // Left unset, the browser adds the multipart boundary to `content-type`.
+  const response = await fetch(path, { method: "POST", headers, body: form });
+  if (!response.ok) throw await toApiError(response);
+  return (await response.json()) as MediaView;
+}
+
 /**
  * spec: MED-003, MED-026, MED-028. Sends a media to `POST /api/cards/{id}/media`: the slot, the file, for a
  * video its waiting image, and the framing given. A refusal is thrown as an `ApiError`, as with the generated
@@ -69,21 +87,35 @@ export async function uploadMedia(
   form.append("slot", slot);
   form.append("file", file, file instanceof File ? file.name : "media");
   if (poster) form.append("poster", poster, "poster.jpg");
-  if (framing.crop) form.append("crop", JSON.stringify(framing.crop));
-  if (framing.loop) form.append("loop", JSON.stringify(framing.loop));
-  if (framing.posterTime !== undefined) form.append("poster_time", String(framing.posterTime));
+  appendFraming(form, framing);
+  return postMediaForm(getToken, `/api/cards/${encodeURIComponent(cardId)}/media`, form);
+}
 
-  const headers = new Headers();
-  const token = await getToken();
-  if (token) headers.set("authorization", `Bearer ${token}`);
-  // Left unset, the browser adds the multipart boundary to `content-type`.
-  const response = await fetch(`/api/cards/${encodeURIComponent(cardId)}/media`, {
-    method: "POST",
-    headers,
-    body: form,
-  });
-  if (!response.ok) throw await toApiError(response);
-  return (await response.json()) as MediaView;
+/** The framing of a re-framed media: a crop is required; the loop and poster time are for a video. */
+export interface ReframeFraming extends UploadFraming {
+  crop: CropRect;
+}
+
+/** Re-frames a media of a card and returns the new one (`reframeMedia` bound to a card and a session). */
+export type ReframeMedia = (mediaId: string, framing: ReframeFraming, poster?: Blob) => Promise<MediaView>;
+
+/**
+ * spec: MED-030. Makes a new media from the source of `mediaId` along `framing`, through
+ * `POST /api/cards/{id}/media/{media_id}/reframe`; for a video, `poster` is the newly captured frame when the
+ * poster time changed. The card shows the new media once a save names it.
+ */
+export async function reframeMedia(
+  getToken: () => Promise<string | null>,
+  cardId: string,
+  mediaId: string,
+  framing: ReframeFraming,
+  poster?: Blob,
+): Promise<MediaView> {
+  const form = new FormData();
+  appendFraming(form, framing);
+  if (poster) form.append("poster", poster, "poster.jpg");
+  const path = `/api/cards/${encodeURIComponent(cardId)}/media/${encodeURIComponent(mediaId)}/reframe`;
+  return postMediaForm(getToken, path, form);
 }
 
 const ERROR_PREFIX = "editor.media.errors.";

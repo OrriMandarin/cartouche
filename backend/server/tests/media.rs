@@ -1579,3 +1579,340 @@ async fn duplication_copies_the_source_and_the_framing(pool: PgPool) {
         "yellow: {pixel:?}"
     );
 }
+
+async fn reframe(
+    app: &TestApp,
+    sub: &str,
+    card: &str,
+    media: &str,
+    parts: &[Part],
+) -> TestResponse {
+    app.request_multipart(
+        "POST",
+        &format!("/api/cards/{card}/media/{media}/reframe"),
+        Some(&token(sub)),
+        parts,
+    )
+    .await
+}
+
+fn crop_part(x: f64, y: f64, width: f64, height: f64) -> Part {
+    Part::text(
+        "crop",
+        &json!({ "x": x, "y": y, "width": width, "height": height }).to_string(),
+    )
+}
+
+/// Every stored file with its bytes, by key.
+async fn stored_files(app: &TestApp) -> std::collections::BTreeMap<String, bytes::Bytes> {
+    let mut files = std::collections::BTreeMap::new();
+    for key in app.media_keys().await {
+        let file = app.media.get(&key, None).await.unwrap();
+        files.insert(key, file.bytes);
+    }
+    files
+}
+
+/// Alice's card with an attached header cut from the quadrants image (default crop).
+async fn card_with_quadrants_header(app: &TestApp) -> (String, Value) {
+    let card = create_card(app, "alice", "alice-durand").await;
+    let id = card_id(&card).to_string();
+    let media = upload_header(app, &id, quadrants_png(1600, 1200), None)
+        .await
+        .json;
+    let res = put_card(app, "alice", &id, json!({ "header_media_id": media["id"] })).await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.json);
+    (id, media)
+}
+
+// spec: MED-030, MED-016, Review Focus 5
+#[sqlx::test(migrations = "./migrations")]
+async fn reframing_makes_a_new_media_and_leaves_the_old_one(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let (id, old) = card_with_quadrants_header(&app).await;
+    let before = stored_files(&app).await;
+
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        old["id"].as_str().unwrap(),
+        &[crop_part(0.5, 0.5, 0.5, 0.5)],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let new = res.json;
+
+    assert_ne!(new["id"], old["id"]);
+    assert_eq!(new["kind"], "image");
+    assert_crop(&new, 0.5, 0.5, 0.5, 0.5);
+    assert_eq!(media_rows(&pool).await, 2);
+    // The new files are yellow, the bottom-right quadrant.
+    let w800 = variant(&app, &new, 800).await.to_rgb8();
+    let pixel = w800.get_pixel(400, 300);
+    assert!(
+        pixel[0] > 200 && pixel[1] > 200 && pixel[2] < 60,
+        "yellow: {pixel:?}"
+    );
+
+    // The source is kept as it was, under a new name; the old media is untouched.
+    let (old_name, new_name) = (source_file_name(&old), source_file_name(&new));
+    assert!(cartouche_domain::is_source_name(&new_name), "{new_name}");
+    assert_ne!(new_name, old_name);
+    let after = stored_files(&app).await;
+    for (key, bytes) in &before {
+        assert_eq!(after.get(key), Some(bytes), "{key} is unchanged");
+    }
+    assert_eq!(
+        after[&key_of(&new["source"]["url"])],
+        before[&key_of(&old["source"]["url"])]
+    );
+    // The card still shows the old media until a save names the new one.
+    assert_eq!(get_card(&app, &id).await["header"]["id"], old["id"]);
+}
+
+// spec: MED-030, MED-018
+#[sqlx::test(migrations = "./migrations")]
+async fn saving_the_reframed_media_replaces_the_previous_one(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let (id, old) = card_with_quadrants_header(&app).await;
+    let old_prefix = format!("cards/{id}/{}/", old["id"].as_str().unwrap());
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        old["id"].as_str().unwrap(),
+        &[crop_part(0.0, 0.0, 0.5, 0.5)],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let new = res.json;
+
+    let res = put_card(&app, "alice", &id, json!({ "header_media_id": new["id"] })).await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.json);
+
+    assert_eq!(media_rows(&pool).await, 1);
+    let keys = app.media_keys().await;
+    assert!(
+        !keys.iter().any(|key| key.starts_with(&old_prefix)),
+        "{keys:?}"
+    );
+    assert!(!keys.is_empty());
+    assert_eq!(get_card(&app, &id).await["header"]["id"], new["id"]);
+}
+
+// spec: MED-020, ACC-017
+#[sqlx::test(migrations = "./migrations")]
+async fn another_owner_cannot_reframe(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let (id, old) = card_with_quadrants_header(&app).await;
+    let other_card = create_card(&app, "alice", "alice-autre").await;
+    create_card(&app, "bob", "bob-martin").await;
+    let before = stored_files(&app).await;
+    let media = old["id"].as_str().unwrap();
+    let parts = [crop_part(0.0, 0.0, 0.5, 0.5)];
+
+    let res = reframe(&app, "bob", &id, media, &parts).await;
+    assert_eq!(res.status, StatusCode::NOT_FOUND);
+    assert_eq!(error_code(&res), "not_found");
+    let unknown = uuid::Uuid::now_v7().to_string();
+    let res = reframe(&app, "alice", &id, &unknown, &parts).await;
+    assert_eq!(res.status, StatusCode::NOT_FOUND);
+    // A media of another card of the same owner.
+    let res = reframe(&app, "alice", card_id(&other_card), media, &parts).await;
+    assert_eq!(res.status, StatusCode::NOT_FOUND);
+
+    assert_eq!(stored_files(&app).await, before);
+    assert_eq!(media_rows(&pool).await, 1);
+}
+
+// spec: MED-030
+#[sqlx::test(migrations = "./migrations")]
+async fn a_media_without_source_cannot_be_reframed(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id: uuid::Uuid = card_id(&card).parse().unwrap();
+    let media_id = uuid::Uuid::now_v7();
+    sqlx::query(
+        "insert into media (id, card_id, slot, kind, variants) values ($1, $2, 'header', 'image', \
+         '[{\"name\":\"w640.webp\",\"width\":640,\"format\":\"webp\"}]')",
+    )
+    .bind(media_id)
+    .bind(id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = reframe(
+        &app,
+        "alice",
+        &id.to_string(),
+        &media_id.to_string(),
+        &[crop_part(0.0, 0.0, 0.5, 0.5)],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CONFLICT);
+    assert_eq!(error_code(&res), "media_not_reframable");
+    assert_eq!(media_rows(&pool).await, 1);
+    assert!(app.media_keys().await.is_empty());
+}
+
+// spec: MED-030, MED-029
+#[sqlx::test(migrations = "./migrations")]
+async fn a_video_is_reframed_with_or_without_a_new_frame(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card_id(&card);
+    let res = upload(
+        &app,
+        "alice",
+        id,
+        &video_parts(quadrants_png(1280, 720), &[]),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let old = res.json;
+    let old_id = old["id"].as_str().unwrap();
+    let old_video = key_of(&old["video_url"]);
+
+    // Without a new frame: the files are cut again from the stored source.
+    let res = reframe(
+        &app,
+        "alice",
+        id,
+        old_id,
+        &[
+            crop_part(0.0, 0.0, 0.75, 1.0),
+            Part::text("loop", &json!({ "start": 0.2, "end": 1.8 }).to_string()),
+            Part::text("poster_time", "1"),
+        ],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let same_frame = res.json;
+    assert_eq!(same_frame["kind"], "video");
+    assert_ne!(same_frame["id"], old["id"]);
+    assert_crop(&same_frame, 0.0, 0.0, 0.75, 1.0);
+    assert_close(&same_frame["loop"]["end"], 1.8, "loop end");
+    assert_close(&same_frame["poster_time"], 1.0, "poster time");
+    assert_eq!(same_frame["source"]["width"], 1280);
+    assert_ne!(source_file_name(&same_frame), source_file_name(&old));
+    let kept = app.media.get(&old_video, None).await.unwrap();
+    let copied = app
+        .media
+        .get(&key_of(&same_frame["video_url"]), None)
+        .await
+        .unwrap();
+    assert_eq!(copied.bytes, kept.bytes);
+    assert_eq!(copied.bytes.as_ref(), header_clip().as_slice());
+    let duration = same_frame["duration_seconds"].as_f64().unwrap();
+    assert!((duration - 2.0).abs() < 0.05, "{duration}");
+    let w960 = variant(&app, &same_frame, 960).await;
+    assert_eq!((w960.width(), w960.height()), (960, 720));
+
+    // With a new frame: it becomes the source.
+    let res = reframe(
+        &app,
+        "alice",
+        id,
+        old_id,
+        &[
+            crop_part(0.125, 0.0, 0.75, 1.0),
+            Part::text("poster_time", "0.5"),
+            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
+        ],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let new_frame = res.json;
+    assert_eq!(new_frame["source"]["width"], 640);
+    assert_close(&new_frame["poster_time"], 0.5, "poster time");
+    // No loop sent: the whole video.
+    assert_close(&new_frame["loop"]["start"], 0.0, "loop start");
+    assert_eq!(media_rows(&pool).await, 3);
+    // The previous media keeps its source and its video.
+    assert!(app.media.get(&old_video, None).await.is_ok());
+    assert!(
+        app.media
+            .get(&key_of(&old["source"]["url"]), None)
+            .await
+            .is_ok()
+    );
+}
+
+// spec: MED-026, MED-028
+#[sqlx::test(migrations = "./migrations")]
+async fn reframing_checks_the_crop_and_the_video_framing(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let (id, old) = card_with_quadrants_header(&app).await;
+    let before = stored_files(&app).await;
+    let media = old["id"].as_str().unwrap();
+
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        media,
+        &[crop_part(0.5, 0.0, 0.75, 0.75)],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "crop", "code": "invalid_crop" }])
+    );
+    // The crop is required.
+    let res = reframe(&app, "alice", &id, media, &[]).await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "crop", "code": "required" }])
+    );
+    // A loop only makes sense for a video.
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        media,
+        &[
+            crop_part(0.0, 0.0, 0.5, 0.5),
+            Part::text("loop", &json!({ "start": 0, "end": 1 }).to_string()),
+        ],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(&res), "invalid_request");
+
+    assert_eq!(stored_files(&app).await, before);
+    assert_eq!(media_rows(&pool).await, 1);
+
+    // A video with a loop past its end.
+    let card = create_card(&app, "alice", "alice-video").await;
+    let res = upload(
+        &app,
+        "alice",
+        card_id(&card),
+        &video_parts(jpeg(1280, 720), &[]),
+    )
+    .await;
+    let video = res.json;
+    let before = stored_files(&app).await;
+    let res = reframe(
+        &app,
+        "alice",
+        card_id(&card),
+        video["id"].as_str().unwrap(),
+        &[
+            crop_part(0.125, 0.0, 0.75, 1.0),
+            Part::text("loop", &json!({ "start": 0.0, "end": 99.0 }).to_string()),
+        ],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "loop", "code": "invalid_loop" }])
+    );
+    assert_eq!(stored_files(&app).await, before);
+    assert_eq!(media_rows(&pool).await, 2);
+}

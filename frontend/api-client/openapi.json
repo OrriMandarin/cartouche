@@ -1892,6 +1892,155 @@
         ]
       }
     },
+    "/api/cards/{id}/media/{media_id}/reframe": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Re-frame a media",
+        "description": "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used.",
+        "operationId": "reframe_media",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the card.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "media_id",
+            "in": "path",
+            "description": "Id of the media of this card to re-frame.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ReframeMediaBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new media.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request or form, a framing field that does not parse, or a loop, poster time or new frame sent for an image (`invalid_request`), or refused framing (`validation_failed`: `crop` is `required` or `invalid_crop`; `poster` is `image_too_large`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired token (`token_invalid`, `token_expired`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card or media of this card for the caller (`not_found`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The new frame is too heavy (`payload_too_large`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The new frame is not a supported image (`unsupported_media_type`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/events/{id}": {
       "get": {
         "tags": [
@@ -4857,6 +5006,42 @@
           },
           "required": {
             "type": "boolean"
+          }
+        }
+      },
+      "ReframeMediaBody": {
+        "type": "object",
+        "description": "Shape of the re-framing form, for the API description only.",
+        "required": [
+          "crop"
+        ],
+        "properties": {
+          "crop": {
+            "type": "string",
+            "description": "JSON `{x, y, width, height}` in proportions of the source: 4:3 for the header, square\nfor the avatar."
+          },
+          "loop": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Video only. JSON `{start, end}` in seconds. Default: the whole video."
+          },
+          "poster": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Video only. The newly captured whole frame at `poster_time`, which becomes the new\nsource. Without it, the files are cut from the stored source."
+          },
+          "poster_time": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Video only. The time of the waiting image, in seconds, as a decimal. Default: 0."
           }
         }
       },

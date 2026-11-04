@@ -169,6 +169,33 @@ pub fn default_loop(duration: Duration) -> VideoLoop {
     }
 }
 
+/// The loop and the poster time of a video, with the defaults for what is left out (the whole
+/// video, time 0), or every field refused as `(field, code)` (MED-028).
+pub fn check_video_framing(
+    video_loop: Option<VideoLoop>,
+    poster_time: Option<f64>,
+    duration: Duration,
+) -> Result<(VideoLoop, f64), Vec<(&'static str, &'static str)>> {
+    let video_loop = video_loop.unwrap_or_else(|| default_loop(duration));
+    let poster_time = poster_time.unwrap_or(0.0);
+    let refused: Vec<_> = [
+        check_loop(&video_loop, duration)
+            .err()
+            .map(|code| ("loop", code)),
+        check_poster_time(poster_time, duration)
+            .err()
+            .map(|code| ("poster_time", code)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    if refused.is_empty() {
+        Ok((video_loop, poster_time))
+    } else {
+        Err(refused)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -382,5 +409,34 @@ mod tests {
         assert_eq!(json["loop"]["end"], 4.0);
         assert!(json.get("poster_time").is_none());
         assert!(json.get("video_loop").is_none());
+    }
+
+    // spec: MED-028
+    #[test]
+    fn a_video_framing_takes_its_defaults_and_reports_every_refusal() {
+        let duration = Duration::from_secs(10);
+        assert_eq!(
+            check_video_framing(None, None, duration),
+            Ok((default_loop(duration), 0.0))
+        );
+        let lp = VideoLoop {
+            start: 2.0,
+            end: 5.0,
+        };
+        assert_eq!(
+            check_video_framing(Some(lp), Some(3.0), duration),
+            Ok((lp, 3.0))
+        );
+        let late = VideoLoop {
+            start: 2.0,
+            end: 50.0,
+        };
+        assert_eq!(
+            check_video_framing(Some(late), Some(50.0), duration),
+            Err(vec![
+                ("loop", "invalid_loop"),
+                ("poster_time", "invalid_poster_time")
+            ])
+        );
     }
 }

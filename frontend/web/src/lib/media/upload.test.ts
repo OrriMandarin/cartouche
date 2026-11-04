@@ -1,6 +1,6 @@
 import { ApiError } from "@cartouche/api-client";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { checkBeforeUpload, mediaErrorKey, uploadMedia } from "./upload";
+import { checkBeforeUpload, mediaErrorKey, reframeMedia, uploadMedia } from "./upload";
 
 const MB = 1024 * 1024;
 
@@ -119,6 +119,59 @@ describe("uploadMedia", () => {
     expect(failure).toBeInstanceOf(ApiError);
     expect((failure as ApiError).requestId).toBe("req-9");
     expect(mediaErrorKey(failure)).toBe("editor.media.errors.video_too_long");
+  });
+});
+
+describe("reframeMedia", () => {
+  const crop = { x: 0.125, y: 0, width: 0.75, height: 1 };
+
+  test("MED-030 sends the framing and the new frame to the reframe route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const poster = new Blob(["poster"], { type: "image/jpeg" });
+
+    const result = await reframeMedia(
+      async () => "tok-1",
+      "card-1",
+      "media-1",
+      { crop, loop: { start: 0.5, end: 7.5 }, posterTime: 1.5 },
+      poster,
+    );
+
+    expect(result).toEqual(mediaView);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/cards/card-1/media/media-1/reframe");
+    expect(init.method).toBe("POST");
+    expect(new Headers(init.headers).get("authorization")).toBe("Bearer tok-1");
+    const form = init.body as FormData;
+    expect(JSON.parse(form.get("crop") as string)).toEqual(crop);
+    expect(JSON.parse(form.get("loop") as string)).toEqual({ start: 0.5, end: 7.5 });
+    expect(form.get("poster_time")).toBe("1.5");
+    expect((form.get("poster") as File).size).toBe(6);
+    expect(form.has("slot")).toBe(false);
+    expect(form.has("file")).toBe(false);
+  });
+
+  test("MED-030 an image is re-framed with its crop alone", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await reframeMedia(async () => null, "card-1", "media-1", { crop });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(new Headers(init.headers).has("authorization")).toBe(false);
+    const form = init.body as FormData;
+    expect([...form.keys()]).toEqual(["crop"]);
+  });
+
+  test("MED-030 a media without source is refused as an ApiError", async () => {
+    const body = { error: { code: "media_not_reframable", message: "m", request_id: "req-3" } };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 409 })));
+
+    const failure = await reframeMedia(async () => "t", "card-1", "media-1", { crop }).catch((e: unknown) => e);
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).code).toBe("media_not_reframable");
   });
 });
 

@@ -2,14 +2,16 @@
 //! MED-025 to MED-029). An upload only creates the media and its files; the card shows it once
 //! a save attaches it.
 
+use std::time::Duration;
+
 use axum::Json;
 use axum::extract::{Multipart, State};
 use axum::http::StatusCode;
 use bytes::{Bytes, BytesMut};
 use cartouche_domain::{
     CropRect, FieldError, Framing, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, MediaKind, Slot,
-    UploadRejection, VariantFormat, VideoLoop, check_loop, check_poster_time, classify_upload,
-    default_loop, mp4_duration, storage_key,
+    UploadRejection, VariantFormat, VideoLoop, check_video_framing, classify_upload, mp4_duration,
+    storage_key,
 };
 use serde::de::DeserializeOwned;
 use utoipa::ToSchema;
@@ -178,6 +180,9 @@ struct Prepared {
     source: SourceFile,
     framing: Framing,
     duration_ms: Option<u32>,
+    /// Files of another media of the card to copy under a name of the new one: (storage key of
+    /// the original, name of the copy).
+    copies: Vec<(String, String)>,
 }
 
 impl Prepared {
@@ -201,8 +206,44 @@ impl Prepared {
             source,
             framing,
             duration_ms: None,
+            copies: Vec::new(),
         }
     }
+
+    /// Records the video: its variant and duration. Its file is stored or copied by the caller.
+    fn with_video(mut self, duration: Duration) -> Prepared {
+        self.variants.push(StoredVariant {
+            name: VIDEO_FILE.to_string(),
+            width: 0,
+            format: VariantFormat::Mp4,
+        });
+        self.duration_ms = Some(u32::try_from(duration.as_millis()).unwrap_or(u32::MAX));
+        self
+    }
+
+    /// Keeps the stored source as it is instead of the one just encoded (which would lose
+    /// quality again): the source is copied from `from_key` under its new name. The source of
+    /// `of_image` is the first of the files.
+    fn keep_source(&mut self, from_key: String) {
+        self.files.remove(0);
+        self.copies.push((from_key, self.source.name.clone()));
+    }
+}
+
+/// The loop and the poster time of a video, or the fields refused (MED-028).
+fn video_framing(
+    video_loop: Option<VideoLoop>,
+    poster_time: Option<f64>,
+    duration: Duration,
+) -> Result<(VideoLoop, f64), ApiError> {
+    check_video_framing(video_loop, poster_time, duration).map_err(|refused| {
+        ApiError::Validation(
+            refused
+                .into_iter()
+                .map(|(field, code)| FieldError::new(field, code))
+                .collect(),
+        )
+    })
 }
 
 /// The files to store for an upload, checked and encoded, with the framing they were cut along.
@@ -242,23 +283,7 @@ async fn prepare(
         }
         MediaKind::Video => {
             let duration = mp4_duration(&file).map_err(|_| ApiError::UnsupportedMediaType)?;
-            let video_loop = video_loop.unwrap_or_else(|| default_loop(duration));
-            let poster_time = poster_time.unwrap_or(0.0);
-            let refused: Vec<FieldError> = [
-                check_loop(&video_loop, duration)
-                    .err()
-                    .map(|code| ("loop", code)),
-                check_poster_time(poster_time, duration)
-                    .err()
-                    .map(|code| ("poster_time", code)),
-            ]
-            .into_iter()
-            .flatten()
-            .map(|(field, code)| FieldError::new(field, code))
-            .collect();
-            if !refused.is_empty() {
-                return Err(ApiError::Validation(refused));
-            }
+            let (video_loop, poster_time) = video_framing(video_loop, poster_time, duration)?;
             let poster = poster.ok_or_else(|| field_error("poster", "poster_required"))?;
             // The waiting image is the video's source, cut along the video's crop (MED-029).
             let image = storage
@@ -270,14 +295,8 @@ async fn prepare(
                 video_loop: Some(video_loop),
                 poster_time: Some(poster_time),
             };
-            let mut prepared = Prepared::of_image(kind, image, framing);
+            let mut prepared = Prepared::of_image(kind, image, framing).with_video(duration);
             prepared.files.push((VIDEO_FILE.to_string(), file));
-            prepared.variants.push(StoredVariant {
-                name: VIDEO_FILE.to_string(),
-                width: 0,
-                format: VariantFormat::Mp4,
-            });
-            prepared.duration_ms = Some(u32::try_from(duration.as_millis()).unwrap_or(u32::MAX));
             Ok(prepared)
         }
     }
@@ -330,6 +349,18 @@ pub async fn upload_media(
     };
 
     let prepared = prepare(&state.media, slot, file, form.poster, form.framing).await?;
+    store(&state, owner_id, card_id, slot, prepared).await
+}
+
+/// Stores the files of a prepared media under a new id and records it. If anything fails after
+/// the first file, the files already stored are removed.
+async fn store(
+    state: &AppState,
+    owner_id: Uuid,
+    card_id: Uuid,
+    slot: Slot,
+    prepared: Prepared,
+) -> Result<(StatusCode, Json<MediaView>), ApiError> {
     let record = MediaRecord {
         id: Uuid::now_v7(),
         card_id,
@@ -343,6 +374,13 @@ pub async fn upload_media(
     for (name, bytes) in prepared.files {
         let key = storage_key(card_id, record.id, &name);
         if let Err(error) = state.media.put(&key, bytes).await {
+            discard_files(&state.media, &record).await;
+            return Err(error.into());
+        }
+    }
+    for (from, name) in prepared.copies {
+        let to = storage_key(card_id, record.id, &name);
+        if let Err(error) = state.media.copy(&from, &to).await {
             discard_files(&state.media, &record).await;
             return Err(error.into());
         }
@@ -372,6 +410,153 @@ pub async fn upload_media(
             Err(error.into())
         }
     }
+}
+
+/// Shape of the re-framing form, for the API description only.
+#[derive(ToSchema)]
+#[allow(dead_code)]
+pub struct ReframeMediaBody {
+    /// JSON `{x, y, width, height}` in proportions of the source: 4:3 for the header, square
+    /// for the avatar.
+    #[schema(value_type = String)]
+    crop: String,
+    /// Video only. The newly captured whole frame at `poster_time`, which becomes the new
+    /// source. Without it, the files are cut from the stored source.
+    #[schema(value_type = Option<String>, format = Binary)]
+    poster: Option<Vec<u8>>,
+    /// Video only. JSON `{start, end}` in seconds. Default: the whole video.
+    #[schema(value_type = Option<String>, rename = "loop")]
+    video_loop: Option<String>,
+    /// Video only. The time of the waiting image, in seconds, as a decimal. Default: 0.
+    #[schema(value_type = Option<f64>)]
+    poster_time: Option<String>,
+}
+
+/// The files of a re-framed media: cut along `framing` from the source of `previous`, or from
+/// the new frame of a video.
+async fn prepare_reframed(
+    storage: &MediaService,
+    previous: &MediaRecord,
+    source: &SourceFile,
+    poster: Option<Bytes>,
+    framing: FramingFields,
+) -> Result<Prepared, ApiError> {
+    let FramingFields {
+        crop,
+        video_loop,
+        poster_time,
+    } = framing;
+    let source_key = storage_key(previous.card_id, previous.id, &source.name);
+    // The video's duration, as the server read it on upload.
+    let duration = match previous.kind {
+        MediaKind::Image => None,
+        MediaKind::Video => Some(Duration::from_millis(u64::from(
+            previous.duration_ms.ok_or(ApiError::MediaNotReframable)?,
+        ))),
+    };
+    let Some(duration) = duration else {
+        // A loop, a poster time and a new frame only make sense for a video.
+        if video_loop.is_some() || poster_time.is_some() || poster.is_some() {
+            return Err(ApiError::InvalidRequest);
+        }
+        let stored = storage.get(&source_key, None).await?;
+        let image = storage
+            .prepare_image(stored.bytes, previous.slot, crop)
+            .await
+            .map_err(|e| prepare_error(e, "crop"))?;
+        let framing = Framing {
+            crop: image.crop,
+            video_loop: None,
+            poster_time: None,
+        };
+        let mut prepared = Prepared::of_image(previous.kind, image, framing);
+        prepared.keep_source(source_key);
+        return Ok(prepared);
+    };
+
+    let (video_loop, poster_time) = video_framing(video_loop, poster_time, duration)?;
+    let (frame, new_frame) = match poster {
+        Some(poster) => (poster, true),
+        None => (storage.get(&source_key, None).await?.bytes, false),
+    };
+    let image = storage
+        .prepare_image(frame, Slot::Header, crop)
+        .await
+        .map_err(|e| prepare_error(e, "poster"))?;
+    let framing = Framing {
+        crop: image.crop,
+        video_loop: Some(video_loop),
+        poster_time: Some(poster_time),
+    };
+    let mut prepared = Prepared::of_image(previous.kind, image, framing).with_video(duration);
+    if !new_frame {
+        prepared.keep_source(source_key);
+    }
+    prepared.copies.push((
+        storage_key(previous.card_id, previous.id, VIDEO_FILE),
+        VIDEO_FILE.to_string(),
+    ));
+    Ok(prepared)
+}
+
+/// Makes a new media of a card from the source of one of its media, cut along a new crop.
+#[utoipa::path(
+    post,
+    path = "/api/cards/{id}/media/{media_id}/reframe",
+    summary = "Re-frame a media",
+    description = "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used.",
+    tag = "cards",
+    security(("bearer" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Id of the card."),
+        ("media_id" = Uuid, Path, description = "Id of the media of this card to re-frame."),
+    ),
+    request_body(content = ReframeMediaBody, content_type = "multipart/form-data"),
+    responses(
+        (status = 201, description = "The new media.", body = MediaView),
+        (status = 400, description = "Malformed request or form, a framing field that does not parse, or a loop, poster time or new frame sent for an image (`invalid_request`), or refused framing (`validation_failed`: `crop` is `required` or `invalid_crop`; `poster` is `image_too_large`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`).", body = ErrorBody),
+        (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
+        (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
+        (status = 404, description = "No such card or media of this card for the caller (`not_found`).", body = ErrorBody),
+        (status = 409, description = "The media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`).", body = ErrorBody),
+        (status = 413, description = "The new frame is too heavy (`payload_too_large`).", body = ErrorBody),
+        (status = 415, description = "The new frame is not a supported image (`unsupported_media_type`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
+    ),
+)]
+pub async fn reframe_media(
+    ApprovedUser(me): ApprovedUser,
+    State(state): State<AppState>,
+    ApiPath((card_id, media_id)): ApiPath<(Uuid, Uuid)>,
+    ApiMultipart(mut multipart): ApiMultipart,
+) -> Result<(StatusCode, Json<MediaView>), ApiError> {
+    let owner_id = me.user.id;
+    // Before reading the body: another user's card or media is not found, whatever is sent.
+    cards::find_for_owner(&state.db, owner_id, card_id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    let previous = media::find_for_owner(&state.db, owner_id, media_id)
+        .await?
+        .filter(|media| media.card_id == card_id)
+        .ok_or(ApiError::NotFound)?;
+    let source = previous
+        .source
+        .clone()
+        .ok_or(ApiError::MediaNotReframable)?;
+
+    let form = read_form(&mut multipart).await?;
+    // The slot and the kind are those of the previous media.
+    if form.slot.is_some() || form.file.is_some() {
+        return Err(ApiError::InvalidRequest);
+    }
+    if form.framing.crop.is_none() {
+        return Err(field_error("crop", "required"));
+    }
+
+    let prepared =
+        prepare_reframed(&state.media, &previous, &source, form.poster, form.framing).await?;
+    store(&state, owner_id, card_id, previous.slot, prepared).await
 }
 
 /// Removes the files of a media that could not be recorded.

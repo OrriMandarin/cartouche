@@ -64,6 +64,8 @@ pub enum ApiError {
     UnsupportedMediaType,
     /// The requested status change is not an allowed transition (ADM-003).
     InvalidTransition,
+    /// The media has no source (uploaded before plan 6) and cannot be re-framed (MED-030).
+    MediaNotReframable,
     /// The slug belongs to someone else (LNK-022).
     SlugTaken,
     /// The slug is an old slug of another card of the same owner (LNK-025).
@@ -115,6 +117,7 @@ impl ApiError {
             ApiError::PayloadTooLarge => "payload_too_large",
             ApiError::UnsupportedMediaType => "unsupported_media_type",
             ApiError::InvalidTransition => "invalid_transition",
+            ApiError::MediaNotReframable => "media_not_reframable",
             ApiError::SlugTaken => "slug_taken",
             ApiError::SlugReserved => "slug_reserved",
             ApiError::CardDisabledBySupport => "card_disabled_by_support",
@@ -151,6 +154,7 @@ impl ApiError {
             ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             ApiError::InvalidTransition
+            | ApiError::MediaNotReframable
             | ApiError::SlugTaken
             | ApiError::SlugReserved
             | ApiError::CardDisabledBySupport
@@ -185,6 +189,9 @@ impl ApiError {
             ApiError::PayloadTooLarge => "The request body is too large.",
             ApiError::UnsupportedMediaType => "The content type is not supported.",
             ApiError::InvalidTransition => "This status change is not allowed.",
+            ApiError::MediaNotReframable => {
+                "This media has no source and cannot be re-framed: replace it."
+            }
             ApiError::SlugTaken => "This link is already taken.",
             ApiError::SlugReserved => "This link was used by another of your cards.",
             ApiError::CardDisabledBySupport => "This card was disabled by support.",
@@ -301,6 +308,8 @@ mod tests {
         assert_eq!(ApiError::InvalidRequest.status(), StatusCode::BAD_REQUEST);
         assert_eq!(ApiError::InvalidTransition.code(), "invalid_transition");
         assert_eq!(ApiError::InvalidTransition.status(), StatusCode::CONFLICT);
+        assert_eq!(ApiError::MediaNotReframable.code(), "media_not_reframable");
+        assert_eq!(ApiError::MediaNotReframable.status(), StatusCode::CONFLICT);
     }
 
     async fn body_json(error: ApiError) -> (StatusCode, serde_json::Value) {

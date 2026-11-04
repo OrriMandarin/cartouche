@@ -45,7 +45,7 @@ pub use form::{
 };
 pub use framing::{
     CropRect, Framing, PixelRect, VideoLoop, check_crop, check_loop, check_poster_time,
-    crop_pixels, default_crop, default_loop,
+    check_video_framing, crop_pixels, default_crop, default_loop,
 };
 pub use lead::{
     AddressInput, AnswerSnapshot, AnswersInput, DeviceLimitReached, FormChanged, PublicForm,
