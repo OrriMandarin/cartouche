@@ -35,7 +35,7 @@ describe("LinksEditor", () => {
     expect(state()).toEqual([]);
   });
 
-  test("PUB-012 a network is added from the menu of the seven kinds", async () => {
+  test("PUB-012 EDI-036 a network is added from the menu of the seven kinds", async () => {
     renderWithIntl(<Harness initial={[]} />);
     fireEvent.pointerDown(screen.getByTestId("link-add-network"), { button: 0, ctrlKey: false });
     const items = await screen.findAllByRole("menuitem");
@@ -118,7 +118,7 @@ describe("LinksEditor", () => {
     expect(screen.getByTestId("link-url-0")).not.toHaveAttribute("aria-invalid");
   });
 
-  test("EDI-029 clearing the label of a network keeps its field", () => {
+  test("EDI-029 EDI-036 clearing the label of a network keeps its field", () => {
     renderWithIntl(<Harness initial={[{ kind: "linkedin", url: "https://l.example", label: "Moi" }]} />);
     fireEvent.change(screen.getByTestId("link-label-0"), { target: { value: "" } });
     expect(screen.getByTestId("link-label-0")).toBeVisible();
