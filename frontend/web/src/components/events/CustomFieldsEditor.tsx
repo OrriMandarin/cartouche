@@ -259,6 +259,8 @@ export function CustomFieldsEditor({
   const full = fields.length >= MAX_CUSTOM_FIELDS;
   const [announced, setAnnounced] = useState("");
   const focusAfter = useRef<string | null>(null);
+  // The label of a field just added: it takes the focus once the « Ajouter un champ » menu has closed.
+  const focusAfterMenu = useRef<string | null>(null);
 
   // Right after the DOM changed, so that a key pressed next finds the focus where the move left it.
   useLayoutEffect(() => {
@@ -309,9 +311,16 @@ export function CustomFieldsEditor({
 
   function add(kind: CustomFieldKind) {
     onChange(addCustomField(draft, kind), ["custom_fields"]);
-    // Once the menu has closed: while it is open it holds the focus.
-    const label = `custom-label-${fields.length}`;
-    requestAnimationFrame(() => document.getElementById(label)?.focus());
+    focusAfterMenu.current = `custom-label-${fields.length}`;
+  }
+
+  /** The menu takes the focus back while it fades out; the new field's label gets it once the menu is gone. */
+  function onMenuCloseAutoFocus(event: Event) {
+    const label = focusAfterMenu.current;
+    if (label === null) return;
+    event.preventDefault();
+    focusAfterMenu.current = null;
+    document.getElementById(label)?.focus();
   }
 
   return (
@@ -354,8 +363,8 @@ export function CustomFieldsEditor({
             <ChevronDown aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
-        {/* The new field takes the focus (see `add`): the menu must not give it back to its button. */}
-        <DropdownMenuContent align="start" onCloseAutoFocus={(event) => event.preventDefault()}>
+        {/* A new field takes the focus (see `onMenuCloseAutoFocus`); closing without choosing gives it back to the button. */}
+        <DropdownMenuContent align="start" onCloseAutoFocus={onMenuCloseAutoFocus}>
           {CUSTOM_FIELD_KINDS.map((kind) => (
             <DropdownMenuItem key={kind} data-testid={`custom-add-${kind}`} onSelect={() => add(kind)}>
               {t(`kinds.${kind}`)}
