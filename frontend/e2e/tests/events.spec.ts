@@ -167,7 +167,7 @@ test("EDI-021 EDI-028 event editor: leave dialog", async ({ page }) => {
   for (const link of [page.getByTestId("event-back"), accountEntry]) {
     await link.click();
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(`Tu as modifié l’événement «\u00a0${MARIAGE}\u00a0».`);
+    await expect(dialog).toContainText(`Tu as modifié l’événement «\u00a0${MARIAGE} ✨\u00a0».`);
     await expect(dialog.getByRole("button", { name: "Rester" })).toBeFocused();
     await dialog.getByRole("button", { name: "Rester" }).click();
     await expect(dialog).toHaveCount(0);

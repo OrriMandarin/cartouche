@@ -15,6 +15,9 @@ function Page({ dirty, save = async () => true }: { dirty: boolean; save?: () =>
       <a href="https://example.test/" data-testid="external">
         Dehors
       </a>
+      <a href="/file.pdf" download data-testid="download">
+        Télécharger
+      </a>
       <a href="/new-tab" target="_blank" data-testid="blank">
         Autre onglet
       </a>
@@ -107,6 +110,17 @@ describe("useLeaveGuard", () => {
     expect(goes("blank")).toBe(true);
     expect(goes("same-page")).toBe(true);
     expect(goes("button")).toBe(true);
+    expect(asking()).toBe(false);
+  });
+
+  test("EDI-028 a download link and a modified click are left to the browser", () => {
+    render(<Page dirty />);
+    expect(goes("download")).toBe(true);
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true, ...modifier });
+      screen.getByTestId("internal").dispatchEvent(click);
+      expect(click.defaultPrevented).toBe(false);
+    }
     expect(asking()).toBe(false);
   });
 

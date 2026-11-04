@@ -5,6 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /** The internal link a click went through, if it is one that leaves the current page. */
 function leavingLink(event: MouseEvent): HTMLAnchorElement | null {
+  // Modified or non-primary clicks (new tab, new window, download) are the browser's business.
+  if (event.defaultPrevented || event.button !== 0) return null;
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return null;
   if (!(event.target instanceof Element)) return null;
   const link = event.target.closest("a[href]");
   if (!(link instanceof HTMLAnchorElement)) return null;

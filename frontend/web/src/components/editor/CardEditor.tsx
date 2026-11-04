@@ -263,6 +263,7 @@ export function CardEditor({ card }: { card: CardView }) {
       <h1 className="sr-only">{t("editor.title")}</h1>
       <LeaveDialog
         guard={leaveGuard}
+        canSave={canSave}
         description={t("editor.leave.body", { name })}
         phoneDescription={t("editor.leave.bodyPhone")}
       />

@@ -384,7 +384,8 @@
     "stay": "Rester",
     "discard": "Quitter sans enregistrer",
     "saveAndLeave": "Enregistrer et quitter",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "cannotSave": "Enregistrer est impossible pour l’instant (envoi en cours ou adresse refusée). Termine-le ou corrige-la, ou quitte sans enregistrer."
   },
   "editor": {
     "title": "Modifier la carte",

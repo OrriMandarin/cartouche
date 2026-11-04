@@ -125,7 +125,7 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
       <LeaveDialog
         guard={leaveGuard}
         description={t("events.editor.leave.body", {
-          title: saved.title.trim() || t("events.editor.leave.untitled"),
+          title: draft.title.trim() || saved.title.trim() || t("events.editor.leave.untitled"),
         })}
       />
       <div className="bg-background/95 sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-b px-1 py-3 backdrop-blur">

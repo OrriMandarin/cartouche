@@ -32,4 +32,10 @@ describe("LeaveDialog", () => {
     renderWithIntl(<LeaveDialog guard={guard({ asking: false })} description="x" />);
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
+
+  test("EDI-028 Enregistrer et quitter waits while the draft cannot be saved, and says why", () => {
+    renderWithIntl(<LeaveDialog guard={guard()} description="x" canSave={false} />);
+    expect(screen.getByRole("button", { name: "Enregistrer et quitter" })).toBeDisabled();
+    expect(screen.getByTestId("leave-cannot-save")).toBeInTheDocument();
+  });
 });

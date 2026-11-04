@@ -402,7 +402,7 @@ describe("EventEditor", () => {
 
     type("event-title", "Salon de l’Artisanat 2028 ✨");
     expect(linkNavigates("event-back")).toBe(false);
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("Tu as modifié l’événement « Salon de l’Artisanat ✨ ».");
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Tu as modifié l’événement « Salon de l’Artisanat 2028 ✨ ».");
     fireEvent.click(screen.getByRole("button", { name: "Rester" }));
     expect(linkNavigates("account-link")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Quitter sans enregistrer" }));
