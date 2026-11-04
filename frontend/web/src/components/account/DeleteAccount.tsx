@@ -31,11 +31,9 @@ export type AccountTotals = components["schemas"]["AccountTotals"];
 export function DeleteAccount({
   isAdmin,
   totals,
-  triggerClassName,
 }: {
   isAdmin: boolean;
   totals: AccountTotals;
-  triggerClassName?: string;
 }) {
   const t = useTranslations("account.delete");
   const router = useRouter();
@@ -80,7 +78,7 @@ export function DeleteAccount({
 
   return (
     <>
-      <Button variant="destructive" data-testid="delete-account-open" className={triggerClassName} onClick={() => changeOpen(true)}>
+      <Button variant="destructive" data-testid="delete-account-open" onClick={() => changeOpen(true)}>
         <Trash2 aria-hidden="true" />
         {t("open")}
       </Button>

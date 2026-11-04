@@ -36,10 +36,10 @@ export function ConsentEditor({
   const t = useTranslations("events.editor.consent");
   const preview = useConsentPreview(cardId, draft.title, knownDefault);
 
-  const text =
-    draft.consentMode === "default"
-      ? (preview.text ?? (preview.failed ? t("unavailable") : t("loading")))
-      : draft.consentText.trim();
+  // FRM-028: a custom mode with a blank text is stored as no text, so the prospect sees the default one.
+  const customText = draft.consentText.trim();
+  const showsDefault = draft.consentMode === "default" || customText === "";
+  const text = showsDefault ? (preview.text ?? (preview.failed ? t("unavailable") : t("loading"))) : customText;
 
   return (
     <div className="flex flex-col gap-4">
@@ -53,13 +53,13 @@ export function ConsentEditor({
           aria-hidden="true"
           className="border-app-border-strong bg-app-surface mt-px size-[22px] flex-none rounded-[5px] border-2"
         />
-        <span data-testid={draft.consentMode === "default" ? "consent-default-text" : "consent-custom-text"}>
+        <span data-testid={showsDefault ? "consent-default-text" : "consent-custom-text"}>
           {text}
         </span>
       </div>
       <p className="text-app-muted text-[13px] leading-[1.4]">{t("always")}</p>
 
-      {draft.consentMode === "default" && !cardHasEmail(card.content) ? (
+      {showsDefault && !cardHasEmail(card.content) ? (
         <Alert data-testid="consent-no-email">
           <AlertDescription>{t("noEmail")}</AlertDescription>
         </Alert>

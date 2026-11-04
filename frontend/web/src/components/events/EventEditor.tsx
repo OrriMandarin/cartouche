@@ -177,6 +177,7 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
 
   /** The event was ended from the state panel: the end it now has is both stored and in the draft (EVT-006). */
   function onEnded(ended: EventView) {
+    // The draft keeps the end as a date and a time of day to the minute, so the seconds of "now" are floored away.
     const { endsAt } = draftFromEvent(ended, zone);
     setSaved((current) => ({ ...current, endsAt }));
     setDraft((current) => ({ ...current, endsAt }));

@@ -3,7 +3,7 @@
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import type { ThemeSettings } from "@/lib/theme/presets";
+import { DEFAULT_PRESET_ID, type ThemeSettings } from "@/lib/theme/presets";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { getTemplate, listTemplates, type AnyTemplate } from "@/templates/registry";
 
@@ -33,7 +33,7 @@ function Miniature({ theme }: { theme: ThemeSettings }) {
 export function TemplatePicker({
   value,
   onChange,
-  theme = { preset: "craie" },
+  theme = { preset: DEFAULT_PRESET_ID },
   templates = listTemplates(),
 }: {
   /** Id of the card's template; an unknown one counts as the fallback template, as at render time (TPL-015). */

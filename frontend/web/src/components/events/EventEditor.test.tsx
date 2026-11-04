@@ -280,16 +280,25 @@ describe("EventEditor", () => {
 
   test("FRM-029 a card without an email gets a warning next to the default text", async () => {
     renderEditor(undefined, withoutEmail);
-    expect(screen.getByTestId("consent-no-email")).toHaveTextContent("n'a pas d'e-mail");
+    expect(screen.getByTestId("consent-no-email")).toHaveTextContent("n’a pas d’e-mail");
+  });
+
+  test("FRM-028 FRM-029 a custom mode with a blank text previews the default text and keeps the no-email warning", async () => {
+    renderEditor(eventView({ default_consent_text: "Texte par défaut du serveur." }), withoutEmail);
+    await chooseOption(screen.getByTestId("consent-mode"), "Texte personnalisé");
+    expect(screen.getByTestId("consent-default-text")).toHaveTextContent("Texte par défaut du serveur.");
+    expect(screen.getByTestId("consent-no-email")).toBeVisible();
+    type("consent-text", "Vos coordonnées restent chez moi.");
+    expect(screen.queryByTestId("consent-no-email")).toBeNull();
   });
 
   test("FRM-028 FRM-029 a custom consent text replaces the default one, and goes with the save", async () => {
     renderEditor();
     type("event-title", "Salon");
     await chooseOption(screen.getByTestId("consent-mode"), "Texte personnalisé");
+    type("consent-text", "Vos coordonnées restent chez moi.");
     expect(screen.queryByTestId("consent-default-text")).toBeNull();
     expect(screen.queryByTestId("consent-no-email")).toBeNull();
-    type("consent-text", "Vos coordonnées restent chez moi.");
     fireEvent.click(screen.getByTestId("event-save"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/cards/{id}/events", expect.anything()));
     expect(lastBody(post)["consent_text"]).toBe("Vos coordonnées restent chez moi.");
@@ -450,7 +459,7 @@ describe("EventEditor", () => {
     renderEditor();
     type("event-title", "Salon ✨");
     fireEvent.click(screen.getByTestId("event-save"));
-    expect(await screen.findByTestId("event-conflict")).toHaveTextContent("maximum d'événements en même temps");
+    expect(await screen.findByTestId("event-conflict")).toHaveTextContent("maximum d’événements en même temps");
     expect(screen.getByTestId("event-title")).toHaveValue("Salon ✨");
     expect(screen.queryByTestId("event-error-summary")).toBeNull();
     expect(push).not.toHaveBeenCalled();

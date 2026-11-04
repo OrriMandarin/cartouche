@@ -37,6 +37,7 @@ Models: `routes/public_events.rs` and `routes/public_cards.rs`.
 - **Environment variables**: a new variable is read in `config`, documented in `.env.example` (without accents) and in the `dev-env` skill. Plan 3's: `MAX_SIMULTANEOUS_EVENTS` (default 3, integer ≥ 1) and `TRUSTED_PROXY_HOPS` (default 1, integer from 0 to 10).
 
 Media framing (MED-025 to MED-033): an upload or a re-frame carries the optional multipart fields `crop` (proportions 0 to 1 of the source), `loop` (`{start, end}`, video) and `poster_time`; the media keeps a source image (`source-<token>.webp`) next to its public variants. `POST /api/cards/{id}/media/{media_id}/reframe` creates a new media from the stored source (attached on the next save, like an upload). Field codes: `low_contrast` (theme, on card save, TPL-023), `invalid_crop`, `invalid_loop`, `invalid_poster_time` (400); `media_not_reframable` (409, media without a source). Views take `Audience::Owner(now)` (signed URLs and the `source`) or `Audience::Support(now)` (signed URLs, no source) in place of the former dashboard audience, and `Audience::Public`.
+
 ## Route that answers a file (exports)
 
 Model: `routes/lead_exports.rs` (`file_response`), `GET /api/events/{id}/leads/export` and `GET /api/cards/{id}/leads/export`.
