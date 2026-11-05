@@ -1,13 +1,13 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { useSlugAvailability } from "./slug-availability";
+import { slugMessageKey, useSlugAvailability } from "./slug-availability";
 
 const get = vi.fn();
 const api = { GET: get };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
 
-function answer(status: string, slug: string | null = null) {
-  return Promise.resolve({ data: { status, slug } });
+function answer(status: string, slug: string | null = null, suggestions: string[] = []) {
+  return Promise.resolve({ data: { status, slug, suggestions } });
 }
 
 beforeEach(() => {
@@ -17,7 +17,7 @@ beforeEach(() => {
 describe("useSlugAvailability", () => {
   test("LNK-020 an empty slug is idle and asks nothing", async () => {
     const { result } = renderHook(() => useSlugAvailability(""));
-    expect(result.current).toEqual({ status: "idle", normalized: null });
+    expect(result.current).toEqual({ status: "idle", normalized: null, suggestions: [] });
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(get).not.toHaveBeenCalled();
   });
@@ -27,7 +27,7 @@ describe("useSlugAvailability", () => {
     const { result } = renderHook(() => useSlugAvailability("Alice-Durand-2", "card-1"));
     expect(result.current.status).toBe("checking");
     expect(get).not.toHaveBeenCalled();
-    await waitFor(() => expect(result.current).toEqual({ status: "free", normalized: "alice-durand-2" }));
+    await waitFor(() => expect(result.current).toEqual({ status: "free", normalized: "alice-durand-2", suggestions: [] }));
     expect(get).toHaveBeenCalledWith("/api/slugs/availability", {
       params: { query: { slug: "Alice-Durand-2", card_id: "card-1" } },
     });
@@ -51,8 +51,25 @@ describe("useSlugAvailability", () => {
     await waitFor(() => expect(get).toHaveBeenCalledTimes(1));
     rerender({ slug: "bob-martin" });
     await waitFor(() => expect(result.current.status).toBe("taken"));
-    resolveFirst({ data: { status: "free", slug: "bob-martin-x" } });
+    resolveFirst({ data: { status: "free", slug: "bob-martin-x", suggestions: [] } });
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(result.current).toEqual({ status: "taken", normalized: "bob-martin" });
+    expect(result.current).toEqual({ status: "taken", normalized: "bob-martin", suggestions: [] });
+  });
+
+  test("LNK-035 the suggestions of a taken slug come with the verdict", async () => {
+    get.mockReturnValue(answer("taken", "bob-martin", ["bob-martin-2", "bob-martin-3", "bob-martin-4"]));
+    const { result } = renderHook(() => useSlugAvailability("bob-martin"));
+    await waitFor(() => expect(result.current.suggestions).toEqual(["bob-martin-2", "bob-martin-3", "bob-martin-4"]));
+  });
+});
+
+describe("slugMessageKey", () => {
+  test("LNK-020 LNK-035 picks the message of each state", () => {
+    expect(slugMessageKey({ status: "idle", suggestions: [] })).toBeNull();
+    expect(slugMessageKey({ status: "free", suggestions: [] })).toBe("free");
+    expect(slugMessageKey({ status: "taken", suggestions: [] })).toBe("taken");
+    expect(slugMessageKey({ status: "taken", suggestions: ["a-2"] })).toBe("takenWithSuggestions");
+    expect(slugMessageKey({ status: "reserved", suggestions: ["a-2"] })).toBe("reserved");
+    expect(slugMessageKey({ status: "invalid", suggestions: [] })).toBe("invalid");
   });
 });

@@ -1,8 +1,15 @@
 import { execFile } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { test as base, expect, request, type APIRequestContext, type Download } from "@playwright/test";
+import { test as base, expect, request, type APIRequestContext, type Download, type Locator, type Page } from "@playwright/test";
 import { API_URL, EVENTS_NOW } from "./env";
+
+/** How a media is framed on upload (MED-026, MED-028); what is left out takes the server's default. */
+export interface UploadFraming {
+  crop?: { x: number; y: number; width: number; height: number };
+  loop?: { start: number; end: number };
+  posterTime?: number;
+}
 
 const execFileAsync = promisify(execFile);
 
@@ -49,7 +56,7 @@ export type FieldMode = "off" | "optional" | "required";
 export interface CustomFieldView {
   id: string;
   label: string;
-  kind: "text" | "long_text" | "date" | "number" | "single_choice" | "checkbox";
+  kind: "text" | "long_text" | "date" | "datetime" | "number" | "single_choice" | "checkbox";
   required: boolean;
   help: string | null;
   options: string[];
@@ -174,13 +181,14 @@ export type TestApi = APIRequestContext & {
   leads(subject: string, eventId: string): Promise<LeadView[]>;
   /** The contacts of all the events of a card as its owner sees them, newest first, spam ones included. */
   cardLeads(subject: string, cardId: string): Promise<LeadView[]>;
-  /** Uploads a header or avatar media (with `poster` for a video); the card shows it once saved with its id. */
+  /** Uploads a header or avatar media (with `poster` for a video, and optionally its `framing`); the card shows it once saved with its id. */
   uploadMedia(
     subject: string,
     cardId: string,
     slot: "header" | "avatar",
     file: UploadFile,
     poster?: UploadFile,
+    framing?: UploadFraming,
   ): Promise<MediaView>;
 };
 
@@ -299,10 +307,18 @@ async function createApi(): Promise<TestApi> {
       slot: "header" | "avatar",
       file: UploadFile,
       poster?: UploadFile,
+      framing: UploadFraming = {},
     ) {
       const response = await context.post(`/api/cards/${cardId}/media`, {
         headers: await authHeaders(subject),
-        multipart: { slot, file, ...(poster ? { poster } : {}) },
+        multipart: {
+          slot,
+          file,
+          ...(poster ? { poster } : {}),
+          ...(framing.crop ? { crop: JSON.stringify(framing.crop) } : {}),
+          ...(framing.loop ? { loop: JSON.stringify(framing.loop) } : {}),
+          ...(framing.posterTime !== undefined ? { poster_time: String(framing.posterTime) } : {}),
+        },
       });
       await ensureOk(`POST /api/cards/${cardId}/media`, response);
       return (await response.json()) as MediaView;
@@ -379,3 +395,43 @@ export const test = base.extend<Fixtures>({
 });
 
 export { expect };
+
+/** Opens the « Plus d’actions » menu of a card of the dashboard. */
+export async function openCardMenu(page: Page, slug: string): Promise<void> {
+  // A menu that was just used may still be closing.
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await page.getByTestId(`card-menu-${slug}`).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+}
+
+/**
+ * The card editor's « Enregistrer »: in the top bar on a computer, in the sticky save bar on a phone
+ * (EDI-003). Only one of them is shown at a time.
+ */
+export function editorSaveButton(page: Page): Locator {
+  return page.locator('[data-testid="editor-save"]:visible, [data-testid="editor-save-bar"]:visible');
+}
+
+/** Saves the card and waits for the confirmation (EDI-027). */
+export async function saveCard(page: Page): Promise<void> {
+  await editorSaveButton(page).click();
+  await expect(page.getByText("Carte enregistrée et publiée")).toBeVisible();
+}
+
+export type EditorSection = "identity" | "contact" | "links" | "media" | "template" | "theme";
+
+/** Unfolds a section of the card editor on a phone; a computer shows every section already. */
+export async function openEditorSection(page: Page, section: EditorSection): Promise<void> {
+  // The editor appears once the card is loaded; only then does the toggle tell whether it is shown.
+  await expect(page.getByTestId("card-editor")).toBeVisible();
+  const toggle = page.getByTestId(`editor-section-toggle-${section}`);
+  if ((await toggle.isVisible()) && (await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  await expect(page.getByTestId(`editor-section-body-${section}`)).toBeVisible();
+}
+
+/** Shows the « Aperçu » or the « Modifier » view of the card editor on a phone; a computer shows both. */
+export async function showEditorView(page: Page, view: "Modifier" | "Aperçu"): Promise<void> {
+  await expect(page.getByTestId("card-editor")).toBeVisible();
+  const tab = page.getByRole("tab", { name: view });
+  if (await tab.isVisible()) await tab.click();
+}

@@ -181,7 +181,7 @@ fn keys_under(keys: &[String], card_ids: &[Uuid]) -> Vec<String> {
         .collect()
 }
 
-// spec: ACC-018, ACC-022, LNK-015, LNK-016, MED-019
+// spec: ACC-018, ACC-022, LNK-015, LNK-016, MED-019, MED-025
 #[sqlx::test(migrations = "./migrations")]
 async fn deleting_an_account_deletes_everything(pool: PgPool) {
     let app = cards_app(pool.clone()).await;
@@ -196,7 +196,12 @@ async fn deleting_an_account_deletes_everything(pool: PgPool) {
     assert_eq!(alice_rows, [1, 1, 3, 1, 1, 2]);
     assert_eq!(bob.row_counts(&pool).await, [1, 1, 3, 1, 1, 2]);
     let before = app.media_keys().await;
-    assert!(!keys_under(&before, &bob.card_ids).is_empty());
+    // The kept source image (MED-025) sits next to the variants and goes too.
+    assert!(
+        keys_under(&before, &bob.card_ids)
+            .iter()
+            .any(|key| key.contains("/source-"))
+    );
     let alice_keys = keys_under(&before, &alice.card_ids);
     assert!(!alice_keys.is_empty());
 

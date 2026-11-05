@@ -7,7 +7,7 @@ import { sampleCard, sampleEvents, sampleLabels, sampleUrls } from "./fixtures";
 
 // Defaults the backend applies to a new card (DEFAULT_TEMPLATE, DEFAULT_THEME_PRESET).
 const BACKEND_DEFAULT_TEMPLATE = "classique";
-const BACKEND_DEFAULT_THEME_PRESET = "clair";
+const BACKEND_DEFAULT_THEME_PRESET = "craie";
 
 function hasMessage(key: string): boolean {
   const value = key
@@ -36,7 +36,7 @@ describe("registry", () => {
 
   test("EDI-011 every template label is translated", () => {
     for (const template of listTemplates()) {
-      const keys = [template.nameKey];
+      const keys = [template.nameKey, template.descriptionKey];
       for (const field of template.settings.fields) {
         keys.push(field.labelKey);
         if (field.kind === "select") keys.push(...field.options.map((option) => option.labelKey));
@@ -57,7 +57,7 @@ describe("registry", () => {
       mode: "public",
     });
     const props = element.props as { settings: unknown; theme: { presetId: string } };
-    expect(props.settings).toEqual({ links_layout: "list", animate_events: true });
-    expect(props.theme.presetId).toBe("clair");
+    expect(props.settings).toEqual({ links_layout: "icons" });
+    expect(props.theme.presetId).toBe("craie");
   });
 });

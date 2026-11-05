@@ -756,6 +756,15 @@ mod tests {
         .unwrap();
         assert!(ok.form.custom[0].options.is_empty());
 
+        // spec: FRM-021, FRM-032
+        let datetime = validate_event(with_custom(vec![custom(
+            "Rendez-vous",
+            CustomFieldKind::Datetime,
+            &["a", "b"],
+        )]))
+        .unwrap();
+        assert!(datetime.form.custom[0].options.is_empty());
+
         let none = EventInput {
             standard_fields: StandardFields {
                 first_name: FieldMode::Off,

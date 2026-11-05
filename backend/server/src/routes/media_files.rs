@@ -1,14 +1,16 @@
 //! `GET /media/*`: the stored media files, in local storage mode (MED-010, MED-016, MED-017,
 //! MED-023). Not part of the OpenAPI document: files are addressed by the URLs the API hands
 //! out. A plain address is read only while its card is served; a signed one, handed to the
-//! dashboard and the support page, whatever the card's state.
+//! dashboard and the support page, whatever the card's state. A media's source is only read
+//! through a signed address (MED-031).
 
 use axum::body::Body;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::Response;
 use cartouche_domain::{
-    ByteRange, MediaCache, card_of_key, media_access, parse_range, served_content_type,
+    ByteRange, MediaCache, card_of_key, is_source_key, media_access, parse_range,
+    served_content_type,
 };
 use serde::Deserialize;
 
@@ -62,11 +64,12 @@ pub async fn get_media_file(
             .verify_signature(&key, exp, sig, state.clock.now()),
         _ => false,
     };
-    let served = match (signed, card_of_key(&key)) {
+    let is_source = is_source_key(&key);
+    let served = match (signed || is_source, card_of_key(&key)) {
         (false, Some(card_id)) => public_cards::card_is_served(&state.db, card_id).await?,
         _ => None,
     };
-    let cache = media_access(signed, served).ok_or(ApiError::NotFound)?;
+    let cache = media_access(signed, served, is_source).ok_or(ApiError::NotFound)?;
 
     let Some(range_header) = headers.get(header::RANGE) else {
         let file = state.media.get(&key, None).await?;

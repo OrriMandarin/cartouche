@@ -25,3 +25,13 @@ export function canToggle(status: CardStatus): boolean {
 export function canDuplicate(status: CardStatus): boolean {
   return status !== "disabled_by_support";
 }
+
+/** spec: LNK-036. A card disabled by the support is read-only for its owner (409 card_disabled_by_support). */
+export function canEdit(status: CardStatus): boolean {
+  return status !== "disabled_by_support";
+}
+
+/** The number of cards that are active, for the summary of the card list. */
+export function countActive(cards: readonly { status: CardStatus }[]): number {
+  return cards.filter((card) => card.status === "active").length;
+}

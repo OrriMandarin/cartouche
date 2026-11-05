@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { AccountGate } from "@/components/account/AccountGate";
 import { SupportGuard } from "@/components/support/SupportGuard";
 import { SupportLeads } from "@/components/support/SupportLeads";
+import { useSupportSlots } from "@/components/support/useSupportSlots";
 import { useApi } from "@/lib/api";
 
 function CardLeadsContent({ cardId }: { cardId: string }) {
@@ -23,8 +24,9 @@ function CardLeadsContent({ cardId }: { cardId: string }) {
 /** spec: ADM-017, ADM-018, LEA-013, ADM-001. Admin-only: the leads of all the events of a card, read-only and audited. */
 export default function SupportCardLeadsPage() {
   const { id } = useParams<{ id: string }>();
+  const slots = useSupportSlots({ kind: "cardLeads", cardId: id });
   return (
-    <AccountGate>
+    <AccountGate {...slots}>
       <SupportGuard>
         <CardLeadsContent cardId={id} />
       </SupportGuard>

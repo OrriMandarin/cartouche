@@ -3,12 +3,16 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { useAuth } from "../context";
 
 const clerkSignOut = vi.fn();
+const openUserProfile = vi.fn();
 
 vi.mock("@clerk/nextjs", () => ({
   ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: async () => "tok" }),
-  useUser: () => ({ user: { id: "user_1", fullName: "Alice", primaryEmailAddress: { emailAddress: "a@example.test" } } }),
-  useClerk: () => ({ signOut: clerkSignOut }),
+  useUser: () => ({ user: { id: "user_1", fullName: "Alice", primaryEmailAddress: { emailAddress: "a@example.test" },
+      externalAccounts: [{ provider: "google" }],
+    },
+  }),
+  useClerk: () => ({ signOut: clerkSignOut, openUserProfile }),
 }));
 
 import { ClerkAuthAdapter } from "./clerk";
@@ -29,6 +33,7 @@ function setup() {
 
 beforeEach(() => {
   clerkSignOut.mockReset();
+  openUserProfile.mockReset();
 });
 
 describe("ClerkAuthAdapter signOut", () => {
@@ -45,5 +50,15 @@ describe("ClerkAuthAdapter signOut", () => {
     await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-in"));
     await auth().signOut({ redirectTo: "/account-deleted" });
     expect(clerkSignOut).toHaveBeenCalledWith({ redirectUrl: "/account-deleted" });
+  });
+});
+
+describe("ClerkAuthAdapter profile", () => {
+  test("ACC-019: the user's sign-in provider is known and Clerk's profile screen can be opened", async () => {
+    const auth = setup();
+    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed-in"));
+    expect(auth().user?.provider).toBe("google");
+    auth().manageProfile?.();
+    expect(openUserProfile).toHaveBeenCalledTimes(1);
   });
 });

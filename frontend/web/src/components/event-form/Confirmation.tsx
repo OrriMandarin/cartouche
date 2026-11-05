@@ -1,36 +1,35 @@
-import { Download } from "lucide-react";
+import { Check, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { BUTTON_STYLE, HEADING_STYLE } from "./styles";
+import { contactLabel } from "@/lib/event-form/contact-label";
 
 interface ConfirmationProps {
+  /** The first name the prospect sent; empty if none. */
+  firstName: string;
+  /** The card's full name and first name. */
+  ownerName: string;
+  ownerFirstName: string;
   vcardUrl: string;
   cardHref: string;
 }
 
-/** After a successful submission: the owner's vCard, then the way back to the card (FRM-004). */
-export function Confirmation({ vcardUrl, cardHref }: ConfirmationProps) {
+/** After a successful submission: thanks, the owner's vCard, then the way back to the card (FRM-004, FRM-047). */
+export function Confirmation({ firstName, ownerName, ownerFirstName, vcardUrl, cardHref }: ConfirmationProps) {
   const t = useTranslations("eventForm.confirmation");
+  const save = contactLabel(ownerFirstName);
   return (
-    <div data-testid="event-form-confirmation" role="status" className="py-6 text-center">
-      <h1 className="text-2xl font-bold" style={HEADING_STYLE}>
-        {t("title")}
-      </h1>
-      <p className="mt-3 text-lg">{t("text")}</p>
-      <div className="mt-8 flex flex-col items-center gap-4">
-        <a
-          data-testid="confirmation-save-contact"
-          href={vcardUrl}
-          download
-          className="inline-flex items-center gap-2 px-5 py-3 font-semibold"
-          style={BUTTON_STYLE}
-        >
-          <Download aria-hidden="true" className="h-5 w-5" />
-          {t("saveContact")}
-        </a>
-        <a data-testid="confirmation-back" href={cardHref} className="underline">
-          {t("back")}
-        </a>
+    <div data-testid="event-form-confirmation" role="status" className="fm-done">
+      <div className="fm-done-mark">
+        <Check className="ic" aria-hidden="true" />
       </div>
+      <h1 className="fm-title">{firstName === "" ? t("titleAnonymous") : t("title", { firstName })}</h1>
+      <p className="fm-done-text">{t("text", { name: ownerName })}</p>
+      <a data-testid="confirmation-save-contact" href={vcardUrl} download className="cc-save">
+        <UserPlus aria-hidden="true" className="ic" />
+        {t(save.key, save.values)}
+      </a>
+      <a data-testid="confirmation-back" href={cardHref} className="fm-link">
+        {t("back")}
+      </a>
     </div>
   );
 }

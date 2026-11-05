@@ -5,6 +5,9 @@ import { renderWithIntl } from "@/components/editor/test-helpers";
 import type { LeadActions } from "@/lib/events/lead-actions";
 import { leadView } from "@/lib/events/lead-view.fixture";
 import type { AnswerSnapshot, LeadView } from "@/lib/events/types";
+const showToast = vi.fn();
+vi.mock("@/lib/toast", () => ({ showToast: (...args: unknown[]) => showToast(...args) }));
+
 import { LeadDetail } from "./LeadDetail";
 
 const setSpam = vi.fn();
@@ -56,6 +59,7 @@ beforeEach(() => {
   remove.mockReset();
   onChange.mockReset();
   onClose.mockReset();
+  showToast.mockReset();
   setSpam.mockImplementation((lead: LeadView, spam: boolean) => Promise.resolve({ ...lead, spam }));
   remove.mockResolvedValue(undefined);
 });
@@ -67,7 +71,7 @@ describe("LeadDetail", () => {
     expect(detail).toHaveTextContent("Éloïse D’Aubigné-Müller");
     expect(screen.getByTestId("lead-detail-event")).toHaveTextContent("Salon du Mariage Clermont 2027");
     // Stored in UTC, shown in the user's zone (EVT-022).
-    expect(screen.getByTestId("lead-detail-submitted")).toHaveTextContent("15 mars 2027 à 09:30");
+    expect(screen.getByTestId("lead-detail-submitted")).toHaveTextContent("Lun. 15 mars 2027 à 09:30");
     expect(screen.getByTestId("lead-detail-field-first_name")).toHaveTextContent("PrénomÉloïse");
     expect(screen.getByTestId("lead-detail-field-last_name")).toHaveTextContent("NomD’Aubigné-Müller");
     expect(screen.getByTestId("lead-detail-field-email")).toHaveTextContent("eloise@example.test");
@@ -92,9 +96,9 @@ describe("LeadDetail", () => {
     expect(screen.getByTestId("lead-detail-answer-f-guests")).toHaveTextContent("Nombre d'invités120");
     // A field deleted since is shown with the label it had (FRM-023).
     expect(screen.getByTestId("lead-detail-answer-f-deleted")).toHaveTextContent("EntrepriseHébert & Fils");
-    expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("15 mars 2027 à 09:29");
+    expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("Accepté le 15 mars 2027 à 09:29");
     expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("Vos coordonnées restent chez l’Atelier Durand & Fils.");
-    expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("Texte de consentement");
+    expect(screen.getByTestId("lead-detail-consent")).toHaveTextContent("Consentement");
   });
 
   test("LEA-019 the detail reads Oui, Non, Non renseigné and French dates", () => {
@@ -106,20 +110,53 @@ describe("LeadDetail", () => {
     expect(screen.getByTestId("lead-detail-field-birth_date")).toHaveTextContent("Date de naissance02/04/1990");
   });
 
-  test("LEA-018 the detail says whether the contact is marked as spam", () => {
+  test("LEA-018 the detail carries the Spam label only when the contact is marked as spam", () => {
     const { unmount } = show();
-    expect(screen.getByTestId("lead-detail-spam-state")).toHaveTextContent("Non marqué comme spam");
+    expect(screen.queryByTestId("lead-detail-spam-state")).toBeNull();
+    expect(screen.getByTestId("lead-detail-spam")).toHaveTextContent("Marquer comme spam");
     unmount();
     show(leadView({ spam: true }));
-    expect(screen.getByTestId("lead-detail-spam-state")).toHaveTextContent("Marqué comme spam");
+    expect(screen.getByTestId("lead-detail-spam-state")).toHaveTextContent("Spam");
+    expect(screen.getByTestId("lead-detail-spam")).toHaveTextContent("Retirer le marquage spam");
   });
 
-  test("LEA-004 LEA-020 a spam toggle reports the contact the server answers", async () => {
+  test("LEA-003 the email and the phone number can be used from the detail", () => {
+    show();
+    expect(screen.getByRole("link", { name: "eloise@example.test" })).toHaveAttribute("href", "mailto:eloise@example.test");
+    expect(screen.getByRole("link", { name: "+33 6 12 34 56 78" })).toHaveAttribute("href", "tel:+33612345678");
+  });
+
+  test("LEA-003 the consent says it was accepted, when, and quotes the text as recorded", () => {
+    show();
+    const consent = screen.getByTestId("lead-detail-consent");
+    expect(consent).toHaveTextContent("Accepté le 15 mars 2027 à 09:29");
+    // French typography: non-breaking spaces inside the quotation marks.
+    expect(consent.textContent).toContain("«\u00a0Vos coordonnées restent chez l’Atelier Durand & Fils.\u00a0»");
+  });
+
+  test("LEA-003 a contact without custom answers has no « Réponses » section", () => {
+    show(leadView({ custom: [] }));
+    expect(screen.queryByRole("heading", { name: "Réponses" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Coordonnées" })).toBeVisible();
+  });
+
+  test("LEA-004 LEA-020 LEA-034 a spam toggle reports the contact the server answers, announces it and closes the sheet", async () => {
     show();
     fireEvent.click(screen.getByTestId("lead-detail-spam"));
     await waitFor(() => expect(setSpam).toHaveBeenCalledWith(wedding, true));
     await waitFor(() => expect(onChange).toHaveBeenCalledWith({ kind: "updated", lead: { ...wedding, spam: true } }));
-    expect(onClose).not.toHaveBeenCalled();
+    // The modal sheet closes, so that the « Annuler » toast (LEA-034) can be reached.
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  test("LEA-034 a failed « Annuler » of the spam toast announces the failure in a toast", async () => {
+    show();
+    fireEvent.click(screen.getByTestId("lead-detail-spam"));
+    await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
+    const [, options] = showToast.mock.calls[0] as [string, { action: { onClick: () => void } }];
+    setSpam.mockRejectedValue(new ApiError({ status: 500, code: "internal_error", message: "Boom.", requestId: "req-undo" }));
+    options.action.onClick();
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith("L’annulation a échoué. Réessaie dans un instant."));
   });
 
   test("LEA-004 LEA-020 deleting from the detail asks, then reports it and closes the detail", async () => {
@@ -154,6 +191,6 @@ describe("LeadDetail", () => {
     show(wedding, null);
     expect(within(screen.getByTestId("lead-detail")).queryByTestId("lead-detail-spam")).toBeNull();
     expect(screen.queryByTestId("lead-detail-delete")).toBeNull();
-    expect(screen.getByTestId("lead-detail-spam-state")).toBeVisible();
+    expect(screen.getByTestId("lead-detail-name")).toBeVisible();
   });
 });

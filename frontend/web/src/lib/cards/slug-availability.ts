@@ -10,16 +10,27 @@ export interface SlugCheck {
   status: "idle" | "checking" | SlugAvailability["status"];
   /** The slug as the server normalized it; `null` until known or when it is invalid. */
   normalized: string | null;
+  /** LNK-035: available alternatives, only when the slug is taken or reserved. */
+  suggestions: string[];
 }
 
-const IDLE: SlugCheck = { status: "idle", normalized: null };
-const CHECKING: SlugCheck = { status: "checking", normalized: null };
+const IDLE: SlugCheck = { status: "idle", normalized: null, suggestions: [] };
+const CHECKING: SlugCheck = { status: "checking", normalized: null, suggestions: [] };
+
+export type SlugMessageKey = "checking" | "free" | "current" | "taken" | "takenWithSuggestions" | "reserved" | "invalid";
+
+/** Which message tells the state of a slug; `null` when there is nothing to say (empty slug). */
+export function slugMessageKey(check: Pick<SlugCheck, "status" | "suggestions">): SlugMessageKey | null {
+  if (check.status === "idle") return null;
+  if (check.status === "taken" && check.suggestions.length > 0) return "takenWithSuggestions";
+  return check.status;
+}
 
 /** Pause after the last keystroke before asking the server. */
 export const SLUG_CHECK_DELAY_MS = 300;
 
 /**
- * spec: LNK-020. Live availability of a slug for a new card, or for the card `cardId` being edited.
+ * spec: LNK-020, LNK-035. Live availability of a slug for a new card, or for the card `cardId` being edited.
  * Asks the server 300 ms after the last change and ignores the answer to an outdated slug.
  * If the check fails the field falls back to idle: the server still refuses a taken slug on save.
  */
@@ -38,7 +49,7 @@ export function useSlugAvailability(slug: string, cardId?: string): SlugCheck {
           const { data } = await api.GET("/api/slugs/availability", {
             params: { query: { slug: trimmed, ...(cardId ? { card_id: cardId } : {}) } },
           });
-          check = data ? { status: data.status, normalized: data.slug ?? null } : IDLE;
+          check = data ? { status: data.status, normalized: data.slug ?? null, suggestions: data.suggestions } : IDLE;
         } catch {
           check = IDLE;
         }

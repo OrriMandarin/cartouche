@@ -1,6 +1,6 @@
 # Landing page
 
-> Status: specified, not implemented (plan 6); LND-004 and LND-005: plan 5
+> Status: specified, not implemented (a plan after plan 6, whose design milestone leaves the landing page out); LND-004 and LND-005: plan 5
 
 - **LND-001** — The landing page is a public page presenting the product.
 - **LND-002** — The landing page contains a call to sign up.

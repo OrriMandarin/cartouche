@@ -433,6 +433,14 @@ struct SeedCustomField {
     options: &'static [&'static str],
 }
 
+/// The custom field of the "Démonstration en boutique" event.
+const SHOP_DEMO_FIELDS: &[SeedCustomField] = &[SeedCustomField {
+    id: uuid::uuid!("0198c8a1-0000-7000-8000-000000000005"),
+    label: "Rendez-vous souhaité",
+    kind: CustomFieldKind::Datetime,
+    options: &[],
+}];
+
 /// The custom fields of the `mariage` event, one of each kind.
 const WEDDING_FIELDS: &[SeedCustomField] = &[
     SeedCustomField {
@@ -620,7 +628,7 @@ const EVENTS: &[SeedEvent] = &[
         access_code: None,
         device_limit: 1,
         standard: EMAIL_ONLY,
-        custom: &[],
+        custom: SHOP_DEMO_FIELDS,
         consent_text: None,
         leads: &[],
     },

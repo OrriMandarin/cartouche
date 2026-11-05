@@ -18,6 +18,7 @@ export const CUSTOM_FIELD_KINDS = [
   "text",
   "long_text",
   "date",
+  "datetime",
   "number",
   "single_choice",
   "checkbox",

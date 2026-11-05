@@ -276,19 +276,44 @@ pub struct PlannedVariant {
     pub name: String,
     /// Width of the produced image (its side, for a square avatar).
     pub width: u32,
+    /// Height of the produced image: 3/4 of the width for a header, the side for an avatar.
+    pub height: u32,
     pub format: VariantFormat,
 }
 
 const AVATAR_WEBP_SIDES: [u32; 3] = [128, 256, 512];
 const AVATAR_JPEG_SIDES: [u32; 2] = [256, 512];
-const HEADER_WIDTHS: [u32; 3] = [640, 1080, 1920];
+const HEADER_WIDTHS: [u32; 3] = [750, 1125, 1440];
 
-/// The variants to produce for an image of `width` × `height` pixels, never upscaling (MED-015):
-/// each target size is capped at the original and duplicates are dropped.
-pub fn plan_image_variants(slot: Slot, width: u32, height: u32) -> Vec<PlannedVariant> {
+/// Longest side of a stored source image, in pixels (MED-025).
+pub const SOURCE_MAX_SIDE: u32 = 4096;
+
+/// The size of the stored source for an image of `width` × `height` pixels: scaled down so that
+/// the longer side is at most [`SOURCE_MAX_SIDE`], never enlarged (MED-025).
+pub fn source_size(width: u32, height: u32) -> (u32, u32) {
+    let longest = width.max(height);
+    if longest <= SOURCE_MAX_SIDE {
+        return (width, height);
+    }
+    let scale = |side: u32| {
+        let scaled = (u64::from(side) * u64::from(SOURCE_MAX_SIDE) + u64::from(longest) / 2)
+            / u64::from(longest);
+        (scaled as u32).max(1)
+    };
+    (scale(width), scale(height))
+}
+
+/// The variants to produce for a crop of `crop_width_px` × `crop_height_px` pixels, never
+/// enlarging the cropped area (MED-015): each target size is capped at the crop and duplicates
+/// are dropped. A header variant is 4:3, no taller than the crop.
+pub fn plan_image_variants(
+    slot: Slot,
+    crop_width_px: u32,
+    crop_height_px: u32,
+) -> Vec<PlannedVariant> {
     match slot {
         Slot::Avatar => {
-            let side = width.min(height);
+            let side = crop_width_px.min(crop_height_px);
             let mut planned = capped("s", "webp", &AVATAR_WEBP_SIDES, side, VariantFormat::Webp);
             planned.extend(capped(
                 "s",
@@ -299,10 +324,23 @@ pub fn plan_image_variants(slot: Slot, width: u32, height: u32) -> Vec<PlannedVa
             ));
             planned
         }
-        Slot::Header => capped("w", "webp", &HEADER_WIDTHS, width, VariantFormat::Webp),
+        Slot::Header => {
+            let mut planned = capped(
+                "w",
+                "webp",
+                &HEADER_WIDTHS,
+                crop_width_px,
+                VariantFormat::Webp,
+            );
+            for variant in &mut planned {
+                variant.height = ((variant.width * 3 + 2) / 4).min(crop_height_px);
+            }
+            planned
+        }
     }
 }
 
+/// Square variants (`height == width`); a header's heights are set by the caller.
 fn capped(
     prefix: &str,
     extension: &str,
@@ -316,6 +354,7 @@ fn capped(
             planned.push(PlannedVariant {
                 name: format!("{prefix}{width}.{extension}"),
                 width,
+                height: width,
                 format,
             });
         }
@@ -326,6 +365,37 @@ fn capped(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // spec: MED-015
+    #[test]
+    fn header_variants_are_4_3_and_never_enlarged() {
+        let sizes = |w, h| {
+            plan_image_variants(Slot::Header, w, h)
+                .into_iter()
+                .map(|v| (v.width, v.height))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(sizes(800, 600), [(750, 563), (800, 600)]);
+        assert_eq!(sizes(1600, 1200), [(750, 563), (1125, 844), (1440, 1080)]);
+        // Never taller than the crop.
+        assert!(sizes(800, 590).iter().all(|&(_, h)| h <= 590));
+        assert_eq!(
+            plan_image_variants(Slot::Avatar, 300, 300)
+                .iter()
+                .map(|v| (v.width, v.height))
+                .collect::<Vec<_>>(),
+            [(128, 128), (256, 256), (300, 300), (256, 256), (300, 300)]
+        );
+    }
+
+    // spec: MED-025
+    #[test]
+    fn sources_are_capped_at_4096() {
+        assert_eq!(source_size(8000, 4000), (4096, 2048));
+        assert_eq!(source_size(4000, 8000), (2048, 4096));
+        assert_eq!(source_size(1000, 800), (1000, 800));
+        assert_eq!(source_size(40_000, 1), (4096, 1));
+    }
 
     fn boxed(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
         let mut out = ((payload.len() + 8) as u32).to_be_bytes().to_vec();

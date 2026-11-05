@@ -17,7 +17,17 @@ vi.mock("@/lib/api", () => ({ useApi: () => api }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "card-1", eventId: "event-1" }) }));
 vi.mock("@/components/account/AccountGate", () => ({ AccountGate: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("@/components/events/ExportDialog", () => ({
-  ExportDialog: ({ scope }: { scope: { kind: string; id: string } }) => <p data-testid="export-stub">{`${scope.kind}:${scope.id}`}</p>,
+  ExportDialog: ({
+    scope,
+    summary,
+  }: {
+    scope: { kind: string; id: string };
+    summary: { cardSlug: string; eventTitle: string | null; counts: { total: number } };
+  }) => (
+    <p data-testid="export-stub">
+      {[scope.kind, scope.id, summary.cardSlug, summary.eventTitle, summary.counts.total].filter((part) => part !== null).join(":")}
+    </p>
+  ),
 }));
 const lead = leadView({ id: "lead-1" });
 vi.mock("@/components/events/LeadList", () => ({
@@ -30,10 +40,10 @@ vi.mock("@/components/events/LeadList", () => ({
     load: () => Promise<LeadView[]>;
     actions: LeadActions | null;
     showEvent: boolean;
-    toolbar?: React.ReactNode;
+    toolbar?: (leads: LeadView[] | null) => React.ReactNode;
   }) => (
     <div data-testid="lead-list-stub" data-show-event={String(showEvent)}>
-      {toolbar}
+      {toolbar?.([lead])}
       <button data-testid="stub-load" onClick={() => void load()} />
       <button data-testid="stub-spam" onClick={() => void actions?.setSpam(lead, true)} />
       <button data-testid="stub-remove" onClick={() => void actions?.remove(lead)} />
@@ -84,9 +94,9 @@ describe("EventLeadsPage", () => {
   });
 
   test("LEA-021 the toolbar exports the leads of this event", async () => {
-    answer(eventView({ id: "event-1", card_id: "card-1" }));
+    answer(eventView({ id: "event-1", card_id: "card-1", title: "Salon" }));
     renderWithIntl(<EventLeadsPage />);
-    expect(await screen.findByTestId("export-stub")).toHaveTextContent("event:event-1");
+    expect(await screen.findByTestId("export-stub")).toHaveTextContent("event:event-1:alice-durand:Salon:1");
   });
 
   test("ACC-017 an event that does not exist or belongs to someone else reads as « Événement introuvable »", async () => {

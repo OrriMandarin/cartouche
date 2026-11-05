@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { cardView } from "@/components/cards/card-view.fixture";
 import { chooseOption, renderWithIntl } from "@/components/editor/test-helpers";
+import { AppShell } from "@/components/shell/AppShell";
 import { eventView } from "@/lib/events/event-view.fixture";
 import type { EventView } from "@/lib/events/types";
 
@@ -10,8 +11,8 @@ const post = vi.fn();
 const put = vi.fn();
 const push = vi.fn();
 const api = { POST: post, PUT: put };
-vi.mock("@/lib/api", () => ({ useApi: () => api }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("@/lib/api", () => ({ useApi: () => api, useDownloadExport: () => vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => "/dashboard/cards/card-1/events/new" }));
 vi.mock("@/lib/events/time", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/events/time")>()),
   userTimeZone: () => "Europe/Paris",
@@ -24,19 +25,29 @@ const withEmail = cardView({ id: CARD_ID, content: { first_name: "Alice", last_n
 const withoutEmail = cardView({ id: CARD_ID, content: { first_name: "Alice", last_name: "Durand" } });
 
 function renderEditor(event?: EventView, card = withEmail) {
-  // The page header (« Mon compte ») is rendered by the page around the editor, not by the editor.
+  // The shell holds the save buttons of the editor (top bar, phone bar) and the « Mon compte » link.
   renderWithIntl(
-    <>
-      <a href="/account" data-testid="account-link">
-        Mon compte
-      </a>
+    <AppShell user={{ name: "Alice Durand", email: "alice@example.test" }} onSignOut={() => undefined}>
       <EventEditor cardId={CARD_ID} card={card} {...(event ? { event } : {})} />
-    </>,
+    </AppShell>,
   );
 }
 
 function type(testId: string, value: string) {
   fireEvent.change(screen.getByTestId(testId), { target: { value } });
+}
+
+/** Types a local date and time (`AAAA-MM-JJTHH:mm`) in the date and the time inputs of `testId`. */
+function typeDateTime(testId: string, value: string) {
+  const [date = "", time = ""] = value.split("T");
+  type(`${testId}-date`, date);
+  type(`${testId}-time`, time);
+}
+
+/** Adds a custom field of that kind from the « Ajouter un champ » menu. */
+function addField(kind: string) {
+  fireEvent.pointerDown(screen.getByTestId("custom-add"), { button: 0, ctrlKey: false });
+  fireEvent.click(screen.getByTestId(`custom-add-${kind}`));
 }
 
 /**
@@ -89,7 +100,8 @@ function closesTheTab(): boolean {
 describe("EventEditor", () => {
   test("EVT-022 the time zone is shown next to the dates", () => {
     renderEditor();
-    expect(screen.getByTestId("event-zone")).toHaveTextContent("Europe/Paris");
+    expect(screen.getByTestId("event-zone")).toHaveTextContent(/Fuseau\s: Europe\/Paris/);
+    expect(screen.getByLabelText("Heure de début (Europe/Paris)")).toBeVisible();
   });
 
   test("EVT-014 EVT-030 the device limit starts at 1 and is a number from 1 to 100", () => {
@@ -103,13 +115,17 @@ describe("EventEditor", () => {
 
   test("FRM-017 FRM-019 standard fields: not asked, optional or required", async () => {
     renderEditor();
-    expect(screen.getByTestId("standard-field-first_name")).toHaveTextContent("Obligatoire");
-    expect(screen.getByTestId("standard-field-phone")).toHaveTextContent("Facultatif");
-    expect(screen.getByTestId("standard-field-birth_date")).toHaveTextContent("Non demandé");
-    expect(screen.getByTestId("standard-field-address")).toHaveTextContent("Non demandé");
+    const mode = (field: string, value: string) => screen.getByTestId(`standard-field-${field}-${value}`);
+    expect(mode("first_name", "required")).toBeChecked();
+    expect(mode("phone", "optional")).toBeChecked();
+    expect(mode("birth_date", "off")).toBeChecked();
+    expect(mode("address", "off")).toBeChecked();
+    expect(screen.getByRole("radiogroup", { name: "Téléphone" })).toBeVisible();
+    expect(mode("phone", "off")).toHaveTextContent("Non demandé");
 
-    await chooseOption(screen.getByTestId("standard-field-address"), "Facultatif");
-    await chooseOption(screen.getByTestId("standard-field-phone"), "Non demandé");
+    fireEvent.click(mode("address", "optional"));
+    fireEvent.click(mode("phone", "off"));
+    expect(mode("address", "optional")).toBeChecked();
     type("event-title", "Salon");
     fireEvent.click(screen.getByTestId("event-save"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/cards/{id}/events", expect.anything()));
@@ -120,9 +136,9 @@ describe("EventEditor", () => {
 
   test("FRM-020 FRM-021 custom fields: add by type, options, reorder, remove", async () => {
     renderEditor();
-    fireEvent.click(screen.getByTestId("custom-add-text"));
-    fireEvent.click(screen.getByTestId("custom-add-single_choice"));
-    fireEvent.click(screen.getByTestId("custom-add-checkbox"));
+    addField("text");
+    addField("single_choice");
+    addField("checkbox");
     expect(screen.getAllByTestId(/^custom-field-\d+$/)).toHaveLength(3);
     // A single choice field starts with two options; the other kinds have none.
     expect(screen.getByTestId("custom-option-1-0")).toBeVisible();
@@ -141,7 +157,7 @@ describe("EventEditor", () => {
     fireEvent.click(screen.getByTestId("custom-option-remove-1-2"));
     type("custom-label-2", "Newsletter");
 
-    fireEvent.click(screen.getByTestId("custom-up-1"));
+    fireEvent.keyDown(screen.getByTestId("custom-handle-1"), { key: "ArrowUp" });
     expect(screen.getByTestId("custom-label-0")).toHaveValue("Votre budget");
     expect(screen.getByTestId("custom-label-1")).toHaveValue("Zoé Lefèvre ✨");
     fireEvent.click(screen.getByTestId("custom-remove-2"));
@@ -155,6 +171,96 @@ describe("EventEditor", () => {
       { label: "Votre budget", kind: "single_choice", required: true, help: "Pour le devis", options: ["< 5 000 €", "> 5 000 €"] },
       { label: "Zoé Lefèvre ✨", kind: "text", required: false, help: null, options: [] },
     ]);
+  });
+
+  test("FRM-021 the type list includes Date et heure", async () => {
+    renderEditor();
+    fireEvent.pointerDown(screen.getByTestId("custom-add"), { button: 0, ctrlKey: false });
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Texte",
+      "Texte long",
+      "Date",
+      "Date et heure",
+      "Nombre",
+      "Choix unique",
+      "Case à cocher",
+    ]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Date et heure" }));
+    expect(screen.getByTestId("custom-kind-0")).toHaveTextContent("Date et heure");
+
+    // The kind of a field can change afterwards; the label stays.
+    type("custom-label-0", "Rendez-vous souhaité");
+    await chooseOption(screen.getByTestId("custom-kind-0"), "Choix unique");
+    expect(screen.getByTestId("custom-option-0-1")).toBeVisible();
+    expect(screen.getByTestId("custom-label-0")).toHaveValue("Rendez-vous souhaité");
+
+    type("event-title", "Salon");
+    fireEvent.click(screen.getByTestId("event-save"));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/cards/{id}/events", expect.anything()));
+    expect(lastBody(post)["custom_fields"]).toMatchObject([{ label: "Rendez-vous souhaité", kind: "single_choice" }]);
+  });
+
+  test("EDI-029 custom fields move with the keyboard, are announced, and the handle keeps the focus", () => {
+    renderEditor(
+      eventView({
+        custom_fields: [
+          { id: "f1", label: "Date du mariage", kind: "date", required: true, help: null, options: [] },
+          { id: "f2", label: "Nombre d’invités", kind: "number", required: false, help: null, options: [] },
+          { id: "f3", label: "Lieu", kind: "text", required: false, help: null, options: [] },
+        ],
+      }),
+    );
+    const handle = screen.getByRole("button", { name: "Déplacer Date du mariage" });
+    expect(handle).toHaveAttribute("aria-roledescription", "champ réordonnable");
+    fireEvent.keyDown(handle, { key: "ArrowDown" });
+    expect(screen.getByTestId("custom-label-0")).toHaveValue("Nombre d’invités");
+    expect(screen.getByTestId("custom-label-1")).toHaveValue("Date du mariage");
+    expect(screen.getByTestId("custom-live")).toHaveTextContent("Date du mariage, position 2 sur 3");
+    expect(screen.getByTestId("custom-handle-1")).toHaveFocus();
+    expect(screen.getByTestId("event-status")).toHaveTextContent("Modifications non enregistrées");
+
+    fireEvent.keyDown(screen.getByTestId("custom-handle-1"), { key: "ArrowDown" });
+    expect(screen.getByTestId("custom-label-2")).toHaveValue("Date du mariage");
+    // At the end of the list nothing moves.
+    fireEvent.keyDown(screen.getByTestId("custom-handle-2"), { key: "ArrowDown" });
+    expect(screen.getByTestId("custom-label-2")).toHaveValue("Date du mariage");
+    fireEvent.keyDown(screen.getByTestId("custom-handle-2"), { key: "ArrowUp" });
+    fireEvent.keyDown(screen.getByTestId("custom-handle-1"), { key: "ArrowUp" });
+    expect(screen.getByTestId("custom-label-0")).toHaveValue("Date du mariage");
+  });
+
+  test("EDI-019 the editor of an existing event has a state panel, a new event has none", () => {
+    renderEditor(eventView({ phase: "running", lead_count: 2 }));
+    expect(screen.getByTestId("event-state-panel")).toHaveTextContent("En cours");
+    expect(screen.getByTestId("event-state-contacts")).toHaveTextContent("Voir les 2 contacts");
+  });
+
+  test("EDI-019 a new event has no state panel", () => {
+    renderEditor();
+    expect(screen.queryByTestId("event-state-panel")).toBeNull();
+  });
+
+  test("EDI-019 EVT-006 ending the event now puts its end in the draft without making the editor dirty", async () => {
+    const ended = eventView({ phase: "past", starts_at: "2027-03-15T08:00:00Z", ends_at: "2027-03-15T10:00:00Z" });
+    post.mockImplementation((path: string) => Promise.resolve({ data: path === "/api/events/{id}/end" ? ended : { text: "x" } }));
+    renderEditor(eventView({ phase: "running", starts_at: "2027-03-15T08:00:00Z", ends_at: "2027-03-15T16:00:00Z" }));
+    expect(screen.getByTestId("event-ends-at-time")).toHaveValue("17:00");
+    fireEvent.click(screen.getByTestId("event-state-end-now"));
+    await waitFor(() => expect(screen.getByTestId("event-ends-at-time")).toHaveValue("11:00"));
+    expect(screen.getByTestId("event-status")).toBeEmptyDOMElement();
+    expect(closesTheTab()).toBe(true);
+  });
+
+  test("FRM-029 FRM-028 the consent preview shows the checkbox with the text the prospect will read", async () => {
+    renderEditor(eventView({ default_consent_text: "Texte par défaut du serveur." }));
+    expect(within(screen.getByRole("group", { name: "Aperçu de la case de consentement" })).getByTestId("consent-default-text")).toHaveTextContent(
+      "Texte par défaut du serveur.",
+    );
+    expect(screen.getByText(/Toujours affichée et obligatoire/)).toBeVisible();
+    await chooseOption(screen.getByTestId("consent-mode"), "Texte personnalisé");
+    type("consent-text", "Mon texte ✨");
+    expect(screen.getByTestId("consent-custom-text")).toHaveTextContent("Mon texte ✨");
   });
 
   test("FRM-029 R-PF6 the default consent text comes from the server and follows the title", async () => {
@@ -174,16 +280,25 @@ describe("EventEditor", () => {
 
   test("FRM-029 a card without an email gets a warning next to the default text", async () => {
     renderEditor(undefined, withoutEmail);
-    expect(screen.getByTestId("consent-no-email")).toHaveTextContent("n'a pas d'e-mail");
+    expect(screen.getByTestId("consent-no-email")).toHaveTextContent("n’a pas d’e-mail");
+  });
+
+  test("FRM-028 FRM-029 a custom mode with a blank text previews the default text and keeps the no-email warning", async () => {
+    renderEditor(eventView({ default_consent_text: "Texte par défaut du serveur." }), withoutEmail);
+    await chooseOption(screen.getByTestId("consent-mode"), "Texte personnalisé");
+    expect(screen.getByTestId("consent-default-text")).toHaveTextContent("Texte par défaut du serveur.");
+    expect(screen.getByTestId("consent-no-email")).toBeVisible();
+    type("consent-text", "Vos coordonnées restent chez moi.");
+    expect(screen.queryByTestId("consent-no-email")).toBeNull();
   });
 
   test("FRM-028 FRM-029 a custom consent text replaces the default one, and goes with the save", async () => {
     renderEditor();
     type("event-title", "Salon");
     await chooseOption(screen.getByTestId("consent-mode"), "Texte personnalisé");
+    type("consent-text", "Vos coordonnées restent chez moi.");
     expect(screen.queryByTestId("consent-default-text")).toBeNull();
     expect(screen.queryByTestId("consent-no-email")).toBeNull();
-    type("consent-text", "Vos coordonnées restent chez moi.");
     fireEvent.click(screen.getByTestId("event-save"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/cards/{id}/events", expect.anything()));
     expect(lastBody(post)["consent_text"]).toBe("Vos coordonnées restent chez moi.");
@@ -192,18 +307,21 @@ describe("EventEditor", () => {
   test("EVT-007 EVT-017 the dates are sent as UTC, and « Sans fin » drops the end", async () => {
     renderEditor();
     type("event-title", "Salon");
-    type("event-starts-at", "2027-04-02T10:00");
+    typeDateTime("event-starts-at", "2027-04-02T10:00");
     expect(screen.getByTestId("event-no-end")).toBeChecked();
+    expect(screen.getByTestId("event-ends-at-date")).toBeDisabled();
     fireEvent.click(screen.getByTestId("event-no-end"));
     expect(screen.getByTestId("event-no-end")).not.toBeChecked();
-    expect(screen.getByTestId("event-ends-at")).toHaveValue("2027-04-02T11:00");
-    type("event-ends-at", "2027-04-02T18:00");
+    expect(screen.getByTestId("event-ends-at-date")).toHaveValue("2027-04-02");
+    expect(screen.getByTestId("event-ends-at-time")).toHaveValue("11:00");
+    typeDateTime("event-ends-at", "2027-04-02T18:00");
     fireEvent.click(screen.getByTestId("event-save"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/cards/{id}/events", expect.anything()));
     expect(lastBody(post)).toMatchObject({ starts_at: "2027-04-02T08:00:00.000Z", ends_at: "2027-04-02T16:00:00.000Z" });
 
     fireEvent.click(screen.getByTestId("event-no-end"));
-    expect(screen.getByTestId("event-ends-at")).toHaveValue("");
+    expect(screen.getByTestId("event-ends-at-date")).toHaveValue("");
+    expect(screen.getByTestId("event-ends-at-time")).toHaveValue("");
   });
 
   test("EVT-001 EDI-019 a created event goes back to the list of the card", async () => {
@@ -241,8 +359,10 @@ describe("EventEditor", () => {
     renderEditor(event);
     expect(screen.getByTestId("event-title")).toHaveValue("Portes ouvertes");
     expect(screen.getByTestId("event-description")).toHaveValue("Venez nombreux");
-    expect(screen.getByTestId("event-starts-at")).toHaveValue("2027-04-02T10:00");
-    expect(screen.getByTestId("event-ends-at")).toHaveValue("2027-04-02T18:30");
+    expect(screen.getByTestId("event-starts-at-date")).toHaveValue("2027-04-02");
+    expect(screen.getByTestId("event-starts-at-time")).toHaveValue("10:00");
+    expect(screen.getByTestId("event-ends-at-date")).toHaveValue("2027-04-02");
+    expect(screen.getByTestId("event-ends-at-time")).toHaveValue("18:30");
     expect(screen.getByTestId("event-access-code")).toHaveValue("Château");
     expect(screen.getByTestId("event-access-code")).toHaveAttribute("type", "text");
     expect(screen.getByTestId("event-device-limit")).toHaveValue(2);
@@ -276,8 +396,8 @@ describe("EventEditor", () => {
       ]),
     );
     renderEditor(eventView({ id: "event-9", title: "Salon", ends_at: "2027-03-16T10:00:00Z" }));
-    fireEvent.click(screen.getByTestId("custom-add-single_choice"));
-    fireEvent.click(screen.getByTestId("custom-add-single_choice"));
+    addField("single_choice");
+    addField("single_choice");
     type("custom-option-0-0", "Poterie");
     type("custom-option-0-1", "Poterie");
     type("event-device-limit", "500");
@@ -298,8 +418,8 @@ describe("EventEditor", () => {
     expect(screen.getByTestId("event-error-summary")).toBeVisible();
 
     // Each input points to its message, and nothing typed is lost.
-    expect(screen.getByTestId("event-title")).toHaveAttribute("aria-describedby", "field-error-title");
-    expect(screen.getByTestId("event-device-limit")).toHaveAttribute("aria-describedby", "field-error-device-limit");
+    expect(screen.getByTestId("event-title")).toHaveAttribute("aria-describedby", "event-title-hint field-error-title");
+    expect(screen.getByTestId("event-device-limit")).toHaveAttribute("aria-describedby", "event-device-limit-hint field-error-device-limit");
     expect(screen.getByTestId("custom-option-0-1")).toHaveAttribute("aria-describedby", "field-error-custom-fields-0-options-1");
     expect(screen.getByTestId("event-device-limit")).toHaveValue(500);
     expect(screen.getByTestId("event-access-code")).toHaveValue("x".repeat(40));
@@ -339,7 +459,7 @@ describe("EventEditor", () => {
     renderEditor();
     type("event-title", "Salon ✨");
     fireEvent.click(screen.getByTestId("event-save"));
-    expect(await screen.findByTestId("event-conflict")).toHaveTextContent("maximum d'événements en même temps");
+    expect(await screen.findByTestId("event-conflict")).toHaveTextContent("maximum d’événements en même temps");
     expect(screen.getByTestId("event-title")).toHaveValue("Salon ✨");
     expect(screen.queryByTestId("event-error-summary")).toBeNull();
     expect(push).not.toHaveBeenCalled();
@@ -378,10 +498,8 @@ describe("EventEditor", () => {
 
   test("EDI-019 the back link returns to the list of the events", () => {
     renderEditor();
-    expect(within(screen.getByTestId("event-editor")).getByTestId("event-back")).toHaveAttribute(
-      "href",
-      `/dashboard/cards/${CARD_ID}/events`,
-    );
+    expect(screen.getByTestId("event-back")).toHaveAttribute("href", `/dashboard/cards/${CARD_ID}/events`);
+    expect(screen.getByTestId("event-back-bar")).toHaveAttribute("href", `/dashboard/cards/${CARD_ID}/events`);
   });
 
   test("EDI-021 leaving the event editor with unsaved changes asks first", () => {
@@ -393,27 +511,44 @@ describe("EventEditor", () => {
     expect(screen.getByTestId("event-status")).toHaveTextContent("Modifications non enregistrées");
   });
 
-  test("EDI-021 every link of the page asks only when there are unsaved changes", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  test("EDI-021 EDI-028 every link of the page opens the leave dialog only when there are unsaved changes", () => {
     renderEditor(eventView());
     expect(screen.getByTestId("event-back")).toHaveAttribute("href", `/dashboard/cards/${CARD_ID}/events`);
     expect(linkNavigates("event-back")).toBe(true);
     expect(linkNavigates("account-link")).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
 
     type("event-title", "Salon de l’Artisanat 2028 ✨");
     expect(linkNavigates("event-back")).toBe(false);
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("Tu as modifié l’événement « Salon de l’Artisanat 2028 ✨ ».");
+    fireEvent.click(screen.getByRole("button", { name: "Rester" }));
     expect(linkNavigates("account-link")).toBe(false);
-    expect(confirm).toHaveBeenCalledTimes(2);
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("modifications non enregistrées"));
+    fireEvent.click(screen.getByRole("button", { name: "Quitter sans enregistrer" }));
+    expect(push).toHaveBeenCalledWith("/dashboard/account");
+  });
 
-    confirm.mockReturnValue(true);
-    expect(linkNavigates("event-back")).toBe(true);
-    expect(linkNavigates("account-link")).toBe(true);
+  test("EDI-028 Enregistrer et quitter saves the event, then goes where the link led", async () => {
+    put.mockResolvedValue({ data: {} });
+    renderEditor(eventView());
+    type("event-title", "Salon de l’Artisanat 2028 ✨");
+    linkNavigates("account-link");
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer et quitter" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard/account"));
+    expect(put).toHaveBeenCalledTimes(1);
+  });
+
+  test("EDI-028 a refused save closes the dialog, shows the errors and stays", async () => {
+    put.mockRejectedValue(rejectWith(400, "validation_failed", [{ field: "title", code: "required" }]));
+    renderEditor(eventView());
+    type("event-title", "");
+    linkNavigates("account-link");
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer et quitter" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByTestId("event-error-summary")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 
   test("EDI-021 undoing the changes leaves the editor clean", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const stored = eventView();
     renderEditor(stored);
     type("event-title", "Autre titre");
@@ -421,18 +556,15 @@ describe("EventEditor", () => {
     expect(screen.getByTestId("event-status")).toBeEmptyDOMElement();
     expect(closesTheTab()).toBe(true);
     expect(linkNavigates("event-back")).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
   });
 
   test("EDI-021 after a save nothing is asked", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderEditor(eventView());
     type("event-title", "Salon de l’Artisanat 2028 ✨");
     fireEvent.click(screen.getByTestId("event-save"));
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/dashboard/cards/${CARD_ID}/events`));
     expect(closesTheTab()).toBe(true);
     expect(linkNavigates("account-link")).toBe(true);
-    expect(confirm).not.toHaveBeenCalled();
   });
 
   test("EDI-021 a refused save keeps the changes unsaved", async () => {
@@ -447,7 +579,7 @@ describe("EventEditor", () => {
   test("EDI-021 a date the browser accepts but no instant stands for does not crash the editor", () => {
     renderEditor(eventView());
     // A datetime-local input accepts a five-digit year after one extra keystroke.
-    type("event-starts-at", "20277-03-15T10:00");
+    typeDateTime("event-starts-at", "20277-03-15T10:00");
     expect(screen.getByTestId("event-status")).toHaveTextContent("Modifications non enregistrées");
     expect(closesTheTab()).toBe(false);
   });

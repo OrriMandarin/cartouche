@@ -1,28 +1,90 @@
-import type { ResolvedTheme } from "./resolve";
+import { contrastRatio, mixOklab, over, parseHex, relativeLuminance, toHex, type Rgb } from "./color";
 
-/** Minimum WCAG 2.x contrast ratio for normal text (TPL-018). */
-const MIN_CONTRAST = 4.5;
+export type ContrastCheck = "text" | "mutedOnHover" | "onAccent" | "accentVsBg";
 
-function channel(hex: string, start: number): number {
-  const value = parseInt(hex.slice(start, start + 2), 16) / 255;
-  return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+/** Minimum WCAG 2.x ratio of each check (TPL-018). */
+export const MIN_CONTRAST: Record<ContrastCheck, number> = {
+  text: 4.5,
+  mutedOnHover: 4.5,
+  onAccent: 4.5,
+  accentVsBg: 3,
+};
+
+const CHECKS: ContrastCheck[] = ["text", "mutedOnHover", "onAccent", "accentVsBg"];
+
+export interface ThemeColors {
+  accent: string;
+  text: string;
+  background:
+    | { kind: "solid"; color: string }
+    | { kind: "gradient"; from: string; to: string; angle: number };
 }
 
-function luminance(color: string): number {
-  return 0.2126 * channel(color, 1) + 0.7152 * channel(color, 3) + 0.0722 * channel(color, 5);
+const WHITE = "#FFFFFF";
+const NEAR_BLACK = "#111111";
+
+/** The text colour put on the accent: white or near-black, whichever reads better; white on a tie (TPL-021). */
+export function onAccentFor(accent: string): "#FFFFFF" | "#111111" {
+  const rgb = parseHex(accent);
+  return contrastRatio(parseHex(WHITE), rgb) >= contrastRatio(parseHex(NEAR_BLACK), rgb)
+    ? WHITE
+    : NEAR_BLACK;
 }
 
-/** WCAG 2.x contrast ratio between two `#rrggbb` colors, from 1 to 21. */
-export function contrastRatio(a: string, b: string): number {
-  const [la, lb] = [luminance(a), luminance(b)];
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+/** A theme is dark when its text is lighter than its background (TPL-022). */
+export function isDarkTheme(colors: ThemeColors): boolean {
+  return relativeLuminance(parseHex(colors.text)) > relativeLuminance(parseHex(firstStop(colors)));
 }
 
-/** True when the text is hard to read on the background; a gradient counts by its worst stop. */
-export function hasContrastWarning(theme: ResolvedTheme): boolean {
-  const stops =
-    theme.background.kind === "solid"
-      ? [theme.background.color]
-      : [theme.background.from, theme.background.to];
-  return Math.min(...stops.map((stop) => contrastRatio(theme.text, stop))) < MIN_CONTRAST;
+function stopsOf(colors: ThemeColors): [string, ...string[]] {
+  return colors.background.kind === "solid"
+    ? [colors.background.color]
+    : [colors.background.from, colors.background.to];
+}
+
+function firstStop(colors: ThemeColors): string {
+  return stopsOf(colors)[0];
+}
+
+/** Worst measured ratio of each check; a gradient is measured on both of its colours (TPL-018). */
+export function measureContrast(colors: ThemeColors): Record<ContrastCheck, number> {
+  const text = parseHex(colors.text);
+  const accent = parseHex(colors.accent);
+  const [first, ...rest] = stopsOf(colors).map(parseHex) as [Rgb, ...Rgb[]];
+  const stops = [first, ...rest];
+  const muted = mixOklab(text, first, 0.78);
+  const hover = (stop: Rgb) => over(text, stop, 0.12);
+  return {
+    text: Math.min(...stops.map((stop) => contrastRatio(text, stop))),
+    mutedOnHover: Math.min(...stops.map((stop) => contrastRatio(muted, hover(stop)))),
+    onAccent: contrastRatio(parseHex(onAccentFor(colors.accent)), accent),
+    accentVsBg: Math.min(...stops.map((stop) => contrastRatio(accent, hover(stop)))),
+  };
+}
+
+export function failedChecks(colors: ThemeColors): ContrastCheck[] {
+  const measured = measureContrast(colors);
+  return CHECKS.filter((check) => measured[check] < MIN_CONTRAST[check]);
+}
+
+/** The setting a failed check is fixed through. */
+export function settingOf(check: ContrastCheck): "text" | "accent" {
+  return check === "text" || check === "mutedOnHover" ? "text" : "accent";
+}
+
+/** The first of the preset value, near-black and white that makes every check pass once put in `setting` (TPL-024). */
+export function readableFix(
+  colors: ThemeColors,
+  setting: "text" | "accent",
+  presetValue: string,
+): string | null {
+  const candidate = [presetValue, NEAR_BLACK, WHITE].find(
+    (value) => failedChecks({ ...colors, [setting]: value }).length === 0,
+  );
+  return candidate === undefined ? null : toHex(parseHex(candidate));
+}
+
+/** One decimal, decimal comma, rounded down so a failing ratio never reads as passing (TPL-013). */
+export function formatRatio(ratio: number): string {
+  return (Math.floor(ratio * 10) / 10).toFixed(1).replace(".", ",");
 }

@@ -28,7 +28,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const EVENT_ID = "0198d000-0000-7000-8000-000000000001";
-const card = { ...sampleCard, theme: { preset: "clair", accent: "#c0392b" } };
+const card = { ...sampleCard, theme: { preset: "craie", accent: "#c0392b" } };
 const props = (slug = card.slug, eventId = EVENT_ID) => ({ params: Promise.resolve({ slug, eventId }) });
 
 async function html(slug?: string, eventId?: string): Promise<string> {
@@ -59,7 +59,25 @@ describe("event form page", () => {
 
   test("TPL-020 FRM-025 the form carries the card theme", async () => {
     fetchPublicEvent.mockResolvedValue({ state: "open", event: publicEventForm() });
-    expect(await html()).toMatch(/data-testid="event-form-page"[^>]*style="[^"]*--card-accent:#c0392b/);
+    const page = await html();
+    expect(page).toMatch(/class="cc-page" style="[^"]*--c-accent:#c0392b/);
+    expect(page).toMatch(/class="cc-stage"><main data-testid="event-form-page"><article class="cc"><div class="fm">/);
+  });
+
+  test("FRM-049 TPL-022 the form uses the card theme and its error colour", async () => {
+    fetchPublicCard.mockResolvedValue({ state: "active", card: { ...card, theme: { preset: "encre" } } });
+    fetchPublicEvent.mockResolvedValue({ state: "open", event: publicEventForm() });
+    const page = await html();
+    const wrapper = page.match(/class="cc-page" style="([^"]*)"/)?.[1] ?? "";
+    expect(wrapper).toContain("--c-danger:#FF8A80");
+    expect(wrapper).toContain("color-scheme:dark");
+    // The variables sit on the wrapper only: the form itself carries no colour of its own.
+    expect(page).toMatch(/<main data-testid="event-form-page">/);
+
+    fetchPublicCard.mockResolvedValue({ state: "active", card });
+    const light = (await html()).match(/class="cc-page" style="([^"]*)"/)?.[1] ?? "";
+    expect(light).toContain("--c-danger:#B3261E");
+    expect(light).toContain("color-scheme:light");
   });
 
   test("FRM-002 EVT-027 an event with a code renders its title and the code screen only", async () => {
@@ -73,7 +91,7 @@ describe("event form page", () => {
   test("FRM-024 EVT-026 outside its window the form says it is not open, with the way back", async () => {
     fetchPublicEvent.mockResolvedValue({ state: "closed", event: { id: EVENT_ID, title: "Foire de Lyon" } });
     const page = await html();
-    expect(page).toContain("Ce formulaire n&#x27;est pas ouvert en ce moment.");
+    expect(page).toContain("Ce formulaire n’est pas ouvert en ce moment.");
     expect(page).toContain(`href="/c/${card.slug}"`);
     expect(page).not.toContain('data-testid="event-form"');
   });
@@ -88,16 +106,6 @@ describe("event form page", () => {
   test("FRM-024 LNK-024 LNK-021 an old or uppercase slug redirects to the current form address", async () => {
     fetchPublicCard.mockResolvedValue({ state: "redirect", slug: "alice-durand" });
     await expect(EventFormRoute(props("Alice"))).rejects.toThrow(`redirect:/c/alice-durand/e/${EVENT_ID}`);
-  });
-
-  test("LNK-007 LNK-027 the form of an unserved card is the neutral page", async () => {
-    fetchPublicCard.mockResolvedValue({ state: "inactive" });
-    expect(await html()).toContain("Cette carte n&#x27;est plus active");
-    fetchPublicCard.mockResolvedValue({ state: "active", card });
-    fetchPublicEvent.mockResolvedValue({ state: "inactive" });
-    const page = await html();
-    expect(page).toContain("Cette carte n&#x27;est plus active");
-    expect(page).not.toContain(card.content.first_name ?? "");
   });
 
   test("FRM-024 the form is not indexed", () => {

@@ -1,13 +1,13 @@
 # Leads and exports
 
-> Status: implemented (plans 3 and 4)
+> Status: implemented (plans 3, 4 and 6)
 
 ## Viewing
 
 - **LEA-001** — The dashboard lists the leads by event, and offers a "toute la carte" ("whole card") view.
 - **LEA-002** — The owner can search among their leads.
 - **LEA-003** — The owner can open the detail view of a lead.
-- **LEA-004** — From the list or the detail view, the owner can mark a lead as spam and delete it (see ABU-003 and ABU-004).
+- **LEA-004** — From the detail view of a lead (LEA-003), the owner can mark it as spam, remove that mark, and delete it (see ABU-003, ABU-004 and ABU-009); the rows of a lead list carry no action of their own.
 - **LEA-005** — Deleting a lead also serves to answer a GDPR erasure request.
 - **LEA-013** — The "toute la carte" ("whole card") view (LEA-001) lists in a single list the leads of all the events of the card, newest first, each with the title of its event. It is reached from the card's event list (EDI-018).
 - **LEA-014** — A lead list, of an event or of the whole card, shows every lead of its scope at once, spam ones included with their label (ABU-009), with no pagination.
@@ -16,7 +16,8 @@
 - **LEA-017** — In a list, a lead is titled by its first and last name; without a name, by its email, which is then not repeated on its row; without either, "Contact sans nom" ("Unnamed contact").
 - **LEA-018** — The detail view (LEA-003) shows the title of the lead's event, its submission date and time, each standard field it answered, each of its custom answers with the label the field had at submission (FRM-022), those of fields deleted since included (FRM-023), the consent date and time with the exact consent text (FRM-008), and whether it is marked as spam. Dates and times are shown in the user's time zone (EVT-022).
 - **LEA-019** — In the detail view, a `checkbox` answer reads "Oui" ("Yes") or "Non" ("No"), a `date` answer and the date of birth are shown as French dates, a `number` answer in French number format, and a custom field left empty reads "Non renseigné" ("Not filled in").
-- **LEA-020** — When marking as spam, unmarking or deleting succeeds, from the list or from the detail view, the list shows the result at once (label changed, row removed), even if reloading the list afterwards fails. Deleting a lead closes its detail view.
+- **LEA-020** — When marking as spam, unmarking or deleting succeeds from the detail view (LEA-004), the list shows the result at once (label changed, row removed), even if reloading the list afterwards fails, and the detail view closes, so that the message of LEA-034 can be reached. When the action fails, the detail view stays open.
+- **LEA-034** — After a lead is marked or unmarked as spam (LEA-004), a short message confirms it with an "Annuler" ("Undo") button, which puts the lead back in its previous state.
 
 ## Exports
 
@@ -39,3 +40,5 @@
 - **LEA-030** — The JSON export is an object with `exported_at`, `card` (`id`, `slug`), `event` (`id`, `title`, or `null` for the whole card), `include_spam` and `leads`. Each lead has `id`, `event` (`id`, `title`), `submitted_at`, `consent_at`, `consent_text`, `spam` (a boolean), `standard` (the nine standard fields of FRM-017 and FRM-018, each `null` when unanswered, the phone in E.164, the date of birth as `YYYY-MM-DD`) and `custom` (its answers as recorded, see FRM-038: `field_id`, `label`, `kind` and `value`, a string, a number, a boolean or `null`). The keys are in English and do not depend on the interface language.
 - **LEA-031** — An export without any lead (none in its scope, or only spam leads left out) is still a valid file: the header row alone (CSV, XLSX), or an empty `leads` list (JSON).
 - **LEA-032** — An export response carries `Content-Disposition: attachment` with the file name of LEA-022, and `Cache-Control: no-store`, so that no cache keeps the prospects' personal data.
+- **LEA-033** — A `datetime` answer (FRM-043) is shown and exported as the prospect entered it, never converted to another time zone: in the detail view as a French date and time ("06/02/2027 à 14:30"), in the CSV export as `YYYY-MM-DD HH:MM`, in the XLSX export as a date cell with a time (`yyyy-mm-dd hh:mm`) and in the JSON export as the string `YYYY-MM-DDTHH:MM`. The search (LEA-002) does not look into it.
+- **LEA-035** — The export dialog gives the number of spam leads of its scope in its option ("Inclure les contacts marqués comme spam ({n})", "Include the contacts marked as spam") and, on its button, the exact number of leads the file will hold ("Exporter {n} contacts", "Export {n} contacts"), see LEA-012.

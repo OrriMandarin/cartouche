@@ -35,6 +35,19 @@ describe("displayAnswer", () => {
     expect(displayAnswer(snapshot("long_text", "   "))).toEqual({ kind: "empty" });
   });
 
+  test("LEA-033 a datetime answer reads 20/03/2027 à 14:30", () => {
+    expect(displayAnswer(snapshot("datetime", "2027-03-20T14:30"))).toEqual({
+      kind: "text",
+      text: "20/03/2027 à 14:30",
+    });
+    expect(displayAnswer(snapshot("datetime", "2027-01-01T00:05"))).toEqual({
+      kind: "text",
+      text: "01/01/2027 à 00:05",
+    });
+    expect(displayAnswer(snapshot("datetime", null))).toEqual({ kind: "empty" });
+    expect(displayAnswer(snapshot("datetime", "bientôt"))).toEqual({ kind: "text", text: "bientôt" });
+  });
+
   test("LEA-019 a date is not shifted by the viewer's time zone", () => {
     expect(displayAnswer(snapshot("date", "2027-01-01"))).toEqual({ kind: "text", text: "01/01/2027" });
     expect(displayAnswer(snapshot("date", "2027-12-31"))).toEqual({ kind: "text", text: "31/12/2027" });

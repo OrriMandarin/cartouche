@@ -69,12 +69,12 @@ describe("checkLeadDraft", () => {
     const draft = emptyLeadDraft(form);
     draft.consent = true;
     expect(checkLeadDraft(form, draft, TODAY)).toEqual({
-      "answers.address.street": "fieldErrors.required",
-      "answers.address.postal_code": "fieldErrors.required",
-      "answers.address.city": "fieldErrors.required",
+      "answers.address.street": "required",
+      "answers.address.postal_code": "required",
+      "answers.address.city": "required",
     });
     draft.answers.address.country = "  ";
-    expect(checkLeadDraft(form, draft, TODAY)).toHaveProperty("answers.address.country", "fieldErrors.required");
+    expect(checkLeadDraft(form, draft, TODAY)).toHaveProperty("answers.address.country", "required");
     draft.answers.address = { street: "1 rue de l’Église", postal_code: "75011", city: "Paris", country: "France" };
     expect(checkLeadDraft(form, draft, TODAY)).toEqual({});
   });
@@ -85,9 +85,9 @@ describe("checkLeadDraft", () => {
     draft.answers.first_name = "   ";
     draft.consent = true;
     expect(checkLeadDraft(form, draft, TODAY)).toEqual({
-      "answers.first_name": "fieldErrors.required",
-      "answers.last_name": "fieldErrors.required",
-      "answers.email": "fieldErrors.required",
+      "answers.first_name": "required",
+      "answers.last_name": "required",
+      "answers.email": "required",
     });
   });
 
@@ -99,12 +99,12 @@ describe("checkLeadDraft", () => {
       d.answers.email = `${"a".repeat(250)}@b.fr`;
     });
     expect(checkLeadDraft(form, draft, TODAY)).toEqual({
-      "answers.first_name": "fieldErrors.too_long",
-      "answers.email": "fieldErrors.too_long",
+      "answers.first_name": "too_long",
+      "answers.email": "too_long",
     });
     for (const bad of ["alice", "alice@", "@example.org", "alice@example", "a@@example.org", "al ice@example.org", "a@b..fr"]) {
       const errors = checkLeadDraft(form, filled(form, (d) => (d.answers.email = bad)), TODAY);
-      expect(errors, bad).toEqual({ "answers.email": "fieldErrors.invalid_email" });
+      expect(errors, bad).toEqual({ "answers.email": "invalid_email" });
     }
     expect(checkLeadDraft(form, filled(form, (d) => (d.answers.email = "éloïse@exemple.fr")), TODAY)).toEqual({});
   });
@@ -119,7 +119,7 @@ describe("checkLeadDraft", () => {
       }),
       TODAY,
     );
-    expect(errors).toEqual({ [`answers.custom.${TEXT_ID}`]: "fieldErrors.too_long" });
+    expect(errors).toEqual({ [`answers.custom.${TEXT_ID}`]: "too_long" });
   });
 
   test("FRM-035 dates exist, stay in 1900..2100 and a birth date is not in the future", () => {
@@ -129,15 +129,41 @@ describe("checkLeadDraft", () => {
     expect(birth("1990-02-28")).toBeUndefined();
     expect(birth(TODAY)).toBeUndefined();
     for (const bad of ["2027-03-16", "1990-02-30", "1990-13-01", "1899-12-31", "15/03/1990", "1990-3-1", "٢٠٢٠-٠١-٠١"]) {
-      expect(birth(bad), bad).toBe("fieldErrors.invalid_date");
+      expect(birth(bad), bad).toBe("invalid_date");
     }
     const custom = (value: string) =>
       checkLeadDraft(form, filled(form, (d) => (d.custom[DATE_ID] = value)), TODAY)[`answers.custom.${DATE_ID}`];
     expect(custom("2100-12-31")).toBeUndefined();
-    expect(custom("2101-01-01")).toBe("fieldErrors.invalid_date");
+    expect(custom("2101-01-01")).toBe("invalid_date");
     expect(custom("2028-02-29")).toBeUndefined();
-    expect(custom("2027-02-29")).toBe("fieldErrors.invalid_date");
+    expect(custom("2027-02-29")).toBe("invalid_date");
     expect(custom("2099-01-01")).toBeUndefined();
+  });
+
+  test("FRM-043 the browser checks a datetime answer as the server does", () => {
+    const id = "0198c8a1-0000-7000-8000-000000000005";
+    const form = withFields(publicEventForm().standard_fields, [
+      { id, label: "Rendez-vous souhaité", kind: "datetime", required: false, help: null, options: [] },
+    ]);
+    const check = (value: string) =>
+      checkLeadDraft(form, filled(form, (d) => (d.custom[id] = value)), TODAY)[`answers.custom.${id}`];
+    for (const good of ["2027-03-20T14:30", "1900-01-01T00:00", "2100-12-31T23:59", ""]) {
+      expect(check(good), good).toBeUndefined();
+    }
+    for (const bad of [
+      "2027-02-30T10:00",
+      "2027-02-06T24:00",
+      "2027-02-06T14:60",
+      "2027-02-06T14:30:00",
+      "2027-02-06 14:30",
+      "1899-12-31T10:00",
+      "2027-02-06T14:30Z",
+      "2027-02-06",
+    ]) {
+      expect(check(bad), bad).toBe("invalid_date");
+    }
+    const body = draftToSubmission(form, filled(form, (d) => (d.custom[id] = " 2027-03-20T14:30 ")), DEVICE, null);
+    expect(body.answers.custom?.[id]).toBe("2027-03-20T14:30");
   });
 
   test("FRM-036 numbers take a point or a comma, choices one of the options", () => {
@@ -146,13 +172,13 @@ describe("checkLeadDraft", () => {
       checkLeadDraft(form, filled(form, (d) => (d.custom[NUMBER_ID] = value)), TODAY)[`answers.custom.${NUMBER_ID}`];
     for (const ok of ["12", "12.5", "12,5", "-3", "+0,25", "007"]) expect(number(ok), ok).toBeUndefined();
     for (const bad of ["12,", ".5", "1.2.3", "1 000", "abc", "12e3", "--1", "1,2,3"]) {
-      expect(number(bad), bad).toBe("fieldErrors.invalid_number");
+      expect(number(bad), bad).toBe("invalid_number");
     }
     const choice = (value: string) =>
       checkLeadDraft(form, filled(form, (d) => (d.custom[CHOICE_ID] = value)), TODAY)[`answers.custom.${CHOICE_ID}`];
     expect(choice("Premium")).toBeUndefined();
     expect(choice("")).toBeUndefined();
-    expect(choice("Luxe")).toBe("fieldErrors.invalid_choice");
+    expect(choice("Luxe")).toBe("invalid_choice");
   });
 
   test("FRM-034 a required custom field and a required checkbox", () => {
@@ -165,8 +191,8 @@ describe("checkLeadDraft", () => {
     );
     const draft = { ...emptyLeadDraft(form), consent: true };
     expect(checkLeadDraft(form, draft, TODAY)).toEqual({
-      [`answers.custom.${TEXT_ID}`]: "fieldErrors.required",
-      [`answers.custom.${CHECKBOX_ID}`]: "fieldErrors.required",
+      [`answers.custom.${TEXT_ID}`]: "required",
+      [`answers.custom.${CHECKBOX_ID}`]: "required",
     });
     draft.custom[CHECKBOX_ID] = true;
     draft.custom[TEXT_ID] = "Atelier ✨";
@@ -176,7 +202,7 @@ describe("checkLeadDraft", () => {
   test("FRM-037 an unchecked consent is refused", () => {
     const form = publicEventForm();
     expect(checkLeadDraft(form, filled(form, (d) => (d.consent = false)), TODAY)).toEqual({
-      consent: "fieldErrors.required",
+      consent: "required",
     });
   });
 

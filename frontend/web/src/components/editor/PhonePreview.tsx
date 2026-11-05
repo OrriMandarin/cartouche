@@ -8,7 +8,8 @@ import { buildTemplateLabels, type PublicEvent } from "@/templates/contract";
 import { renderTemplate } from "@/templates/registry";
 
 const SCREEN = { width: 390, height: 844 };
-const SCALE = 0.75;
+// The phone of the design: a 340 px wide screen inside an 8 px bezel.
+const SCALE = 340 / SCREEN.width;
 const BEZEL = 8;
 // The template only orders events by start; the simulated one has no real date.
 const PREVIEW_EVENT_START = "2000-01-01T00:00:00Z";
@@ -46,7 +47,7 @@ export function PhonePreview({
       data-testid="phone-preview"
       role="group"
       aria-label={t("editor.preview.frame")}
-      className="mx-auto rounded-[2.5rem] bg-neutral-900 shadow-xl"
+      className="shadow-app mx-auto flex-none rounded-[44px] bg-app-text"
       style={{
         width: SCREEN.width * SCALE + BEZEL * 2,
         height: SCREEN.height * SCALE + BEZEL * 2,
@@ -54,11 +55,11 @@ export function PhonePreview({
       }}
     >
       <div
-        className="h-full w-full overflow-x-hidden overflow-y-auto rounded-[2rem] bg-white"
+        className="h-full w-full overflow-x-hidden overflow-y-auto rounded-[36px] bg-white"
         onClickCapture={blockLinks}
       >
         <div
-          // The template fills a screen (`min-h-screen`); here the screen is the phone's.
+          // The template fills a screen (`min-height: 100svh`); here the screen is the phone's.
           className="origin-top-left [&_article]:min-h-[844px]"
           style={{ width: SCREEN.width, transform: `scale(${SCALE})` }}
         >

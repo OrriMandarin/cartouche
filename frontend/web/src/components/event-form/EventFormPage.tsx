@@ -14,7 +14,7 @@ import {
   type LeadDraft,
 } from "@/lib/event-form/answers";
 import { getDeviceId } from "@/lib/event-form/device";
-import { afterReload, refusalAction, unlockMessageKey, utcDate, type RefusalAction } from "@/lib/event-form/flow";
+import { afterReload, refusalAction, sentFirstName, unlockMessageKey, utcDate, type RefusalAction } from "@/lib/event-form/flow";
 import { submissionOutcome } from "@/lib/event-form/outcome";
 import { clearDraft, loadDraft, saveDraft } from "@/lib/event-form/persist";
 import { reloadForm, submitLead, unlockEvent } from "@/lib/event-form/requests";
@@ -24,7 +24,7 @@ import type { PublicCard } from "@/templates/contract";
 import { AccessCodeScreen } from "./AccessCodeScreen";
 import { Confirmation } from "./Confirmation";
 import { LeadForm } from "./LeadForm";
-import { BUTTON_STYLE } from "./styles";
+import { BackLink, cardFullName } from "./FormChrome";
 
 /** An event whose form can be filled now: open, or behind its access code. */
 export type FillableEvent = Exclude<PublicEventResponse, { state: "closed" }>;
@@ -67,6 +67,7 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [retry, setRetry] = useState(false);
   const [pending, setPending] = useState(false);
+  const [thanked, setThanked] = useState("");
 
   const cardHref = cardPagePath(slug);
   const draft =
@@ -110,7 +111,7 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
     switch (action.kind) {
       case "fields":
         setErrors(action.fields);
-        setMessage("eventForm.fix");
+        setMessage(null);
         setAttempt((count) => count + 1);
         return;
       case "ask_code":
@@ -150,6 +151,7 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
     try {
       await submitLead(slug, eventId, draftToSubmission(current, sent, getDeviceId(), accessCode));
       clearDraft(eventId);
+      setThanked(sentFirstName(current, sent));
       setScreen("sent");
     } catch (error) {
       await refuse(refusalAction(submissionOutcome(error)), sent);
@@ -163,7 +165,7 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
     const found = checkLeadDraft(form, draft, utcDate(new Date()));
     setErrors(found);
     if (Object.keys(found).length > 0) {
-      setMessage("eventForm.fix");
+      setMessage(null);
       setRetry(false);
       setAttempt((count) => count + 1);
       return;
@@ -173,17 +175,19 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
 
   if (screen === "sent") {
     return (
-      <div className="mx-auto max-w-md px-5 py-6">
-        <Confirmation vcardUrl={card.vcard_url} cardHref={cardHref} />
-      </div>
+      <Confirmation
+        firstName={thanked}
+        ownerName={cardFullName(card)}
+        ownerFirstName={card.content.first_name ?? ""}
+        vcardUrl={card.vcard_url}
+        cardHref={cardHref}
+      />
     );
   }
 
   return (
-    <div className="mx-auto max-w-md px-5 py-6">
-      <a data-testid="event-form-back" href={cardHref} className="inline-block underline">
-        {t("eventForm.back")}
-      </a>
+    <>
+      <BackLink card={card} href={cardHref} />
       {screen === "code" || !form || !draft ? (
         <AccessCodeScreen
           title={form?.title ?? initial.event.title}
@@ -194,25 +198,27 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
       ) : (
         <LeadForm
           form={form}
+          ownerName={cardFullName(card)}
           draft={draft}
           errors={errors}
           attempt={attempt}
           disabled={!hydrated || pending}
           notice={
             message && (
-              <div role="alert" data-testid="event-form-message" className="mt-6 font-medium">
-                <p>{t(message)}</p>
-                {retry && (
-                  <button
-                    type="button"
-                    data-testid="event-form-retry"
-                    className="mt-3 px-4 py-2"
-                    style={BUTTON_STYLE}
-                    onClick={() => void send(form, draft)}
-                  >
-                    {t("eventForm.retry")}
-                  </button>
-                )}
+              <div role="alert" data-testid="event-form-message" className="fm-alert">
+                <div>
+                  <p>{t(message)}</p>
+                  {retry && (
+                    <button
+                      type="button"
+                      data-testid="event-form-retry"
+                      className="fm-link"
+                      onClick={() => void send(form, draft)}
+                    >
+                      {t("eventForm.retry")}
+                    </button>
+                  )}
+                </div>
               </div>
             )
           }
@@ -220,6 +226,6 @@ export function EventFormPage({ slug, card, initial }: EventFormPageProps) {
           onSubmit={submit}
         />
       )}
-    </div>
+    </>
   );
 }

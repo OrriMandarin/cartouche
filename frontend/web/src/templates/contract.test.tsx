@@ -13,7 +13,7 @@ function element(
   return renderTemplate({
     template: template.id,
     settings: {},
-    theme: overrides.theme ?? { preset: "clair" },
+    theme: overrides.theme ?? { preset: "craie" },
     card: { ...sampleCard, ...overrides.card },
     events: overrides.events ?? [],
     urls: sampleUrls,
@@ -61,7 +61,7 @@ describe.each(listTemplates())("template $id", (template) => {
       expect(anchor.parentElement?.closest("a")).toBeNull();
     });
     expect(screen.getByTestId(IDS.link(2))).toHaveTextContent("Mon podcast ✨");
-    expect(screen.getByTestId(IDS.link(1))).toHaveTextContent("LinkedIn");
+    expect(screen.getByTestId(IDS.link(1))).toHaveAccessibleName(/^LinkedIn/);
     expect(screen.queryByTestId(IDS.link(3))).toBeNull();
   });
 
@@ -75,13 +75,15 @@ describe.each(listTemplates())("template $id", (template) => {
     const hrefs = [...container.querySelectorAll("a")].map((anchor) => anchor.getAttribute("href") ?? "");
     expect(hrefs.filter((href) => /^(javascript|data):/i.test(href))).toEqual([]);
     expect(screen.queryByText("Piège")).toBeNull();
-    expect(screen.getByText("LinkedIn")).toBeInTheDocument();
+    expect(screen.getByTestId(IDS.link(2))).toHaveAccessibleName(/^LinkedIn/);
   });
 
   test("PUB-022 TPL-016 a card whose links are all unsafe shows no empty link list", () => {
     const links = [{ kind: "website" as const, url: "javascript:alert(1)" }];
     const { container } = render(element(template, { card: { links } }));
-    expect(container.querySelector("ul")).toBeNull();
+    expect(container.querySelectorAll("ul:empty")).toHaveLength(0);
+    expect(screen.queryByRole("list", { name: sampleLabels.linksList })).toBeNull();
+    expect(screen.queryByRole("list", { name: sampleLabels.networks })).toBeNull();
   });
 
   test("TPL-016 an unknown link kind falls back to the website icon and label", () => {
@@ -89,7 +91,7 @@ describe.each(listTemplates())("template $id", (template) => {
     const { container } = render(element(template, { card: { links } }));
     const anchor = screen.getByTestId(IDS.link(0));
     expect(anchor).toHaveAttribute("href", "https://social.example/@eloise");
-    expect(anchor).toHaveTextContent(sampleLabels.links.website);
+    expect(anchor).toHaveAccessibleName(new RegExp(`^${sampleLabels.links.website}`));
     expect(anchor.querySelector("svg")).not.toBeNull();
     expect(container.querySelectorAll("a[href^='https://social.example']")).toHaveLength(1);
   });
@@ -106,24 +108,25 @@ describe.each(listTemplates())("template $id", (template) => {
     render(element(template));
     const image = screen.getByTestId(IDS.headerImage);
     expect(image.tagName).toBe("IMG");
-    // The card is at most 28rem wide (max-w-md): a wide screen must not pick a larger file than that.
-    expect(image).toHaveAttribute("sizes", "(min-width: 28rem) 28rem, 100vw");
+    // From 40rem on the card is 28rem wide (PUB-037): a wide screen must not pick a larger file than that.
+    expect(image).toHaveAttribute("sizes", "(min-width: 40rem) 28rem, 100vw");
     expect(image.getAttribute("srcset")).toContain("w1920.webp 1920w");
     expect(screen.queryByTestId(IDS.headerVideo)).toBeNull();
   });
 
-  test("PUB-004 PUB-005 PUB-006 header video is muted, looping, inline, with poster", () => {
+  test("PUB-004 PUB-005 PUB-006 header video is muted, inline, not looping by attribute, with poster", () => {
     const html = renderToString(element(template, { card: { header: sampleVideoHeader } }));
-    for (const attribute of ["autoplay", "loop", "muted", "playsinline"]) {
-      expect(html.toLowerCase()).toMatch(new RegExp(`<video[^>]* ${attribute}(=|\\s|>)`));
+    expect(html.toLowerCase()).toMatch(/<video[^>]* playsinline(=|\s|>)/);
+    for (const attribute of ["autoplay", "loop"]) {
+      expect(html.toLowerCase()).not.toMatch(new RegExp(`<video[^>]* ${attribute}(=|\\s|>)`));
     }
 
     render(element(template, { card: { header: sampleVideoHeader } }));
     const video = screen.getByTestId(IDS.headerVideo) as HTMLVideoElement;
     expect(video.tagName).toBe("VIDEO");
     expect(video.muted).toBe(true);
-    expect(video.loop).toBe(true);
-    expect(video.autoplay).toBe(true);
+    expect(video.loop).toBe(false);
+    expect(video.autoplay).toBe(false);
     expect(video).toHaveAttribute("playsinline");
     expect(video).toHaveAttribute("src", sampleVideoHeader.video_url);
     expect(video).toHaveAttribute("poster", "https://media.example.test/cards/c1/v1/w1080.webp");
@@ -131,10 +134,10 @@ describe.each(listTemplates())("template $id", (template) => {
   });
 
   test("PUB-007 avatar sits on the header gradient", () => {
-    const { container } = render(element(template, { theme: { preset: "clair", header_gradient: 70 } }));
+    const { container } = render(element(template, { theme: { preset: "craie", header_gradient: 70 } }));
     expect(screen.getByTestId(IDS.avatar)).toBeInTheDocument();
     const root = container.firstElementChild as HTMLElement;
-    expect(root.style.getPropertyValue("--card-header-gradient")).toBe("0.7");
+    expect(root.style.getPropertyValue("--fade")).toBe("70");
   });
 
   test("PUB-008 PUB-009 event buttons are sorted by start", () => {
@@ -169,13 +172,22 @@ describe.each(listTemplates())("template $id", (template) => {
   });
 
   test("TPL-003 required test ids are present", () => {
+    // Each of these ids only shows in its own case, checked below and in the video header test.
+    const exclusive: string[] = [IDS.headerVideo, IDS.headerEmpty, IDS.initials];
     render(element(template, { events: sampleEvents }));
     for (const id of Object.values(IDS)) {
-      if (typeof id !== "string" || id === IDS.headerVideo) continue;
-      expect(screen.getByTestId(id), id).toBeInTheDocument();
+      if (typeof id !== "string" || exclusive.includes(id)) continue;
+      expect(screen.getAllByTestId(id)[0], id).toBeInTheDocument();
     }
     expect(within(document.body).getByTestId(IDS.link(0))).toBeInTheDocument();
     expect(screen.getByTestId(IDS.eventButton("evt-salon"))).toBeInTheDocument();
+  });
+
+  test("TPL-003 PUB-023 the initials and empty header test ids are set without photo or header", () => {
+    render(element(template, { card: { avatar: null, header: null } }));
+    expect(screen.getByTestId(IDS.initials)).toBeInTheDocument();
+    expect(screen.getByTestId(IDS.headerEmpty)).toBeInTheDocument();
+    for (const id of [IDS.avatar, IDS.headerImage, IDS.headerVideo]) expect(screen.queryByTestId(id), id).toBeNull();
   });
 
   test("TPL-003 the video header test id is set when the header is a video", () => {
@@ -184,10 +196,10 @@ describe.each(listTemplates())("template $id", (template) => {
   });
 
   test("TPL-019 the theme reaches the template as CSS variables only", () => {
-    const { container } = render(element(template, { theme: { preset: "sombre" } }));
+    const { container } = render(element(template, { theme: { preset: "encre" } }));
     const root = container.firstElementChild as HTMLElement;
-    const theme = resolveTheme({ preset: "sombre" });
-    expect(root.style.getPropertyValue("--card-accent")).toBe(theme.accent);
-    expect(root.style.getPropertyValue("--card-text")).toBe(theme.text);
+    const theme = resolveTheme({ preset: "encre" });
+    expect(root.style.getPropertyValue("--c-accent")).toBe(theme.accent);
+    expect(root.style.getPropertyValue("--c-text")).toBe(theme.text);
   });
 });

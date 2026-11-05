@@ -1,12 +1,26 @@
+import type { Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { TEMPLATE_IDS } from "../../web/src/templates/ids";
 import { WEB_URL } from "../env";
-import { expect, test } from "../fixtures";
+import { expect, test, type TestApi, type UploadFraming } from "../fixtures";
 
-const NEUTRAL_TEXT = "Cette carte n'est plus active";
+const fixture = (name: string) => new URL(`../fixtures/${name}`, import.meta.url).pathname;
+const UNAVAILABLE_TITLE = "Cette carte n’est pas disponible";
+const UNAVAILABLE_TEXT = "Le lien est peut-être incorrect, ou la carte n’est plus active.";
 const MARIAGE = "Salon du Mariage Clermont 2027";
 
 let aliceCardId: string;
+
+/** The neutral page of a card that is not served: 404, both texts, not indexed, no link preview (LNK-027). */
+async function expectNeutralPage(page: Page, url: string) {
+  const response = await page.goto(url);
+  expect(response?.status(), url).toBe(404);
+  const unavailable = page.getByTestId("card-unavailable");
+  await expect(unavailable.getByRole("heading", { level: 1 }), url).toHaveText(UNAVAILABLE_TITLE);
+  await expect(unavailable, url).toContainText(UNAVAILABLE_TEXT);
+  await expect(page.locator('meta[name="robots"]').first(), url).toHaveAttribute("content", /noindex/);
+  await expect(page.locator('meta[property^="og:"]'), url).toHaveCount(0);
+}
 
 test.beforeEach(async ({ api }) => {
   const { cards } = await api.seed("cards");
@@ -66,7 +80,11 @@ for (const template of TEMPLATE_IDS) {
       await page.goto("/c/alice-durand");
       await page.getByTestId(`event-button-${mariage.id}`).click();
       await expect(page).toHaveURL(new RegExp(`/c/alice-durand/e/${mariage.id}$`));
-      await expect(page.getByTestId("event-form-page")).toHaveAttribute("style", /--card-accent:/);
+      // The card's theme sits on the page frame around the form (TPL-026).
+      await expect(page.locator(".cc-page", { has: page.getByTestId("event-form-page") })).toHaveAttribute(
+        "style",
+        /--c-accent:/,
+      );
       await expect(page.getByTestId("consent-text")).toContainText("Alice Durand (Atelier Durand & Fils)");
       await page.getByTestId("field-answers.first_name").fill("Maëlle");
       await page.getByTestId("field-answers.last_name").fill("N’Guessan-Lefèvre ✨");
@@ -100,7 +118,11 @@ test("PUB-008 PUB-009 PUB-029 running events are buttons sorted by start", async
   };
   await page.goto("/c/alice-durand");
   const buttons = page.getByTestId(/^event-button-/);
-  await expect(buttons).toHaveText([MARIAGE, "Portes ouvertes de l'Atelier", "Démonstration en boutique"]);
+  await expect(page.getByTestId("card-event-name")).toHaveText([
+    MARIAGE,
+    "Portes ouvertes de l'Atelier",
+    "Démonstration en boutique",
+  ]);
   const testIds = await buttons.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-testid")));
   expect(testIds).toEqual([
     `event-button-${idOf(MARIAGE)}`,
@@ -116,6 +138,156 @@ test("PUB-010 no running event, no button", async ({ page }) => {
   await page.goto("/c/alice-durand");
   await expect(page.getByTestId("card-name")).toHaveText("Alice Durand");
   await expect(page.getByTestId(/^event-button-/)).toHaveCount(0);
+});
+
+test("PUB-030 PUB-033 the save button sits right under the identity", async ({ page }) => {
+  await page.goto("/c/alice-durand");
+  const box = async (testId: string) => {
+    const found = await page.getByTestId(testId).boundingBox();
+    if (!found) throw new Error(`${testId} is not visible`);
+    return found;
+  };
+  const description = await box("card-description");
+  const save = await box("save-contact");
+  const email = await box("card-email");
+  expect(save.y).toBeGreaterThan(description.y + description.height);
+  expect(email.y).toBeGreaterThan(save.y + save.height);
+  // Inverted colors: the button's background is the card's text color, its text the card's background.
+  const colors = await page.getByTestId("save-contact").evaluate((element) => {
+    const card = element.closest("article")!;
+    const probe = document.createElement("span");
+    probe.style.color = "var(--c-bg)";
+    card.append(probe);
+    const result = {
+      background: getComputedStyle(element).backgroundColor,
+      color: getComputedStyle(element).color,
+      text: getComputedStyle(card).color,
+      cardBackground: getComputedStyle(probe).color,
+    };
+    probe.remove();
+    return result;
+  });
+  expect(colors.background).toBe(colors.text);
+  expect(colors.color).toBe(colors.cardBackground);
+});
+
+test("PUB-035 PUB-036 links show as icons with labelled free links", async ({ page }) => {
+  await page.goto("/c/alice-durand");
+  const icons = page.getByRole("list", { name: "Réseaux" });
+  const linkedin = icons.getByTestId("card-link-0");
+  await expect(linkedin).toHaveAttribute("aria-label", "LinkedIn — linkedin.com/in/alice");
+  await expect(linkedin).toHaveText("");
+  await expect(linkedin.locator("svg")).toHaveCount(1);
+  const size = await linkedin.boundingBox();
+  expect(size?.width).toBeGreaterThanOrEqual(44);
+  expect(size?.height).toBeGreaterThanOrEqual(44);
+
+  const portfolio = page.getByRole("list", { name: "Liens" }).getByTestId("card-link-1");
+  await expect(portfolio).toContainText("Portfolio");
+  await expect(portfolio).toContainText("alice.example.test");
+});
+
+test("PUB-023 a card without photo shows its initials", async ({ page }) => {
+  await page.goto("/c/alice-durand");
+  await expect(page.getByTestId("card-initials")).toHaveText("AD");
+  await expect(page.getByTestId("card-avatar")).toHaveCount(0);
+});
+
+test("PUB-032 a long name and a long job title wrap inside the card", async ({ page, api }) => {
+  await api.updateCard("seed-alice", aliceCardId, {
+    content: {
+      first_name: "Anne-Sophie-Marguerite-Éloïse",
+      last_name: "De La Tour D’Auvergne-Lauraguais-Montmorency-Saint-Aignan",
+      job_title: "Directrice générale adjointe chargée du développement international et des partenariats",
+    },
+  });
+  await page.goto("/c/alice-durand");
+  for (const id of ["card-name", "card-job-title"]) {
+    const box = await page.getByTestId(id).evaluate((element) => {
+      const card = element.closest("article")!;
+      return {
+        overflowsCard: element.getBoundingClientRect().right > card.getBoundingClientRect().right + 0.5,
+        clipped: element.scrollWidth > element.clientWidth,
+        lines: Math.round(element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)),
+      };
+    });
+    expect(box.overflowsCard, id).toBe(false);
+    expect(box.clipped, id).toBe(false);
+    expect(box.lines, id).toBeGreaterThan(1);
+  }
+  const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+  expect(fitsViewport).toBe(true);
+});
+
+test("PUB-038 reduced motion stops the event sheen and the pulse", async ({ page, api }) => {
+  const { events } = await api.seedEvents();
+  const mariage = events.find((event) => event.title === MARIAGE);
+  if (!mariage) throw new Error("the events scenario has no wedding fair");
+  const animations = async () =>
+    page.getByTestId(`event-button-${mariage.id}`).evaluate((button) => ({
+      sheen: getComputedStyle(button, "::after").animationName,
+      dot: getComputedStyle(button.querySelector(".cc-dot")!, "::after").animationName,
+    }));
+
+  await page.goto("/c/alice-durand");
+  expect(await animations()).toEqual({ sheen: "cc-sheen", dot: "cc-ping" });
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  expect(await animations()).toEqual({ sheen: "none", dot: "none" });
+});
+
+/** Gives Alice's card a framed video header and returns once the card is saved with it. */
+async function giveAliceFramedVideo(api: TestApi, framing: UploadFraming) {
+  const media = await api.uploadMedia(
+    "seed-alice",
+    aliceCardId,
+    "header",
+    { name: "header-2s.mp4", mimeType: "video/mp4", buffer: await readFile(fixture("header-2s.mp4")) },
+    { name: "poster.jpg", mimeType: "image/jpeg", buffer: await readFile(fixture("avatar.jpg")) },
+    framing,
+  );
+  await api.updateCard("seed-alice", aliceCardId, { header_media_id: media.id });
+}
+
+test("PUB-031 the pause button pauses the header video", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, { loop: { start: 0.5, end: 1.8 } });
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  const toggle = page.getByTestId("header-video-toggle");
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => !el.paused)).toBe(true);
+  await expect(toggle).toHaveAccessibleName("Mettre la vidéo en pause");
+  await toggle.click();
+  await expect(toggle).toHaveAccessibleName("Lire la vidéo");
+  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(true);
+});
+
+test("MED-032 the video starts at its loop start", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, { loop: { start: 0.5, end: 1.8 } });
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime >= 0.5 && !el.paused)).toBe(true);
+});
+
+test("MED-033 a video without a stored loop keeps playing past its end", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, {});
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => !el.paused)).toBe(true);
+  // The file lasts 2 s: after 2.5 s it went through its end at least once.
+  await page.waitForTimeout(2500);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(false);
+  await expect(page.getByTestId("header-video-toggle")).toHaveAccessibleName("Mettre la vidéo en pause");
+});
+
+test("PUB-005 reduced motion keeps the poster", async ({ page, api }) => {
+  await giveAliceFramedVideo(api, { loop: { start: 0.5, end: 1.8 } });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect(page.getByTestId("header-video-toggle")).toHaveAccessibleName("Lire la vidéo");
+  await page.waitForTimeout(500);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(true);
 });
 
 test.describe("without JavaScript", () => {
@@ -174,44 +346,68 @@ test("LNK-024 LNK-030 permanent redirects are not cached", async ({ api }) => {
   }
 });
 
-test("LNK-006 LNK-027 disabled card shows the neutral page", async ({ page }) => {
-  const response = await page.goto("/c/alice-archive");
-  expect(response?.status()).toBe(200);
-  await expect(page.getByText(NEUTRAL_TEXT)).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.locator('meta[property="og:title"]')).toHaveCount(0);
-  await expect(page.locator('meta[property="og:image"]')).toHaveCount(0);
+test("LNK-023 LNK-027 LNK-034 unknown, disabled and blocked cards show the same 404 page", async ({ page }) => {
+  for (const url of ["/c/inconnu-zz", "/c/alice-archive", "/c/bob-martin"]) {
+    await expectNeutralPage(page, url);
+    const text = await page.locator("body").innerText();
+    for (const word of ["Alice", "Bob", "Ancien poste"]) expect(text, url).not.toContain(word);
+  }
+});
+
+test("LNK-006 LNK-027 a disabled card says nothing of itself in its HTML", async ({ page }) => {
+  await expectNeutralPage(page, "/c/alice-archive");
   const html = await page.content();
   expect(html).not.toContain("Ancien poste");
   expect(html).not.toContain("Alice");
   await expect(page.getByTestId("card-name")).toHaveCount(0);
 });
 
-test("LNK-010 support-disabled card shows the same neutral page", async ({ page }) => {
-  const response = await page.goto("/c/bob-martin");
-  expect(response?.status()).toBe(200);
-  await expect(page.getByText(NEUTRAL_TEXT)).toBeVisible();
-  await expect(page.locator("main")).toHaveText(NEUTRAL_TEXT);
+test("LNK-010 ADM-011 LNK-012 support-disabled, suspended and deleted cards show the same 404 page", async ({
+  page,
+}) => {
+  await expectNeutralPage(page, "/c/bob-martin");
   expect(await page.locator("body").innerText()).not.toMatch(/support|bob|martin/i);
-});
-
-test("ADM-011 suspended owner shows the neutral page", async ({ page }) => {
-  const response = await page.goto("/c/dan-moreau");
-  expect(response?.status()).toBe(200);
-  await expect(page.locator("main")).toHaveText(NEUTRAL_TEXT);
+  await expectNeutralPage(page, "/c/dan-moreau");
   expect(await page.locator("body").innerText()).not.toMatch(/dan|moreau/i);
+  await expectNeutralPage(page, "/c/alice-ancienne");
 });
 
-test("LNK-012 deleted card shows the neutral page", async ({ page }) => {
-  const response = await page.goto("/c/alice-ancienne");
-  expect(response?.status()).toBe(200);
-  await expect(page.locator("main")).toHaveText(NEUTRAL_TEXT);
+test("PUB-037 from 40rem the card is 28rem wide with rounded corners", async ({ page }, testInfo) => {
+  await page.goto("/c/alice-durand");
+  const card = page.locator("article.cc");
+  await expect(card).toBeVisible();
+  const { width, radius, viewport } = await card.evaluate((element) => ({
+    width: element.getBoundingClientRect().width,
+    radius: getComputedStyle(element).borderTopLeftRadius,
+    viewport: document.documentElement.clientWidth,
+  }));
+  if (testInfo.project.name === "desktop") {
+    expect(width).toBe(448);
+    expect(radius).toBe("28px");
+  } else {
+    expect(width).toBe(viewport);
+  }
+  // The theme variables sit on the page frame, never on html or body.
+  for (const selector of ["html", "body"]) {
+    const style = await page.evaluate((target) => document.querySelector(target)?.getAttribute("style") ?? "", selector);
+    expect(style, selector).not.toContain("--c-");
+  }
 });
 
-test("LNK-023 unknown slug is a 404", async ({ page }) => {
-  const response = await page.goto("/c/personne");
-  expect(response?.status()).toBe(404);
-  await expect(page.getByText("Carte introuvable")).toBeVisible();
+test("TPL-012 the public page downloads only the files of its pair", async ({ page, api }) => {
+  await api.updateCard("seed-alice", aliceCardId, { theme: { preset: "bonbon" } });
+  const fonts: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith(".woff2")) fonts.push(request.url());
+  });
+  await page.goto("/c/alice-durand");
+  await expect(page.getByTestId("card-name")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(fonts.some((url) => url.includes("bricolage-grotesque")), fonts.join("\n")).toBe(true);
+  expect(fonts.some((url) => url.includes("instrument-sans")), fonts.join("\n")).toBe(true);
+  for (const other of ["playfair", "source-sans", "fraunces", "nunito", "jetbrains"]) {
+    expect(fonts.filter((url) => url.includes(other)), other).toEqual([]);
+  }
 });
 
 test("LNK-007 vCard of a disabled card is refused", async ({ api }) => {

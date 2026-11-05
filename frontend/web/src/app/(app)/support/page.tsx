@@ -1,11 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AccountGate } from "@/components/account/AccountGate";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { SupportGuard } from "@/components/support/SupportGuard";
+import { SupportTitle } from "@/components/support/SupportTitle";
+import { useSupportSlots } from "@/components/support/useSupportSlots";
 import { UserModerationTable, type ModerationUser } from "@/components/support/UserModerationTable";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,12 +46,7 @@ function SupportContent() {
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-        <Link href="/dashboard" className="text-sm underline" data-testid="nav-dashboard">
-          {t("backToDashboard")}
-        </Link>
-      </div>
+      <SupportTitle>{t("title")}</SupportTitle>
       <Tabs
         value={tab}
         onValueChange={(value) => {
@@ -63,7 +59,7 @@ function SupportContent() {
             <TabsTrigger key={status} value={status} data-testid={`tab-${status}`}>
               {t(`status.${status}`)}
               <Badge
-                variant={status === "pending" && (counts?.pending ?? 0) > 0 ? "default" : "secondary"}
+                variant={status === "pending" && (counts?.pending ?? 0) > 0 ? "warning" : "neutral"}
                 data-testid={`count-${status}`}
               >
                 {counts?.[status] ?? "–"}
@@ -90,8 +86,9 @@ function SupportContent() {
 
 /** spec: ADM-001, ADM-002. Admin-only moderation page, one tab per account status. */
 export default function SupportPage() {
+  const slots = useSupportSlots({ kind: "home" });
   return (
-    <AccountGate>
+    <AccountGate {...slots}>
       <SupportGuard>
         <SupportContent />
       </SupportGuard>

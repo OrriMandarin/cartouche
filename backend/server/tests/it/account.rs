@@ -344,3 +344,94 @@ async fn invalid_token_never_creates_an_account(pool: PgPool) {
     assert_eq!(error_code(&res), "token_expired");
     assert_eq!(user_count(&pool).await, 0);
 }
+
+use common::cards::{cards_app, create_card};
+use common::events::{create_event, event_body, send_lead};
+
+// spec: EDI-032, EVT-019
+#[sqlx::test(migrations = "./migrations")]
+async fn me_gives_the_events_limit_of_the_instance(pool: PgPool) {
+    let app = test_app_with(
+        pool,
+        &[("SIGNUP_MODE", "open"), ("MAX_SIMULTANEOUS_EVENTS", "5")],
+    )
+    .await;
+    let res = me(&app, &token("u1")).await;
+    assert_eq!(res.json["max_simultaneous_events"], 5);
+}
+
+// spec: ACC-027
+#[sqlx::test(migrations = "./migrations")]
+async fn me_totals_count_the_cards_events_and_leads(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let empty = me(&app, &common::cards::token("alice")).await;
+    assert_eq!(
+        empty.json["totals"],
+        json!({ "cards": 0, "events": 0, "leads": 0 })
+    );
+
+    let first = create_card(&app, "alice", "alice-one").await;
+    create_card(&app, "alice", "alice-two").await;
+    let event = create_event(
+        &app,
+        "alice",
+        first["id"].as_str().unwrap(),
+        event_body("2026-01-10T08:00:00Z", None),
+    )
+    .await;
+    create_event(
+        &app,
+        "alice",
+        first["id"].as_str().unwrap(),
+        event_body("2026-02-10T08:00:00Z", None),
+    )
+    .await;
+    let event_id = event["id"].as_str().unwrap();
+    send_lead(&app, "alice-one", event_id, json!({})).await;
+    send_lead(
+        &app,
+        "alice-one",
+        event_id,
+        json!({ "device_id": uuid::Uuid::now_v7() }),
+    )
+    .await;
+
+    let res = me(&app, &common::cards::token("alice")).await;
+    assert_eq!(
+        res.json["totals"],
+        json!({ "cards": 2, "events": 2, "leads": 2 })
+    );
+}
+
+// spec: ACC-017, ACC-027
+#[sqlx::test(migrations = "./migrations")]
+async fn totals_ignore_the_data_of_other_users(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-one").await;
+    let event = create_event(
+        &app,
+        "alice",
+        card["id"].as_str().unwrap(),
+        event_body("2026-01-10T08:00:00Z", None),
+    )
+    .await;
+    send_lead(&app, "alice-one", event["id"].as_str().unwrap(), json!({})).await;
+
+    let bob = me(&app, &common::cards::token("bob")).await;
+    assert_eq!(
+        bob.json["totals"],
+        json!({ "cards": 0, "events": 0, "leads": 0 })
+    );
+}
+
+// spec: ACC-027
+#[sqlx::test(migrations = "./migrations")]
+async fn totals_are_zero_for_an_account_that_is_not_approved(pool: PgPool) {
+    let app = test_app(pool).await;
+    let res = me(&app, &token("u1")).await;
+    assert_eq!(res.json["status"], "pending");
+    assert_eq!(
+        res.json["totals"],
+        json!({ "cards": 0, "events": 0, "leads": 0 })
+    );
+}

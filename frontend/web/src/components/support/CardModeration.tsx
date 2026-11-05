@@ -39,7 +39,7 @@ export function CardModeration({ card, onChanged }: { card: CardView; onChanged:
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <Button
         variant={blocked ? "default" : "destructive"}
         disabled={busy}

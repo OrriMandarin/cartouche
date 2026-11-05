@@ -1,7 +1,9 @@
 use crate::common;
 
 use axum::http::StatusCode;
+use chrono::TimeZone;
 use common::cards::{cards_app, create_card, put_card, save_body, token};
+use common::events::{create_event, event_body, get_leads, put_spam, send_lead};
 use common::{TestApp, TestResponse, test_app_with};
 use futures_util::future::join_all;
 use serde_json::{Value, json};
@@ -29,7 +31,7 @@ async fn create_card_with_defaults(pool: PgPool) {
     assert_eq!(card["slug"], "alice-durand");
     assert_eq!(card["status"], "active");
     assert_eq!(card["template"], "classique");
-    assert_eq!(card["theme"]["preset"], "clair");
+    assert_eq!(card["theme"]["preset"], "craie");
     assert_eq!(card["settings"], json!({}));
     assert_eq!(card["links"], json!([]));
     assert_eq!(card["content"]["first_name"], "Alice");
@@ -177,7 +179,7 @@ async fn update_validates_and_normalizes(pool: PgPool) {
         id,
         json!({
             "links": [{ "kind": "website", "url": "javascript:alert(1)", "label": null }],
-            "theme": { "preset": "clair", "accent": "url(x)" },
+            "theme": { "preset": "craie", "accent": "url(x)" },
         }),
     )
     .await;
@@ -219,6 +221,85 @@ async fn rejected_update_changes_nothing(pool: PgPool) {
     let after = get_card(&app, "alice", id).await;
     assert_eq!(after.json["slug"], "alice-durand");
     assert_eq!(after.json["content"]["job_title"], Value::Null);
+}
+
+// spec: EDI-013
+#[sqlx::test(migrations = "./migrations")]
+async fn a_new_card_takes_craie(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let res = post_card(
+        &app,
+        "alice",
+        json!({ "slug": "alice-durand", "first_name": "Alice" }),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    assert_eq!(res.json["theme"], json!({ "preset": "craie" }));
+}
+
+// spec: TPL-023, EDI-015
+#[sqlx::test(migrations = "./migrations")]
+async fn an_unreadable_theme_is_refused_and_nothing_changes(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card["id"].as_str().unwrap();
+
+    let res = put_card(
+        &app,
+        "alice",
+        id,
+        json!({
+            "content": { "first_name": "Zoé" },
+            "theme": { "preset": "terracotta", "text": "#b89580" },
+        }),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(&res), "validation_failed");
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "theme", "code": "low_contrast" }])
+    );
+
+    let after = get_card(&app, "alice", id).await;
+    assert_eq!(after.json["content"]["first_name"], "Alice");
+    assert_eq!(after.json["theme"], json!({ "preset": "craie" }));
+}
+
+// spec: TPL-023
+#[sqlx::test(migrations = "./migrations")]
+async fn a_stored_unreadable_card_is_still_served_and_duplicated(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card["id"].as_str().unwrap();
+    sqlx::query("update cards set theme = '{\"preset\":\"craie\",\"text\":\"#f7f6f2\"}'::jsonb")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let public = app
+        .request("GET", "/api/public/cards/alice-durand", None, None)
+        .await;
+    assert_eq!(public.status, StatusCode::OK);
+    assert_ne!(public.body.as_ref(), br#"{"state":"inactive"}"#);
+
+    let copy = app
+        .request(
+            "POST",
+            &format!("/api/cards/{id}/duplicate"),
+            Some(&token("alice")),
+            Some(json!({ "slug": "alice-copie" })),
+        )
+        .await;
+    assert_eq!(copy.status, StatusCode::CREATED, "{}", copy.json);
+
+    // Saving without fixing the colours is refused.
+    let res = put_card(&app, "alice", id, json!({})).await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST, "{}", res.json);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "theme", "code": "low_contrast" }])
+    );
 }
 
 // spec: LNK-003, LNK-025
@@ -358,7 +439,7 @@ async fn other_users_cards_are_404(pool: PgPool) {
             Some(&token("bob")),
             Some(json!({
                 "slug": "bob-hijack", "template": "classique", "settings": {},
-                "theme": { "preset": "clair" },
+                "theme": { "preset": "craie" },
                 "content": { "first_name": "Bob" }, "links": [],
             })),
         )
@@ -434,4 +515,189 @@ async fn pending_user_cannot_create(pool: PgPool) {
         )
         .await;
     assert_eq!(anonymous.status, StatusCode::UNAUTHORIZED);
+}
+
+/// Creates an event of the default form on the card, from `starts_at` to `ends_at`.
+async fn add_event(
+    app: &TestApp,
+    sub: &str,
+    card_id: &str,
+    starts_at: &str,
+    ends_at: Option<&str>,
+) -> String {
+    let event = create_event(app, sub, card_id, event_body(starts_at, ends_at)).await;
+    event["id"].as_str().unwrap().to_string()
+}
+
+// spec: EDI-023, EVT-020
+#[sqlx::test(migrations = "./migrations")]
+async fn cards_count_their_events_by_phase_at_the_server_clock(pool: PgPool) {
+    // The frozen clock reads 2026-01-15 12:00 UTC.
+    let app = cards_app(pool).await;
+    let busy = create_card(&app, "alice", "alice-busy").await;
+    let busy_id = busy["id"].as_str().unwrap();
+    let empty = create_card(&app, "alice", "alice-empty").await;
+    add_event(&app, "alice", busy_id, "2026-01-10T08:00:00Z", None).await;
+    add_event(
+        &app,
+        "alice",
+        busy_id,
+        "2026-01-15T08:00:00Z",
+        Some("2026-01-15T12:30:00Z"),
+    )
+    .await;
+    add_event(&app, "alice", busy_id, "2026-02-01T08:00:00Z", None).await;
+    add_event(
+        &app,
+        "alice",
+        busy_id,
+        "2026-01-01T08:00:00Z",
+        Some("2026-01-02T08:00:00Z"),
+    )
+    .await;
+
+    let expected = json!({ "running": 2, "upcoming": 1, "past": 1 });
+    let list = app
+        .request("GET", "/api/cards", Some(&token("alice")), None)
+        .await;
+    assert_eq!(list.json["cards"][0]["event_counts"], expected);
+    assert_eq!(
+        list.json["cards"][1]["event_counts"],
+        json!({ "running": 0, "upcoming": 0, "past": 0 })
+    );
+    assert_eq!(
+        get_card(&app, "alice", busy_id).await.json["event_counts"],
+        expected
+    );
+    assert_eq!(
+        get_card(&app, "alice", empty["id"].as_str().unwrap())
+            .await
+            .json["event_counts"],
+        json!({ "running": 0, "upcoming": 0, "past": 0 })
+    );
+
+    // The phase follows the clock.
+    app.clock.set(
+        chrono::Utc
+            .with_ymd_and_hms(2026, 1, 15, 12, 45, 0)
+            .unwrap(),
+    );
+    let later = get_card(&app, "alice", busy_id).await;
+    assert_eq!(
+        later.json["event_counts"],
+        json!({ "running": 1, "upcoming": 1, "past": 2 })
+    );
+}
+
+// spec: EDI-024
+#[sqlx::test(migrations = "./migrations")]
+async fn cards_count_their_leads_spam_included(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-leads").await;
+    let other = create_card(&app, "alice", "alice-none").await;
+    let card_id = card["id"].as_str().unwrap();
+    let first = add_event(&app, "alice", card_id, "2026-01-10T08:00:00Z", None).await;
+    let second = add_event(&app, "alice", card_id, "2026-01-11T08:00:00Z", None).await;
+    send_lead(&app, "alice-leads", &first, json!({})).await;
+    send_lead(
+        &app,
+        "alice-leads",
+        &first,
+        json!({ "device_id": uuid::Uuid::now_v7() }),
+    )
+    .await;
+    send_lead(
+        &app,
+        "alice-leads",
+        &second,
+        json!({ "device_id": uuid::Uuid::now_v7() }),
+    )
+    .await;
+    let leads = get_leads(&app, "alice", &first).await;
+    let lead_id = leads.json["leads"][0]["id"].as_str().unwrap();
+    assert_eq!(
+        put_spam(&app, "alice", lead_id, true).await.status,
+        StatusCode::OK
+    );
+
+    assert_eq!(get_card(&app, "alice", card_id).await.json["lead_count"], 3);
+    let list = app
+        .request("GET", "/api/cards", Some(&token("alice")), None)
+        .await;
+    assert_eq!(list.json["cards"][0]["lead_count"], 3);
+    assert_eq!(list.json["cards"][1]["lead_count"], 0);
+    assert_eq!(
+        get_card(&app, "alice", other["id"].as_str().unwrap())
+            .await
+            .json["lead_count"],
+        0
+    );
+}
+
+async fn support_disable(pool: &PgPool, id: &str) {
+    sqlx::query("update cards set support_disabled_at = now() where id = $1::uuid")
+        .bind(id)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+// spec: LNK-036, EVT-025, LNK-008
+#[sqlx::test(migrations = "./migrations")]
+async fn a_card_blocked_by_support_cannot_be_saved_by_its_owner(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card["id"].as_str().unwrap();
+    let event = create_event(&app, "alice", id, event_body("2026-01-10T08:00:00Z", None)).await;
+    send_lead(
+        &app,
+        "alice-durand",
+        event["id"].as_str().unwrap(),
+        json!({}),
+    )
+    .await;
+    support_disable(&pool, id).await;
+
+    let res = put_card(
+        &app,
+        "alice",
+        id,
+        json!({ "slug": "alice-new", "content": { "first_name": "Changed" } }),
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CONFLICT);
+    assert_eq!(error_code(&res), "card_disabled_by_support");
+    assert!(!res.json.to_string().contains("alice@example.com"));
+    // Nothing changed, the slug included.
+    let after = get_card(&app, "alice", id).await;
+    assert_eq!(after.json["slug"], "alice-durand");
+    assert_eq!(after.json["content"]["first_name"], "Alice");
+    assert_eq!(after.json["updated_at"], card["updated_at"]);
+
+    // Another owner still gets a plain 404.
+    let other = put_card_as(&app, "bob", id, &save_body(&card, json!({}))).await;
+    assert_eq!(other.status, StatusCode::NOT_FOUND);
+
+    // Its events stay editable (EVT-025) and its leads exportable (LNK-008).
+    let created = create_event(&app, "alice", id, event_body("2026-02-01T08:00:00Z", None)).await;
+    assert_eq!(created["card_id"], id);
+    let export = app
+        .request(
+            "GET",
+            &format!("/api/cards/{id}/leads/export?format=csv"),
+            Some(&token("alice")),
+            None,
+        )
+        .await;
+    assert_eq!(export.status, StatusCode::OK);
+}
+
+async fn put_card_as(app: &TestApp, sub: &str, id: &str, body: &Value) -> TestResponse {
+    app.request(
+        "PUT",
+        &format!("/api/cards/{id}"),
+        Some(&token(sub)),
+        Some(body.clone()),
+    )
+    .await
 }

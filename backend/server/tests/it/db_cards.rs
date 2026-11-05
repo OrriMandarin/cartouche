@@ -54,6 +54,9 @@ fn media_record(card_id: Uuid, slot: Slot) -> MediaRecord {
             width: 256,
             format: VariantFormat::Webp,
         }],
+        source: None,
+        framing: None,
+        duration_ms: None,
     }
 }
 

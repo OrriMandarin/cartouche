@@ -1,0 +1,59 @@
+/* Shared base of every card-themed screen: public page, neutral page, event form, editor preview.
+   From frontend/design/tokens/card-classique.css. No colour is hard-coded beyond the scrim of the
+   video pause button: everything comes from the --c-* variables set on the card element (TPL-026). */
+
+/* Variables expected on .cc (set by themeToCssVars):
+   --c-accent  --c-on-accent  --c-bg  --c-bg-2  --bg-angle  --c-text  --fade (0-100, unitless)
+   --radius-btn  --font-title  --font-body  --title-weight  --title-tracking  --c-danger  color-scheme */
+
+.cc {
+  /* Derived from the theme: computed here, never stored. */
+  --c-muted: color-mix(in oklab, var(--c-text) 78%, var(--c-bg));
+  --c-surface: color-mix(in oklab, var(--c-text) 7%, transparent);
+  --c-surface-hover: color-mix(in oklab, var(--c-text) 12%, transparent);
+  --c-field: color-mix(in oklab, var(--c-text) 4%, transparent);
+  --c-field-border: color-mix(in oklab, var(--c-text) 60%, var(--c-bg)); /* at least 3:1 on the 8 themes */
+  --c-focus: var(--c-text);
+  --c-scrim: rgb(0 0 0 / .5); /* constant: veil of the pause button over the video */
+  --c-on-scrim: #FFFFFF;
+  --radius-field: min(var(--radius-btn), 12px);
+  --radius-panel: min(var(--radius-btn), 20px);
+
+  position: relative; box-sizing: border-box; width: 100%; max-width: 28rem; margin: 0 auto; overflow: hidden;
+  background: linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2));
+  color: var(--c-text); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.cc *, .cc *::before, .cc *::after { box-sizing: border-box; }
+.cc a { text-decoration: none; }
+.cc svg.ic { width: 20px; height: 20px; flex: none; }
+/* Visible focus: 3 pixels in the text colour (PUB-038). */
+.cc a:focus-visible, .cc button:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 3px; }
+
+/* Pulsing dot of the "event in progress" label. */
+.cc-dot { position: relative; width: 8px; height: 8px; border-radius: 999px; background: currentColor; flex: none; }
+.cc-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid currentColor; animation: cc-ping 1.6s ease-out infinite; }
+@keyframes cc-ping { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(2.6); opacity: 0; } }
+
+/* Save contact: inverted colours, so it does not compete with the accent of the events (PUB-033). */
+.cc-save { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 24px; border-radius: var(--radius-btn); background: var(--c-text); color: var(--c-bg); font-size: 16px; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-dot::after { animation: none; }
+}
+
+/* --- Page frame: on mobile the card fills the screen; from 40rem, a 28rem card centred (PUB-037) --- */
+.cc-page { container-type: inline-size; min-height: 100svh; }
+.cc-stage { min-height: inherit; background: linear-gradient(var(--bg-angle), var(--c-bg), var(--c-bg-2)); }
+@container (min-width: 40rem) {
+  .cc-stage { padding: 56px 24px 80px; background: color-mix(in oklab, var(--c-bg) 86%, var(--c-text)); }
+  /* The neutral page fits the viewport inside the stage: no scrollbar (56px above, 80px below). */
+  .cc-stage .cc-off { min-height: calc(100svh - 136px); }
+  .cc-stage .cc { border-radius: 28px; box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 28px 64px -28px rgb(0 0 0 / .45); }
+}
+
+/* --- Neutral page of a card that is not served (LNK-034), from design/Etats.dc.html --- */
+.cc-off { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 48px 32px; text-align: center; }
+.cc-off-mark { width: 64px; height: 64px; border-radius: 999px; display: grid; place-items: center; background: var(--c-surface); color: var(--c-muted); margin-bottom: 8px; }
+.cc-off-title { margin: 0; font-family: var(--font-title); font-weight: var(--title-weight); letter-spacing: var(--title-tracking); font-size: 22px; line-height: 1.25; text-wrap: balance; }
+.cc-off-text { margin: 0; max-width: 30ch; font-size: 15px; color: var(--c-muted); text-wrap: pretty; }

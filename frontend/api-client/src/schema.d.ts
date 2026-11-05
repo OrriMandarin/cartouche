@@ -222,7 +222,7 @@ export interface paths {
         get: operations["get_card"];
         /**
          * Update a card
-         * @description Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted.
+         * @description Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted. Refused while support has disabled the card.
          */
         put: operations["update_card"];
         post?: never;
@@ -391,9 +391,29 @@ export interface paths {
         put?: never;
         /**
          * Upload a media
-         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar.
+         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files and its framing. The server keeps the whole image (the waiting image, for a video) as the media's source and cuts the files shown along the crop. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar. Refused while support has disabled the card.
          */
         post: operations["upload_media"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cards/{id}/media/{media_id}/reframe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-frame a media
+         * @description Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.
+         */
+        post: operations["reframe_media"];
         delete?: never;
         options?: never;
         head?: never;
@@ -681,7 +701,7 @@ export interface paths {
         };
         /**
          * Check a slug
-         * @description Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. Never says who holds a taken slug.
+         * @description Whether the slug can be claimed by the caller for the card being edited (`card_id`), or for a new card when omitted. When it is taken or reserved, three available alternatives are proposed. Never says who holds a taken slug.
          */
         get: operations["slug_availability"];
         put?: never;
@@ -716,6 +736,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Number of cards, events and leads of an account. */
+        AccountTotals: {
+            /** Format: int64 */
+            cards: number;
+            /** Format: int64 */
+            events: number;
+            /** Format: int64 */
+            leads: number;
+        };
         /** @description The postal address as typed by the prospect. */
         AddressInput: {
             city?: string | null;
@@ -766,8 +795,9 @@ export interface components {
             kind: components["schemas"]["CustomFieldKind"];
             label: string;
             /**
-             * @description A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`), a number
-             *     (`number`), a boolean (`checkbox`) or `null` when left empty.
+             * @description A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`, `datetime` as
+             *     `AAAA-MM-JJTHH:MM`), a number (`number`),
+             *     a boolean (`checkbox`) or `null` when left empty.
              */
             value: unknown;
         };
@@ -811,9 +841,16 @@ export interface components {
             content: components["schemas"]["ContentView"];
             /** Format: date-time */
             created_at: string;
+            /** @description The card's events by phase, computed with the server clock (EVT-020, EDI-023). */
+            event_counts: components["schemas"]["EventCounts"];
             header?: null | components["schemas"]["MediaView"];
             /** Format: uuid */
             id: string;
+            /**
+             * Format: int64
+             * @description Every contact of the card's events, spam ones included (EDI-024).
+             */
+            lead_count: number;
             links: components["schemas"]["LinkView"][];
             /** @description Public address of the card: `{PUBLIC_BASE_URL}/c/{slug}`. */
             public_url: string;
@@ -869,6 +906,17 @@ export interface components {
             last_name?: string | null;
             slug: string;
         };
+        /** @description A rectangle in proportions of the source image, from 0 to 1 (MED-026). */
+        CropRect: {
+            /** Format: double */
+            height: number;
+            /** Format: double */
+            width: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+        };
         /** @description A field added by the owner, with a stable identifier (FRM-020, FRM-032). */
         CustomField: {
             help?: string | null;
@@ -884,7 +932,7 @@ export interface components {
          * @description The types of custom field (FRM-021).
          * @enum {string}
          */
-        CustomFieldKind: "text" | "long_text" | "date" | "number" | "single_choice" | "checkbox";
+        CustomFieldKind: "text" | "long_text" | "date" | "datetime" | "number" | "single_choice" | "checkbox";
         /** @description The slug of a duplicate. */
         DuplicateCardBody: {
             slug: string;
@@ -902,6 +950,15 @@ export interface components {
             message: string;
             /** @description Id of the failed request, also sent in the `x-request-id` response header. */
             request_id: string;
+        };
+        /** @description Number of events of a card in each phase. */
+        EventCounts: {
+            /** Format: int32 */
+            past: number;
+            /** Format: int32 */
+            running: number;
+            /** Format: int32 */
+            upcoming: number;
         };
         /** @description Everything an owner submits for an event; also the body of the event routes. */
         EventInput: {
@@ -1082,20 +1139,44 @@ export interface components {
             id: string;
             /** @description Evaluated from `ADMIN_USER_IDS`, never stored. */
             is_admin: boolean;
+            /**
+             * Format: int32
+             * @description Events in progress at once that a card may have (EVT-019); the dashboard says when a
+             *     card reaches it (EDI-032).
+             */
+            max_simultaneous_events: number;
             status: components["schemas"]["UserStatus"];
+            /**
+             * @description What the account holds, for the account deletion area (ACC-027); zeros until the
+             *     account is approved.
+             */
+            totals: components["schemas"]["AccountTotals"];
         };
         /** @enum {string} */
         MediaKind: "image" | "video";
-        /** @description An uploaded image or video and the addresses of its files. */
+        /** @description An uploaded image or video, the addresses of its files and its framing. */
         MediaView: {
+            crop?: null | components["schemas"]["CropRect"];
+            /**
+             * Format: double
+             * @description The duration of a video, as the server read it (MED-013).
+             */
+            duration_seconds?: number | null;
             /** Format: uuid */
             id: string;
-            /** @description The WebP variants, narrowest first; for a video, the waiting image. */
+            /** @description The WebP variants, narrowest first, cut along the crop; for a video, the waiting image. */
             images: components["schemas"]["ImageVariantView"][];
             /** @description The largest JPEG variant, for a profile photo (vCard and link previews). */
             jpeg_url?: string | null;
             kind: components["schemas"]["MediaKind"];
-            /** @description The MP4 file, for a video. */
+            loop?: null | components["schemas"]["VideoLoop"];
+            /**
+             * Format: double
+             * @description When, in seconds, the waiting image of a video was captured (MED-028).
+             */
+            poster_time?: number | null;
+            source?: null | components["schemas"]["SourceView"];
+            /** @description The MP4 file, for a video, as uploaded. */
             video_url?: string | null;
         };
         /**
@@ -1181,6 +1262,27 @@ export interface components {
             field: components["schemas"]["StandardField"];
             required: boolean;
         };
+        /** @description Shape of the re-framing form, for the API description only. */
+        ReframeMediaBody: {
+            /**
+             * @description JSON `{x, y, width, height}` in proportions of the source: 4:3 for the header, square
+             *     for the avatar.
+             */
+            crop: string;
+            /** @description Video only. JSON `{start, end}` in seconds. Default: the whole video. */
+            loop?: string | null;
+            /**
+             * Format: binary
+             * @description Video only. The newly captured whole frame at `poster_time`, which becomes the new
+             *     source. Without it, the files are cut from the stored source.
+             */
+            poster?: string | null;
+            /**
+             * Format: double
+             * @description Video only. The time of the waiting image, in seconds, as a decimal. Default: 0.
+             */
+            poster_time?: number | null;
+        };
         /** @description The status to move an account to. */
         SetStatusBody: {
             status: components["schemas"]["UserStatus"];
@@ -1194,12 +1296,26 @@ export interface components {
             /** @description The slug as normalized; `null` when it is invalid. */
             slug?: string | null;
             status: components["schemas"]["SlugAvailabilityStatus"];
+            /**
+             * @description When the slug is taken or reserved: the first three available slugs of `<slug>-2`,
+             *     `<slug>-3`, ... (blocked slugs skipped, LNK-035); empty otherwise.
+             */
+            suggestions: string[];
         };
         /** @enum {string} */
         SlugAvailabilityStatus: "free" | "current" | "reserved" | "taken" | "invalid";
         SlugSuggestion: {
             /** @description A free slug derived from the name, or `null` when the name gives nothing usable. */
             slug?: string | null;
+        };
+        /** @description The source of a media, for its owner (MED-031). */
+        SourceView: {
+            /** Format: int32 */
+            height: number;
+            /** @description Signed in local mode; the bucket address in S3 mode. */
+            url: string;
+            /** Format: int32 */
+            width: number;
         };
         SpamBody: {
             /** @description `true` marks the contact as spam, `false` removes the mark. */
@@ -1289,21 +1405,41 @@ export interface components {
         /** @description Shape of the multipart form, for the API description only. */
         UploadMediaBody: {
             /**
+             * @description JSON `{x, y, width, height}` in proportions of the image (of the waiting image, for a
+             *     video): 4:3 for the header, square for the avatar. Default: the largest centred one.
+             */
+            crop?: string | null;
+            /**
              * Format: binary
              * @description A JPEG, PNG or WebP image (10 MB, 40 million pixels at most), or in `header` an MP4
              *     video (25 MB, 30 s at most). The type is read from the content.
              */
             file: string;
+            /** @description Video only. JSON `{start, end}` in seconds. Default: the whole video. */
+            loop?: string | null;
             /**
              * Format: binary
-             * @description The waiting image of a video, captured in the browser. Required for a video.
+             * @description The waiting image of a video: the whole frame at `poster_time`, captured in the
+             *     browser. Required for a video.
              */
             poster?: string | null;
+            /**
+             * Format: double
+             * @description Video only. The time of the waiting image, in seconds, as a decimal. Default: 0.
+             */
+            poster_time?: number | null;
             /** @description Where the media is shown. A video is only accepted in `header`. */
             slot: components["schemas"]["Slot"];
         };
         /** @enum {string} */
         UserStatus: "pending" | "approved" | "rejected" | "suspended";
+        /** @description The part of a header video that plays in a loop, in seconds (MED-028). */
+        VideoLoop: {
+            /** Format: double */
+            end: number;
+            /** Format: double */
+            start: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -2264,7 +2400,7 @@ export interface operations {
                     "application/json": components["schemas"]["CardView"];
                 };
             };
-            /** @description Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`). */
+            /** @description Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`); the `theme` field error is `invalid_theme`, or `low_contrast` when its colours fail the contrast checks. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2300,7 +2436,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The slug is not available (`slug_taken`, `slug_reserved`). */
+            /** @description The slug is not available (`slug_taken`, `slug_reserved`) or support disabled the card (`card_disabled_by_support`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3105,7 +3241,7 @@ export interface operations {
                     "application/json": components["schemas"]["MediaView"];
                 };
             };
-            /** @description Malformed request or form (`invalid_request`) or refused file (`validation_failed`: `file` is `required`, `image_too_large` or `video_too_long`; `slot` is `required`; `poster` is `poster_required` or `image_too_large`). */
+            /** @description Malformed request or form, a framing field that does not parse, or a loop or poster time sent with an image (`invalid_request`), or refused file or framing (`validation_failed`: `file` is `required`, `image_too_large` or `video_too_long`; `slot` is `required`; `poster` is `poster_required` or `image_too_large`; `crop` is `invalid_crop`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3141,6 +3277,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description Support disabled the card (`card_disabled_by_support`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description The file is too heavy: 10 MB for an image, 25 MB for a video (`payload_too_large`). */
             413: {
                 headers: {
@@ -3151,6 +3296,116 @@ export interface operations {
                 };
             };
             /** @description The content is not a supported image or video (`unsupported_media_type`). */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unexpected failure (`internal_error`). */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reframe_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the card. */
+                id: string;
+                /** @description Id of the media of this card to re-frame. */
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReframeMediaBody"];
+            };
+        };
+        responses: {
+            /** @description The new media. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaView"];
+                };
+            };
+            /** @description Malformed request or form, a framing field that does not parse, or a loop, poster time or new frame sent for an image (`invalid_request`), or refused framing (`validation_failed`: `crop` is `required` or `invalid_crop`; `poster` is `image_too_large`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing, invalid or expired token (`token_invalid`, `token_expired`). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such card or media of this card for the caller (`not_found`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Support disabled the card (`card_disabled_by_support`), or the media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The new frame is too heavy (`payload_too_large`). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The new frame is not a supported image (`unsupported_media_type`). */
             415: {
                 headers: {
                     [name: string]: unknown;

@@ -1,0 +1,66 @@
+/* Event form, its code screen, its closed screen and its confirmation (FRM-044 to FRM-049), from
+   frontend/design/design/Formulaire.dc.html. The .cc base, its derived variables (--c-field, --c-field-border,
+   --c-muted, --radius-field, --radius-panel...), .cc-dot and .cc-save come from public-page.css, loaded by
+   CardStage: they are not redefined here. Every colour comes from the --c-* variables of the card (TPL-026). */
+
+.fm { display: flex; flex-direction: column; gap: 20px; padding: 12px 20px 40px; }
+
+/* Back to the card: chevron, photo or initials, name (FRM-044). */
+.fm-back { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; align-self: flex-start; padding-right: 10px; border-radius: 999px; color: var(--c-text); font-size: 15px; font-weight: 600; }
+.fm-back-av { width: 32px; height: 32px; border-radius: 999px; overflow: hidden; flex: none; }
+.fm-back-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Without a photo, the initials (PUB-023), in the colours of the card's own initials. */
+.fm-back-av.is-initials { display: grid; place-items: center; background: var(--c-accent); color: var(--c-on-accent); font-family: var(--font-title); font-weight: var(--title-weight); font-size: 13px; line-height: 1; }
+
+/* Band in the accent colour: label, title, description. */
+.fm-head { display: flex; flex-direction: column; gap: 8px; padding: 22px 20px; border-radius: var(--radius-panel); background: var(--c-accent); color: var(--c-on-accent); }
+.fm-live { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.2; }
+.fm-title { margin: 0; font-family: var(--font-title); font-weight: var(--title-weight); letter-spacing: var(--title-tracking); font-size: 28px; line-height: 1.15; text-wrap: balance; }
+/* The owner's line breaks are kept. */
+.fm-intro { margin: 0; font-size: 15px; line-height: 1.5; text-wrap: pretty; white-space: pre-line; }
+
+.fm-form { display: flex; flex-direction: column; gap: 28px; }
+.fm-note { margin: 0; font-size: 14px; line-height: 1.4; color: var(--c-muted); }
+.fm-alert { display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border: 2px solid var(--c-danger); border-radius: var(--radius-field); font-size: 15px; font-weight: 600; line-height: 1.4; }
+.fm-alert svg.ic { color: var(--c-danger); margin-top: 1px; }
+
+/* Sections and fields. */
+.fm-set { border: 0; margin: 0; padding: 0; min-width: 0; }
+.fm-legend { padding: 0; margin: 0 0 14px; font-family: var(--font-title); font-weight: var(--title-weight); letter-spacing: var(--title-tracking); font-size: 21px; line-height: 1.2; }
+.fm-fields { display: flex; flex-direction: column; gap: 18px; }
+.fm-row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fm-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fm-label { padding: 0; font-size: 15px; font-weight: 600; line-height: 1.3; }
+/* The legend of a group of fields inside a section (the postal address). */
+.fm-sublegend { margin: 0 0 12px; }
+.fm-opt { font-weight: 400; color: var(--c-muted); }
+.fm-hint { margin: 0; font-size: 13px; line-height: 1.4; color: var(--c-muted); }
+/* 52 pixels high, 16-pixel text: phones do not zoom in (FRM-045). */
+.fm-input { width: 100%; min-height: 52px; padding: 12px 14px; border: 1px solid var(--c-field-border); border-radius: var(--radius-field); background: var(--c-field); color: var(--c-text); font: inherit; font-size: 16px; line-height: 1.3; }
+.fm-input[type=text], .fm-input[type=email], .fm-input[type=tel], textarea.fm-input { -webkit-appearance: none; appearance: none; }
+textarea.fm-input { min-height: 116px; resize: vertical; }
+.fm-input::placeholder { color: var(--c-muted); opacity: 1; }
+.fm-input:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; border-color: var(--c-text); }
+.fm-input[aria-invalid="true"] { border: 2px solid var(--c-danger); padding: 11px 13px; }
+.fm-error { display: flex; gap: 6px; align-items: flex-start; margin: 0; font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--c-danger); }
+.cc .fm-error svg.ic { width: 18px; height: 18px; margin-top: 1px; }
+
+/* Checkboxes: the consent and the custom ones. The consent text keeps its line breaks (FRM-037). */
+.fm-check { display: flex; gap: 12px; align-items: flex-start; }
+.fm-check input { width: 24px; height: 24px; margin: 1px 0 0; flex: none; accent-color: var(--c-accent); }
+.fm-check label { font-size: 15px; line-height: 1.45; white-space: pre-line; }
+.fm-check input:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
+
+.fm-actions { display: flex; flex-direction: column; gap: 14px; }
+.fm-submit { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 56px; padding: 0 24px; border: 0; border-radius: var(--radius-btn); background: var(--c-accent); color: var(--c-on-accent); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.fm-submit:disabled { cursor: default; opacity: .6; }
+.fm-privacy { margin: 0; font-size: 13px; line-height: 1.45; color: var(--c-muted); text-align: center; text-wrap: pretty; }
+.fm-privacy a { color: var(--c-text); text-decoration: underline; }
+
+/* Confirmation and closed screen. */
+.fm-done { min-height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+.fm-done-mark { width: 72px; height: 72px; border-radius: 999px; display: grid; place-items: center; background: var(--c-accent); color: var(--c-on-accent); margin-bottom: 4px; }
+.cc .fm-done-mark svg.ic { width: 32px; height: 32px; stroke-width: 2.5; }
+.fm-done-text { margin: 0; max-width: 32ch; font-size: 16px; line-height: 1.5; text-wrap: pretty; }
+.fm-done .cc-save { align-self: stretch; margin-top: 12px; }
+.fm-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--c-text); font: inherit; font-weight: 600; text-decoration: underline !important; cursor: pointer; }

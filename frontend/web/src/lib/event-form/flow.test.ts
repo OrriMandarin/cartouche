@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { afterReload, refusalAction, unlockMessageKey, utcDate } from "./flow";
+import { emptyLeadDraft } from "./answers";
+import { afterReload, refusalAction, sentFirstName, unlockMessageKey, utcDate } from "./flow";
 import { publicEventForm } from "./form.fixture";
 
 describe("refusalAction", () => {
   test("FRM-015 invalid answers go next to their fields", () => {
-    const fields = { "answers.email": "fieldErrors.invalid_email" };
+    const fields = { "answers.email": "invalid_email" };
     expect(refusalAction({ kind: "fields", fields })).toEqual({ kind: "fields", fields });
   });
 
@@ -71,5 +72,23 @@ describe("afterReload", () => {
       message: "eventForm.refused.closed",
       retry: false,
     });
+  });
+});
+
+describe("sentFirstName", () => {
+  const draftOf = (firstName: string) => {
+    const draft = emptyLeadDraft(publicEventForm());
+    draft.answers.first_name = firstName;
+    return draft;
+  };
+
+  test("FRM-047 the confirmation thanks the first name the prospect sent, trimmed", () => {
+    expect(sentFirstName(publicEventForm(), draftOf("  Inès "))).toBe("Inès");
+  });
+
+  test("FRM-047 without a first name the confirmation stays neutral", () => {
+    expect(sentFirstName(publicEventForm(), draftOf("  "))).toBe("");
+    const withoutFirstName = publicEventForm({ standard_fields: [{ field: "email", required: true }] });
+    expect(sentFirstName(withoutFirstName, draftOf("Inès"))).toBe("");
   });
 });

@@ -5,6 +5,7 @@ import {
   type EventDraft,
   addCustomField,
   addOption,
+  changeCustomFieldKind,
   clearErrors,
   draftFromEvent,
   draftToBody,
@@ -318,5 +319,23 @@ describe("isEventDraftDirty", () => {
     expect(isEventDraftDirty(saved, { ...saved, startsAt: "20277-03-15T10:00" })).toBe(true);
     expect(isEventDraftDirty(saved, { ...saved, endsAt: "20277-03-15T10:00" })).toBe(true);
     expect(isEventDraftDirty({ ...saved, startsAt: "20277-03-15T10:00" }, saved)).toBe(true);
+  });
+
+  test("FRM-021 FRM-022 changing the kind of a custom field keeps its id, label and order", () => {
+    const base = addCustomField(addCustomField(newEventDraft(PARIS, new Date("2027-03-15T10:00:00Z")), "text"), "checkbox");
+    const labelled = updateCustomField(base, 0, { label: "Rendez-vous souhaité", help: "Aide" });
+    const toChoice = changeCustomFieldKind(labelled, 0, "single_choice");
+    expect(toChoice.customFields[0]).toMatchObject({
+      id: labelled.customFields[0]!.id,
+      label: "Rendez-vous souhaité",
+      help: "Aide",
+      kind: "single_choice",
+      options: ["", ""],
+    });
+    expect(toChoice.customFields[1]).toBe(labelled.customFields[1]);
+    // Leaving a single choice drops its options; staying one keeps them.
+    const typed = setOption(toChoice, 0, 0, "Matin");
+    expect(changeCustomFieldKind(typed, 0, "single_choice")).toBe(typed);
+    expect(changeCustomFieldKind(typed, 0, "datetime").customFields[0]).toMatchObject({ kind: "datetime", options: [] });
   });
 });

@@ -101,6 +101,62 @@ fn device_of(body: &Value) -> &str {
     body["device_id"].as_str().expect("a device id")
 }
 
+// spec: FRM-043, FRM-038
+#[sqlx::test(migrations = "./migrations")]
+async fn a_datetime_answer_is_recorded_as_typed(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", SLUG).await;
+    let field_id = "0190c9a0-0000-7000-8000-00000000f003";
+    let event = running_event(
+        &app,
+        &card,
+        json!({ "custom_fields": [{
+            "id": field_id,
+            "label": "Rendez-vous souhaité",
+            "kind": "datetime",
+            "required": false,
+            "help": null,
+        }] }),
+    )
+    .await;
+    let form = form_of(&app, &event).await;
+
+    let refused = submit(
+        &app,
+        &event,
+        &submission(
+            &form,
+            json!({ "answers": { "first_name": "Zoé", "custom": { field_id: "2027-02-30T10:00" } } }),
+        ),
+    )
+    .await;
+    assert_refused(&refused, StatusCode::BAD_REQUEST, "validation_failed");
+
+    let res = submit(
+        &app,
+        &event,
+        &submission(
+            &form,
+            json!({ "answers": { "first_name": "Zoé", "custom": { field_id: "2027-03-20T14:30" } } }),
+        ),
+    )
+    .await;
+    assert_accepted(&res);
+    let answers: Value = sqlx::query_scalar("select custom_answers from leads")
+        .fetch_one(&app.pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        answers,
+        json!([{
+            "field_id": field_id,
+            "label": "Rendez-vous souhaité",
+            "kind": "datetime",
+            "value": "2027-03-20T14:30",
+        }])
+    );
+}
+
 // spec: FRM-004, FRM-008, FRM-038, FRM-013, FRM-016
 #[sqlx::test(migrations = "./migrations")]
 async fn a_valid_submission_is_stored_with_its_consent(pool: PgPool) {

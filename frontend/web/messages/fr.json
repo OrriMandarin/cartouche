@@ -8,12 +8,21 @@
     "signIn": "Se connecter"
   },
   "auth": {
+    "brand": "Cartouche",
     "login": {
-      "title": "Connexion",
+      "tagline": "Ta carte de visite, toujours à jour.",
+      "arguments": {
+        "tag": "Un tag NFC ou un QR code",
+        "page": "Une page à ton image",
+        "contacts": "Les contacts de tes salons, au même endroit"
+      },
+      "previewEvent": "Salon du Mariage Clermont 2027",
+      "frame": "Connexion",
+      "legal": "En continuant, tu acceptes les <terms>Conditions générales d’utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
       "signedInAs": "Connecté en tant que {name}",
       "signOut": "Se déconnecter",
       "loading": "Chargement…",
-      "redirecting": "Redirection vers le fournisseur d'identité…",
+      "redirecting": "Redirection vers le fournisseur d’identité…",
       "toDashboard": "Redirection vers ton tableau de bord…",
       "dashboardLink": "Y aller maintenant",
       "error": "La connexion a échoué. Réessaie dans un instant."
@@ -38,118 +47,158 @@
       "signOut": "Se déconnecter"
     },
     "pending": {
+      "badge": "En attente",
       "title": "Ton compte est en attente de validation",
-      "description": "Un administrateur doit valider ton compte avant que tu puisses créer des cartes. Reviens un peu plus tard."
+      "description": "Merci pour ton inscription. Nous validons chaque nouveau compte à la main\u00a0: tu pourras utiliser Cartouche avec {email} dès qu’il sera activé.",
+      "descriptionNoEmail": "Merci pour ton inscription. Nous validons chaque nouveau compte à la main\u00a0: tu pourras utiliser Cartouche dès que ton compte sera activé."
     },
     "rejected": {
-      "title": "Ton compte a été refusé",
-      "description": "Ton inscription n'a pas été retenue. Contacte le support si tu penses que c'est une erreur."
+      "badge": "Inscription refusée",
+      "title": "Ton inscription n’a pas été acceptée",
+      "description": "Ce compte ne peut pas utiliser Cartouche. Si tu penses qu’il s’agit d’une erreur, écris-nous\u00a0: nous reverrons ta demande."
     },
     "suspended": {
+      "badge": "Suspendu",
       "title": "Ton compte est suspendu",
-      "description": "L'accès à ton compte est suspendu. Contacte le support pour en savoir plus."
+      "description": "Tu ne peux plus modifier tes cartes pour le moment. Contacte le support pour connaître la raison et la marche à suivre."
     },
     "signupClosed": {
       "title": "Les inscriptions sont fermées",
-      "description": "Cette instance n'accepte pas de nouveaux comptes pour l'instant."
+      "description": "Cette instance n’accepte pas de nouveaux comptes pour l’instant."
     },
     "error": {
       "title": "Une erreur est survenue",
-      "message": "Réessaie dans un instant. Si le problème persiste, communique l'identifiant ci-dessous au support.",
-      "requestId": "Identifiant de requête :"
-    },
-    "nav": {
-      "account": "Mon compte"
+      "message": "Réessaie dans un instant. Si le problème persiste, communique l’identifiant ci-dessous au support.",
+      "requestId": "Identifiant de requête\u00a0:"
     },
     "page": {
       "title": "Mon compte",
-      "email": "Adresse e-mail",
-      "displayName": "Nom affiché",
-      "notProvided": "Non renseigné"
+      "profile": "Profil",
+      "notProvided": "Non renseigné",
+      "signedInWith": "Connexion avec {provider}",
+      "manageProfile": "Gérer l’e-mail et la connexion"
     },
     "delete": {
-      "open": "Supprimer mon compte",
-      "title": "Supprimer ton compte ?",
-      "consequences": "Tes cartes, leurs médias, tes événements et tes contacts seront supprimés pour toujours. Les liens de tes cartes resteront bloqués définitivement : personne, toi compris, ne pourra les reprendre.",
-      "identityProvider": "Ton compte chez le fournisseur d'identité ne sera pas supprimé : tu devras le supprimer toi-même chez lui.",
+      "zoneTitle": "Supprimer mon compte",
+      "summary": "Supprime définitivement ton compte et toutes ses données\u00a0: <b>{cards, plural, one {# carte} other {# cartes}}, {events, plural, one {# événement} other {# événements}} et {leads, plural, one {# contact} other {# contacts}}</b>. Les liens de tes cartes, tags NFC et QR codes compris, cesseront de fonctionner.",
+      "exportFirst": "Exporter mes contacts d’abord",
+      "open": "Supprimer mon compte…",
+      "title": "Supprimer ton compte\u00a0?",
+      "intro": "Tout sera supprimé, sans retour possible\u00a0:",
+      "listCards": "{count, plural, =0 {aucune carte} one {ta carte et sa page publique} other {tes # cartes et leurs pages publiques}}\u00a0;",
+      "listEvents": "{count, plural, =0 {aucun événement} one {ton événement et son formulaire} other {tes # événements et leurs formulaires}}\u00a0;",
+      "listLeads": "{count, plural, =0 {aucun contact collecté} one {le contact collecté} other {les # contacts collectés}}.",
+      "consequences": "Les médias de tes cartes sont supprimés aussi. Les liens de tes cartes resteront bloqués définitivement\u00a0: personne, toi compris, ne pourra les reprendre.",
+      "identityProvider": "Ton compte chez le fournisseur d’identité ne sera pas supprimé\u00a0: tu devras le supprimer toi-même chez lui.",
       "confirmWord": "SUPPRIMER",
-      "inputLabel": "Tape {word} pour confirmer",
+      "inputLabel": "Pour confirmer, tape <code>{word}</code>",
       "cancel": "Annuler",
       "confirm": "Supprimer définitivement",
-      "close": "Fermer",
-      "admin": "Un administrateur ne peut pas supprimer son compte. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS.",
-      "adminRefused": "Ton compte est celui d'un administrateur : il ne peut pas être supprimé. Demande à l'opérateur de l'instance de te retirer de ADMIN_USER_IDS."
+      "admin": "Un administrateur ne peut pas supprimer son compte. Demande à l’opérateur de l’instance de te retirer de ADMIN_USER_IDS.",
+      "adminRefused": "Ton compte est celui d’un administrateur\u00a0: il ne peut pas être supprimé. Demande à l’opérateur de l’instance de te retirer de ADMIN_USER_IDS."
     },
     "deleted": {
       "title": "Ton compte a été supprimé",
       "description": "Tes cartes, leurs médias, tes événements et tes contacts ont été supprimés. Les liens de tes cartes restent bloqués.",
-      "identityProvider": "Ton compte chez le fournisseur d'identité existe toujours : si tu veux aussi le supprimer, fais-le chez lui. Te reconnecter avec ce compte créera un nouveau compte Cartouche, vide.",
-      "home": "Retour à l'accueil"
+      "identityProvider": "Ton compte chez le fournisseur d’identité existe toujours\u00a0: si tu veux aussi le supprimer, fais-le chez lui. Te reconnecter avec ce compte créera un nouveau compte Cartouche, vide.",
+      "home": "Retour à l’accueil"
+    },
+    "actions": {
+      "signOut": "Se déconnecter",
+      "support": "Contacter le support"
     }
   },
   "dashboard": {
-    "title": "Tableau de bord",
-    "empty": "Aucune carte pour l'instant",
-    "support": "Support",
-    "loading": "Chargement…",
-    "newCard": "Nouvelle carte"
+    "title": "Mes cartes",
+    "summary": "{total, plural, one {# carte} other {# cartes}} · {active, plural, one {# active} other {# actives}}"
   },
   "cards": {
     "title": "Mes cartes",
     "untitled": "Carte sans nom",
     "close": "Fermer",
     "cancel": "Annuler",
+    "loading": "Chargement des cartes",
+    "create": "Créer une carte",
+    "hint": "Une carte désactivée affiche la page «\u00a0Cette carte n’est pas disponible\u00a0»\u00a0; tu peux la réactiver à tout moment.",
+    "contactSupport": "Contacter le support",
+    "columns": {
+      "card": "Carte",
+      "link": "Lien public",
+      "status": "État",
+      "events": "Événements"
+    },
     "status": {
       "active": "Active",
       "disabled": "Désactivée",
       "disabledBySupport": "Désactivée par le support"
     },
+    "events": {
+      "running": "{count} en cours",
+      "upcoming": "{count} à venir",
+      "none": "Aucun événement à venir"
+    },
+    "empty": {
+      "title": "Crée ta première carte",
+      "text": "Ta carte, c’est ta page publique\u00a0: tes coordonnées, tes liens, et un bouton pour t’enregistrer en un geste. Ton prénom et ton nom suffisent pour commencer.",
+      "create": "Créer une carte"
+    },
     "actions": {
       "edit": "Modifier",
+      "more": "Plus d’actions pour {slug}",
+      "menuLabel": "Actions de la carte",
+      "open": "Ouvrir la page publique",
       "disable": "Désactiver",
       "enable": "Réactiver",
       "duplicate": "Dupliquer",
-      "delete": "Supprimer",
-      "events": "Événements"
+      "delete": "Supprimer…"
     },
     "share": {
-      "copy": "Copier le lien",
-      "copied": "Lien copié",
+      "copyLabel": "Copier le lien de {slug}",
+      "copied": "Lien copié\u00a0: {link}",
       "copyFailed": "Impossible de copier le lien",
-      "qrSvg": "QR code SVG",
-      "qrPng": "QR code PNG",
+      "qrSvg": "Télécharger le QR code (SVG)",
+      "qrPng": "Télécharger le QR code (PNG)",
       "qrFailed": "Impossible de générer le QR code"
     },
     "slug": {
       "label": "Lien de la carte",
       "checking": "Vérification…",
-      "free": "Disponible",
-      "current": "C'est le lien actuel de cette carte",
-      "taken": "Déjà pris",
+      "free": "Ce lien est disponible.",
+      "current": "C’est le lien actuel de cette carte",
+      "taken": "Ce lien est déjà pris. Choisis-en un autre.",
+      "takenWithSuggestions": "Ce lien est déjà pris. Choisis-en un autre ou prends une suggestion\u00a0:",
       "reserved": "Réservé",
-      "invalid": "Invalide"
+      "invalid": "Invalide",
+      "suggestionsLabel": "Suggestions de liens"
     },
     "duplicate": {
       "title": "Dupliquer la carte",
-      "description": "Choisis le lien de la copie. Le contenu, les liens et l'apparence de la carte sont repris.",
+      "description": "Choisis le lien de la copie. Le contenu, les liens et l’apparence de la carte sont repris.",
       "confirm": "Dupliquer"
     },
     "delete": {
-      "title": "Supprimer la carte ?",
-      "description": "La carte « {name} » sera supprimée définitivement, et son lien affichera une page neutre.",
+      "title": "Supprimer cette carte\u00a0?",
+      "description": "{total, plural, =0 {La carte <b>{slug}</b> sera supprimée définitivement.} other {La carte <b>{slug}</b>{events, plural, =0 {} one {{eventsLead} son événement} other {{eventsLead} ses # événements}}{leads, plural, =0 {} one { et son contact} other { et ses # contacts}} seront supprimés définitivement.}} Les tags NFC et QR codes qui pointent vers ce lien afficheront «\u00a0Cette carte n’est pas disponible\u00a0».",
+      "cancel": "Annuler",
       "confirm": "Supprimer définitivement"
     },
     "new": {
       "title": "Nouvelle carte",
+      "subtitle": "Commence par l’essentiel\u00a0: tu compléteras le reste dans l’éditeur.",
       "firstName": "Prénom",
       "lastName": "Nom",
-      "submit": "Créer",
-      "back": "Retour au tableau de bord"
+      "slugHint": "Proposé à partir de ton nom. Choisis-le bien\u00a0: il sera inscrit dans tes tags NFC et tes QR codes. Lettres minuscules, chiffres et tirets.",
+      "slugHintShort": "Il sera inscrit dans tes tags NFC et tes QR codes.",
+      "submit": "Créer la carte",
+      "cancel": "Annuler"
     }
   },
   "support": {
     "title": "Support",
-    "backToDashboard": "Retour au tableau de bord",
+    "crumbs": {
+      "user": "Compte",
+      "card": "Carte"
+    },
     "forbidden": "Accès réservé",
     "loading": "Chargement…",
     "empty": "Aucun compte dans ce statut.",
@@ -176,13 +225,12 @@
     },
     "cards": {
       "title": "Cartes",
-      "empty": "Cet utilisateur n'a aucune carte.",
+      "empty": "Cet utilisateur n’a aucune carte.",
       "untitled": "Carte sans nom",
       "view": "Voir",
-      "owner": "Propriétaire :",
+      "owner": "Propriétaire\u00a0:",
       "disable": "Désactiver (support)",
       "enable": "Lever le blocage",
-      "backToSupport": "Retour au support",
       "userNotFound": "Utilisateur introuvable",
       "cardNotFound": "Carte introuvable"
     },
@@ -197,39 +245,55 @@
     "leads": {
       "title": "Contacts",
       "cardTitle": "Contacts — toute la carte",
-      "notice": "Consultation en lecture seule, enregistrée dans le journal d'audit",
+      "notice": "Consultation en lecture seule, enregistrée dans le journal d’audit",
       "backToEvents": "Retour aux événements",
       "eventNotFound": "Événement introuvable"
     }
   },
   "themes": {
-    "clair": "Clair",
-    "sombre": "Sombre",
-    "sable": "Sable",
-    "ocean": "Océan",
-    "foret": "Forêt",
-    "corail": "Corail"
+    "craie": "Craie",
+    "ivoire": "Ivoire",
+    "terracotta": "Terracotta",
+    "sauge": "Sauge",
+    "bonbon": "Bonbon",
+    "lagon": "Lagon",
+    "encre": "Encre",
+    "minuit": "Minuit"
   },
   "fonts": {
-    "moderne": "Moderne",
-    "editorial": "Éditorial",
-    "chaleureux": "Chaleureux"
+    "inter": "Sobre",
+    "playfair": "Éditoriale",
+    "fraunces": "Douce",
+    "bricolage": "Graphique"
   },
   "templates": {
     "classique": {
       "name": "Classique",
+      "description": "En-tête plein cadre, photo ronde à cheval, boutons d’événement, liens.",
       "settings": {
-        "links_layout": "Affichage des liens",
+        "links_layout": "Disposition des liens",
+        "links_layout_icons": "Icônes",
         "links_layout_list": "Liste",
-        "links_layout_icons": "Icônes seules",
-        "animate_events": "Animer les boutons d'événement"
+        "links_layout_icons_summary": "liens en icônes",
+        "links_layout_list_summary": "liens en liste"
       }
     }
   },
   "publicCard": {
     "saveContact": "Enregistrer le contact",
-    "inactive": "Cette carte n'est plus active",
+    "unavailable": {
+      "title": "Cette carte n’est pas disponible",
+      "text": "Le lien est peut-être incorrect, ou la carte n’est plus active."
+    },
     "notFound": "Carte introuvable",
+    "eventLive": "Événement en cours",
+    "contacts": "Coordonnées",
+    "emailLabel": "E-mail",
+    "phoneLabel": "Téléphone",
+    "linksList": "Liens",
+    "networks": "Réseaux",
+    "pauseVideo": "Mettre la vidéo en pause",
+    "playVideo": "Lire la vidéo",
     "links": {
       "website": "Site web",
       "linkedin": "LinkedIn",
@@ -244,14 +308,20 @@
   "eventForm": {
     "back": "Retour à la carte",
     "notFound": "Formulaire introuvable",
-    "closed": "Ce formulaire n'est pas ouvert en ce moment.",
+    "closed": "Ce formulaire n’est pas ouvert en ce moment.",
+    "live": "Événement en cours",
+    "note": "Tous les champs sont obligatoires, sauf mention «\u00a0facultatif\u00a0».",
     "optional": "facultatif",
+    "sections": {
+      "contact": "Vos coordonnées",
+      "project": "Votre projet"
+    },
     "code": {
-      "intro": "Saisissez le code d'accès communiqué sur place pour ouvrir le formulaire.",
-      "label": "Code d'accès",
+      "intro": "Saisissez le code d’accès communiqué sur place pour ouvrir le formulaire.",
+      "label": "Code d’accès",
       "submit": "Continuer",
-      "invalid": "Ce code n'est pas le bon. Vérifiez-le et réessayez.",
-      "changed": "Le code d'accès a changé. Saisissez le nouveau code pour envoyer vos réponses : elles sont conservées."
+      "invalid": "Ce code n’est pas le bon. Vérifiez-le et réessayez.",
+      "changed": "Le code d’accès a changé. Saisissez le nouveau code pour envoyer vos réponses\u00a0: elles sont conservées."
     },
     "fields": {
       "first_name": "Prénom",
@@ -267,43 +337,128 @@
       "choose": "Choisissez une option"
     },
     "honeypot": "Fax",
-    "submit": "Envoyer",
+    "submit": "Envoyer mes coordonnées",
+    "privacy": "Vos informations sont transmises uniquement à {name}.",
+    "privacyLink": "Vos données personnelles",
     "retry": "Réessayer",
-    "fix": "Certaines réponses sont à corriger : voyez les messages sous les champs.",
+    "errors": {
+      "firstNameRequired": "Indiquez votre prénom.",
+      "lastNameRequired": "Indiquez votre nom.",
+      "birthDateRequired": "Indiquez votre date de naissance.",
+      "birthDateInvalid": "Vérifiez la date de naissance.",
+      "emailRequired": "Indiquez votre adresse e-mail.",
+      "emailInvalid": "Vérifiez l’adresse e-mail (exemple\u00a0: nom@domaine.fr).",
+      "emailTooLong": "Cette adresse e-mail est trop longue.",
+      "phoneRequired": "Indiquez votre numéro de téléphone.",
+      "phoneInvalid": "Vérifiez le numéro de téléphone (exemple\u00a0: 06 12 34 56 78).",
+      "streetRequired": "Indiquez la rue.",
+      "postalCodeRequired": "Indiquez le code postal.",
+      "cityRequired": "Indiquez la ville.",
+      "countryRequired": "Indiquez le pays.",
+      "textRequired": "Indiquez une réponse.",
+      "dateRequired": "Indiquez une date.",
+      "dateTimeRequired": "Indiquez une date et une heure.",
+      "dateInvalid": "Vérifiez la date.",
+      "numberRequired": "Indiquez un nombre.",
+      "numberInvalid": "Indiquez un nombre, par exemple 80 ou 12,5.",
+      "choiceRequired": "Choisissez une option.",
+      "choiceInvalid": "Choisissez l’une des options proposées.",
+      "checkboxRequired": "Cochez cette case pour continuer.",
+      "tooLong": "Ce texte est trop long.",
+      "consentRequired": "Cochez cette case pour envoyer vos coordonnées."
+    },
+    "summary": "Vos coordonnées n’ont pas été envoyées\u00a0: {count, plural, one {# champ est à corriger.} other {# champs sont à corriger.}}",
     "refused": {
-      "form_changed": "Le formulaire a été modifié pendant votre saisie. Vos réponses sont conservées : vérifiez-les, cochez à nouveau la case de consentement, puis envoyez.",
-      "closed": "Ce formulaire est fermé : il n'accepte plus de réponses.",
+      "form_changed": "Le formulaire a été modifié pendant votre saisie. Vos réponses sont conservées\u00a0: vérifiez-les, cochez à nouveau la case de consentement, puis envoyez.",
+      "closed": "Ce formulaire est fermé\u00a0: il n’accepte plus de réponses.",
       "device_limit": "Vous avez déjà envoyé ce formulaire depuis cet appareil.",
-      "rate_limited": "Trop d'envois depuis ce réseau. Réessayez dans quelques minutes.",
-      "inactive": "Cette carte n'est plus active : le formulaire ne peut plus être envoyé.",
-      "network": "La connexion a échoué. Vos réponses sont conservées : réessayez.",
+      "rate_limited": "Trop d’envois depuis ce réseau. Réessayez dans quelques minutes.",
+      "inactive": "Cette carte n’est plus active\u00a0: le formulaire ne peut plus être envoyé.",
+      "network": "La connexion a échoué. Vos réponses sont conservées\u00a0: réessayez.",
       "unknown": "Une erreur est survenue. Réessayez dans un instant."
     },
     "confirmation": {
-      "title": "Merci !",
-      "text": "Vos informations ont bien été envoyées.",
+      "title": "Merci {firstName}, c’est envoyé\u00a0!",
+      "titleAnonymous": "Merci, c’est envoyé\u00a0!",
+      "text": "{name} a bien reçu vos coordonnées.",
       "saveContact": "Enregistrer le contact",
+      "saveContactOf": "Enregistrer le contact de {firstName}",
+      "saveContactOfElided": "Enregistrer le contact d’{firstName}",
       "back": "Retour à la carte"
     }
+  },
+  "leaveDialog": {
+    "title": "Quitter sans enregistrer\u00a0?",
+    "stay": "Rester",
+    "discard": "Quitter sans enregistrer",
+    "saveAndLeave": "Enregistrer et quitter",
+    "saving": "Enregistrement…",
+    "cannotSave": "Enregistrer est impossible pour l’instant (envoi en cours ou adresse refusée). Termine-le ou corrige-la, ou quitte sans enregistrer."
   },
   "editor": {
     "title": "Modifier la carte",
     "loading": "Chargement de la carte…",
-    "back": "Retour",
-    "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
+    "leave": {
+      "body": "Tu as modifié la carte de {name}. Si tu quittes maintenant, ces modifications seront perdues\u00a0; la page publique reste telle qu’elle était.",
+      "bodyPhone": "Tes modifications seront perdues\u00a0; la page publique reste telle qu’elle était."
+    },
     "formLabel": "Formulaire de la carte",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
-    "saved": "Modifications enregistrées",
+    "savedToast": "Carte enregistrée et publiée",
     "unsaved": "Modifications non enregistrées",
-    "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+    "invalid": "Certains champs sont invalides\u00a0: corrige-les pour enregistrer.",
+    "errorCount": "{count, plural, one {# erreur à corriger} other {# erreurs à corriger}}",
+    "errorSummary": "Rien n’a été enregistré\u00a0: {count, plural, one {# point à corriger} other {# points à corriger}}.",
+    "errorFields": {
+      "linkKind": "Type du lien {index}",
+      "linkLabel": "Intitulé du lien {index}",
+      "linkUrl": "Adresse du lien {index}",
+      "other": "Autre champ"
+    },
+    "publicPage": "Page publique",
+    "optional": "(facultatif)",
+    "blocked": {
+      "title": "Cette carte est désactivée par le support.",
+      "description": "Tu ne peux pas la modifier pour le moment. Ses événements restent modifiables et ses contacts exportables.",
+      "support": "Contacter le support"
+    },
+    "modes": {
+      "label": "Mode",
+      "edit": "Modifier",
+      "preview": "Aperçu"
+    },
+    "tabs": {
+      "label": "Sections",
+      "identity": "Identité",
+      "contact": "Coordonnées",
+      "links": "Liens",
+      "media": "Médias",
+      "appearance": "Apparence"
+    },
     "sections": {
       "identity": "Identité",
+      "contact": "Coordonnées",
       "links": "Liens",
+      "media": "Médias",
       "template": "Template",
       "settings": "Réglages du template",
-      "theme": "Apparence",
-      "media": "Photo et en-tête"
+      "theme": "Thème"
+    },
+    "summary": {
+      "noContact": "Aucune coordonnée",
+      "networks": "{count, plural, one {# réseau} other {# réseaux}}",
+      "customLinks": "{count, plural, one {# lien libre} other {# liens libres}}",
+      "noLinks": "Aucun lien",
+      "headerVideo": "Vidéo d’en-tête",
+      "headerImage": "Photo d’en-tête",
+      "avatar": "photo de profil",
+      "avatarAlone": "Photo de profil",
+      "noMedia": "Aucun média",
+      "themeCustomized": "{name}, personnalisé"
+    },
+    "hints": {
+      "description": "Deux ou trois lignes s’affichent le mieux."
     },
     "content": {
       "first_name": "Prénom",
@@ -315,81 +470,154 @@
       "phone": "Téléphone"
     },
     "links": {
-      "empty": "Aucun lien pour l'instant.",
-      "add": "Ajouter un lien",
+      "hint": "Glisse la poignée, ou utilise les flèches du clavier, pour changer l’ordre.",
+      "empty": "Aucun lien pour l’instant.",
+      "addNetwork": "Ajouter un réseau",
+      "addCustom": "Ajouter un lien libre",
       "max": "Une carte a au plus 20 liens.",
-      "item": "Lien {index}",
-      "kind": "Type",
       "url": "Adresse",
       "label": "Intitulé",
-      "remove": "Supprimer le lien {index}",
-      "moveUp": "Monter le lien {index}",
-      "moveDown": "Descendre le lien {index}"
+      "move": "Déplacer {name}",
+      "remove": "Retirer {name}",
+      "customName": "Lien libre {index}",
+      "position": "{name}, position {position} sur {total}",
+      "roleDescription": "lien réordonnable",
+      "dragStart": "{name} saisi.",
+      "dragCancel": "Déplacement annulé\u00a0: {name} reste à sa place."
     },
     "template": {
       "beta": "bêta"
     },
     "settings": {
-      "none": "Ce template n'a pas de réglages."
+      "none": "Ce template n’a pas de réglages.",
+      "ofTemplate": "· réglage du template {name}"
     },
     "theme": {
-      "preset": "Thème",
-      "font": "Police",
-      "accent": "Couleur d'accent",
+      "presets": "Thèmes prêts à l’emploi",
+      "font": "Paire de polices",
+      "fontOption": "{name} · {title} + {body}",
+      "accent": "Couleur d’accent",
       "text": "Couleur du texte",
+      "pick": {
+        "accent": "Choisir la couleur d’accent",
+        "text": "Choisir la couleur du texte",
+        "background": "Choisir la couleur du fond",
+        "gradientFrom": "Choisir la couleur 1",
+        "gradientTo": "Choisir la couleur 2"
+      },
       "background": "Fond",
-      "backgroundSolid": "Couleur unie",
+      "backgroundSolid": "Uni",
       "backgroundGradient": "Dégradé",
       "backgroundColor": "Couleur du fond",
-      "gradientFrom": "Début du dégradé",
-      "gradientTo": "Fin du dégradé",
+      "gradientFrom": "Couleur 1",
+      "gradientTo": "Couleur 2",
       "gradientAngle": "Angle du dégradé",
-      "headerGradient": "Intensité du dégradé de l'en-tête",
+      "gradientAngleShort": "Angle",
+      "headerGradient": "Intensité du dégradé de l’en-tête",
       "buttonShape": "Forme des boutons",
       "shapes": {
         "square": "Carrée",
         "rounded": "Arrondie",
         "pill": "Pilule"
       },
-      "contrastWarning": "Le texte est difficile à lire sur ce fond. Choisis des couleurs plus contrastées ; tu peux quand même enregistrer."
+      "contrast": {
+        "text": "Texte illisible sur ce fond.",
+        "mutedOnHover": "Texte secondaire illisible sur ce fond.",
+        "onAccent": "Texte illisible sur la couleur d’accent.",
+        "accentVsBg": "Couleur d’accent trop proche du fond.",
+        "detail": "Contraste {ratio}:1, il faut au moins {minimum}:1.",
+        "blocked": "La carte ne peut pas être enregistrée ainsi.",
+        "fix": "Utiliser une couleur lisible ({hex})",
+        "ok": "Lisible\u00a0: contraste du texte {text}:1, des boutons {buttons}:1."
+      }
     },
     "media": {
       "header": "En-tête",
       "avatar": "Photo de profil",
       "headerHintImage": "Image JPEG, PNG ou WebP, 10 Mo au plus.",
-      "headerHintVideo": "Image JPEG, PNG ou WebP (10 Mo au plus) ou vidéo MP4 (30 secondes et 25 Mo au plus).",
+      "headerHintVideo": "Image ou courte vidéo (lue sans le son). Format 4:3 conseillé\u00a0; garde le sujet dans la moitié haute.",
       "avatarHint": "Image JPEG, PNG ou WebP, 10 Mo au plus. Elle sera recadrée en carré.",
       "choose": "Choisir un fichier",
       "replace": "Remplacer",
       "remove": "Retirer",
       "uploading": "Envoi en cours…",
-      "current": "Fichier actuel : {kind}",
+      "current": "Fichier actuel\u00a0: {kind}",
       "kinds": {
         "image": "image",
         "video": "vidéo"
       },
       "thumbnail": "Aperçu du fichier actuel",
-      "cropper": {
-        "title": "Recadrer la photo",
-        "description": "Déplace et zoome la photo : la partie dans le cercle sera gardée.",
+      "headerKind": {
+        "image": "Photo",
+        "video": "Vidéo",
+        "videoLength": "Vidéo · {seconds}\u00a0s"
+      },
+      "recrop": "Recadrer",
+      "cannotRecrop": "Remplace ce média pour pouvoir le recadrer.",
+      "crop": {
+        "close": "Fermer",
+        "cancel": "Annuler",
+        "apply": "Appliquer",
+        "reset": "Réinitialiser",
         "zoom": "Zoom",
-        "confirm": "Valider",
-        "cancel": "Annuler"
+        "zoomValue": "{n}\u00a0%",
+        "zoomIn": "Zoomer",
+        "zoomOut": "Dézoomer",
+        "showZones": "Afficher les zones couvertes",
+        "header": {
+          "title": "Recadrer l’en-tête",
+          "stage": "Zone de recadrage. Flèches pour déplacer, plus et moins pour zoomer.",
+          "fade": "Fondu {n}\u00a0%",
+          "avatar": "Photo de profil",
+          "legendFade": "Fondu vers le fond de la carte",
+          "legendRound": "Photo de profil et bouton pause",
+          "preview": "Sur ta carte",
+          "phoneHint": "Pince pour zoomer, glisse pour déplacer."
+        },
+        "avatar": {
+          "title": "Recadrer la photo de profil",
+          "stage": "Zone de recadrage de la photo de profil",
+          "preview": "Aperçu",
+          "previewCard": "Sur la carte · 112 px",
+          "previewApp": "Dans l’app · 36 px",
+          "hint": "Centre le visage et laisse un peu d’air au-dessus de la tête\u00a0: le cercle est bordé par le fond de la carte.",
+          "phoneHint": "Pince pour zoomer, glisse pour centrer le visage."
+        },
+        "video": {
+          "title": "Recadrer la vidéo d’en-tête",
+          "titlePhone": "Recadrer la vidéo",
+          "stage": "Zone de recadrage de la vidéo. Flèches pour déplacer, plus et moins pour zoomer.",
+          "play": "Lire l’extrait",
+          "strip": "Extrait en boucle",
+          "start": "Début de l’extrait",
+          "end": "Fin de l’extrait",
+          "playhead": "Tête de lecture",
+          "seconds": "{s}\u00a0s",
+          "loop": "Boucle de {d}\u00a0s",
+          "playheadAt": "tête de lecture à {t}",
+          "poster": "Utiliser l’image à {t} comme image d’attente",
+          "posterPhone": "Cette image comme image d’attente"
+        }
       },
       "errors": {
-        "unsupported": "Ce format n'est pas accepté",
+        "unsupported": "Ce format n’est pas accepté",
         "too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
         "unreadable": "Ce fichier ne peut pas être lu par le navigateur",
         "video_too_long": "La vidéo dépasse 30 secondes",
         "image_too_large": "Cette image est trop grande (40 millions de pixels au plus)",
-        "poster_required": "L'image d'attente de la vidéo est manquante : réessaie",
+        "poster_required": "L’image d’attente de la vidéo est manquante\u00a0: réessaie",
         "payload_too_large": "Ce fichier est trop lourd (10 Mo pour une image, 25 Mo pour une vidéo)",
-        "unsupported_media_type": "Ce fichier n'est pas une image JPEG, PNG ou WebP ni une vidéo MP4, ou il est abîmé",
-        "generic": "L'envoi a échoué : réessaie dans un instant"
+        "unsupported_media_type": "Ce fichier n’est pas une image JPEG, PNG ou WebP ni une vidéo MP4, ou il est abîmé",
+        "media_not_reframable": "Remplace ce média pour pouvoir le recadrer.",
+        "invalid_crop": "Ce recadrage n’est pas accepté\u00a0: réessaie.",
+        "generic": "L’envoi a échoué\u00a0: réessaie dans un instant"
       }
     },
     "preview": {
       "title": "Aperçu de la carte",
+      "heading": "Aperçu",
+      "draft": "Brouillon, non publié",
+      "note": "L’aperçu suit chaque frappe. Rien n’est publié avant «\u00a0Enregistrer\u00a0».",
       "frame": "Aperçu dans un téléphone",
       "simulateEvent": "Simuler un événement en cours",
       "event": "Événement de démonstration"
@@ -402,15 +630,31 @@
     "notFound": "Événement introuvable",
     "newEvent": "Nouvel événement",
     "allLeads": "Tous les contacts de la carte",
-    "backToDashboard": "Retour au tableau de bord",
     "backToEvents": "Retour aux événements",
     "cancel": "Annuler",
     "close": "Fermer",
+    "backToCard": "Retour à la carte",
+    "subtitle": "Carte {slug} · fuseau\u00a0: {zone}",
+    "info": "Pendant un événement en cours, ta carte affiche un bouton qui ouvre son formulaire. Jusqu’à {max} événements en cours en même temps.",
+    "limit": {
+      "title": "{max} événements en cours\u00a0: c’est le maximum par carte.",
+      "body": "Termine-en un pour en démarrer un nouveau. Tu peux toujours en programmer à venir."
+    },
+    "empty": {
+      "title": "Aucun événement",
+      "text": "Crée un événement pour ton prochain salon\u00a0: pendant ses dates, ta carte affiche un bouton qui ouvre un formulaire de contact.",
+      "create": "Créer un événement"
+    },
     "groups": {
       "running": "En cours",
       "upcoming": "À venir",
-      "past": "Passés",
-      "empty": "Aucun événement"
+      "past": "Passés"
+    },
+    "columns": {
+      "event": "Événement",
+      "dates": "Dates",
+      "state": "État",
+      "contacts": "Contacts"
     },
     "phase": {
       "running": "En cours",
@@ -418,55 +662,80 @@
       "past": "Passé"
     },
     "row": {
-      "starts": "Début : {date}",
-      "ends": "Fin : {date}",
+      "start": "Début",
+      "end": "Fin",
+      "starts": "Début\u00a0: {date}",
+      "ends": "Fin\u00a0: {date}",
       "noEnd": "Sans fin",
+      "accessCode": "Code d’accès {code}",
+      "noAccessCode": "Sans code d’accès",
       "leads": "{count, plural, =0 {Aucun contact} one {# contact} other {# contacts}}"
     },
     "actions": {
       "edit": "Modifier",
-      "leads": "Contacts",
-      "endNow": "Terminer maintenant",
-      "delete": "Supprimer"
+      "endNow": "Terminer",
+      "delete": "Supprimer {title}"
     },
     "delete": {
-      "title": "Supprimer l'événement ?",
-      "description": "L'événement « {title} » sera supprimé définitivement. {count, plural, =0 {Il n'a aucun contact.} one {# contact sera supprimé avec lui.} other {# contacts seront supprimés avec lui.}}",
-      "confirm": "Supprimer définitivement"
+      "title": "Supprimer «\u00a0{title}\u00a0»\u00a0?",
+      "description": "{count, plural, =0 {Cet événement n’a collecté aucun contact. Il sera supprimé définitivement.} one {Le contact collecté pendant cet événement sera supprimé avec lui, définitivement.} other {Les # contacts collectés pendant cet événement seront supprimés avec lui, définitivement.}}",
+      "exportHint": "Exporte-les d’abord si tu veux les garder.",
+      "export": "Exporter les contacts",
+      "confirm": "{count, plural, =0 {Supprimer l’événement} one {Supprimer l’événement et # contact} other {Supprimer l’événement et # contacts}}"
     },
     "errors": {
-      "too_many_simultaneous_events": "La carte a déjà le maximum d'événements en même temps sur cette période. Change les dates de cet événement ou termine-en un autre, puis réessaie.",
-      "event_not_running": "Cet événement n'est pas en cours : il ne peut pas être terminé maintenant. Recharge la page pour voir son état actuel."
+      "too_many_simultaneous_events": "La carte a déjà le maximum d’événements en même temps sur cette période. Change les dates de cet événement ou termine-en un autre, puis réessaie.",
+      "event_not_running": "Cet événement n’est pas en cours\u00a0: il ne peut pas être terminé maintenant. Recharge la page pour voir son état actuel."
+    },
+    "state": {
+      "title": "État",
+      "running": "Depuis le {start} · se termine le {end}.",
+      "runningOpen": "Depuis le {start} · sans fin, tu le termineras à la main.",
+      "upcoming": "Commence le {start} · se termine le {end}.",
+      "upcomingOpen": "Commence le {start} · sans fin, tu le termineras à la main.",
+      "past": "Du {start} au {end}.",
+      "contacts": "{count, plural, =0 {Voir les contacts} one {Voir le contact} other {Voir les # contacts}}",
+      "endNow": "Terminer maintenant",
+      "delete": "Supprimer l’événement"
     },
     "editor": {
       "titleNew": "Nouvel événement",
-      "titleEdit": "Modifier l'événement",
-      "formLabel": "Formulaire de l'événement",
+      "titleEdit": "Modifier l’événement",
       "save": "Enregistrer",
+      "cancel": "Annuler",
       "saving": "Enregistrement…",
       "unsaved": "Modifications non enregistrées",
-      "leaveConfirm": "Tu as des modifications non enregistrées. Quitter l'éditeur quand même ?",
-      "invalid": "Certains champs sont invalides : corrige-les pour enregistrer.",
+      "leave": {
+        "body": "Tu as modifié l’événement «\u00a0{title}\u00a0». Si tu quittes maintenant, ces modifications seront perdues.",
+        "untitled": "sans titre"
+      },
+      "invalid": "Certains champs sont invalides\u00a0: corrige-les pour enregistrer.",
+      "optional": "(facultatif)",
       "sections": {
-        "general": "Événement",
+        "general": "Informations",
         "dates": "Dates",
-        "access": "Accès et limites",
-        "standardFields": "Informations demandées",
+        "access": "Accès au formulaire",
+        "standardFields": "Champs standards",
         "customFields": "Champs personnalisés",
         "consent": "Consentement"
       },
       "name": "Titre",
+      "nameHint": "Affiché sur le bouton de ta carte et en haut du formulaire.",
       "description": "Description",
       "startsAt": "Début",
       "endsAt": "Fin",
+      "startDate": "Date de début",
+      "startTime": "Heure de début ({zone})",
+      "endDate": "Date de fin",
+      "endTime": "Heure de fin ({zone})",
       "noEnd": "Sans fin",
-      "zone": "Fuseau horaire : {zone}",
-      "accessCode": "Code d'accès",
-      "accessCodeHint": "Facultatif. Les prospects doivent le saisir avant de voir le formulaire. Il s'affiche ici en clair.",
+      "noEndHint": "(tu le termineras à la main)",
+      "zone": "Fuseau\u00a0: {zone}",
+      "accessCode": "Code d’accès",
+      "accessCodeHint": "Affiché en clair. Donne-le aux visiteurs de ton stand\u00a0; sans code, le formulaire est ouvert à tous.",
       "deviceLimit": "Envois par appareil",
-      "deviceLimitHint": "Combien de fois un même appareil peut envoyer le formulaire, de 1 à 100.",
+      "deviceLimitHint": "Nombre de fois qu’un même téléphone peut envoyer le formulaire. 1 par défaut.",
       "standard": {
-        "hint": "Choisis les informations que le formulaire demande aux prospects.",
         "labels": {
           "first_name": "Prénom",
           "last_name": "Nom",
@@ -482,90 +751,116 @@
         }
       },
       "custom": {
-        "empty": "Aucun champ personnalisé pour l'instant.",
-        "item": "Champ {index}",
+        "hint": "Glisse la poignée pour changer l’ordre.",
+        "empty": "Aucun champ personnalisé pour l’instant.",
+        "name": "Champ {index}",
         "kinds": {
           "text": "Texte",
           "long_text": "Texte long",
           "date": "Date",
+          "datetime": "Date et heure",
           "number": "Nombre",
           "single_choice": "Choix unique",
           "checkbox": "Case à cocher"
         },
-        "add": "Ajouter : {kind}",
-        "addHint": "Ajouter un champ",
+        "kind": "Type",
+        "add": "Ajouter un champ",
+        "addHint": "Types\u00a0: texte, texte long, date, date et heure, nombre, choix unique, case à cocher.",
         "label": "Libellé",
-        "help": "Texte d'aide",
+        "help": "Aide",
         "required": "Obligatoire",
-        "options": "Options",
-        "option": "Option {index}",
-        "addOption": "Ajouter une option",
-        "removeOption": "Retirer l'option {index}",
-        "moveUp": "Monter le champ {index}",
-        "moveDown": "Descendre le champ {index}",
-        "remove": "Retirer le champ {index}",
+        "options": "Choix proposés",
+        "option": "Choix {index}",
+        "addOption": "Ajouter un choix",
+        "removeOption": "Retirer le choix {index}",
+        "move": "Déplacer {name}",
+        "remove": "Supprimer le champ {name}",
+        "roleDescription": "champ réordonnable",
+        "dragStart": "{name} saisi.",
+        "dragCancel": "Déplacement annulé\u00a0: {name} reste à sa place.",
         "max": "Un événement a au plus 30 champs personnalisés."
       },
       "consent": {
+        "preview": "Aperçu de la case de consentement",
+        "always": "Toujours affichée et obligatoire. Le nom vient de ta carte\u00a0; la date et le texte acceptés sont conservés avec chaque contact.",
         "mode": "Texte de consentement",
         "modes": {
           "default": "Texte par défaut",
           "custom": "Texte personnalisé"
         },
-        "defaultHint": "Texte présenté aux prospects, avec le contenu actuel de la carte.",
         "loading": "Chargement du texte…",
-        "unavailable": "Le texte par défaut n'a pas pu être chargé.",
+        "unavailable": "Le texte par défaut n’a pas pu être chargé.",
         "custom": "Ton texte",
-        "customHint": "Il s'affiche tel quel, sans variable (3 000 caractères au plus). Vide, il revient au texte par défaut.",
-        "noEmail": "Ta carte n'a pas d'e-mail : le texte par défaut renvoie les demandes d'accès et de suppression vers toi, sans adresse. Ajoute un e-mail à la carte pour que les prospects sachent où écrire."
+        "customHint": "Il s’affiche tel quel, sans variable (3 000 caractères au plus). Vide, il revient au texte par défaut.",
+        "noEmail": "Ta carte n’a pas d’e-mail\u00a0: le texte par défaut renvoie les demandes d’accès et de suppression vers toi, sans adresse. Ajoute un e-mail à la carte pour que les prospects sachent où écrire."
       }
     }
   },
   "leads": {
     "title": "Contacts",
     "loading": "Chargement des contacts…",
-    "empty": "Aucun contact pour l'instant.",
+    "empty": "Aucun contact pour l’instant.",
     "unnamed": "Contact sans nom",
     "spamBadge": "Spam",
     "markSpam": "Marquer comme spam",
-    "unmarkSpam": "Ce n'est pas un spam",
+    "unmarkSpam": "Retirer le marquage spam",
+    "markedSpam": "Contact marqué comme spam",
+    "unmarkedSpam": "Marquage spam retiré",
+    "undo": "Annuler",
+    "undoFailed": "L’annulation a échoué. Réessaie dans un instant.",
     "delete": "Supprimer",
     "search": "Rechercher un contact",
-    "searchPlaceholder": "Nom, email, ville, téléphone…",
+    "searchPlaceholder": "Rechercher un nom, un e-mail, un téléphone",
     "count": "{count, plural, =0 {Aucun contact} one {# contact} other {# contacts}}",
+    "summary": "{total, plural, =0 {Aucun contact} one {# contact} other {# contacts}}{spam, plural, =0 {} one {, dont # marqué comme spam} other {, dont # marqués comme spam}}",
     "noMatch": "Aucun contact ne correspond à ta recherche.",
-    "open": "Voir",
     "cardTitle": "Contacts — toute la carte",
+    "columns": {
+      "date": "Date",
+      "name": "Nom",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "event": "Événement"
+    },
+    "scope": {
+      "all": "Toute la carte",
+      "label": "Filtrer par événement",
+      "select": "Événement"
+    },
     "export": {
       "open": "Exporter",
       "title": "Exporter les contacts",
-      "description": "Le fichier contient tous les contacts, quelle que soit ta recherche.",
-      "format": "Format du fichier",
-      "csv": "CSV (Notion, tableurs)",
-      "xlsx": "Excel (XLSX)",
+      "scope": "Carte {slug} · {event} · <b>{contacts}</b>",
+      "scopeUnknown": "Le fichier contient tous les contacts, quelle que soit ta recherche.",
+      "format": "Format",
+      "csv": "CSV",
+      "csvHint": "Excel, Numbers, Google Sheets",
+      "xlsx": "XLSX",
+      "xlsxHint": "Fichier Excel",
       "json": "JSON",
-      "excelHint": "Pour ouvrir le fichier dans Excel, choisis plutôt le format XLSX.",
-      "includeSpam": "Inclure les contacts marqués spam",
-      "download": "Télécharger",
+      "jsonHint": "Pour un outil ou un script",
+      "includeSpam": "Inclure les contacts marqués comme spam ({count})",
+      "includeSpamPlain": "Inclure les contacts marqués comme spam",
+      "hint": "Une ligne par contact\u00a0; une colonne par champ, champs personnalisés et consentement compris.",
+      "download": "{count, plural, one {Exporter # contact} other {Exporter # contacts}}",
+      "downloadPlain": "Exporter",
       "cancel": "Annuler",
       "close": "Fermer"
     },
     "detail": {
-      "title": "Détail du contact",
-      "event": "Événement",
-      "submittedAt": "Reçu le",
-      "consentAt": "Consentement donné le",
-      "consentText": "Texte de consentement",
-      "spam": "Marqué comme spam",
-      "notSpam": "Non marqué comme spam",
+      "close": "Fermer",
+      "coordinates": "Coordonnées",
+      "answers": "Réponses",
+      "consent": "Consentement",
+      "accepted": "Accepté",
+      "acceptedOn": "le {moment}",
       "yes": "Oui",
       "no": "Non",
       "empty": "Non renseigné",
-      "close": "Fermer",
       "fields": {
         "first_name": "Prénom",
         "last_name": "Nom",
-        "email": "Email",
+        "email": "E-mail",
         "phone": "Téléphone",
         "birth_date": "Date de naissance",
         "street": "Rue",
@@ -576,7 +871,7 @@
       "address": "Adresse"
     },
     "deleteDialog": {
-      "title": "Supprimer ce contact ?",
+      "title": "Supprimer ce contact\u00a0?",
       "description": "Ce contact sera supprimé définitivement.",
       "confirm": "Supprimer définitivement",
       "cancel": "Annuler",
@@ -585,32 +880,63 @@
   },
   "fieldErrors": {
     "required": "Ce champ est obligatoire.",
+    "low_contrast": "Ces couleurs ne sont pas assez lisibles\u00a0: corrige-les pour enregistrer la carte.",
     "too_long": "Ce texte est trop long.",
     "invalid_slug": "Le lien ne peut contenir que des lettres minuscules, des chiffres et des tirets, entre 3 et 64 caractères.",
     "slug_taken": "Ce lien est déjà pris.",
     "slug_reserved": "Ce lien est réservé.",
-    "invalid_email": "Cette adresse e-mail n'est pas valide.",
-    "invalid_phone": "Ce numéro de téléphone n'est pas valide.",
-    "invalid_date": "Cette date n'est pas valide.",
+    "invalid_email": "Cette adresse e-mail n’est pas valide.",
+    "invalid_phone": "Ce numéro de téléphone n’est pas valide.",
+    "invalid_date": "Cette date n’est pas valide.",
     "invalid_number": "Saisissez un nombre, par exemple 12,5.",
-    "invalid_choice": "Choisissez l'une des options proposées.",
-    "invalid_value": "Cette réponse n'est pas valide.",
-    "invalid_url": "Cette adresse n'est pas valide : elle doit commencer par https:// ou http://.",
+    "invalid_choice": "Choisissez l’une des options proposées.",
+    "invalid_value": "Cette réponse n’est pas valide.",
+    "invalid_url": "Cette adresse n’est pas valide\u00a0: elle doit commencer par https:// ou http://.",
     "too_many_links": "Une carte a au plus 20 liens.",
-    "invalid_template": "Ce template n'existe pas.",
-    "invalid_theme": "Cette apparence n'est pas valide.",
+    "invalid_template": "Ce template n’existe pas.",
+    "invalid_theme": "Cette apparence n’est pas valide.",
     "invalid_settings": "Ces réglages ne sont pas valides.",
-    "invalid_media": "Ce fichier n'est pas utilisable ici.",
+    "invalid_media": "Ce fichier n’est pas utilisable ici.",
     "image_too_large": "Cette image est trop grande.",
     "video_too_long": "Cette vidéo est trop longue.",
-    "poster_required": "Une image d'attente est nécessaire pour la vidéo.",
+    "poster_required": "Une image d’attente est nécessaire pour la vidéo.",
     "out_of_range": "Cette valeur est en dehors des limites autorisées.",
     "end_before_start": "La fin doit être après le début.",
     "duplicate_option": "Cette option est déjà dans la liste.",
     "too_few_options": "Un choix unique a au moins 2 options.",
     "too_many_options": "Un choix unique a au plus 20 options.",
-    "no_fields": "Le formulaire doit demander au moins un champ : choisis un champ standard ou ajoute un champ personnalisé.",
+    "no_fields": "Le formulaire doit demander au moins un champ\u00a0: choisis un champ standard ou ajoute un champ personnalisé.",
     "too_many_fields": "Un événement a au plus 30 champs personnalisés.",
-    "duplicate_field_id": "Ce champ est en double : retire-le et ajoute-le à nouveau."
+    "duplicate_field_id": "Ce champ est en double\u00a0: retire-le et ajoute-le à nouveau."
+  },
+  "shell": {
+    "brand": "Cartouche",
+    "navLabel": "Navigation principale",
+    "breadcrumbLabel": "Fil d’Ariane",
+    "cards": "Mes cartes",
+    "contacts": "Contacts",
+    "account": "Mon compte",
+    "support": "Support",
+    "signOut": "Se déconnecter",
+    "back": "Retour",
+    "newCard": "Nouvelle carte",
+    "editCard": "Modifier la carte",
+    "newEvent": "Nouvel événement",
+    "event": "Événement"
+  },
+  "contactsPage": {
+    "title": "Contacts",
+    "description": "Les personnes qui ont rempli le formulaire d’un de tes événements, de la plus récente à la plus ancienne.",
+    "export": "Exporter",
+    "exportBar": "Exporter les contacts",
+    "card": "Carte\u00a0: <b>{slug}</b>",
+    "cardLabel": "Carte",
+    "noCards": "Aucune carte pour l’instant.",
+    "loading": "Chargement…",
+    "empty": {
+      "title": "Aucun contact pour l’instant",
+      "text": "Ils apparaîtront ici dès qu’une personne remplira le formulaire d’un de tes événements.",
+      "link": "Voir mes événements"
+    }
   }
 }

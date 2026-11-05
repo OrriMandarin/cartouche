@@ -78,7 +78,12 @@ With the three scenarios loaded (`make seed && make seed SCENARIO=cards && make 
 - **Whole-card lead view**: from the card's events page (`/dashboard/cards/<card ID>/events`), the "Tous les contacts de la carte" link (`card-leads-link`) opens `/dashboard/cards/<card ID>/leads` for `alice-durand`: contacts of every event, with their event, a search box and the detail view.
 - **Exports**: the export button of an event's contacts or of the whole-card view opens a dialog (format CSV, XLSX or JSON, spam included or not) and downloads the file. The browser sends its time zone as `tz` (`Europe/Paris` when missing or unknown). Without the site, by hand: `curl -s -D - -o /tmp/leads.csv "localhost:8080/api/cards/<card ID>/leads/export?format=csv&include_spam=true&tz=Europe/Paris" -H "authorization: Bearer $TOKEN"` (token as below). The contacts of the events scenario contain accents and emojis; open the XLSX in a spreadsheet to check them. The file name carries the day, read from the API's clock.
 - **Support views** (read-only, audited): sign in as `seed-admin`, open `/support`, the "approved" tab, Alice's user page (`user-link-seed-alice`), then the "Événements" button of her card (`/support/cards/<card ID>/events`), then the contacts of an event or of the whole card. Each load of a contact list writes one `leads.viewed` audit row (identifiers and count only). The lead list loads once on mount; in `next dev`, React StrictMode mounts components twice, so a visit in development can write **two** rows where production writes one: that is not a bug.
-- **Account deletion**: sign in as `seed-bob`, open the account page (`/dashboard/account`, `account-link` in the header) and delete the account. The site lands on `/account-deleted` (outside the account gate on purpose, so it sends no API request that would recreate an empty account). `seed-admin` cannot delete their account (`403 cannot_delete_admin`). To get Bob back, reseed: `make seed && make seed SCENARIO=cards`. **Blocked slugs survive a reseed** (`blocked_slugs` is not touched by scenarios): `bob-martin` stays unavailable to a new card, whereas `POST /api/test/reset` (or `cartouche-seed reset`) empties the table with the rest.
+- **All-cards contacts page**: sign in as `seed-alice` (with the `events` scenario loaded) and open `/dashboard/contacts` (the contacts entry of the side bar or tab bar): it lists the contacts of every card of the user.
+- **Support navigation entry**: the « Support » entry of the side bar (after « Mon compte ») appears only for administrators; sign in as `seed-admin` to see it, `seed-alice` does not get it.
+- **Account deletion**: sign in as `seed-bob`, open the account page (`/dashboard/account`, `account-link` on the « Mon compte » entry of the side bar, `tab-account` in the tab bar on a phone) and delete the account. The site lands on `/account-deleted` (outside the account gate on purpose, so it sends no API request that would recreate an empty account). `seed-admin` cannot delete their account (`403 cannot_delete_admin`). To get Bob back, reseed: `make seed && make seed SCENARIO=cards`. **Blocked slugs survive a reseed** (`blocked_slugs` is not touched by scenarios): `bob-martin` stays unavailable to a new card, whereas `POST /api/test/reset` (or `cartouche-seed reset`) empties the table with the rest.
+## Changing a seeded card's theme
+
+To try another ready-made theme or font pair on a seeded card, save the card through the API (the body replaces the whole card; start from `GET /api/cards/<id>`): set `"theme": {"preset": "minuit"}` (ids: `craie`, `ivoire`, `terracotta`, `sauge`, `bonbon`, `lagon`, `encre`, `minuit`; see `frontend/web/src/lib/theme/themes.json` for their colours and font pairs). In Playwright use `api.updateCard("seed-alice", id, { theme: { preset: "bonbon" } })`. The server refuses an unreadable colour combination (`400 low_contrast`).
 
 ## Signing in locally (`test` adapter)
 
@@ -118,6 +123,8 @@ For OIDC: `NEXT_PUBLIC_OIDC_AUTHORITY` and `NEXT_PUBLIC_OIDC_CLIENT_ID` instead 
 A `CARTOUCHE_BUILD_PROFILE=production` build refuses the `test` adapter (ACC-008); never work around this.
 
 ## Ports
+
+The web contact points (`NEXT_PUBLIC_SUPPORT_EMAIL`, `NEXT_PUBLIC_TERMS_URL`, `NEXT_PUBLIC_PRIVACY_URL`) default to placeholders; set them in `.env` to see real ones.
 
 Dev: Postgres 54320 (`DEV_DB_PORT`), API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000. Both can run together.
 

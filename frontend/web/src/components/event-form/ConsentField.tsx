@@ -1,40 +1,33 @@
-import { useTranslations } from "next-intl";
+import { ErrorText } from "./FormChrome";
 
 interface ConsentFieldProps {
   text: string;
   checked: boolean;
-  /** Message key of the error, if any. */
+  /** Error code of the consent, if any. */
   error: string | undefined;
   onChange(checked: boolean): void;
 }
 
 /** The consent box, labelled by the exact text that will be recorded (FRM-006, FRM-008). */
 export function ConsentField({ text, checked, error, onChange }: ConsentFieldProps) {
-  const t = useTranslations();
   return (
-    <div className="mt-6">
-      <div className="flex items-start gap-3">
+    <div className="fm-field">
+      <div className="fm-check">
         <input
           id="lead-consent"
           type="checkbox"
           data-testid="consent-checkbox"
-          className="mt-1 h-5 w-5 shrink-0"
-          style={{ accentColor: "var(--card-accent)" }}
           aria-labelledby="consent-text"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "lead-consent-error" : undefined}
           checked={checked}
           onChange={(event) => onChange(event.target.checked)}
         />
-        <label id="consent-text" htmlFor="lead-consent" data-testid="consent-text" className="text-sm whitespace-pre-line">
+        <label id="consent-text" htmlFor="lead-consent" data-testid="consent-text">
           {text}
         </label>
       </div>
-      {error && (
-        <p id="lead-consent-error" data-testid="field-error-consent" className="mt-1 text-sm font-medium">
-          {t(error)}
-        </p>
-      )}
+      {error && <ErrorText id="lead-consent-error" path="consent" code={error} />}
     </div>
   );
 }

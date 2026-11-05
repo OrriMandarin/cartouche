@@ -2,7 +2,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use cartouche_domain::{Slot, served_content_type};
+use cartouche_domain::{CropRect, Slot, served_content_type};
 use chrono::{DateTime, Utc};
 use futures_util::TryStreamExt;
 use object_store::aws::AmazonS3Builder;
@@ -18,7 +18,7 @@ use tokio::sync::Semaphore;
 use url::Url;
 use uuid::Uuid;
 
-use super::process::{EncodedVariant, ProcessError, process_image};
+use super::process::{PrepareError, PreparedImage, ProcessError, prepare_image};
 use super::signing::UrlSigner;
 use crate::config::MediaStorageConfig;
 
@@ -173,10 +173,11 @@ impl MediaService {
         format!("{}/{}", self.base_url, key.trim_start_matches('/'))
     }
 
-    /// Address of the file under `key` for the dashboard and the support page. In local mode it
-    /// is signed, so it stays readable when the card is not served; it expires at the start of
-    /// the hour after `now`, plus 24 hours, so it does not change within the hour and the
-    /// browser can cache it. In S3 mode it is the public address (MED-023, MED-024).
+    /// Address of the file under `key` for the dashboard and the support page, and of a source
+    /// for its owner (MED-031). In local mode it is signed, so it stays readable when the card
+    /// is not served; it expires at the start of the hour after `now`, plus 24 hours, so it
+    /// does not change within the hour and the browser can cache it. In S3 mode it is the
+    /// bucket address (MED-023, MED-024).
     pub fn dashboard_url(&self, key: &str, now: DateTime<Utc>) -> String {
         let url = self.url(key);
         if !self.serves_locally {
@@ -259,18 +260,22 @@ impl MediaService {
         metas.into_iter().map(|m| m.location.to_string()).collect()
     }
 
-    /// Produces the variants of an uploaded image on a blocking thread, at most two images at
-    /// a time, so uploads cannot exhaust CPU and memory.
-    pub async fn process_image(
+    /// Produces the source and the variants of an uploaded image, cut along `crop`, on a
+    /// blocking thread, at most two images at a time, so uploads cannot exhaust CPU and memory.
+    pub async fn prepare_image(
         &self,
         bytes: Bytes,
         slot: Slot,
-    ) -> Result<Vec<EncodedVariant>, ProcessError> {
-        match self.run_limited(move || process_image(&bytes, slot)).await {
+        crop: Option<CropRect>,
+    ) -> Result<PreparedImage, PrepareError> {
+        match self
+            .run_limited(move || prepare_image(&bytes, slot, crop))
+            .await
+        {
             Ok(result) => result,
             Err(Panicked) => {
                 tracing::error!("image processing panicked, refusing the file as corrupt");
-                Err(ProcessError::Corrupt)
+                Err(ProcessError::Corrupt.into())
             }
         }
     }

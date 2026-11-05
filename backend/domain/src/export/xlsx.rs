@@ -6,6 +6,7 @@ use super::{Cell, ExportError, ExportTable, labels};
 
 const DATE_FORMAT: &str = "yyyy-mm-dd";
 const DATE_TIME_FORMAT: &str = "yyyy-mm-dd hh:mm:ss";
+const LOCAL_DATE_TIME_FORMAT: &str = "yyyy-mm-dd hh:mm";
 
 impl From<XlsxError> for ExportError {
     fn from(error: XlsxError) -> Self {
@@ -24,6 +25,7 @@ pub fn write(table: &ExportTable) -> Result<Vec<u8>, ExportError> {
     let header_format = Format::new().set_bold();
     let date_format = Format::new().set_num_format(DATE_FORMAT);
     let date_time_format = Format::new().set_num_format(DATE_TIME_FORMAT);
+    let local_date_time_format = Format::new().set_num_format(LOCAL_DATE_TIME_FORMAT);
 
     for (column, header) in table.headers.iter().enumerate() {
         sheet.write_string_with_format(0, column_index(column), header, &header_format)?;
@@ -46,6 +48,14 @@ pub fn write(table: &ExportTable) -> Result<Vec<u8>, ExportError> {
                         column,
                         *instant,
                         &date_time_format,
+                    )?;
+                }
+                Cell::LocalDateTime(local) => {
+                    sheet.write_datetime_with_format(
+                        row_number,
+                        column,
+                        *local,
+                        &local_date_time_format,
                     )?;
                 }
                 Cell::Number(number) => match number.as_f64() {
@@ -189,6 +199,33 @@ mod tests {
                 .all(|(_, _, formula)| formula.is_empty()),
             "no formula"
         );
+    }
+
+    // spec: LEA-033
+    #[test]
+    fn xlsx_writes_a_local_date_time_cell_with_hours_and_minutes() {
+        let local = NaiveDateTime::parse_from_str("2027-03-20 14:30", "%Y-%m-%d %H:%M").unwrap();
+        let mut workbook = open(
+            write(&table(
+                &["Rendez-vous"],
+                vec![vec![Cell::LocalDateTime(local)]],
+            ))
+            .unwrap(),
+        );
+        let range = workbook.worksheet_range("Contacts").unwrap();
+        let Data::DateTime(wanted) = range.get_value((1, 0)).unwrap().clone() else {
+            panic!("a date-time cell")
+        };
+        assert!(
+            (wanted.as_f64().fract() - 14.5 / 24.0).abs() < 1e-6,
+            "14:30"
+        );
+        let styles = workbook.worksheet_style("Contacts").unwrap();
+        let format = styles
+            .get((1, 0))
+            .and_then(|style| style.number_format.as_ref())
+            .map(|format| format.format_code.clone());
+        assert_eq!(format.as_deref(), Some("yyyy-mm-dd hh:mm"));
     }
 
     // spec: LEA-029

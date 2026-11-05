@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
+import { Pencil } from "lucide-react";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +15,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/lib/api";
-import { cardDisplayName } from "@/lib/cards/display-name";
 import { useSlugAvailability } from "@/lib/cards/slug-availability";
 import { useSlugSuggestion } from "@/lib/cards/slug-suggestion";
-import { canDuplicate, canToggle } from "@/lib/cards/status";
+import { canEdit } from "@/lib/cards/status";
 import type { CardView } from "@/lib/cards/types";
+import { CardMenu } from "./CardMenu";
+import { DeleteCardDialog } from "./DeleteCardDialog";
 import { SlugField } from "./SlugField";
 
 function DuplicateForm({
@@ -36,7 +38,7 @@ function DuplicateForm({
   const suggestion = useSlugSuggestion(card.content.first_name ?? "", card.content.last_name ?? "");
   const [typed, setTyped] = useState<string | null>(null);
   const slug = typed ?? suggestion ?? "";
-  const { status } = useSlugAvailability(slug);
+  const { status, suggestions } = useSlugAvailability(slug);
 
   return (
     <form
@@ -46,9 +48,9 @@ function DuplicateForm({
         if (status === "free") onConfirm(slug.trim());
       }}
     >
-      <SlugField value={slug} onChange={setTyped} status={status} />
+      <SlugField value={slug} onChange={setTyped} status={status} suggestions={suggestions} />
       <DialogFooter>
-        <Button type="button" variant="outline" data-testid="card-duplicate-cancel" onClick={onCancel}>
+        <Button type="button" variant="secondary" data-testid="card-duplicate-cancel" onClick={onCancel}>
           {t("cancel")}
         </Button>
         <Button type="submit" data-testid="card-duplicate-confirm" disabled={disabled || status !== "free"}>
@@ -60,8 +62,8 @@ function DuplicateForm({
 }
 
 /**
- * spec: LNK-005, LNK-011, EDI-002, EDI-014. Edit, disable or enable, duplicate and delete a card.
- * Every button stays disabled from the click until `onChanged` (which reloads the list) settles.
+ * spec: LNK-005, LNK-011, EDI-002, EDI-014, LNK-036. Edit a card, and through its menu disable or enable, duplicate and
+ * delete it. Every menu action stays disabled from the click until `onChanged` (which reloads the list) settles.
  */
 export function CardActions({ card, onChanged }: { card: CardView; onChanged: () => Promise<void> }) {
   const t = useTranslations("cards");
@@ -90,65 +92,25 @@ export function CardActions({ card, onChanged }: { card: CardView; onChanged: ()
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/dashboard/cards/${card.id}`} data-testid={`card-edit-${card.slug}`}>
-            {t("actions.edit")}
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/dashboard/cards/${card.id}/events`} data-testid={`card-events-${card.slug}`}>
-            {t("actions.events")}
-          </Link>
-        </Button>
-        {canToggle(card.status) ? (
-          card.status === "active" ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              data-testid={`card-disable-${card.slug}`}
-              onClick={() => void run(() => api.POST("/api/cards/{id}/disable", params))}
-            >
-              {t("actions.disable")}
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              data-testid={`card-enable-${card.slug}`}
-              onClick={() => void run(() => api.POST("/api/cards/{id}/enable", params))}
-            >
-              {t("actions.enable")}
-            </Button>
-          )
-        ) : (
-          <span data-testid={`card-blocked-${card.slug}`} className="text-destructive text-sm font-medium">
-            {t("status.disabledBySupport")}
-          </span>
-        )}
-        {canDuplicate(card.status) ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            data-testid={`card-duplicate-${card.slug}`}
-            onClick={() => setDuplicating(true)}
-          >
-            {t("actions.duplicate")}
+    <div className="flex flex-col items-stretch gap-2 @min-[848px]:items-end">
+      <div className="flex items-center justify-end gap-1.5">
+        {canEdit(card.status) ? (
+          <Button asChild variant="secondary" className="flex-1 @min-[848px]:flex-none">
+            <Link href={`/dashboard/cards/${card.id}`} data-testid={`card-edit-${card.slug}`}>
+              <Pencil aria-hidden="true" />
+              {t("actions.edit")}
+            </Link>
           </Button>
         ) : null}
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy}
-          data-testid={`card-delete-${card.slug}`}
-          onClick={() => setDeleting(true)}
-        >
-          {t("actions.delete")}
-        </Button>
+        <CardMenu
+          card={card}
+          busy={busy}
+          onDuplicate={() => setDuplicating(true)}
+          onDelete={() => setDeleting(true)}
+          onToggle={() =>
+            void run(() => api.POST(card.status === "active" ? "/api/cards/{id}/disable" : "/api/cards/{id}/enable", params))
+          }
+        />
       </div>
       {error !== null ? <ErrorNotice error={error} /> : null}
 
@@ -170,32 +132,12 @@ export function CardActions({ card, onChanged }: { card: CardView; onChanged: ()
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleting} onOpenChange={setDeleting}>
-        <DialogContent closeLabel={t("close")}>
-          <DialogHeader>
-            <DialogTitle>{t("delete.title")}</DialogTitle>
-            <DialogDescription>
-              {t("delete.description", { name: cardDisplayName(card.content) ?? card.slug })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" data-testid="card-delete-cancel" onClick={() => setDeleting(false)}>
-              {t("cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              data-testid="card-delete-confirm"
-              disabled={busy}
-              onClick={() => {
-                setDeleting(false);
-                void run(() => api.DELETE("/api/cards/{id}", params));
-              }}
-            >
-              {t("delete.confirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteCardDialog
+        card={card}
+        open={deleting}
+        onOpenChange={setDeleting}
+        onConfirm={() => void run(() => api.DELETE("/api/cards/{id}", params))}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { expect, test } from "../fixtures";
 
 const MARIAGE = "Salon du Mariage Clermont 2027";
 const PARIS_2026 = "Salon de Paris 2026";
-const NOTICE = "Consultation en lecture seule, enregistrée dans le journal d'audit";
+const NOTICE = "Consultation en lecture seule, enregistrée dans le journal d’audit";
 
 let aliceCardId: string;
 let mariageId: string;

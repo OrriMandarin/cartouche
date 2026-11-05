@@ -4,15 +4,21 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { cardView } from "@/components/cards/card-view.fixture";
 import { renderWithIntl } from "@/components/editor/test-helpers";
 import { eventView } from "@/lib/events/event-view.fixture";
+import { userTimeZone, zoneLabel } from "@/lib/events/time";
 import CardEventsPage from "./page";
 
 const get = vi.fn();
 const api = { GET: get };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "card-1" }) }));
-vi.mock("@/components/account/AccountGate", () => ({ AccountGate: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("@/components/account/AccountGate", () => ({
+  AccountGate: ({ children }: { children: React.ReactNode }) => children,
+  useMe: () => ({ max_simultaneous_events: 3 }),
+}));
 vi.mock("@/components/events/EventList", () => ({
-  EventList: ({ events }: { events: { title: string }[] }) => <p data-testid="list-stub">{events.map((e) => e.title).join("|")}</p>,
+  EventList: ({ events, max }: { events: { title: string }[]; max: number }) => (
+    <p data-testid="list-stub">{events.map((e) => e.title).join("|")}{`#${max}`}</p>
+  ),
 }));
 
 beforeEach(() => {
@@ -31,8 +37,12 @@ describe("CardEventsPage", () => {
     );
     renderWithIntl(<CardEventsPage />);
     expect(screen.getByTestId("events-loading")).toBeVisible();
-    expect(await screen.findByTestId("list-stub")).toHaveTextContent("Salon ✨|Foire");
-    expect(screen.getByTestId("events-card-name")).toHaveTextContent("Alice Durand");
+    expect(await screen.findByTestId("list-stub")).toHaveTextContent("Salon ✨|Foire#3");
+    // EVT-022: the times follow the browser's zone, which is the only one the sub-header names.
+    expect(screen.getByTestId("events-card-name")).toHaveTextContent(
+      `Carte alice-durand · fuseau : ${zoneLabel(userTimeZone())}`,
+    );
+    expect(screen.getByTestId("events-card-name")).not.toHaveTextContent("Paris (");
     expect(screen.getByTestId("new-event")).toHaveAttribute("href", "/dashboard/cards/card-1/events/new");
     expect(get).toHaveBeenCalledWith("/api/cards/{id}/events", { params: { path: { id: "card-1" } } });
   });

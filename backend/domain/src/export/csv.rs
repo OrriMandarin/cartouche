@@ -32,6 +32,7 @@ fn text_of(cell: &Cell) -> String {
         Cell::Phone(phone) => phone.clone(),
         Cell::Date(date) => date.format("%Y-%m-%d").to_string(),
         Cell::DateTime(instant) => instant.format("%Y-%m-%d %H:%M:%S").to_string(),
+        Cell::LocalDateTime(local) => local.format("%Y-%m-%d %H:%M").to_string(),
         Cell::Number(number) => number.to_string(),
         Cell::Bool(true) => labels::YES.to_string(),
         Cell::Bool(false) => labels::NO.to_string(),
@@ -116,6 +117,17 @@ mod tests {
              \"dit \"\"Zoé\"\"\nLefèvre ✨\",,,7,Non,\r\n\
              Éloïse D’Aubigné-Müller,,,,,\r\n"
         );
+    }
+
+    // spec: LEA-033
+    #[test]
+    fn csv_writes_a_local_date_time_without_seconds() {
+        let local = NaiveDateTime::parse_from_str("2027-03-20 14:30", "%Y-%m-%d %H:%M").unwrap();
+        let bytes = write(&table(
+            &["Rendez-vous"],
+            vec![vec![Cell::LocalDateTime(local)]],
+        ));
+        assert_eq!(body(&bytes), "Rendez-vous\r\n2027-03-20 14:30\r\n");
     }
 
     // spec: LEA-028

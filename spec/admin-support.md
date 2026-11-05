@@ -1,10 +1,10 @@
 # Sign-up approval and support
 
-> Status: implemented (plans 1, 2 and 4)
+> Status: implemented (plans 1, 2, 4 and 6)
 
 ## Access and account management
 
-- **ADM-001** — The support page and the `/api/admin/*` routes are restricted to administrators; a non-administrator receives `403 forbidden` and the interface shows "Accès réservé" ("Access restricted").
+- **ADM-001** — The support page and the `/api/admin/*` routes are restricted to administrators; a non-administrator receives `403 forbidden` and the interface shows "Accès réservé" ("Access restricted"). Only administrators see the "Support" entry of the dashboard navigation (EDI-022), which leads to the support page; every support page belongs to that entry.
 - **ADM-002** — The support page lists users, filterable by status, and prominently displays the number of `pending` accounts.
 - **ADM-003** — Allowed status transitions: `pending → approved | rejected`, `rejected → approved`, `approved → suspended`, `suspended → approved`. Any other transition → `409 invalid_transition`.
 - **ADM-004** — An administrator cannot change the status of another administrator, or their own → `403 cannot_moderate_admin`.
@@ -29,10 +29,14 @@
 
 - **ADM-009** — An administrator can disable an abusive card; disabling by support is a state distinct from the owner's (see LNK-010). Plan 2.
 - **ADM-010** — Only an administrator can lift a card's disabling by support (see LNK-011). Plan 2.
-- **ADM-011** — When an account is suspended, all its cards show the neutral page "Cette carte n'est plus active" ("This card is no longer active") (see LNK-006). Plan 2.
+- **ADM-011** — When an account is suspended, all its cards show the neutral page (see LNK-006 and LNK-027). Plan 2.
 - **ADM-014** — Disabling a card by support and lifting that block are recorded in the audit log (see ADM-005), with the actions `card.support_disabled` and `card.support_enabled` and the card as target. Plan 2.
 - **ADM-015** — Disabling a card already blocked by support, or lifting a block that does not exist, is refused with `409 invalid_transition`. Plan 2.
 
 ## Limits of powers
 
 - **ADM-012** — Administrators do not modify users' content: they can only view it, disable a card, and approve, reject or suspend an account.
+
+## Instance contact points
+
+- **ADM-021** — The instance's support email address and the addresses of its terms of service and privacy policy are set by configuration of the web application (`NEXT_PUBLIC_SUPPORT_EMAIL`, `NEXT_PUBLIC_TERMS_URL`, `NEXT_PUBLIC_PRIVACY_URL`). Their defaults are placeholders that a production instance replaces: `support@cartouche.invalid`, `/cgu` and `/confidentialite` (see LND-004). Every "Contacter le support" ("Contact support") link of the interface opens an email to the support address.

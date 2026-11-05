@@ -1,12 +1,16 @@
 "use client";
 
+import { Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LeaveDialog } from "@/components/editor/LeaveDialog";
 import { describedBy, FieldMessage } from "@/components/editor/Field";
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { useShellSlots } from "@/components/shell/AppShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,19 +29,89 @@ import {
   newEventDraft,
 } from "@/lib/events/draft";
 import { eventErrorKey } from "@/lib/events/errors";
-import { userTimeZone, zoneLabel } from "@/lib/events/time";
+import { joinLocalInput, splitLocalInput, userTimeZone, zoneLabel } from "@/lib/events/time";
 import type { EventView } from "@/lib/events/types";
 import { useLeaveGuard } from "@/lib/leave-guard";
 import { ConsentEditor } from "./ConsentEditor";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { EventStatePanel } from "./EventStatePanel";
 import { StandardFieldsEditor } from "./StandardFieldsEditor";
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  id,
+  title,
+  aside,
+  children,
+}: {
+  id: string;
+  title: string;
+  /** Beside the title: a note or a badge. */
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold">{title}</h2>
+    <section
+      aria-labelledby={id}
+      className="bg-app-surface border-app-border rounded-app-lg shadow-app-sm flex flex-col gap-[18px] border p-6 @max-[847px]:p-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id={id} className="font-app-display text-xl font-semibold">
+          {title}
+        </h2>
+        {aside}
+      </div>
       {children}
     </section>
+  );
+}
+
+const HINT = "text-app-muted text-[13px] leading-[1.4]";
+const FIELD = "flex min-w-0 flex-col gap-1.5";
+
+/** A date and a time side by side, over the `datetime-local` value of the draft. */
+function DateTime({
+  testId,
+  value,
+  onChange,
+  dateLabel,
+  timeLabel,
+  disabled,
+  invalid,
+  describedBy: described,
+}: {
+  testId: string;
+  value: string;
+  onChange: (value: string) => void;
+  dateLabel: string;
+  timeLabel: string;
+  disabled?: boolean;
+  invalid?: true | undefined;
+  describedBy: string | undefined;
+}) {
+  const { date, time } = splitLocalInput(value);
+  return (
+    <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-2">
+      <Input
+        type="date"
+        data-testid={`${testId}-date`}
+        aria-label={dateLabel}
+        disabled={disabled}
+        value={date}
+        aria-invalid={invalid}
+        aria-describedby={described}
+        onChange={(e) => onChange(joinLocalInput(e.target.value, time))}
+      />
+      <Input
+        type="time"
+        data-testid={`${testId}-time`}
+        aria-label={timeLabel}
+        disabled={disabled}
+        value={time}
+        aria-invalid={invalid}
+        aria-describedby={described}
+        onChange={(e) => onChange(joinLocalInput(date, e.target.value))}
+      />
+    </div>
   );
 }
 
@@ -59,7 +133,6 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
   const [failure, setFailure] = useState<unknown>(null);
   const listHref = `/dashboard/cards/${cardId}/events`;
   const dirty = isEventDraftDirty(saved, draft);
-  useLeaveGuard(dirty, t("events.editor.leaveConfirm"));
 
   const message = (key: string | undefined) => (key ? (t.has(key) ? t(key) : t("events.editor.invalid")) : undefined);
   const messages = Object.fromEntries(Object.entries(errors).map(([path, key]) => [path, message(key)!]));
@@ -71,8 +144,9 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
     setErrors((current) => clearErrors(current, fixed));
   }
 
-  async function save() {
-    if (busy) return;
+  /** Stores the event; tells whether it is stored (a refused or failed save keeps the editor open). */
+  async function persist(): Promise<boolean> {
+    if (busy) return false;
     setBusy(true);
     setFailure(null);
     setErrors({});
@@ -84,121 +158,198 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
       } else {
         await api.POST("/api/cards/{id}/events", { params: { path: { id: cardId } }, body });
       }
-      // What was sent is now the reference, so the redirect below does not ask (EDI-021).
+      // What was sent is now the reference (EDI-021).
       setSaved(sent);
       // The button stays disabled until the page changes: a second click cannot create a second event.
-      router.push(listHref);
+      return true;
     } catch (error) {
       const refused = eventFieldErrors(error);
       setErrors(refused);
       if (Object.keys(refused).length === 0) setFailure(error);
       setBusy(false);
+      return false;
     }
   }
+
+  async function save() {
+    if (await persist()) router.push(listHref);
+  }
+
+  /** The event was ended from the state panel: the end it now has is both stored and in the draft (EVT-006). */
+  function onEnded(ended: EventView) {
+    // The draft keeps the end as a date and a time of day to the minute, so the seconds of "now" are floored away.
+    const { endsAt } = draftFromEvent(ended, zone);
+    setSaved((current) => ({ ...current, endsAt }));
+    setDraft((current) => ({ ...current, endsAt }));
+  }
+
+  // EDI-016, EDI-028: the browser asks before closing or reloading; a link of the page opens the leave dialog.
+  const leaveGuard = useLeaveGuard({ dirty, save: persist });
 
   const noEnd = draft.endsAt === "";
   const field = (path: string) => ({
     "aria-invalid": messages[path] ? (true as const) : undefined,
     "aria-describedby": describedBy(path, messages[path]),
   });
+  const saveLabel = busy ? t("events.editor.saving") : t("events.editor.save");
+  const unsavedBadge = dirty ? <Badge variant="warning">{t("events.editor.unsaved")}</Badge> : null;
+  const heading = event ? t("events.editor.titleEdit") : t("events.editor.titleNew");
+  const eventName = saved.title.trim() || heading;
 
-  return (
-    <form
-      aria-label={t("events.editor.formLabel")}
-      noValidate
-      data-testid="event-editor"
-      className="max-w-2xl min-w-0 space-y-8"
-      onSubmit={(submitted) => {
-        submitted.preventDefault();
-        void save();
-      }}
-    >
-      <div className="bg-background/95 sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-b px-1 py-3 backdrop-blur">
-        <Link href={listHref} data-testid="event-back" className="text-sm underline">
-          {t("events.backToEvents")}
-        </Link>
-        <div className="flex items-center gap-3">
-          <p data-testid="event-status" role="status" className="text-muted-foreground text-sm">
-            {dirty ? t("events.editor.unsaved") : null}
-          </p>
-          <Button type="submit" data-testid="event-save" disabled={busy}>
-            {busy ? t("events.editor.saving") : t("events.editor.save")}
+  // The save buttons live in the shell: the top bar on a computer, the sticky bar on a phone.
+  useShellSlots({
+    title: eventName,
+    breadcrumb: [
+      { label: t("shell.cards"), href: "/dashboard" },
+      { label: t("events.title"), href: listHref },
+      { label: eventName },
+    ],
+    back: { href: listHref, label: t("events.backToEvents") },
+    topBarActions: (
+      <>
+        <p data-testid="event-status" role="status" className="contents">
+          {unsavedBadge}
+        </p>
+        <Button asChild variant="secondary">
+          <Link href={listHref} data-testid="event-back">
+            {t("events.editor.cancel")}
+          </Link>
+        </Button>
+        <Button type="button" data-testid="event-save" disabled={busy} onClick={() => void save()}>
+          {saveLabel}
+        </Button>
+      </>
+    ),
+    saveBar: (
+      <div className="flex flex-col gap-2 px-4 pt-3 pb-5">
+        <p data-testid="event-status-phone" role="status" className="contents">
+          {unsavedBadge}
+        </p>
+        <div className="flex gap-2.5">
+          <Button asChild variant="secondary">
+            <Link href={listHref} data-testid="event-back-bar">
+              {t("events.editor.cancel")}
+            </Link>
+          </Button>
+          <Button type="button" className="flex-1" data-testid="event-save-bar" disabled={busy} onClick={() => void save()}>
+            {saveLabel}
           </Button>
         </div>
       </div>
+    ),
+  });
 
-      <h1 className="text-3xl font-bold tracking-tight">
-        {event ? t("events.editor.titleEdit") : t("events.editor.titleNew")}
-      </h1>
+  return (
+    <div className="flex flex-col gap-6 @max-[847px]:gap-4">
+      <h1 className="text-[28px] leading-[1.2] font-bold tracking-[-0.02em] @max-[847px]:sr-only">{heading}</h1>
+      <LeaveDialog
+        guard={leaveGuard}
+        description={t("events.editor.leave.body", {
+          title: draft.title.trim() || saved.title.trim() || t("events.editor.leave.untitled"),
+        })}
+      />
+      <div className="grid grid-cols-1 items-start gap-6 @max-[847px]:gap-4 @min-[1100px]:grid-cols-[minmax(0,1fr)_340px]">
+        <form
+          aria-label={heading}
+          noValidate
+          data-testid="event-editor"
+          className="flex min-w-0 flex-col gap-5"
+          onSubmit={(submitted) => {
+            submitted.preventDefault();
+            void save();
+          }}
+        >
+          {Object.keys(errors).length > 0 ? (
+            <Alert variant="destructive" data-testid="event-error-summary">
+              <AlertDescription>{t("events.editor.invalid")}</AlertDescription>
+            </Alert>
+          ) : null}
+          {failureKey !== null ? (
+            <Alert variant="destructive" data-testid="event-conflict">
+              <AlertDescription>{t(failureKey)}</AlertDescription>
+            </Alert>
+          ) : failure !== null ? (
+            <ErrorNotice error={failure} />
+          ) : null}
 
-      {Object.keys(errors).length > 0 ? (
-        <Alert variant="destructive" data-testid="event-error-summary">
-          <AlertDescription>{t("events.editor.invalid")}</AlertDescription>
-        </Alert>
-      ) : null}
-      {failureKey !== null ? (
-        <Alert variant="destructive" data-testid="event-conflict">
-          <AlertDescription>{t(failureKey)}</AlertDescription>
-        </Alert>
-      ) : failure !== null ? (
-        <ErrorNotice error={failure} />
-      ) : null}
+          <Section id="event-section-general" title={t("events.editor.sections.general")}>
+            <div className={FIELD}>
+              <Label htmlFor="event-title">{t("events.editor.name")}</Label>
+              <Input
+                id="event-title"
+                data-testid="event-title"
+                autoComplete="off"
+                value={draft.title}
+                aria-invalid={messages.title ? true : undefined}
+                aria-describedby={describedBy("title", messages.title, "event-title-hint")}
+                onChange={(e) => edit({ ...draft, title: e.target.value }, ["title"])}
+              />
+              <p id="event-title-hint" className={HINT}>
+                {t("events.editor.nameHint")}
+              </p>
+              <FieldMessage path="title" message={messages.title} />
+            </div>
+            <div className={FIELD}>
+              <Label htmlFor="event-description">
+                {t("events.editor.description")}{" "}
+                <span className="text-app-muted font-normal">{t("events.editor.optional")}</span>
+              </Label>
+              <Textarea
+                id="event-description"
+                data-testid="event-description"
+                rows={3}
+                value={draft.description}
+                {...field("description")}
+                onChange={(e) => edit({ ...draft, description: e.target.value }, ["description"])}
+              />
+              <FieldMessage path="description" message={messages.description} />
+            </div>
+          </Section>
 
-      <Section title={t("events.editor.sections.general")}>
-        <div className="space-y-2">
-          <Label htmlFor="event-title">{t("events.editor.name")}</Label>
-          <Input
-            id="event-title"
-            data-testid="event-title"
-            autoComplete="off"
-            value={draft.title}
-            {...field("title")}
-            onChange={(e) => edit({ ...draft, title: e.target.value }, ["title"])}
-          />
-          <FieldMessage path="title" message={messages.title} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="event-description">{t("events.editor.description")}</Label>
-          <Textarea
-            id="event-description"
-            data-testid="event-description"
-            rows={4}
-            value={draft.description}
-            {...field("description")}
-            onChange={(e) => edit({ ...draft, description: e.target.value }, ["description"])}
-          />
-          <FieldMessage path="description" message={messages.description} />
-        </div>
-      </Section>
-
-      <Section title={t("events.editor.sections.dates")}>
-        <p data-testid="event-zone" className="text-muted-foreground text-sm">
-          {t("events.editor.zone", { zone: zoneLabel(zone) })}
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="event-starts-at">{t("events.editor.startsAt")}</Label>
-            <Input
-              id="event-starts-at"
-              data-testid="event-starts-at"
-              type="datetime-local"
-              value={draft.startsAt}
-              {...field("starts_at")}
-              onChange={(e) => edit({ ...draft, startsAt: e.target.value }, ["starts_at", "ends_at"])}
-            />
-            <FieldMessage path="starts_at" message={messages.starts_at} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="event-ends-at">{t("events.editor.endsAt")}</Label>
-            <Input
-              id="event-ends-at"
-              data-testid="event-ends-at"
-              type="datetime-local"
-              value={draft.endsAt}
-              {...field("ends_at")}
-              onChange={(e) => edit({ ...draft, endsAt: e.target.value }, ["ends_at"])}
-            />
-            <div className="flex items-center gap-3">
+          <Section
+            id="event-section-dates"
+            title={t("events.editor.sections.dates")}
+            aside={
+              <Badge variant="neutral" className="before:hidden" data-testid="event-zone">
+                <Clock aria-hidden="true" className="size-[15px]" />
+                {t("events.editor.zone", { zone: zoneLabel(zone) })}
+              </Badge>
+            }
+          >
+            <div className="grid grid-cols-2 gap-4 @max-[847px]:grid-cols-1">
+              <div role="group" aria-labelledby="event-starts-at-label" className={FIELD}>
+                <span id="event-starts-at-label" className="text-sm leading-none font-semibold">
+                  {t("events.editor.startsAt")}
+                </span>
+                <DateTime
+                  testId="event-starts-at"
+                  value={draft.startsAt}
+                  dateLabel={t("events.editor.startDate")}
+                  timeLabel={t("events.editor.startTime", { zone: zoneLabel(zone) })}
+                  invalid={field("starts_at")["aria-invalid"]}
+                  describedBy={field("starts_at")["aria-describedby"]}
+                  onChange={(startsAt) => edit({ ...draft, startsAt }, ["starts_at", "ends_at"])}
+                />
+                <FieldMessage path="starts_at" message={messages.starts_at} />
+              </div>
+              <div role="group" aria-labelledby="event-ends-at-label" className={FIELD}>
+                <span id="event-ends-at-label" className="text-sm leading-none font-semibold">
+                  {t("events.editor.endsAt")}
+                </span>
+                <DateTime
+                  testId="event-ends-at"
+                  value={draft.endsAt}
+                  disabled={noEnd}
+                  dateLabel={t("events.editor.endDate")}
+                  timeLabel={t("events.editor.endTime", { zone: zoneLabel(zone) })}
+                  invalid={field("ends_at")["aria-invalid"]}
+                  describedBy={field("ends_at")["aria-describedby"]}
+                  onChange={(endsAt) => edit({ ...draft, endsAt }, ["ends_at"])}
+                />
+                <FieldMessage path="ends_at" message={messages.ends_at} />
+              </div>
+            </div>
+            <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1">
               <Switch
                 id="event-no-end"
                 data-testid="event-no-end"
@@ -207,72 +358,96 @@ export function EventEditor({ cardId, card, event }: { cardId: string; card: Car
                   edit(checked ? { ...draft, endsAt: "" } : enableEnd(draft, zone), ["ends_at"])
                 }
               />
-              <Label htmlFor="event-no-end">{t("events.editor.noEnd")}</Label>
+              <Label htmlFor="event-no-end">
+                {t("events.editor.noEnd")}{" "}
+                <span className="text-app-muted font-normal">{t("events.editor.noEndHint")}</span>
+              </Label>
             </div>
-            <FieldMessage path="ends_at" message={messages.ends_at} />
-          </div>
-        </div>
-      </Section>
+          </Section>
 
-      <Section title={t("events.editor.sections.access")}>
-        <div className="space-y-2">
-          <Label htmlFor="event-access-code">{t("events.editor.accessCode")}</Label>
-          <Input
-            id="event-access-code"
-            data-testid="event-access-code"
-            type="text"
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            value={draft.accessCode}
-            {...field("access_code")}
-            onChange={(e) => edit({ ...draft, accessCode: e.target.value }, ["access_code"])}
-          />
-          <p className="text-muted-foreground text-sm">{t("events.editor.accessCodeHint")}</p>
-          <FieldMessage path="access_code" message={messages.access_code} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="event-device-limit">{t("events.editor.deviceLimit")}</Label>
-          <Input
-            id="event-device-limit"
-            data-testid="event-device-limit"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={100}
-            value={draft.deviceLimit}
-            {...field("device_limit")}
-            onChange={(e) => edit({ ...draft, deviceLimit: e.target.value }, ["device_limit"])}
-          />
-          <p className="text-muted-foreground text-sm">{t("events.editor.deviceLimitHint")}</p>
-          <FieldMessage path="device_limit" message={messages.device_limit} />
-        </div>
-      </Section>
+          <Section id="event-section-access" title={t("events.editor.sections.access")}>
+            <div className="grid grid-cols-2 gap-4 @max-[847px]:grid-cols-1">
+              <div className={FIELD}>
+                <Label htmlFor="event-access-code">
+                  {t("events.editor.accessCode")}{" "}
+                  <span className="text-app-muted font-normal">{t("events.editor.optional")}</span>
+                </Label>
+                <Input
+                  id="event-access-code"
+                  data-testid="event-access-code"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  className="font-app-mono tracking-[.06em]"
+                  value={draft.accessCode}
+                  aria-invalid={messages.access_code ? true : undefined}
+                  aria-describedby={describedBy("access_code", messages.access_code, "event-access-code-hint")}
+                  onChange={(e) => edit({ ...draft, accessCode: e.target.value }, ["access_code"])}
+                />
+                <p id="event-access-code-hint" className={HINT}>
+                  {t("events.editor.accessCodeHint")}
+                </p>
+                <FieldMessage path="access_code" message={messages.access_code} />
+              </div>
+              <div className={FIELD}>
+                <Label htmlFor="event-device-limit">{t("events.editor.deviceLimit")}</Label>
+                <Input
+                  id="event-device-limit"
+                  data-testid="event-device-limit"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={100}
+                  value={draft.deviceLimit}
+                  aria-invalid={messages.device_limit ? true : undefined}
+                  aria-describedby={describedBy("device_limit", messages.device_limit, "event-device-limit-hint")}
+                  onChange={(e) => edit({ ...draft, deviceLimit: e.target.value }, ["device_limit"])}
+                />
+                <p id="event-device-limit-hint" className={HINT}>
+                  {t("events.editor.deviceLimitHint")}
+                </p>
+                <FieldMessage path="device_limit" message={messages.device_limit} />
+              </div>
+            </div>
+          </Section>
 
-      <Section title={t("events.editor.sections.standardFields")}>
-        <StandardFieldsEditor
-          value={draft.standardFields}
-          error={messages.standard_fields}
-          onChange={(name, mode) =>
-            edit({ ...draft, standardFields: { ...draft.standardFields, [name]: mode } }, ["standard_fields"])
-          }
-        />
-      </Section>
+          <Section id="event-section-standard" title={t("events.editor.sections.standardFields")}>
+            <StandardFieldsEditor
+              value={draft.standardFields}
+              error={messages.standard_fields}
+              onChange={(name, mode) =>
+                edit({ ...draft, standardFields: { ...draft.standardFields, [name]: mode } }, ["standard_fields"])
+              }
+            />
+          </Section>
 
-      <Section title={t("events.editor.sections.customFields")}>
-        <CustomFieldsEditor draft={draft} errors={messages} onChange={edit} />
-      </Section>
+          <Section
+            id="event-section-custom"
+            title={t("events.editor.sections.customFields")}
+            aside={<span className="text-app-muted text-sm">{t("events.editor.custom.hint")}</span>}
+          >
+            <CustomFieldsEditor draft={draft} errors={messages} onChange={edit} />
+          </Section>
 
-      <Section title={t("events.editor.sections.consent")}>
-        <ConsentEditor
-          cardId={cardId}
-          card={card}
-          draft={draft}
-          error={messages.consent_text}
-          {...(event ? { knownDefault: { title: event.title, text: event.default_consent_text } } : {})}
-          onChange={(patch) => edit({ ...draft, ...patch }, ["consent_text"])}
-        />
-      </Section>
-    </form>
+          <Section id="event-section-consent" title={t("events.editor.sections.consent")}>
+            <ConsentEditor
+              cardId={cardId}
+              card={card}
+              draft={draft}
+              error={messages.consent_text}
+              {...(event ? { knownDefault: { title: event.title, text: event.default_consent_text } } : {})}
+              onChange={(patch) => edit({ ...draft, ...patch }, ["consent_text"])}
+            />
+          </Section>
+        </form>
+
+        {event ? (
+          <aside className="order-first @min-[1100px]:order-none">
+            <EventStatePanel event={event} zone={zone} onEnded={onEnded} />
+          </aside>
+        ) : null}
+      </div>
+    </div>
   );
 }

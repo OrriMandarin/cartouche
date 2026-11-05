@@ -6,6 +6,7 @@ import type { CardView } from "./types";
 import {
   PREVIEW_EVENT_ID,
   applyTemplateChange,
+  blockingErrors,
   draftFromCard,
   draftToPublicCard,
   draftToUpdateBody,
@@ -27,7 +28,7 @@ const fullCard = cardView({
   public_url: "http://localhost:13000/c/eloise-daubigne",
   template: "classique",
   settings: { links_layout: "icons" } as unknown as CardView["settings"],
-  theme: { preset: "sable", accent: "#9a5b2e" },
+  theme: { preset: "ivoire", accent: "#9a5b2e" },
   content: {
     first_name: "Éloïse",
     last_name: "D'Aubigné-Müller",
@@ -52,7 +53,7 @@ describe("draftToUpdateBody", () => {
       slug: "eloise-daubigne",
       template: "classique",
       settings: { links_layout: "icons" },
-      theme: { preset: "sable", accent: "#9a5b2e" },
+      theme: { preset: "ivoire", accent: "#9a5b2e" },
       content: {
         first_name: "Éloïse",
         last_name: "D'Aubigné-Müller",
@@ -91,7 +92,7 @@ describe("draftToPublicCard", () => {
     expect(card.public_url).toBe("http://localhost:13000/c/eloise-d");
     expect(card.vcard_url).toBe("/api/public/cards/eloise-d/vcard");
     expect(card.template).toBe("classique");
-    expect(card.theme).toEqual({ preset: "sable", accent: "#9a5b2e" });
+    expect(card.theme).toEqual({ preset: "ivoire", accent: "#9a5b2e" });
     expect(card.settings).toEqual({ links_layout: "icons" });
     expect(card.content).toMatchObject({
       first_name: "Éloïse",
@@ -149,24 +150,25 @@ describe("isDirty", () => {
     const saved = draftFromCard(cardView({ settings: {} }));
     const edited = draftFromCard(cardView({ settings: {} }));
     // The editor stores every setting once one is touched: links_layout toggled and set back to its default.
-    edited.settings = { links_layout: "list", animate_events: true };
+    edited.settings = { links_layout: "icons" };
     expect(isDirty(saved, edited)).toBe(false);
-    edited.settings = { links_layout: "icons", animate_events: true };
+    edited.settings = { links_layout: "list" };
     expect(isDirty(saved, edited)).toBe(true);
   });
 
   test("EDI-016 a stored setting changed to the default counts, an equal one does not", () => {
-    const saved = draftFromCard(fullCard);
-    const same = draftFromCard(fullCard);
-    same.settings = { links_layout: "icons", animate_events: true };
-    expect(isDirty(saved, same)).toBe(false);
+    const stored = cardView({ settings: { links_layout: "list" } as unknown as CardView["settings"] });
+    const saved = draftFromCard(stored);
+    const same = draftFromCard(stored);
     same.settings = { links_layout: "list" };
+    expect(isDirty(saved, same)).toBe(false);
+    same.settings = { links_layout: "icons" };
     expect(isDirty(saved, same)).toBe(true);
   });
 
   test("EDI-016 an unset theme override is the same as an absent one", () => {
-    const saved = draftFromCard(cardView({ theme: { preset: "clair" } }));
-    const edited = draftFromCard(cardView({ theme: { preset: "clair", accent: null } }));
+    const saved = draftFromCard(cardView({ theme: { preset: "craie" } }));
+    const edited = draftFromCard(cardView({ theme: { preset: "craie", accent: null } }));
     expect(isDirty(saved, edited)).toBe(false);
     edited.links = [{ kind: "website", url: "https://a.example", label: "" }];
     expect(isDirty(saved, edited)).toBe(true);
@@ -222,5 +224,16 @@ describe("fieldErrors", () => {
     expect(
       fieldErrors(validationError([{ field: "slug", code: "invalid_slug" }, { field: "slug", code: "too_long" }])),
     ).toEqual({ slug: "fieldErrors.invalid_slug" });
+  });
+});
+
+describe("blockingErrors", () => {
+  test("TPL-013 an unreadable theme blocks the save with the low_contrast message", () => {
+    const unreadable = { ...draftFromCard(fullCard), theme: { preset: "terracotta", text: "#b89580" } };
+    expect(blockingErrors(unreadable)).toEqual({ theme: "fieldErrors.low_contrast" });
+  });
+
+  test("TPL-013 a readable theme blocks nothing", () => {
+    expect(blockingErrors(draftFromCard(fullCard))).toEqual({});
   });
 });

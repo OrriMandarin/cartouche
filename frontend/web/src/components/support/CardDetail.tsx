@@ -28,13 +28,13 @@ export function CardDetail({
   const t = useTranslations("support.cards");
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h2 data-testid="support-card-name" className="truncate text-xl font-semibold">
+          <h2 data-testid="support-card-name" className="truncate text-xl leading-[1.3] font-[650] tracking-[-0.01em]">
             {cardDisplayName(card.content) ?? t("untitled")}
           </h2>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-app-muted text-sm">
             {t("owner")}{" "}
             <Link href={`/support/users/${owner.id}`} data-testid="support-card-owner" className="underline">
               {owner.display_name || owner.email || owner.subject}
@@ -43,7 +43,7 @@ export function CardDetail({
           <a
             href={card.public_url}
             data-testid="support-card-public-link"
-            className="text-muted-foreground text-sm break-all underline"
+            className="text-app-muted text-sm break-all underline"
           >
             {card.public_url}
           </a>

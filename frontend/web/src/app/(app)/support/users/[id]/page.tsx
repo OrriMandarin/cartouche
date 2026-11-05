@@ -1,13 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback } from "react";
 import { AccountGate } from "@/components/account/AccountGate";
 import { SupportGuard } from "@/components/support/SupportGuard";
 import { SupportLoader } from "@/components/support/SupportLoader";
+import { SupportTitle } from "@/components/support/SupportTitle";
 import { UserCards } from "@/components/support/UserCards";
+import { useSupportSlots } from "@/components/support/useSupportSlots";
 import { useApi } from "@/lib/api";
 
 function UserContent({ id }: { id: string }) {
@@ -21,12 +22,7 @@ function UserContent({ id }: { id: string }) {
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-        <Link href="/support" className="text-sm underline" data-testid="nav-support">
-          {t("cards.backToSupport")}
-        </Link>
-      </div>
+      <SupportTitle>{t("title")}</SupportTitle>
       <SupportLoader load={load} notFound={t("cards.userNotFound")}>
         {({ user, cards }) => <UserCards user={user} cards={cards} />}
       </SupportLoader>
@@ -37,8 +33,9 @@ function UserContent({ id }: { id: string }) {
 /** spec: ADM-006, ADM-013. Admin-only: an account's profile and its cards. */
 export default function SupportUserPage() {
   const { id } = useParams<{ id: string }>();
+  const slots = useSupportSlots({ kind: "user" });
   return (
-    <AccountGate>
+    <AccountGate {...slots}>
       <SupportGuard>
         <UserContent id={id} />
       </SupportGuard>

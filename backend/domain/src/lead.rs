@@ -71,8 +71,9 @@ pub struct AnswerSnapshot {
     pub field_id: Uuid,
     pub label: String,
     pub kind: CustomFieldKind,
-    /// A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`), a number
-    /// (`number`), a boolean (`checkbox`) or `null` when left empty.
+    /// A string (`text`, `long_text`, `single_choice`, `date` as `AAAA-MM-JJ`, `datetime` as
+    /// `AAAA-MM-JJTHH:MM`), a number (`number`),
+    /// a boolean (`checkbox`) or `null` when left empty.
     pub value: Value,
 }
 
@@ -306,6 +307,9 @@ fn text_value(
         CustomFieldKind::Date => parse_date(text)
             .map(|_| Value::String(text.to_string()))
             .ok_or("invalid_date"),
+        CustomFieldKind::Datetime => parse_datetime(text)
+            .map(|()| Value::String(text.to_string()))
+            .ok_or("invalid_date"),
         CustomFieldKind::Number => parse_decimal(text).ok_or("invalid_number"),
         CustomFieldKind::SingleChoice if field.options.iter().any(|o| o == text) => {
             Ok(Value::String(text.to_string()))
@@ -342,6 +346,29 @@ fn parse_date(text: &str) -> Option<NaiveDate> {
     let month = text[5..7].parse().ok()?;
     let day = text[8..10].parse().ok()?;
     NaiveDate::from_ymd_opt(year, month, day).filter(|date| (1900..=2100).contains(&date.year()))
+}
+
+/// A date and time written `AAAA-MM-JJTHH:MM`, with no seconds and no zone: the date as for
+/// [`parse_date`], the hour from 00 to 23 and the minute from 00 to 59 (FRM-043).
+fn parse_datetime(text: &str) -> Option<()> {
+    let (date, time) = text.split_at_checked(10)?;
+    parse_date(date)?;
+    let time = time.strip_prefix('T')?;
+    let bytes = time.as_bytes();
+    let shape_ok = bytes.len() == 5
+        && bytes.iter().enumerate().all(|(i, b)| {
+            if i == 2 {
+                *b == b':'
+            } else {
+                b.is_ascii_digit()
+            }
+        });
+    if !shape_ok {
+        return None;
+    }
+    let hour: u32 = time[0..2].parse().ok()?;
+    let minute: u32 = time[3..5].parse().ok()?;
+    (hour < 24 && minute < 60).then_some(())
 }
 
 /// A decimal number with an optional sign, written with a point or a comma (FRM-036).
@@ -680,6 +707,40 @@ mod tests {
                 "invalid_date"
             )]
         );
+    }
+
+    // spec: FRM-043
+    #[test]
+    fn datetime_answers_are_checked() {
+        let f = form(
+            standard(FieldMode::Off),
+            vec![field(1, CustomFieldKind::Datetime, false, &[])],
+        );
+        let answer = |s: &str| validate_lead(&f, custom_answers(&[(1, json!(s))]), true, today());
+        for good in ["2027-03-20T14:30", "1900-01-01T00:00", "2100-12-31T23:59"] {
+            assert_eq!(answer(good).unwrap().custom[0].value, json!(good), "{good}");
+        }
+        for bad in [
+            "2027-02-30T10:00",
+            "2027-02-06T24:00",
+            "2027-02-06T14:60",
+            "2027-02-06T14:30:00",
+            "2027-02-06 14:30",
+            "1899-12-31T10:00",
+            "2101-01-01T10:00",
+            "2027-02-06T14:30Z",
+            "2027-02-06T1:30",
+            "2027-02-06",
+        ] {
+            assert_eq!(
+                answer(bad).unwrap_err(),
+                vec![err(
+                    &format!("answers.custom.{}", Uuid::from_u128(1)),
+                    "invalid_date"
+                )],
+                "{bad}"
+            );
+        }
     }
 
     // spec: FRM-018, FRM-033

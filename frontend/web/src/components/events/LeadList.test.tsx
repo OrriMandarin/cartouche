@@ -12,6 +12,9 @@ vi.mock("@/lib/events/time", async (importOriginal) => ({
   userTimeZone: () => "Europe/Paris",
 }));
 
+const showToast = vi.fn();
+vi.mock("@/lib/toast", () => ({ showToast: (...args: unknown[]) => showToast(...args) }));
+
 import { LeadList } from "./LeadList";
 
 const bot = leadView({
@@ -48,6 +51,7 @@ beforeEach(() => {
   load.mockReset();
   setSpam.mockReset();
   remove.mockReset();
+  showToast.mockReset();
   setSpam.mockImplementation((lead: LeadView, spam: boolean) => Promise.resolve({ ...lead, spam }));
   remove.mockResolvedValue(undefined);
 });
@@ -65,14 +69,14 @@ describe("LeadList", () => {
     ]);
     const row = screen.getByTestId("lead-row-lead-eloise");
     // Stored in UTC, shown in the user's zone.
-    expect(within(row).getByTestId("lead-date-lead-eloise")).toHaveTextContent("15 mars 2027 à 08:00");
+    expect(within(row).getByTestId("lead-date-lead-eloise")).toHaveTextContent("15 mars 2027 · 08:00");
     expect(within(row).getByTestId("lead-name-lead-eloise")).toHaveTextContent("Éloïse D’Aubigné-Müller");
     expect(within(row).getByTestId("lead-email-lead-eloise")).toHaveTextContent("eloise@example.test");
     expect(within(row).getByTestId("lead-phone-lead-eloise")).toHaveTextContent("+33 6 12 34 56 78");
     expect(within(screen.getByTestId("lead-row-lead-zoe")).getByTestId("lead-name-lead-zoe")).toHaveTextContent(
       "Zoé Lefèvre ✨",
     );
-    expect(screen.getByTestId("leads-count")).toHaveTextContent("3 contacts");
+    expect(screen.getByTestId("leads-count")).toHaveTextContent("3 contacts, dont 1 marqué comme spam");
   });
 
   test("ABU-009 LEA-014 only spam contacts carry the « Spam » label, and they stay listed", async () => {
@@ -80,8 +84,7 @@ describe("LeadList", () => {
     show();
     expect(await screen.findByTestId("lead-spam-badge-lead-bot")).toHaveTextContent("Spam");
     expect(screen.queryByTestId("lead-spam-badge-lead-zoe")).toBeNull();
-    expect(screen.getByTestId("lead-spam-lead-bot")).toHaveTextContent("Ce n'est pas un spam");
-    expect(screen.getByTestId("lead-spam-lead-zoe")).toHaveTextContent("Marquer comme spam");
+    expect(screen.getByTestId("lead-row-lead-bot")).toBeVisible();
   });
 
   test("LEA-017 a nameless lead shows its email once, and one without anything says « Contact sans nom »", async () => {
@@ -143,88 +146,89 @@ describe("LeadList", () => {
     expect(screen.queryByTestId("lead-event-lead-zoe")).toBeNull();
   });
 
-  test("ABU-003 ABU-009 LEA-020 a spam toggle updates the row from the response without reloading", async () => {
+  test("ABU-003 ABU-009 LEA-020 a spam toggle in the sheet updates the row from the response without reloading", async () => {
     serve([zoe]);
     show();
-    await screen.findByTestId("lead-row-lead-zoe");
+    fireEvent.click(await screen.findByTestId("lead-open-lead-zoe"));
 
-    fireEvent.click(screen.getByTestId("lead-spam-lead-zoe"));
+    fireEvent.click(await screen.findByTestId("lead-detail-spam"));
     await waitFor(() => expect(setSpam).toHaveBeenCalledWith(zoe, true));
     expect(await screen.findByTestId("lead-spam-badge-lead-zoe")).toBeVisible();
-    await waitFor(() => expect(screen.getByTestId("lead-spam-lead-zoe")).toBeEnabled());
-    expect(screen.getByTestId("lead-spam-lead-zoe")).toHaveTextContent("Ce n'est pas un spam");
+    await waitFor(() => expect(screen.queryByTestId("lead-detail")).toBeNull());
+    expect(screen.getByTestId("leads-count")).toHaveTextContent("1 contact, dont 1 marqué comme spam");
 
-    fireEvent.click(screen.getByTestId("lead-spam-lead-zoe"));
+    fireEvent.click(screen.getByTestId("lead-open-lead-zoe"));
+    expect(await screen.findByTestId("lead-detail-spam-state")).toHaveTextContent("Spam");
+    expect(screen.getByTestId("lead-detail-spam")).toHaveTextContent("Retirer le marquage spam");
+    fireEvent.click(screen.getByTestId("lead-detail-spam"));
     await waitFor(() => expect(setSpam).toHaveBeenLastCalledWith({ ...zoe, spam: true }, false));
     await waitFor(() => expect(screen.queryByTestId("lead-spam-badge-lead-zoe")).toBeNull());
     expect(load).toHaveBeenCalledTimes(1);
   });
 
+  test("LEA-034 the spam toast undoes the change", async () => {
+    serve([zoe]);
+    show();
+    fireEvent.click(await screen.findByTestId("lead-open-lead-zoe"));
+    fireEvent.click(await screen.findByTestId("lead-detail-spam"));
+    await screen.findByTestId("lead-spam-badge-lead-zoe");
+    await waitFor(() => expect(screen.queryByTestId("lead-detail")).toBeNull());
+    expect(showToast).toHaveBeenCalledTimes(1);
+    const [message, { action }] = showToast.mock.calls[0] as [string, { action: { label: string; onClick: () => void } }];
+    expect(message).toBe("Contact marqué comme spam");
+    expect(action.label).toBe("Annuler");
+
+    action.onClick();
+    await waitFor(() => expect(setSpam).toHaveBeenLastCalledWith({ ...zoe, spam: true }, false));
+    await waitFor(() => expect(screen.queryByTestId("lead-spam-badge-lead-zoe")).toBeNull());
+    // Undoing is not announced again.
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  test("LEA-034 removing the spam mark is announced too, and its undo marks the contact again", async () => {
+    serve([bot]);
+    show();
+    fireEvent.click(await screen.findByTestId("lead-open-lead-bot"));
+    fireEvent.click(await screen.findByTestId("lead-detail-spam"));
+    await waitFor(() => expect(screen.queryByTestId("lead-spam-badge-lead-bot")).toBeNull());
+    const [message, { action }] = showToast.mock.calls[0] as [string, { action: { onClick: () => void } }];
+    expect(message).toBe("Marquage spam retiré");
+
+    action.onClick();
+    expect(await screen.findByTestId("lead-spam-badge-lead-bot")).toBeVisible();
+  });
+
   test("ABU-004 ABU-010 deleting asks for confirmation", async () => {
     serve([bot, zoe]);
     show();
-    fireEvent.click(await screen.findByTestId("lead-delete-lead-bot"));
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveTextContent("Ce contact sera supprimé définitivement.");
+    fireEvent.click(await screen.findByTestId("lead-open-lead-bot"));
+    fireEvent.click(await screen.findByTestId("lead-detail-delete"));
+    expect(await screen.findByText("Ce contact sera supprimé définitivement.")).toBeVisible();
     expect(remove).not.toHaveBeenCalled();
 
-    fireEvent.click(within(dialog).getByTestId("lead-delete-cancel"));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(screen.getByTestId("lead-delete-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("lead-delete-confirm")).toBeNull());
     expect(remove).not.toHaveBeenCalled();
     expect(screen.getByTestId("lead-row-lead-bot")).toBeVisible();
 
-    fireEvent.click(screen.getByTestId("lead-delete-lead-bot"));
+    fireEvent.click(screen.getByTestId("lead-detail-delete"));
     fireEvent.click(await screen.findByTestId("lead-delete-confirm"));
     await waitFor(() => expect(remove).toHaveBeenCalledWith(bot));
     expect(remove).toHaveBeenCalledTimes(1);
   });
 
-  test("LEA-020 a deleted row disappears even if nothing is reloaded", async () => {
-    serve([bot, zoe]);
-    show();
-    fireEvent.click(await screen.findByTestId("lead-delete-lead-bot"));
-    fireEvent.click(await screen.findByTestId("lead-delete-confirm"));
-    await waitFor(() => expect(screen.queryByTestId("lead-row-lead-bot")).toBeNull());
-    expect(screen.getByTestId("lead-row-lead-zoe")).toBeVisible();
-    expect(screen.getByTestId("leads-count")).toHaveTextContent("1 contact");
-    expect(load).toHaveBeenCalledTimes(1);
-  });
-
-  test("ABU-003 ABU-004 the buttons stay disabled while an action is pending", async () => {
-    serve([bot, zoe]);
-    show();
-    await screen.findByTestId("lead-row-lead-zoe");
-    let finish: () => void = () => undefined;
-    setSpam.mockImplementation((lead: LeadView) => new Promise((resolve) => (finish = () => resolve({ ...lead, spam: true }))));
-    fireEvent.click(screen.getByTestId("lead-spam-lead-zoe"));
-    await waitFor(() => expect(screen.getByTestId("lead-spam-lead-zoe")).toBeDisabled());
-    expect(screen.getByTestId("lead-delete-lead-bot")).toBeDisabled();
-    finish();
-    await waitFor(() => expect(screen.getByTestId("lead-spam-lead-zoe")).toBeEnabled());
-  });
-
-  test("ABU-003 LEA-020 a failed action shows the generic notice with the request id and leaves the list as it was", async () => {
-    serve([zoe]);
-    setSpam.mockRejectedValue(new ApiError({ status: 500, code: "internal_error", message: "Boom.", requestId: "req-500" }));
-    show();
-    fireEvent.click(await screen.findByTestId("lead-spam-lead-zoe"));
-    expect(await screen.findByTestId("error-request-id")).toHaveTextContent("req-500");
-    expect(screen.getByTestId("lead-spam-lead-zoe")).toBeEnabled();
-    expect(screen.queryByTestId("lead-spam-badge-lead-zoe")).toBeNull();
-  });
-
-  test("ADM-017 without actions there is no spam or delete button", async () => {
+  test("ADM-017 without actions the sheet has no spam or delete button", async () => {
     serve([bot, zoe]);
     show({ actions: null });
-    await screen.findByTestId("lead-row-lead-zoe");
-    expect(screen.queryByTestId("lead-spam-lead-zoe")).toBeNull();
-    expect(screen.queryByTestId("lead-delete-lead-zoe")).toBeNull();
-    expect(screen.getByTestId("lead-open-lead-zoe")).toBeVisible();
+    fireEvent.click(await screen.findByTestId("lead-open-lead-zoe"));
+    expect(await screen.findByTestId("lead-detail")).toBeVisible();
+    expect(screen.queryByTestId("lead-detail-spam")).toBeNull();
+    expect(screen.queryByTestId("lead-detail-delete")).toBeNull();
     // The spam label itself is still shown.
     expect(screen.getByTestId("lead-spam-badge-lead-bot")).toBeVisible();
   });
 
-  test("LEA-003 « Voir » opens the detail of that contact, which closes again", async () => {
+  test("LEA-003 a contact's name opens the detail of that contact, which closes again", async () => {
     serve([bot, zoe]);
     show();
     fireEvent.click(await screen.findByTestId("lead-open-lead-zoe"));
@@ -234,15 +238,29 @@ describe("LeadList", () => {
     await waitFor(() => expect(screen.queryByTestId("lead-detail")).toBeNull());
   });
 
-  test("LEA-004 LEA-020 a spam toggle from the detail updates the row and the detail", async () => {
+  test("ABU-003 ABU-004 the sheet buttons stay disabled while an action is pending", async () => {
     serve([zoe]);
     show();
     fireEvent.click(await screen.findByTestId("lead-open-lead-zoe"));
+    let finish: () => void = () => undefined;
+    setSpam.mockImplementation((lead: LeadView) => new Promise((resolve) => (finish = () => resolve({ ...lead, spam: true }))));
     fireEvent.click(await screen.findByTestId("lead-detail-spam"));
-    await waitFor(() => expect(setSpam).toHaveBeenCalledWith(zoe, true));
-    expect(await screen.findByTestId("lead-spam-badge-lead-zoe")).toBeVisible();
-    expect(screen.getByTestId("lead-detail-spam-state")).toHaveTextContent("Marqué comme spam");
-    expect(load).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByTestId("lead-detail-spam")).toBeDisabled());
+    expect(screen.getByTestId("lead-detail-delete")).toBeDisabled();
+    finish();
+    await waitFor(() => expect(screen.queryByTestId("lead-detail")).toBeNull());
+  });
+
+  test("ABU-003 LEA-020 a failed action shows the generic notice with the request id and leaves the list as it was", async () => {
+    serve([zoe]);
+    setSpam.mockRejectedValue(new ApiError({ status: 500, code: "internal_error", message: "Boom.", requestId: "req-500" }));
+    show();
+    fireEvent.click(await screen.findByTestId("lead-open-lead-zoe"));
+    fireEvent.click(await screen.findByTestId("lead-detail-spam"));
+    expect(await screen.findByTestId("error-request-id")).toHaveTextContent("req-500");
+    expect(screen.getByTestId("lead-detail-spam")).toBeEnabled();
+    expect(screen.queryByTestId("lead-spam-badge-lead-zoe")).toBeNull();
+    expect(showToast).not.toHaveBeenCalled();
   });
 
   test("LEA-004 LEA-020 deleting from the detail asks, then removes the row and closes the detail", async () => {
@@ -257,6 +275,38 @@ describe("LeadList", () => {
     await waitFor(() => expect(screen.queryByTestId("lead-detail")).toBeNull());
     expect(screen.queryByTestId("lead-row-lead-bot")).toBeNull();
     expect(screen.getByTestId("lead-row-lead-zoe")).toBeVisible();
+    expect(screen.getByTestId("leads-count")).toHaveTextContent("1 contact");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  test("EDI-031 only the contacts of the event asked for are listed, and counted", async () => {
+    serve([
+      leadView({ id: "a", event_id: "ev-1", answers: { first_name: "Anna" } }),
+      leadView({ id: "b", event_id: "ev-2", answers: { first_name: "Bruno" } }),
+    ]);
+    renderWithIntl(<LeadList load={load} actions={actions} showEvent={false} eventId="ev-2" />);
+    await screen.findByTestId("lead-row-b");
+    expect(screen.queryByTestId("lead-row-a")).toBeNull();
+    expect(screen.getByTestId("leads-count")).toHaveTextContent("1 contact");
+  });
+
+  test("EDI-031 the slots go where the page puts them: above, before the search, and between the search and the table", async () => {
+    serve([zoe]);
+    renderWithIntl(
+      <LeadList
+        load={load}
+        actions={actions}
+        showEvent={false}
+        toolbar={(leads) => <p data-testid="slot-toolbar">{leads === null ? "loading" : `${leads.length} loaded`}</p>}
+        controls={<p data-testid="slot-controls" />}
+        scopeBar={(leads) => <p data-testid="slot-scope">{leads.length}</p>}
+      />,
+    );
+    expect(screen.getByTestId("slot-toolbar")).toHaveTextContent("loading");
+    await screen.findByTestId("lead-row-lead-zoe");
+    expect(screen.getByTestId("slot-toolbar")).toHaveTextContent("1 loaded");
+    expect(screen.getByTestId("slot-controls")).toBeVisible();
+    expect(screen.getByTestId("slot-scope")).toHaveTextContent("1");
   });
 
   test("LEA-014 an inline load function is called once, however often the parent re-renders", async () => {

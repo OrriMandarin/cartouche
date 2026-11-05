@@ -1,7 +1,9 @@
 import { ApiError, type components } from "@cartouche/api-client";
 import type { LinkKind, MediaView, PublicCard } from "@/templates/contract";
 import { fieldErrorKey, fieldErrorKeys } from "@/lib/field-errors";
+import { failedChecks } from "@/lib/theme/contrast";
 import type { ThemeSettings } from "@/lib/theme/presets";
+import { resolveTheme } from "@/lib/theme/resolve";
 import { getTemplate } from "@/templates/registry";
 import { parseSettings } from "@/templates/settings-schema";
 import type { CardView } from "./types";
@@ -169,4 +171,12 @@ export function fieldErrors(error: unknown): Record<string, string> {
   if (!(error instanceof ApiError)) return {};
   if (error.code === "slug_taken" || error.code === "slug_reserved") return { slug: fieldErrorKey(error.code) };
   return fieldErrorKeys(error.fields);
+}
+
+/**
+ * spec: TPL-013. What stops a save before it is sent, as message keys by field path (like `fieldErrors`):
+ * a theme failing a contrast check. The server refuses the same theme (TPL-023).
+ */
+export function blockingErrors(draft: CardDraft): Record<string, string> {
+  return failedChecks(resolveTheme(draft.theme)).length > 0 ? { theme: fieldErrorKey("low_contrast") } : {};
 }

@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
-import { BUTTON_STYLE, HEADING_STYLE, INPUT_CLASS, INPUT_STYLE } from "./styles";
+import { FormHead } from "./FormChrome";
 
 interface AccessCodeScreenProps {
   title: string;
@@ -11,7 +11,10 @@ interface AccessCodeScreenProps {
   onSubmit(code: string): void;
 }
 
-/** The code asked before the form of an event that has one (FRM-002); the server checks it (EVT-012). */
+/**
+ * The code asked before the form of an event that has one (FRM-002, FRM-048): the title only, then a single
+ * field and its button. The server checks it (EVT-012).
+ */
 export function AccessCodeScreen({ title, message, disabled, onSubmit }: AccessCodeScreenProps) {
   const t = useTranslations();
   const [code, setCode] = useState("");
@@ -22,43 +25,41 @@ export function AccessCodeScreen({ title, message, disabled, onSubmit }: AccessC
   }
 
   return (
-    <form data-testid="access-code-form" noValidate onSubmit={submit} className="py-6">
-      <h1 data-testid="event-form-title" className="text-2xl font-bold" style={HEADING_STYLE}>
-        {title}
-      </h1>
-      <p className="mt-3">{t("eventForm.code.intro")}</p>
-      <fieldset disabled={disabled} className="mt-6">
-        <label htmlFor="access-code" className="block font-medium">
-          {t("eventForm.code.label")}
-        </label>
-        <input
-          id="access-code"
-          data-testid="access-code-input"
-          type="text"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          className={`mt-1 ${INPUT_CLASS}`}
-          style={INPUT_STYLE}
-          aria-invalid={message ? true : undefined}
-          aria-describedby={message ? "access-code-message" : undefined}
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-        />
-        {message && (
-          <p id="access-code-message" role="alert" data-testid="access-code-message" className="mt-2 text-sm font-medium">
-            {t(message)}
-          </p>
-        )}
-        <button
-          type="submit"
-          data-testid="access-code-submit"
-          className="mt-6 w-full px-5 py-3 font-semibold"
-          style={BUTTON_STYLE}
-        >
-          {t("eventForm.code.submit")}
-        </button>
-      </fieldset>
-    </form>
+    <>
+      <FormHead title={title} live={false} />
+      <form data-testid="access-code-form" noValidate onSubmit={submit} className="fm-form">
+        <fieldset disabled={disabled} className="fm-set fm-fields">
+          <div className="fm-field">
+            <label htmlFor="access-code" className="fm-label">
+              {t("eventForm.code.label")}
+            </label>
+            <p id="access-code-intro" className="fm-hint">
+              {t("eventForm.code.intro")}
+            </p>
+            <input
+              id="access-code"
+              data-testid="access-code-input"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              className="fm-input"
+              aria-invalid={message ? true : undefined}
+              aria-describedby={message ? "access-code-intro access-code-message" : "access-code-intro"}
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+            />
+            {message && (
+              <p id="access-code-message" role="alert" data-testid="access-code-message" className="fm-error">
+                {t(message)}
+              </p>
+            )}
+          </div>
+          <button type="submit" data-testid="access-code-submit" className="fm-submit">
+            {t("eventForm.code.submit")}
+          </button>
+        </fieldset>
+      </form>
+    </>
   );
 }

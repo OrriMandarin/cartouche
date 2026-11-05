@@ -5,6 +5,7 @@ import { classiqueSettingsSchema, type ClassiqueSettings } from "./settings";
 export const classique: TemplateDefinition<ClassiqueSettings> = {
   id: "classique",
   nameKey: "templates.classique.name",
+  descriptionKey: "templates.classique.description",
   beta: false,
   supportsTheme: true,
   media: { header: ["image", "video"], avatar: true },

@@ -32,7 +32,7 @@ describe("AccountDeletedPage", () => {
     );
 
     expect(screen.getByTestId("account-deleted")).toHaveTextContent("Ton compte a été supprimé");
-    expect(screen.getByTestId("account-deleted")).toHaveTextContent("fournisseur d'identité");
+    expect(screen.getByTestId("account-deleted")).toHaveTextContent("fournisseur d’identité");
     expect(screen.getByTestId("account-deleted-home")).toHaveAttribute("href", "/");
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
     expect(signOut).toHaveBeenCalledWith({ redirectTo: "/account-deleted" });

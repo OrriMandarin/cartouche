@@ -16,6 +16,17 @@ export function zoneLabel(zone: string): string {
   return zone.replaceAll("_", " ");
 }
 
+/** The date (`AAAA-MM-JJ`) and the time (`HH:mm`) of a local value; both empty for an empty value. */
+export function splitLocalInput(local: string): { date: string; time: string } {
+  const [date = "", time = ""] = local.split("T");
+  return { date, time };
+}
+
+/** The local value of a date and a time: a date alone starts at midnight, a time without a date stands for nothing. */
+export function joinLocalInput(date: string, time: string): string {
+  return date === "" ? "" : `${date}T${time || "00:00"}`;
+}
+
 /** An instant as the value of an `<input type="datetime-local">` in `zone`: `AAAA-MM-JJTHH:mm`. */
 export function toLocalInput(iso: string, zone: string): string {
   return format(new TZDate(iso, zone), "yyyy-MM-dd'T'HH:mm");
@@ -49,4 +60,28 @@ export function formatEventDate(iso: string, zone: string): string {
   return new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short", timeZone: zone }).format(
     new Date(iso),
   );
+}
+
+const shortDate = (zone: string, weekday: boolean) =>
+  new Intl.DateTimeFormat("fr-FR", {
+    weekday: weekday ? "short" : undefined,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: zone,
+  });
+const shortTime = (zone: string) =>
+  new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+
+/** A contact's date in the table, in French and in `zone`: « 7 févr. 2027 · 16:42 » (LEA-014). */
+export function formatLeadRowDate(iso: string, zone: string): string {
+  const date = new Date(iso);
+  return `${shortDate(zone, false).format(date)} · ${shortTime(zone).format(date)}`;
+}
+
+/** A moment of a contact in `zone`: « Dim. 7 févr. 2027 à 16:42 » with the weekday, « 7 févr. 2027 à 16:42 » without (LEA-003). */
+export function formatLeadMoment(iso: string, zone: string, withWeekday: boolean): string {
+  const date = new Date(iso);
+  const day = shortDate(zone, withWeekday).format(date);
+  return `${day.charAt(0).toLocaleUpperCase("fr-FR")}${day.slice(1)} à ${shortTime(zone).format(date)}`;
 }

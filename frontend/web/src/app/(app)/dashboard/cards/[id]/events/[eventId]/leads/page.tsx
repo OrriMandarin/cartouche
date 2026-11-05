@@ -10,6 +10,7 @@ import { EventScope } from "@/components/events/EventScope";
 import { ExportDialog } from "@/components/events/ExportDialog";
 import { LeadList } from "@/components/events/LeadList";
 import { useApi } from "@/lib/api";
+import { countLeads } from "@/lib/events/export-count";
 import { ownerLeadActions } from "@/lib/events/lead-actions";
 
 function LeadsHeader({ cardId, title }: { cardId: string; title: string }) {
@@ -29,7 +30,7 @@ function LeadsHeader({ cardId, title }: { cardId: string; title: string }) {
 }
 
 /** The contacts of one event, loaded from the API, with the owner's actions. */
-function EventLeads({ eventId }: { eventId: string }) {
+function EventLeads({ cardSlug, eventId, title }: { cardSlug: string; eventId: string; title: string }) {
   const api = useApi();
   const load = useCallback(async () => {
     const { data } = await api.GET("/api/events/{id}/leads", { params: { path: { id: eventId } } });
@@ -38,22 +39,48 @@ function EventLeads({ eventId }: { eventId: string }) {
   }, [api, eventId]);
   const actions = useMemo(() => ownerLeadActions(api), [api]);
 
-  return <LeadList load={load} actions={actions} showEvent={false} toolbar={<ExportDialog scope={{ kind: "event", id: eventId }} />} />;
+  return (
+    <LeadList
+      load={load}
+      actions={actions}
+      showEvent={false}
+      toolbar={(leads) =>
+        leads === null ? null : (
+          <div>
+            <ExportDialog
+              scope={{ kind: "event", id: eventId }}
+              summary={{ cardSlug, eventTitle: title, counts: countLeads(leads) }}
+            />
+          </div>
+        )
+      }
+    />
+  );
 }
 
 /** spec: EDI-020, LEA-021. The contacts of one event of one card of the signed-in user. */
 export default function EventLeadsPage() {
   const { id, eventId } = useParams<{ id: string; eventId: string }>();
+  const t = useTranslations();
+  const eventsHref = `/dashboard/cards/${id}/events`;
 
   return (
-    <AccountGate>
+    <AccountGate
+      title={t("leads.title")}
+      breadcrumb={[
+        { label: t("shell.cards"), href: "/dashboard" },
+        { label: t("events.title"), href: eventsHref },
+        { label: t("leads.title") },
+      ]}
+      back={{ href: eventsHref, label: t("events.title") }}
+    >
       <CardScope cardId={id}>
         {(card) => (
           <EventScope card={card} eventId={eventId}>
             {(event) => (
               <section className="space-y-6">
                 <LeadsHeader cardId={card.id} title={event.title} />
-                <EventLeads eventId={event.id} />
+                <EventLeads cardSlug={card.slug} eventId={event.id} title={event.title} />
               </section>
             )}
           </EventScope>

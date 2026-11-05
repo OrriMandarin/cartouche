@@ -15,13 +15,13 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::auth::ApprovedUser;
-use crate::db::media::{MediaRecord, StoredVariant};
+use crate::db::media::{MediaRecord, SourceFile, StoredVariant};
 use crate::db::{blocked_slugs, cards, media, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
-use crate::media::MediaService;
+use crate::media::{MediaService, new_source_name};
 use crate::state::AppState;
-use crate::views::CardView;
+use crate::views::{Audience, CardView};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CardList {
@@ -53,9 +53,20 @@ pub async fn list_cards(
     let ids: Vec<Uuid> = owned.iter().map(|card| card.id).collect();
     let attached = media::list_attached(&state.db, me.user.id, &ids).await?;
     let now = state.clock.now();
+    let mut counts = cards::counts_for_owner(&state.db, me.user.id, &ids, now).await?;
     let cards = owned
         .into_iter()
-        .map(|card| CardView::new(card, &attached, &state.config, &state.media, now))
+        .map(|card| {
+            let card_counts = counts.remove(&card.id).unwrap_or_default();
+            CardView::new(
+                card,
+                card_counts,
+                &attached,
+                &state.config,
+                &state.media,
+                Audience::Owner(now),
+            )
+        })
         .collect::<Result<_, _>>()?;
     Ok(Json(CardList { cards }))
 }
@@ -141,13 +152,7 @@ pub async fn create_card(
     tx.commit().await.map_err(slug_race)?;
     Ok((
         StatusCode::CREATED,
-        Json(CardView::new(
-            card,
-            &[],
-            &state.config,
-            &state.media,
-            state.clock.now(),
-        )?),
+        Json(CardView::load(&state, card, &[], Audience::Owner(state.clock.now())).await?),
     ))
 }
 
@@ -179,13 +184,9 @@ pub async fn get_card(
         .await?
         .ok_or(ApiError::NotFound)?;
     let attached = media::list_attached(&state.db, me.user.id, &[id]).await?;
-    Ok(Json(CardView::new(
-        card,
-        &attached,
-        &state.config,
-        &state.media,
-        state.clock.now(),
-    )?))
+    Ok(Json(
+        CardView::load(&state, card, &attached, Audience::Owner(state.clock.now())).await?,
+    ))
 }
 
 /// The whole editable content of a card; it replaces what is stored.
@@ -217,18 +218,18 @@ pub struct UpdateCardBody {
     put,
     path = "/api/cards/{id}",
     summary = "Update a card",
-    description = "Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted.",
+    description = "Replaces the card's slug, template, settings, theme, content, links, header and avatar. All invalid fields are reported at once; nothing is saved unless everything is valid and the slug is available. Uploaded media that are neither the header nor the avatar are deleted. Refused while support has disabled the card.",
     tag = "cards",
     security(("bearer" = [])),
     params(("id" = Uuid, Path, description = "Id of the card.")),
     request_body = UpdateCardBody,
     responses(
         (status = 200, description = "The saved card.", body = CardView),
-        (status = 400, description = "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`).", body = ErrorBody),
+        (status = 400, description = "Malformed id or body (`invalid_request`) or invalid fields (`validation_failed`); the `theme` field error is `invalid_theme`, or `low_contrast` when its colours fail the contrast checks.", body = ErrorBody),
         (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
         (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
         (status = 404, description = "No such card for the caller (`not_found`).", body = ErrorBody),
-        (status = 409, description = "The slug is not available (`slug_taken`, `slug_reserved`).", body = ErrorBody),
+        (status = 409, description = "The slug is not available (`slug_taken`, `slug_reserved`) or support disabled the card (`card_disabled_by_support`).", body = ErrorBody),
         (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
         (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
     ),
@@ -252,11 +253,12 @@ pub async fn update_card(
     let owner_id = me.user.id;
     let mut tx = state.db.begin().await?;
     // The lock keeps a concurrent deletion or upload out until this save is committed.
-    if cards::lock_for_owner(&mut tx, owner_id, id)
+    let locked = cards::lock_for_owner(&mut tx, owner_id, id)
         .await?
-        .is_none()
-    {
-        return Err(ApiError::NotFound);
+        .ok_or(ApiError::NotFound)?;
+    // Only after the 404 of another owner's card, so nothing is learned about it (LNK-036).
+    if locked.support_disabled {
+        return Err(ApiError::CardDisabledBySupport);
     }
     let card_media: Vec<_> = media::list_for_card(&mut *tx, owner_id, id)
         .await?
@@ -292,13 +294,9 @@ pub async fn update_card(
     let attached = media::list_attached(&mut *tx, owner_id, &[id]).await?;
     tx.commit().await?;
     remove_media_files(&state.media, &removed).await;
-    Ok(Json(CardView::new(
-        card,
-        &attached,
-        &state.config,
-        &state.media,
-        state.clock.now(),
-    )?))
+    Ok(Json(
+        CardView::load(&state, card, &attached, Audience::Owner(state.clock.now())).await?,
+    ))
 }
 
 /// Deletes the files of media whose rows are gone. Rows are authoritative: a file that
@@ -372,13 +370,9 @@ async fn set_disabled(
         .ok_or(ApiError::NotFound)?;
     let attached = media::list_attached(&mut *tx, owner_id, &[id]).await?;
     tx.commit().await?;
-    Ok(Json(CardView::new(
-        card,
-        &attached,
-        &state.config,
-        &state.media,
-        state.clock.now(),
-    )?))
+    Ok(Json(
+        CardView::load(state, card, &attached, Audience::Owner(state.clock.now())).await?,
+    ))
 }
 
 /// Disables a card: its public page stops being served (LNK-005).
@@ -449,26 +443,48 @@ struct MediaCopy {
     copy: MediaRecord,
 }
 
-/// Storage keys of every variant of `source` and of its `copy`.
-fn variant_keys<'a>(
-    source: &'a MediaRecord,
-    copy: &'a MediaRecord,
-) -> impl Iterator<Item = (String, String)> + 'a {
-    source
-        .variants
-        .iter()
-        .map(move |StoredVariant { name, .. }| {
+impl MediaCopy {
+    /// A copy of `source` on the card `card_id`, with its framing and a source file under a
+    /// new name (EDI-014, MED-031).
+    fn of(source: MediaRecord, card_id: Uuid) -> MediaCopy {
+        let copy = MediaRecord {
+            id: Uuid::now_v7(),
+            card_id,
+            source: source.source.clone().map(|file| SourceFile {
+                name: new_source_name(),
+                ..file
+            }),
+            ..source.clone()
+        };
+        MediaCopy { source, copy }
+    }
+
+    /// Storage keys of every file of the source media and of its copy: the variants under the
+    /// same names, the source under its new name.
+    fn file_keys(&self) -> impl Iterator<Item = (String, String)> + '_ {
+        let MediaCopy { source, copy } = self;
+        let variants = source
+            .variants
+            .iter()
+            .map(|StoredVariant { name, .. }| (name, name));
+        let sources = source
+            .source
+            .iter()
+            .zip(&copy.source)
+            .map(|(from, to)| (&from.name, &to.name));
+        variants.chain(sources).map(|(from, to)| {
             (
-                storage_key(source.card_id, source.id, name),
-                storage_key(copy.card_id, copy.id, name),
+                storage_key(source.card_id, source.id, from),
+                storage_key(copy.card_id, copy.id, to),
             )
         })
+    }
 }
 
 /// Copies the files of every media of `copies`; when one fails, removes what was copied.
 async fn copy_files(storage: &MediaService, copies: &[MediaCopy]) -> Result<(), ApiError> {
-    for MediaCopy { source, copy } in copies {
-        for (from, to) in variant_keys(source, copy) {
+    for media_copy in copies {
+        for (from, to) in media_copy.file_keys() {
             if let Err(error) = storage.copy(&from, &to).await {
                 remove_copied_files(storage, copies).await;
                 return Err(error.into());
@@ -571,27 +587,16 @@ pub async fn duplicate_card(
     let copies: Vec<MediaCopy> = media::list_attached(&mut *tx, owner_id, &[id])
         .await?
         .into_iter()
-        .map(|source| {
-            let copy = MediaRecord {
-                id: Uuid::now_v7(),
-                card_id: new_id,
-                ..source.clone()
-            };
-            MediaCopy { source, copy }
-        })
+        .map(|source| MediaCopy::of(source, new_id))
         .collect();
     // Files first: the new rows only ever point at files that exist.
     copy_files(&state.media, &copies).await?;
     match record_duplicate(tx, owner_id, id, new_id, &slug, claim, &copies).await {
         Ok((card, attached)) => Ok((
             StatusCode::CREATED,
-            Json(CardView::new(
-                card,
-                &attached,
-                &state.config,
-                &state.media,
-                state.clock.now(),
-            )?),
+            Json(
+                CardView::load(&state, card, &attached, Audience::Owner(state.clock.now())).await?,
+            ),
         )),
         Err(error) => {
             remove_copied_files(&state.media, &copies).await;

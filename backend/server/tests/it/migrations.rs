@@ -45,3 +45,73 @@ async fn card_foreign_keys_are_indexed(pool: PgPool) {
         );
     }
 }
+
+// spec: TPL-025
+#[sqlx::test(migrations = "./migrations")]
+async fn theme_identifiers_are_renamed(pool: PgPool) {
+    let owner = insert_user(&pool, "themes", "approved").await.unwrap();
+    let cases = [
+        (r#"{"preset":"clair"}"#, r#"{"preset":"craie"}"#),
+        (
+            r#"{"preset":"ocean"}"#,
+            r#"{"preset":"minuit","font":"inter"}"#,
+        ),
+        (
+            r#"{"preset":"ocean","font":"editorial"}"#,
+            r#"{"preset":"minuit","font":"playfair"}"#,
+        ),
+        (
+            r##"{"preset":"sable","font":"moderne","accent":"#123456"}"##,
+            r##"{"preset":"ivoire","font":"inter","accent":"#123456"}"##,
+        ),
+        (
+            r#"{"preset":"corail","header_gradient":10}"#,
+            r#"{"preset":"terracotta","header_gradient":10}"#,
+        ),
+        (r#"{"preset":"zzz"}"#, r#"{"preset":"zzz"}"#),
+    ];
+    let mut ids = Vec::new();
+    for (before, _) in cases {
+        let id = Uuid::now_v7();
+        sqlx::query(
+            "insert into cards (id, owner_id, template, settings, theme) \
+             values ($1, $2, 'classic', '{}', $3::jsonb)",
+        )
+        .bind(id)
+        .bind(owner)
+        .bind(before)
+        .execute(&pool)
+        .await
+        .unwrap();
+        ids.push(id);
+    }
+    let themes = |pool: PgPool, ids: Vec<Uuid>| async move {
+        let mut out = Vec::new();
+        for id in ids {
+            let theme: serde_json::Value =
+                sqlx::query_scalar("select theme from cards where id = $1")
+                    .bind(id)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            out.push(theme);
+        }
+        out
+    };
+    let expected: Vec<serde_json::Value> = cases
+        .iter()
+        .map(|(_, after)| serde_json::from_str(after).unwrap())
+        .collect();
+
+    sqlx::raw_sql(include_str!("../../migrations/0007_theme_ids.sql"))
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(themes(pool.clone(), ids.clone()).await, expected);
+
+    sqlx::raw_sql(include_str!("../../migrations/0007_theme_ids.sql"))
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(themes(pool.clone(), ids).await, expected);
+}

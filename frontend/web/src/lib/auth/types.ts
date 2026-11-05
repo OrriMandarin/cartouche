@@ -2,6 +2,8 @@ export interface AuthUser {
   subject: string;
   email?: string;
   name?: string;
+  /** The identity provider of the sign-in, such as `google`, when the adapter knows it. */
+  provider?: string;
 }
 
 export interface AuthContextValue {
@@ -16,4 +18,6 @@ export interface AuthContextValue {
    * afterwards; without it, the adapter's default (the home page). The test adapter ignores it.
    */
   signOut(opts?: { redirectTo?: string }): Promise<void>;
+  /** Opens the identity provider's own profile screen (e-mail, sign-in methods); absent when the adapter has none. */
+  manageProfile?: () => void;
 }

@@ -53,6 +53,8 @@ pub enum Cell {
     Date(NaiveDate),
     /// Already converted to the zone of the export.
     DateTime(NaiveDateTime),
+    /// A date and time exactly as the prospect entered it (FRM-043): no time zone, never converted (LEA-033).
+    LocalDateTime(NaiveDateTime),
     /// The JSON number as stored with the answer, unchanged.
     Number(Number),
     Bool(bool),
@@ -342,6 +344,10 @@ fn custom_cell(snapshot: &AnswerSnapshot) -> Cell {
         (Value::Bool(checked), CustomFieldKind::Checkbox) => Cell::Bool(*checked),
         (Value::String(text), CustomFieldKind::Date) => NaiveDate::parse_from_str(text, "%Y-%m-%d")
             .map_or_else(|_| Cell::Text(text.clone()), Cell::Date),
+        (Value::String(text), CustomFieldKind::Datetime) => {
+            NaiveDateTime::parse_from_str(text, "%Y-%m-%dT%H:%M")
+                .map_or_else(|_| Cell::Text(text.clone()), Cell::LocalDateTime)
+        }
         (Value::String(text), _) => Cell::Text(text.clone()),
         (other, _) => Cell::Text(other.to_string()),
     }
@@ -851,6 +857,35 @@ mod tests {
         assert_eq!(table.headers[0], "Spam");
         assert_eq!(table.headers[1], "Spam (2)");
         assert_eq!(table.headers[6], "Spam (3)");
+    }
+
+    // spec: LEA-033, FRM-043
+    #[test]
+    fn a_datetime_answer_is_a_local_date_time_never_converted_to_the_export_zone() {
+        let wanted = |text: &str| {
+            custom_cell(&snap(
+                31,
+                "Rendez-vous souhaité",
+                CustomFieldKind::Datetime,
+                json!(text),
+            ))
+        };
+        assert_eq!(
+            wanted("2027-03-20T14:30"),
+            Cell::LocalDateTime(
+                NaiveDateTime::parse_from_str("2027-03-20 14:30", "%Y-%m-%d %H:%M").unwrap()
+            )
+        );
+        assert_eq!(wanted("bientôt"), Cell::Text("bientôt".to_string()));
+        assert_eq!(
+            custom_cell(&snap(
+                31,
+                "Rendez-vous souhaité",
+                CustomFieldKind::Datetime,
+                Value::Null
+            )),
+            Cell::Empty
+        );
     }
 
     // spec: LEA-025, FRM-022

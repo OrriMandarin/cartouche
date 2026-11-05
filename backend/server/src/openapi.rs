@@ -59,6 +59,7 @@ impl Modify for BearerAuth {
         cards::enable_card,
         cards::duplicate_card,
         card_media::upload_media,
+        card_media::reframe_media,
         events::list_events,
         events::create_event,
         events::get_event,

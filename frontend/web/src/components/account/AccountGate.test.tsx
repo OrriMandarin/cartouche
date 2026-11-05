@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ApiError } from "@cartouche/api-client";
 import messages from "../../../messages/fr.json";
+import { supportMailto } from "@/lib/instance-links";
 import { AuthContext } from "@/lib/auth/context";
 import type { AuthContextValue } from "@/lib/auth/types";
 
@@ -10,12 +11,12 @@ const get = vi.fn();
 const api = { GET: get, DELETE: vi.fn() };
 vi.mock("@/lib/api", () => ({ useApi: () => api }));
 const replace = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname: () => "/dashboard" }));
 
 import { AccountGate, useMe } from "./AccountGate";
 
 function me(status: string, extra: Record<string, unknown> = {}) {
-  return { data: { id: "u1", email: "alice@example.test", display_name: "Alice", status, is_admin: false, ...extra } };
+  return { data: { id: "u1", email: "alice@example.test", display_name: "Alice", status, is_admin: false, totals: { cards: 0, events: 0, leads: 0 }, ...extra } };
 }
 
 function Child() {
@@ -66,6 +67,57 @@ describe("AccountGate", () => {
     expect(await screen.findByTestId("account-pending")).toHaveTextContent("Ton compte est en attente de validation");
   });
 
+  test.each([
+    {
+      status: "pending",
+      testId: "account-pending",
+      badge: "En attente",
+      title: "Ton compte est en attente de validation",
+      text: "Merci pour ton inscription. Nous validons chaque nouveau compte à la main\u00a0: tu pourras utiliser Cartouche avec alice@example.test dès qu’il sera activé.",
+      support: false,
+    },
+    {
+      status: "rejected",
+      testId: "account-rejected",
+      badge: "Inscription refusée",
+      title: "Ton inscription n’a pas été acceptée",
+      text: "Ce compte ne peut pas utiliser Cartouche. Si tu penses qu’il s’agit d’une erreur, écris-nous\u00a0: nous reverrons ta demande.",
+      support: true,
+    },
+    {
+      status: "suspended",
+      testId: "account-suspended",
+      badge: "Suspendu",
+      title: "Ton compte est suspendu",
+      text: "Tu ne peux plus modifier tes cartes pour le moment. Contacte le support pour connaître la raison et la marche à suivre.",
+      support: true,
+    },
+  ])("ACC-026 the $status account has its badge, title, text and actions", async (c) => {
+    get.mockResolvedValue(me(c.status));
+    renderGate();
+    const card = await screen.findByTestId(c.testId);
+    expect(card).toHaveTextContent(c.badge);
+    expect(within(card).getByRole("heading", { level: 1 })).toHaveTextContent(c.title);
+    // textContent, not toHaveTextContent: the latter would hide the non-breaking space of the text.
+    expect(card.textContent).toContain(c.text);
+    expect(within(card).getByTestId("sign-out")).toHaveTextContent("Se déconnecter");
+    const support = within(card).queryByTestId("account-support");
+    if (c.support) {
+      expect(support).toHaveTextContent("Contacter le support");
+      expect(support).toHaveAttribute("href", supportMailto());
+    } else {
+      expect(support).toBeNull();
+    }
+  });
+
+  test("ACC-026 the pending text does not mention an email the account does not have", async () => {
+    get.mockResolvedValue(me("pending", { email: "" }));
+    renderGate();
+    expect((await screen.findByTestId("account-pending")).textContent).toContain(
+      "tu pourras utiliser Cartouche dès que ton compte sera activé.",
+    );
+  });
+
   test("ACC-004: renders children when approved", async () => {
     get.mockResolvedValue(me("approved"));
     renderGate();
@@ -100,12 +152,12 @@ describe("AccountGate", () => {
     expect(screen.queryByTestId("child")).toBeNull();
   });
 
-  test("header shows the signed-in name and signs out", async () => {
+  test("the shell shows the signed-in name and signs out", async () => {
     get.mockResolvedValue(me("approved"));
     const signOut = vi.fn(async () => undefined);
     renderGate({ signOut });
     await screen.findByTestId("child");
-    expect(screen.getByTestId("account-header")).toHaveTextContent("Alice");
+    expect(screen.getByTestId("shell-user-name")).toHaveTextContent("Alice");
     fireEvent.click(screen.getByTestId("sign-out"));
     expect(signOut).toHaveBeenCalledTimes(1);
   });
@@ -114,10 +166,12 @@ describe("AccountGate", () => {
     get.mockResolvedValue(me("pending"));
     renderGate();
     await screen.findByTestId("account-pending");
+    expect(screen.getByTestId("account-header")).toHaveTextContent("alice@example.test");
+    expect(screen.queryByTestId("account-link")).toBeNull();
     expect(screen.getByTestId("sign-out")).toBeInTheDocument();
   });
 
-  test("ACC-019 the header links to Mon compte", async () => {
+  test("ACC-019 EDI-022 the navigation links to Mon compte", async () => {
     get.mockResolvedValue(me("approved"));
     renderGate();
     await screen.findByTestId("child");
@@ -133,7 +187,7 @@ describe("AccountGate", () => {
       renderGate();
       await screen.findByTestId(`account-${status}`);
       fireEvent.click(screen.getByTestId("delete-account-open"));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
       expect(screen.getByTestId("delete-account-confirm")).toBeDisabled();
     },
   );

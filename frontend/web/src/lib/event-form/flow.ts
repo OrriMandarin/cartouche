@@ -1,10 +1,11 @@
+import type { LeadDraft } from "./answers";
 import type { SubmissionOutcome } from "./outcome";
 import type { FormReload } from "./requests";
 import type { PublicEventForm } from "./types";
 
 /** What the form does after a refused submission (FRM-015, FRM-030, FRM-040 to FRM-042). */
 export type RefusalAction =
-  /** Show each message key next to its field. */
+  /** Show each error code next to its field. */
   | { kind: "fields"; fields: Record<string, string> }
   /** Go back to the code screen with this message; the answers stay. */
   | { kind: "ask_code"; message: string }
@@ -22,21 +23,35 @@ export function refusalAction(outcome: SubmissionOutcome): RefusalAction {
     case "form_changed":
       return { kind: "reload_form" };
     default:
-      return { kind: "message", message: `eventForm.refused.${outcome.kind}`, retry: outcome.kind === "network" };
+      return {
+        kind: "message",
+        message: `eventForm.refused.${outcome.kind}`,
+        retry: outcome.kind === "network",
+      };
   }
 }
 
 /** What the form does once loaded again after `form_changed` (FRM-030): show the new form, or say why not. */
 export function afterReload(
   reload: FormReload,
-): { kind: "form"; form: PublicEventForm; message: string } | Exclude<RefusalAction, { kind: "reload_form" }> {
+):
+  | { kind: "form"; form: PublicEventForm; message: string }
+  | Exclude<RefusalAction, { kind: "reload_form" }> {
   switch (reload.kind) {
     case "form":
-      return { kind: "form", form: reload.form, message: "eventForm.refused.form_changed" };
+      return {
+        kind: "form",
+        form: reload.form,
+        message: "eventForm.refused.form_changed",
+      };
     case "code_required":
       return { kind: "ask_code", message: "eventForm.code.changed" };
     case "closed":
-      return { kind: "message", message: "eventForm.refused.closed", retry: false };
+      return {
+        kind: "message",
+        message: "eventForm.refused.closed",
+        retry: false,
+      };
   }
 }
 
@@ -44,7 +59,8 @@ export function afterReload(
 export function unlockMessageKey(outcome: SubmissionOutcome): string {
   if (outcome.kind === "code_changed") return "eventForm.code.invalid";
   // The unlock route lists no field and has no form version: anything else is unexpected.
-  if (outcome.kind === "fields" || outcome.kind === "form_changed") return "eventForm.refused.unknown";
+  if (outcome.kind === "fields" || outcome.kind === "form_changed")
+    return "eventForm.refused.unknown";
   return `eventForm.refused.${outcome.kind}`;
 }
 
@@ -54,4 +70,14 @@ export function unlockMessageKey(outcome: SubmissionOutcome): string {
  */
 export function utcDate(now: Date): string {
   return now.toISOString().slice(0, 10);
+}
+
+/**
+ * The first name the prospect sent, trimmed, for the confirmation to thank them by (FRM-047); empty when the form
+ * does not ask for it or they left it blank.
+ */
+export function sentFirstName(form: PublicEventForm, draft: LeadDraft): string {
+  return form.standard_fields.some(({ field }) => field === "first_name")
+    ? draft.answers.first_name.normalize("NFC").trim()
+    : "";
 }

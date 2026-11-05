@@ -2,12 +2,14 @@ import { downloadedBytes, downloadedText, expect, test } from "../fixtures";
 import type { Page } from "@playwright/test";
 
 const MARIAGE = "Salon du Mariage Clermont 2027";
+const DEMO = "Démonstration en boutique";
 const PARIS_2026 = "Salon de Paris 2026";
 const BOM = [0xef, 0xbb, 0xbf];
 
 let aliceCardId: string;
 let archiveCardId: string;
 let mariageId: string;
+let demoId: string;
 
 // The events scenario freezes the API clock at T0 before seeding: sign in only afterwards.
 test.beforeEach(async ({ api, loginAs }) => {
@@ -15,10 +17,12 @@ test.beforeEach(async ({ api, loginAs }) => {
   const alice = cards.find((c) => c.slug === "alice-durand");
   const archive = cards.find((c) => c.slug === "alice-archive");
   const mariage = events.find((event) => event.title === MARIAGE);
-  if (!alice || !archive || !mariage) throw new Error("the events scenario lacks a card or an event the export tests need");
+  const demo = events.find((event) => event.title === DEMO);
+  if (!alice || !archive || !mariage || !demo) throw new Error("the events scenario lacks a card or an event the export tests need");
   aliceCardId = alice.id;
   archiveCardId = archive.id;
   mariageId = mariage.id;
+  demoId = demo.id;
   await loginAs("seed-alice");
 });
 
@@ -140,7 +144,8 @@ test("LEA-005 a deleted lead is not exported", async ({ page, api }) => {
   const zoe = (await api.leads("seed-alice", mariageId)).find((lead) => lead.answers.first_name === "Zoé");
   if (!zoe) throw new Error("no seeded contact named Zoé");
   await page.goto(eventLeadsUrl());
-  await page.getByTestId(`lead-delete-${zoe.id}`).click();
+  await page.getByTestId(`lead-open-${zoe.id}`).click();
+  await page.getByTestId("lead-detail-delete").click();
   await page.getByTestId("lead-delete-confirm").click();
   await expect(page.getByTestId(`lead-row-${zoe.id}`)).toHaveCount(0);
 
@@ -168,4 +173,25 @@ test("LEA-021 the export is not filtered by the search", async ({ page }) => {
   await expect(page.getByTestId(/^lead-row-/)).toHaveCount(1);
   const download = await exportFile(page);
   expect(csvLines(await downloadedText(download))).toHaveLength(4);
+});
+
+test("LEA-033 a datetime answer in the CSV", async ({ page, api }) => {
+  await page.goto(`/c/alice-durand/e/${demoId}`);
+  await page.getByLabel(/Rendez-vous souhaité/).fill("2027-03-20T14:30");
+  await page.getByTestId("field-answers.email").fill("rdv@example.test");
+  await page.getByTestId("consent-checkbox").check();
+  await page.getByTestId("event-form-submit").click();
+  await expect(page.getByTestId("event-form-confirmation")).toBeVisible();
+
+  await page.goto(`/dashboard/cards/${aliceCardId}/events/${demoId}/leads`);
+  const [lead] = await api.leads("seed-alice", demoId);
+  await page.getByTestId(`lead-open-${lead!.id}`).click();
+  await expect(page.getByTestId("lead-detail")).toContainText("20/03/2027 à 14:30");
+  await page.keyboard.press("Escape");
+
+  const lines = csvLines(await downloadedText(await exportFile(page)));
+  const header = lines[0]!.split(",");
+  const column = header.indexOf("Rendez-vous souhaité");
+  expect(column).toBeGreaterThanOrEqual(0);
+  expect(lines[1]!.split(",")[column]).toBe("2027-03-20 14:30");
 });

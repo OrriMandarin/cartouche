@@ -1,11 +1,14 @@
 use axum::Json;
+use axum::extract::State;
 use cartouche_domain::UserStatus;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::auth::CurrentUser;
-use crate::error::ErrorBody;
+use crate::db::users;
+use crate::error::{ApiError, ErrorBody};
+use crate::state::AppState;
 
 /// The authenticated user's account.
 #[derive(Debug, Serialize, ToSchema)]
@@ -16,6 +19,20 @@ pub struct MeResponse {
     pub status: UserStatus,
     /// Evaluated from `ADMIN_USER_IDS`, never stored.
     pub is_admin: bool,
+    /// Events in progress at once that a card may have (EVT-019); the dashboard says when a
+    /// card reaches it (EDI-032).
+    pub max_simultaneous_events: u32,
+    /// What the account holds, for the account deletion area (ACC-027); zeros until the
+    /// account is approved.
+    pub totals: AccountTotals,
+}
+
+/// Number of cards, events and leads of an account.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AccountTotals {
+    pub cards: i64,
+    pub events: i64,
+    pub leads: i64,
 }
 
 /// The authenticated user's account, whatever its status (ACC-004).
@@ -34,12 +51,27 @@ pub struct MeResponse {
         (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
     ),
 )]
-pub async fn me(current: CurrentUser) -> Json<MeResponse> {
-    Json(MeResponse {
+pub async fn me(
+    current: CurrentUser,
+    State(state): State<AppState>,
+) -> Result<Json<MeResponse>, ApiError> {
+    let totals = if current.user.status == UserStatus::Approved {
+        users::totals_for_owner(&state.db, current.user.id).await?
+    } else {
+        users::Totals::default()
+    };
+    Ok(Json(MeResponse {
         id: current.user.id,
         email: current.user.email,
         display_name: current.user.display_name,
         status: current.user.status,
         is_admin: current.is_admin,
-    })
+        max_simultaneous_events: u32::try_from(state.config.max_simultaneous_events)
+            .map_err(|e| ApiError::Internal(e.to_string()))?,
+        totals: AccountTotals {
+            cards: totals.cards,
+            events: totals.events,
+            leads: totals.leads,
+        },
+    }))
 }

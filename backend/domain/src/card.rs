@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{FieldError, Slug, Theme, is_valid_email, normalize, normalize_phone};
 
 pub const DEFAULT_TEMPLATE: &str = "classique";
-pub const DEFAULT_THEME_PRESET: &str = "clair";
+pub const DEFAULT_THEME_PRESET: &str = "craie";
 pub const MAX_LINKS: usize = 20;
 pub const MAX_SETTINGS_BYTES: usize = 8192;
 
@@ -136,6 +136,9 @@ pub fn validate_card(input: CardInput) -> Result<ValidCard, Vec<FieldError>> {
     let theme = Theme::parse(&input.theme)
         .map_err(|_| errors.push(FieldError::new("theme", "invalid_theme")))
         .ok();
+    if theme.as_ref().is_some_and(|t| t.check_readable().is_err()) {
+        errors.push(FieldError::new("theme", "low_contrast"));
+    }
 
     let content = validate_content(input.content, &mut errors);
     let links = validate_links(input.links, &mut errors);
@@ -518,8 +521,20 @@ mod tests {
     #[test]
     fn invalid_theme_is_one_field_error() {
         let mut input = base();
-        input.theme = serde_json::json!({ "preset": "clair", "accent": "red" });
+        input.theme = serde_json::json!({ "preset": "craie", "accent": "red" });
         assert_eq!(errors(input), vec![err("theme", "invalid_theme")]);
+    }
+
+    // spec: TPL-023
+    #[test]
+    fn validate_rejects_an_unreadable_theme() {
+        let mut input = base();
+        input.theme = serde_json::json!({ "preset": "terracotta", "text": "#b89580" });
+        assert_eq!(errors(input), vec![err("theme", "low_contrast")]);
+
+        let mut input = base();
+        input.theme = serde_json::json!({ "preset": "terracotta" });
+        assert!(validate_card(input).is_ok());
     }
 
     // spec: LNK-018

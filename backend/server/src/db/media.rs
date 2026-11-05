@@ -1,7 +1,8 @@
-//! The `media` table: uploaded images and videos with the variants stored for each. Every
-//! function is scoped to the card owner through the `cards` table.
+//! The `media` table: uploaded images and videos with the variants stored for each, their
+//! source and their framing. Every function is scoped to the card owner through the `cards`
+//! table.
 
-use cartouche_domain::{MediaKind, Slot, VariantFormat};
+use cartouche_domain::{Framing, MediaKind, Slot, VariantFormat};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgConnection, PgExecutor, PgPool};
 use uuid::Uuid;
@@ -14,13 +15,27 @@ pub struct StoredVariant {
     pub format: VariantFormat,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// The source of a media (MED-025): `name` (`source-<token>.webp`, MED-031) is the last
+/// segment of its storage key.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SourceFile {
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// A media. `source`, `framing` and `duration_ms` are `None` for a media uploaded before plan 6
+/// (MED-033); `duration_ms` is only set for a video.
+#[derive(Debug, Clone, PartialEq)]
 pub struct MediaRecord {
     pub id: Uuid,
     pub card_id: Uuid,
     pub slot: Slot,
     pub kind: MediaKind,
     pub variants: Vec<StoredVariant>,
+    pub source: Option<SourceFile>,
+    pub framing: Option<Framing>,
+    pub duration_ms: Option<u32>,
 }
 
 impl MediaRecord {
@@ -40,6 +55,9 @@ struct MediaRow {
     slot: String,
     kind: String,
     variants: serde_json::Value,
+    source: Option<serde_json::Value>,
+    framing: Option<serde_json::Value>,
+    duration_ms: Option<i32>,
 }
 
 fn decode_error(
@@ -63,12 +81,31 @@ impl TryFrom<MediaRow> for MediaRecord {
             kind: row.kind.parse().map_err(|e| decode_error("kind", e))?,
             variants: serde_json::from_value(row.variants)
                 .map_err(|e| decode_error("variants", e))?,
+            source: row
+                .source
+                .map(serde_json::from_value)
+                .transpose()
+                .map_err(|e| decode_error("source", e))?,
+            framing: row
+                .framing
+                .map(serde_json::from_value)
+                .transpose()
+                .map_err(|e| decode_error("framing", e))?,
+            duration_ms: row
+                .duration_ms
+                .map(u32::try_from)
+                .transpose()
+                .map_err(|e| decode_error("duration_ms", e))?,
         })
     }
 }
 
-fn variants_json(variants: &[StoredVariant]) -> Result<serde_json::Value, sqlx::Error> {
-    serde_json::to_value(variants).map_err(|e| sqlx::Error::Encode(Box::new(e)))
+fn to_json(value: &impl Serialize) -> Result<serde_json::Value, sqlx::Error> {
+    serde_json::to_value(value).map_err(|e| sqlx::Error::Encode(Box::new(e)))
+}
+
+fn optional_json(value: Option<&impl Serialize>) -> Result<Option<serde_json::Value>, sqlx::Error> {
+    value.map(to_json).transpose()
 }
 
 /// Records a media on `media.card_id`, only when that card belongs to `owner_id`: `None`
@@ -78,17 +115,26 @@ pub async fn insert(
     owner_id: Uuid,
     media: MediaRecord,
 ) -> Result<Option<MediaRecord>, sqlx::Error> {
+    let duration_ms = media
+        .duration_ms
+        .map(i32::try_from)
+        .transpose()
+        .map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
     sqlx::query_as!(
         MediaRow,
-        "insert into media (id, card_id, slot, kind, variants) \
-         select $1, c.id, $3, $4, $5 from cards c where c.id = $2 and c.owner_id = $6 \
-         returning id, card_id, slot, kind, variants",
+        "insert into media (id, card_id, slot, kind, variants, source, framing, duration_ms) \
+         select $1, c.id, $3, $4, $5, $7, $8, $9 from cards c \
+         where c.id = $2 and c.owner_id = $6 \
+         returning id, card_id, slot, kind, variants, source, framing, duration_ms",
         media.id,
         media.card_id,
         media.slot.as_str(),
         media.kind.as_str(),
-        variants_json(&media.variants)?,
+        to_json(&media.variants)?,
         owner_id,
+        optional_json(media.source.as_ref())?,
+        optional_json(media.framing.as_ref())?,
+        duration_ms,
     )
     .fetch_optional(tx)
     .await?
@@ -103,7 +149,7 @@ pub async fn find_for_owner(
 ) -> Result<Option<MediaRecord>, sqlx::Error> {
     sqlx::query_as!(
         MediaRow,
-        "select m.id, m.card_id, m.slot, m.kind, m.variants \
+        "select m.id, m.card_id, m.slot, m.kind, m.variants, m.source, m.framing, m.duration_ms \
          from media m join cards c on c.id = m.card_id \
          where m.id = $1 and c.owner_id = $2",
         media_id,
@@ -122,7 +168,7 @@ pub async fn list_for_card(
 ) -> Result<Vec<MediaRecord>, sqlx::Error> {
     sqlx::query_as!(
         MediaRow,
-        "select m.id, m.card_id, m.slot, m.kind, m.variants \
+        "select m.id, m.card_id, m.slot, m.kind, m.variants, m.source, m.framing, m.duration_ms \
          from media m join cards c on c.id = m.card_id \
          where c.id = $1 and c.owner_id = $2 \
          order by m.created_at, m.id",
@@ -144,7 +190,7 @@ pub async fn list_attached(
 ) -> Result<Vec<MediaRecord>, sqlx::Error> {
     sqlx::query_as!(
         MediaRow,
-        "select m.id, m.card_id, m.slot, m.kind, m.variants \
+        "select m.id, m.card_id, m.slot, m.kind, m.variants, m.source, m.framing, m.duration_ms \
          from media m join cards c on c.id = m.card_id \
          where c.owner_id = $1 and c.id = any($2) \
            and (c.header_media_id = m.id or c.avatar_media_id = m.id)",
@@ -171,7 +217,8 @@ pub async fn delete_unreferenced(
          where m.card_id = c.id and c.id = $1 and c.owner_id = $2 \
            and c.header_media_id is distinct from m.id \
            and c.avatar_media_id is distinct from m.id \
-         returning m.id, m.card_id, m.slot, m.kind, m.variants",
+         returning m.id, m.card_id, m.slot, m.kind, m.variants, m.source, m.framing, \
+         m.duration_ms",
         card_id,
         owner_id,
     )

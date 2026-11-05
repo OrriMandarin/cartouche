@@ -1,0 +1,68 @@
+/* Classique card template, from frontend/design/tokens/card-classique.css (and the few rules of
+   design/Main.dc.html its markup needs). Only --c-* variables: the shared base (.cc, .cc-dot, .cc-save)
+   is in components/public/public-page.css. */
+
+/* --- Header: the fade is a MASK, so it also works over a gradient background (PUB-007) --- */
+.cc-head { position: relative; }
+.cc-media { position: relative; aspect-ratio: 4 / 3; overflow: hidden;
+  /* #000 only sets the opacity of the mask. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade) * 1%), transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade) * 1%), transparent 100%); }
+.cc-media > img, .cc-media > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.cc-media.is-empty { aspect-ratio: auto; height: 128px; background: color-mix(in oklab, var(--c-accent) 24%, transparent); }
+.cc-media.is-loading { background: var(--c-surface); }
+.cc-media .is-blur { filter: blur(16px) saturate(.8); transform: scale(1.2); }
+.cc-shimmer { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--c-bg) 50%, transparent) 50%, transparent 70%); background-size: 220% 100%; animation: cc-shimmer 1.6s linear infinite; }
+@keyframes cc-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.cc-pause { position: absolute; top: 12px; right: 12px; z-index: 2; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; display: grid; place-items: center; background: var(--c-scrim); color: var(--c-on-scrim); cursor: pointer; }
+.cc-pause svg.ic { width: 16px; height: 16px; }
+
+/* --- Profile photo, straddling the header; without photo, the initials on the accent (PUB-023) --- */
+.cc-avatar { position: relative; z-index: 1; width: 112px; height: 112px; margin: -64px auto 0; border-radius: 999px; overflow: hidden; box-shadow: 0 0 0 4px var(--c-bg); display: grid; place-items: center; }
+.cc-avatar > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cc-avatar.is-initials { background: var(--c-accent); color: var(--c-on-accent); font-family: var(--font-title); font-weight: var(--title-weight); font-size: 40px; letter-spacing: .02em; line-height: 1; }
+
+/* --- Body: events, identity, save contact, contact details, links (PUB-030) --- */
+.cc-body { display: flex; flex-direction: column; gap: 28px; padding: 20px 20px 40px; }
+
+/* Event buttons (no event: nothing is rendered, PUB-010) */
+.cc-events { display: flex; flex-direction: column; gap: 10px; }
+.cc-event { position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; min-height: 68px; padding: 12px 18px 12px 20px; border-radius: var(--radius-btn); background: var(--c-accent); color: var(--c-on-accent); box-shadow: 0 10px 24px -12px var(--c-accent); }
+.cc-event::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, color-mix(in oklab, var(--c-on-accent) 24%, transparent) 50%, transparent 65%); transform: translateX(-100%); animation: cc-sheen 3.2s ease-in-out infinite; }
+/* The second button's sheen is offset by 1.6 seconds (PUB-008). */
+.cc-events > :nth-child(2) .cc-event::after, .cc-events > .cc-event:nth-child(2)::after { animation-delay: 1.6s; }
+@keyframes cc-sheen { 0%, 55% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.cc-event-txt { position: relative; z-index: 1; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cc-event-live { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.2; }
+.cc-event-name { font-size: 17px; font-weight: 700; line-height: 1.25; text-wrap: balance; }
+.cc-event svg.ic { position: relative; z-index: 1; }
+.cc[data-shape="pill"] .cc-event { padding-inline: 26px 22px; }
+
+/* Identity: the name is never truncated (PUB-032) */
+.cc-id { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.cc-name { margin: 0; font-family: var(--font-title); font-weight: var(--title-weight); letter-spacing: var(--title-tracking); font-size: 32px; line-height: 1.12; text-wrap: balance; overflow-wrap: anywhere; }
+.cc-role { margin: 4px 0 0; font-size: 16px; font-weight: 600; line-height: 1.35; text-wrap: balance; overflow-wrap: anywhere; }
+.cc-company { margin: 0; font-size: 15px; line-height: 1.35; color: var(--c-muted); text-wrap: balance; overflow-wrap: anywhere; }
+.cc-desc { margin: 8px 0 0; max-width: 34ch; font-size: 15px; line-height: 1.55; text-wrap: pretty; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* Rows: contact details, free-form links, links in the list layout (PUB-034, PUB-035) */
+.cc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cc-row { display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 8px 16px; border-radius: var(--radius-btn); background: var(--c-surface); color: var(--c-text); transition: background-color .15s; }
+.cc-row:hover { background: var(--c-surface-hover); }
+.cc[data-shape="pill"] .cc-row { padding-inline: 22px 20px; }
+.cc-row > svg.ic:first-child { color: var(--c-accent); }
+.cc-row-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cc-row-label { font-size: 15px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.cc-row-sub { font-size: 13px; line-height: 1.3; color: var(--c-muted); overflow-wrap: anywhere; }
+.cc svg.ic.cc-row-end { width: 18px; height: 18px; color: var(--c-muted); }
+
+/* Links as icons (the default layout); free-form links stay as rows under them (PUB-035) */
+.cc-iconset { display: flex; flex-direction: column; gap: 12px; }
+.cc-icons { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.cc-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: var(--radius-btn); background: var(--c-surface); color: var(--c-text); transition: background-color .15s; }
+.cc-icon:hover { background: var(--c-surface-hover); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-event::after { display: none; animation: none; }
+  .cc-shimmer { animation: none; }
+}

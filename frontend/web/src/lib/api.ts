@@ -5,7 +5,7 @@ import { ApiError, createApiClient } from "@cartouche/api-client";
 import { useCallback, useMemo } from "react";
 import { useAuth } from "./auth/context";
 import { downloadExport } from "./events/lead-export";
-import { uploadMedia, type UploadMedia } from "./media/upload";
+import { reframeMedia, uploadMedia, type ReframeMedia, type UploadMedia } from "./media/upload";
 
 type ApiClient = ReturnType<typeof createApiClient>;
 
@@ -47,9 +47,25 @@ export function useApi(): ApiClient {
 export function useUploadMedia(cardId: string): UploadMedia {
   const { getToken } = useAuth();
   return useCallback(
-    async (slot, file, poster) => {
+    async (slot, file, poster, framing) => {
       try {
-        return await uploadMedia(getToken, cardId, slot, file, poster);
+        return await uploadMedia(getToken, cardId, slot, file, poster, framing);
+      } catch (error) {
+        report(error);
+        throw error;
+      }
+    },
+    [getToken, cardId],
+  );
+}
+
+/** Re-frames a media of a card as the current session; a failure is reported like those of `useApi`. */
+export function useReframeMedia(cardId: string): ReframeMedia {
+  const { getToken } = useAuth();
+  return useCallback(
+    async (mediaId, framing, poster) => {
+      try {
+        return await reframeMedia(getToken, cardId, mediaId, framing, poster);
       } catch (error) {
         report(error);
         throw error;

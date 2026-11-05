@@ -9,7 +9,7 @@ export const sampleCard: PublicCard = {
   public_url: "https://cartouche.example.test/c/eloise-daubigne",
   template: "classique",
   settings: {},
-  theme: { preset: "clair" },
+  theme: { preset: "craie" },
   content: {
     first_name: "Éloïse",
     last_name: "D'Aubigné-Müller",

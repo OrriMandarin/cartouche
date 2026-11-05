@@ -139,3 +139,26 @@ pub fn mp4_with_brands(major: &[u8; 4], compatible: &[&[u8; 4]], duration_ms: u3
     out.extend_from_slice(&mvhd);
     out
 }
+
+/// A PNG in four flat quadrants: red top left, green top right, blue bottom left, yellow
+/// bottom right. A crop shows which quadrant a variant was cut from.
+pub fn quadrants_png(width: u32, height: u32) -> Vec<u8> {
+    let image = RgbImage::from_fn(width, height, |x, y| {
+        match (x < width / 2, y < height / 2) {
+            (true, true) => Rgb([255, 0, 0]),
+            (false, true) => Rgb([0, 255, 0]),
+            (true, false) => Rgb([0, 0, 255]),
+            (false, false) => Rgb([255, 255, 0]),
+        }
+    });
+    let mut out = Cursor::new(Vec::new());
+    image
+        .write_to(&mut out, ImageFormat::Png)
+        .expect("encodable PNG");
+    out.into_inner()
+}
+
+/// A real two-second H.264 clip (the e2e fixture); its container says a little more than 2 s.
+pub fn header_clip() -> Vec<u8> {
+    include_bytes!("../../../../../frontend/e2e/fixtures/header-2s.mp4").to_vec()
+}

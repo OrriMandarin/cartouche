@@ -23,16 +23,29 @@ function open(scope: Parameters<typeof ExportDialog>[0]["scope"] = { kind: "even
 }
 
 describe("ExportDialog", () => {
+  test("LEA-021 closing the dialog returns the focus to the export button", async () => {
+    open();
+    fireEvent.click(await screen.findByTestId("export-cancel"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByTestId("export-open")).toHaveFocus();
+  });
+
   test("LEA-021 the dialog offers the three formats, CSV chosen, spam left out, and a hint for Excel users", async () => {
     open();
     expect(await screen.findByRole("dialog")).toBeVisible();
     expect(screen.getByTestId("export-format-csv")).toBeChecked();
-    expect(screen.getByLabelText("CSV (Notion, tableurs)")).toBe(screen.getByTestId("export-format-csv"));
-    expect(screen.getByLabelText("Excel (XLSX)")).toBe(screen.getByTestId("export-format-xlsx"));
-    expect(screen.getByLabelText("JSON")).toBe(screen.getByTestId("export-format-json"));
+    expect(screen.getByLabelText(/^CSV/)).toBe(screen.getByTestId("export-format-csv"));
+    expect(screen.getByLabelText(/^XLSX/)).toBe(screen.getByTestId("export-format-xlsx"));
+    expect(screen.getByLabelText(/^JSON/)).toBe(screen.getByTestId("export-format-json"));
     expect(screen.getByTestId("export-include-spam")).not.toBeChecked();
-    expect(screen.getByLabelText("Inclure les contacts marqués spam")).toBe(screen.getByTestId("export-include-spam"));
-    expect(screen.getByRole("dialog")).toHaveTextContent("XLSX");
+    expect(screen.getByLabelText("Inclure les contacts marqués comme spam")).toBe(screen.getByTestId("export-include-spam"));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Excel, Numbers, Google Sheets");
+    expect(dialog).toHaveTextContent("Fichier Excel");
+    expect(dialog).toHaveTextContent("Pour un outil ou un script");
+    expect(dialog.textContent).toContain(
+      "Une ligne par contact\u00a0; une colonne par champ, champs personnalisés et consentement compris.",
+    );
   });
 
   test("LEA-021 LEA-012 the export of an event downloads the CSV with spam left out, in the user's time zone", async () => {
@@ -72,5 +85,52 @@ describe("ExportDialog", () => {
     download.mockResolvedValue("contacts.csv");
     fireEvent.click(screen.getByTestId("export-download"));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  test("LEA-035 the dialog names its scope and the button gives the exact count, spam left out until it is included", async () => {
+    renderWithIntl(
+      <ExportDialog
+        scope={{ kind: "event", id: "event-1" }}
+        summary={{ cardSlug: "camille-roche", eventTitle: "Salon du Mariage Clermont 2027", counts: { total: 38, spam: 1 } }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("export-open"));
+    expect(await screen.findByTestId("export-scope")).toHaveTextContent(
+      "Carte camille-roche · Salon du Mariage Clermont 2027 · 38 contacts",
+    );
+    expect(screen.getByTestId("export-download")).toHaveTextContent("Exporter 37 contacts");
+    expect(screen.getByLabelText("Inclure les contacts marqués comme spam (1)")).toBe(screen.getByTestId("export-include-spam"));
+
+    fireEvent.click(screen.getByTestId("export-include-spam"));
+    expect(screen.getByTestId("export-download")).toHaveTextContent("Exporter 38 contacts");
+    fireEvent.click(screen.getByTestId("export-include-spam"));
+    expect(screen.getByTestId("export-download")).toHaveTextContent("Exporter 37 contacts");
+  });
+
+  test("LEA-035 the whole card is named as such, and a single contact reads in the singular", async () => {
+    renderWithIntl(
+      <ExportDialog
+        scope={{ kind: "card", id: "card-1" }}
+        summary={{ cardSlug: "alice-durand", eventTitle: null, counts: { total: 2, spam: 1 } }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("export-open"));
+    expect(await screen.findByTestId("export-scope")).toHaveTextContent("Carte alice-durand · Toute la carte · 2 contacts");
+    expect(screen.getByTestId("export-download")).toHaveTextContent("Exporter 1 contact");
+    expect(screen.getByTestId("export-download")).not.toHaveTextContent("contacts");
+  });
+
+  test("LEA-035 LEA-031 with nothing but spam to export the button says 0 and still exports the header row", async () => {
+    renderWithIntl(
+      <ExportDialog
+        scope={{ kind: "event", id: "event-1" }}
+        summary={{ cardSlug: "alice-durand", eventTitle: "Salon", counts: { total: 2, spam: 2 } }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("export-open"));
+    expect(await screen.findByTestId("export-download")).toHaveTextContent("Exporter 0 contact");
+    expect(screen.getByTestId("export-download")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("export-include-spam"));
+    expect(screen.getByTestId("export-download")).toHaveTextContent("Exporter 2 contacts");
   });
 });

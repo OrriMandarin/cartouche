@@ -8,6 +8,7 @@ import { AccountGate } from "@/components/account/AccountGate";
 import { SupportGuard } from "@/components/support/SupportGuard";
 import { SupportLeads } from "@/components/support/SupportLeads";
 import { SupportLoader } from "@/components/support/SupportLoader";
+import { useSupportSlots } from "@/components/support/useSupportSlots";
 import { useApi } from "@/lib/api";
 
 function EventLeadsContent({ cardId, eventId }: { cardId: string; eventId: string }) {
@@ -44,8 +45,9 @@ function EventLeadsContent({ cardId, eventId }: { cardId: string; eventId: strin
 /** spec: ADM-017, ADM-018, ADM-001. Admin-only: the leads of one event, read-only and audited. */
 export default function SupportEventLeadsPage() {
   const { id, eventId } = useParams<{ id: string; eventId: string }>();
+  const slots = useSupportSlots({ kind: "eventLeads", cardId: id });
   return (
-    <AccountGate>
+    <AccountGate {...slots}>
       <SupportGuard>
         <EventLeadsContent cardId={id} eventId={eventId} />
       </SupportGuard>

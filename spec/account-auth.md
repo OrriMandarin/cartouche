@@ -1,6 +1,6 @@
 # Account and authentication
 
-> Status: implemented (plans 1, 2 and 4)
+> Status: implemented (plans 1, 2, 4 and 6)
 
 ## Account creation and status
 
@@ -13,6 +13,8 @@
 - **ACC-010** — A user creates their account and signs in through the identity provider, and can sign out.
 - **ACC-011** — A user whose account is `pending` sees a "Ton compte est en attente de validation" ("Your account is pending approval") page and cannot create anything.
 - **ACC-012** — The default sign-up mode (`SIGNUP_MODE` absent) is `approval`.
+- **ACC-025** — The sign-in page shows, on a computer, the tagline "Ta carte de visite, toujours à jour." ("Your business card, always up to date."), three arguments ("Un tag NFC ou un QR code", "Une page à ton image", "Les contacts de tes salons, au même endroit") and the preview of a card next to the identity provider's sign-in block, and on a phone the tagline above the block. Under the block, links lead to the terms of service and to the privacy policy (ADM-021). The block takes the dashboard's colors and font, with fields and buttons at least 44 pixels high.
+- **ACC-026** — The screens of a `pending`, `rejected` or `suspended` account (ACC-004) are short centered pages with a state badge, a title, a text and a "Se déconnecter" ("Sign out") button. Pending: "Ton compte est en attente de validation" (ACC-011), with the user's email in the text. Rejected: "Ton inscription n’a pas été acceptée" ("Your sign-up was not accepted"). Suspended: "Ton compte est suspendu" ("Your account is suspended"). The rejected and suspended screens also offer "Contacter le support" ("Contact support", ADM-021).
 
 ## Token verification
 
@@ -37,9 +39,10 @@
 ## Account deletion
 
 - **ACC-018** — When a user deletes their account, all their data is deleted (slugs are then handled according to LNK-015).
-- **ACC-019** — The dashboard has a "Mon compte" ("My account") page, reached from the header of every dashboard page, which shows the account's email and display name and offers "Supprimer mon compte" ("Delete my account"). The screens of a `pending`, `rejected` or `suspended` account (ACC-004, ACC-011) offer the same action.
+- **ACC-019** — The dashboard has a "Mon compte" ("My account") page, reached from the dashboard navigation (EDI-022), which shows the account's email and display name and offers "Supprimer mon compte" ("Delete my account"). The screens of a `pending`, `rejected` or `suspended` account (ACC-004, ACC-011) offer the same action.
 - **ACC-020** — Deleting the account requires confirmation: a dialog says that the cards, their media, the events and the leads will be deleted for good, that the card links will stay blocked forever (LNK-015), and that the account at the identity provider is not deleted (ACC-023). The deletion button only becomes usable once the user has typed "SUPPRIMER" ("DELETE"), case and surrounding spaces ignored.
 - **ACC-021** — A user can delete their own account whatever its status (exception to ACC-004). A current administrator (ACC-003) cannot: the request is refused with `403 cannot_delete_admin`, and the "Mon compte" page explains that the instance operator must first remove them from `ADMIN_USER_IDS` instead of offering the action.
 - **ACC-022** — Deleting an account is all-or-nothing: the account, its cards, their slugs (replaced by blocked slugs, LNK-015), their media and the media files in storage (local disk or S3, MED-009), the events and the leads disappear together. If the media files cannot be deleted, nothing is deleted from the database and the request fails with `500 internal_error`, so that the user can try again.
 - **ACC-023** — After the deletion, the dashboard ends the session with the identity provider and shows the page "Ton compte a été supprimé" ("Your account has been deleted"), without sending any other authenticated request. Cartouche never deletes the account at the identity provider (ACC-013): the page says that it is to be deleted there. A later sign-in with the same identity creates a new, empty account, as a first sign-in does (ACC-001, ACC-002).
 - **ACC-024** — The audit-log entries (ADM-005) concerning a deleted account or its cards are kept, with their actor, action, target type and identifier and date, but without the slug their metadata held. The entries whose actor is the deleted account (a former administrator) keep the actor's identifier, which no longer leads to any account.
+- **ACC-027** — The account deletion area of the account page gives the number of cards, events and leads that the deletion would remove ("{c} cartes, {e} événements et {l} contacts", "{c} cards, {e} events and {l} contacts") and offers "Exporter mes contacts d’abord" ("Export my contacts first"), which leads to the "Contacts" page (EDI-031).

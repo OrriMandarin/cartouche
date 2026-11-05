@@ -16,9 +16,11 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 import { NewCardForm } from "./NewCardForm";
 
-function mockSlugs(suggestion: string | null, status = "free") {
+function mockSlugs(suggestion: string | null, status = "free", suggestions: string[] = []) {
   get.mockImplementation((path: string) =>
-    Promise.resolve({ data: path === "/api/slugs/suggestion" ? { slug: suggestion } : { status, slug: null } }),
+    Promise.resolve({
+      data: path === "/api/slugs/suggestion" ? { slug: suggestion } : { status, slug: null, suggestions },
+    }),
   );
 }
 
@@ -78,5 +80,18 @@ describe("NewCardForm", { timeout: 15_000 }, () => {
     await waitFor(() => expect(screen.getByTestId("slug-status")).toHaveAttribute("data-status", "taken"));
     expect(screen.getByTestId("new-card-submit")).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  test("LNK-035 a taken slug shows three suggestions that fill the field", async () => {
+    mockSlugs(null, "taken", ["alice-durand-2", "alice-durand-3", "alice-durand-4"]);
+    renderForm();
+    fireEvent.change(screen.getByTestId("slug-input"), { target: { value: "alice-durand" } });
+    expect(await screen.findAllByTestId(/^slug-suggestion-/)).toHaveLength(3);
+    mockSlugs(null, "free");
+    fireEvent.click(screen.getByTestId("slug-suggestion-alice-durand-3"));
+    expect(screen.getByTestId("slug-input")).toHaveValue("alice-durand-3");
+    await waitFor(() => expect(screen.getByTestId("slug-status")).toHaveAttribute("data-status", "free"));
+    expect(screen.queryAllByTestId(/^slug-suggestion-/)).toHaveLength(0);
+    expect(screen.getByTestId("new-card-submit")).toBeEnabled();
   });
 });

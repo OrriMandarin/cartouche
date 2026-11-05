@@ -158,6 +158,15 @@ export function updateCustomField(
   return withField(draft, index, (field) => ({ ...field, ...patch }));
 }
 
+/**
+ * Changes the kind of the custom field at `index`; its id, label, help and place stay (FRM-022 keeps the leads
+ * already collected). A single choice field starts with two empty options, any other kind has none (FRM-021).
+ */
+export function changeCustomFieldKind(draft: EventDraft, index: number, kind: CustomFieldKind): EventDraft {
+  if (draft.customFields[index]?.kind === kind) return draft;
+  return withField(draft, index, (field) => ({ ...field, kind, options: kind === "single_choice" ? ["", ""] : [] }));
+}
+
 /** Adds an empty option to the single choice field at `index`, up to the limit (FRM-032). */
 export function addOption(draft: EventDraft, index: number): EventDraft {
   return withField(draft, index, (field) =>

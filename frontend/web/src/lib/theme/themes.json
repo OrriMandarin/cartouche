@@ -1,0 +1,31 @@
+{
+  "fontPairs": {
+    "inter":     { "name": "Sobre",      "title": "Inter",               "body": "Inter",           "titleWeight": 700, "titleTracking": "-0.025em", "packages": ["@fontsource-variable/inter"] },
+    "playfair":  { "name": "Éditoriale", "title": "Playfair Display",    "body": "Source Sans 3",   "titleWeight": 600, "titleTracking": "-0.005em", "packages": ["@fontsource-variable/playfair-display", "@fontsource-variable/source-sans-3"] },
+    "fraunces":  { "name": "Douce",      "title": "Fraunces",            "body": "Nunito Sans",     "titleWeight": 600, "titleTracking": "-0.015em", "packages": ["@fontsource-variable/fraunces", "@fontsource-variable/nunito-sans"] },
+    "bricolage": { "name": "Graphique",  "title": "Bricolage Grotesque", "body": "Instrument Sans", "titleWeight": 700, "titleTracking": "-0.03em",  "packages": ["@fontsource-variable/bricolage-grotesque", "@fontsource-variable/instrument-sans"] }
+  },
+  "buttonShapes": { "square": "2px", "rounded": "12px", "pill": "999px" },
+  "themes": [
+    { "id": "craie",      "name": "Craie",      "mood": "Clair, neutre (par défaut)", "accent": "#2F55D4", "onAccent": "#FFFFFF", "background": { "type": "solid", "color": "#F7F6F2" },                                   "text": "#1B1A17", "headerFade": 45, "buttonShape": "rounded", "fontPair": "inter",     "colorScheme": "light" },
+    { "id": "ivoire",     "name": "Ivoire",     "mood": "Élégant",                    "accent": "#7A5C2E", "onAccent": "#FFFFFF", "background": { "type": "solid", "color": "#F4EFE6" },                                   "text": "#2A241C", "headerFade": 60, "buttonShape": "square",  "fontPair": "playfair",  "colorScheme": "light" },
+    { "id": "terracotta", "name": "Terracotta", "mood": "Chaleureux",                 "accent": "#B3441E", "onAccent": "#FFFFFF", "background": { "type": "gradient", "from": "#FBF0E4", "to": "#F4DCCA", "angle": 160 }, "text": "#3B2117", "headerFade": 55, "buttonShape": "rounded", "fontPair": "fraunces",  "colorScheme": "light" },
+    { "id": "sauge",      "name": "Sauge",      "mood": "Naturel",                    "accent": "#3D6B4C", "onAccent": "#FFFFFF", "background": { "type": "solid", "color": "#E9EFE6" },                                   "text": "#1E2A21", "headerFade": 50, "buttonShape": "pill",    "fontPair": "fraunces",  "colorScheme": "light" },
+    { "id": "bonbon",     "name": "Bonbon",     "mood": "Coloré",                     "accent": "#C02662", "onAccent": "#FFFFFF", "background": { "type": "gradient", "from": "#FFE4EE", "to": "#E6E0FF", "angle": 135 }, "text": "#2B1240", "headerFade": 40, "buttonShape": "pill",    "fontPair": "bricolage", "colorScheme": "light" },
+    { "id": "lagon",      "name": "Lagon",      "mood": "Frais",                      "accent": "#0A6E6A", "onAccent": "#FFFFFF", "background": { "type": "gradient", "from": "#E3F5F2", "to": "#D8ECF5", "angle": 200 }, "text": "#0D2E35", "headerFade": 50, "buttonShape": "rounded", "fontPair": "bricolage", "colorScheme": "light" },
+    { "id": "encre",      "name": "Encre",      "mood": "Sombre, contemporain",       "accent": "#C8F04D", "onAccent": "#111111", "background": { "type": "solid", "color": "#121316" },                                   "text": "#F1F0EC", "headerFade": 75, "buttonShape": "pill",    "fontPair": "inter",     "colorScheme": "dark" },
+    { "id": "minuit",     "name": "Minuit",     "mood": "Sombre, élégant",            "accent": "#E9C988", "onAccent": "#111111", "background": { "type": "gradient", "from": "#0D1A2C", "to": "#1B2A44", "angle": 180 }, "text": "#EEF1F6", "headerFade": 70, "buttonShape": "square",  "fontPair": "playfair",  "colorScheme": "dark" }
+  ],
+  "neutralUnavailableTheme": { "accent": "#1C1C1A", "onAccent": "#FFFFFF", "background": { "type": "solid", "color": "#F5F5F3" }, "text": "#1C1C1A", "fontPair": "inter" },
+  "contrastChecks": {
+    "note": "Pire cas mesuré sur les deux couleurs du dégradé. Seuils : texte et texte atténué 4.5, texte sur accent 4.5, accent/fond (icônes, repérage) 3.",
+    "craie":      { "text": 16.0, "mutedOnHover": 7.1, "onAccent": 6.2,  "accentVsBg": 4.5 },
+    "ivoire":     { "text": 13.4, "mutedOnHover": 6.0, "onAccent": 6.1,  "accentVsBg": 4.3 },
+    "terracotta": { "text": 11.2, "mutedOnHover": 5.0, "onAccent": 5.5,  "accentVsBg": 3.4 },
+    "sauge":      { "text": 12.7, "mutedOnHover": 5.7, "onAccent": 6.1,  "accentVsBg": 4.2 },
+    "bonbon":     { "text": 13.0, "mutedOnHover": 5.9, "onAccent": 5.6,  "accentVsBg": 3.5 },
+    "lagon":      { "text": 11.8, "mutedOnHover": 5.2, "onAccent": 6.0,  "accentVsBg": 4.0 },
+    "encre":      { "text": 16.2, "mutedOnHover": 6.9, "onAccent": 14.4, "accentVsBg": 10.4 },
+    "minuit":     { "text": 12.6, "mutedOnHover": 5.3, "onAccent": 11.8, "accentVsBg": 6.3 }
+  }
+}

@@ -12,10 +12,10 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
 import { DeleteAccount } from "./DeleteAccount";
 
-function renderComponent(isAdmin = false) {
+function renderComponent(isAdmin = false, totals = { cards: 4, events: 7, leads: 164 }) {
   return render(
     <NextIntlClientProvider locale="fr" messages={messages}>
-      <DeleteAccount isAdmin={isAdmin} />
+      <DeleteAccount isAdmin={isAdmin} totals={totals} />
     </NextIntlClientProvider>,
   );
 }
@@ -31,11 +31,12 @@ describe("DeleteAccount", () => {
     renderComponent();
     fireEvent.click(screen.getByTestId("delete-account-open"));
 
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveTextContent("supprimés pour toujours");
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("sans retour possible");
+    expect(dialog).toHaveTextContent("Les médias de tes cartes");
     expect(dialog).toHaveTextContent("bloqués définitivement");
     expect(dialog).toHaveTextContent("ne sera pas supprimé");
-    expect(screen.getByLabelText("Tape SUPPRIMER pour confirmer")).toBe(screen.getByTestId("delete-account-input"));
+    expect(screen.getByLabelText("Pour confirmer, tape SUPPRIMER")).toBe(screen.getByTestId("delete-account-input"));
 
     expect(screen.getByTestId("delete-account-confirm")).toBeDisabled();
     fireEvent.change(screen.getByTestId("delete-account-input"), { target: { value: "suppr" } });
@@ -49,12 +50,25 @@ describe("DeleteAccount", () => {
     expect(del).toHaveBeenCalledWith("/api/me");
   });
 
+  test.each([
+    [{ cards: 0, events: 0, leads: 0 }, ["aucune carte\u00a0;", "aucun événement\u00a0;", "aucun contact collecté."]],
+    [
+      { cards: 1, events: 1, leads: 1 },
+      ["ta carte et sa page publique\u00a0;", "ton événement et son formulaire\u00a0;", "le contact collecté."],
+    ],
+  ])("ACC-027 the confirmation list reads correctly for %j", async (totals, expected) => {
+    renderComponent(false, totals);
+    fireEvent.click(screen.getByTestId("delete-account-open"));
+    const items = (await screen.findAllByRole("listitem")).map((item) => item.textContent);
+    expect(items).toEqual(expected);
+  });
+
   test("ACC-020 cancelling sends nothing and empties the confirmation", async () => {
     renderComponent();
     fireEvent.click(screen.getByTestId("delete-account-open"));
     fireEvent.change(await screen.findByTestId("delete-account-input"), { target: { value: "SUPPRIMER" } });
     fireEvent.click(screen.getByTestId("delete-account-cancel"));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     fireEvent.click(screen.getByTestId("delete-account-open"));
     expect(await screen.findByTestId("delete-account-input")).toHaveValue("");
     expect(del).not.toHaveBeenCalled();

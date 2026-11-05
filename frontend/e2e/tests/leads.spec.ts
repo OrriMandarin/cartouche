@@ -66,17 +66,20 @@ test("EDI-020 FRM-016 leads of an event, accents intact", async ({ page, api }) 
 test("ABU-003 ABU-009 mark and unmark spam", async ({ page, api }) => {
   const zoe = await leadId(api, "Zoé");
   await page.goto(leadsUrl());
-  await page.getByTestId(`lead-spam-${zoe}`).click();
+  await page.getByTestId(`lead-open-${zoe}`).click();
+  await page.getByTestId("lead-detail-spam").click();
+  // The sheet closes; the contact stays listed, with its label.
+  await expect(page.getByTestId("lead-detail")).toHaveCount(0);
   await expect(page.getByTestId(`lead-spam-badge-${zoe}`)).toHaveText("Spam");
-  // Still listed, and stored.
   await expect(page.getByTestId(`lead-row-${zoe}`)).toBeVisible();
 
   await page.reload();
   await expect(page.getByTestId(`lead-spam-badge-${zoe}`)).toHaveText("Spam");
 
-  await page.getByTestId(`lead-spam-${zoe}`).click();
+  await page.getByTestId(`lead-open-${zoe}`).click();
+  await expect(page.getByTestId("lead-detail-spam")).toHaveText("Retirer le marquage spam");
+  await page.getByTestId("lead-detail-spam").click();
   await expect(page.getByTestId(`lead-spam-badge-${zoe}`)).toHaveCount(0);
-  await expect(page.getByTestId(`lead-spam-${zoe}`)).toHaveText("Marquer comme spam");
   await page.reload();
   await expect(page.getByTestId(`lead-row-${zoe}`)).toBeVisible();
   await expect(page.getByTestId(`lead-spam-badge-${zoe}`)).toHaveCount(0);
@@ -85,14 +88,15 @@ test("ABU-003 ABU-009 mark and unmark spam", async ({ page, api }) => {
 test("ABU-004 ABU-010 delete a lead", async ({ page, api }) => {
   const bot = await leadId(api, "Bot");
   await page.goto(leadsUrl());
-  await page.getByTestId(`lead-delete-${bot}`).click();
-  await expect(page.getByRole("dialog")).toContainText("Ce contact sera supprimé définitivement.");
+  await page.getByTestId(`lead-open-${bot}`).click();
+  await page.getByTestId("lead-detail-delete").click();
+  await expect(page.getByRole("dialog").last()).toContainText("Ce contact sera supprimé définitivement.");
   await page.getByTestId("lead-delete-cancel").click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("lead-delete-confirm")).toHaveCount(0);
   await expect(page.getByTestId(`lead-row-${bot}`)).toBeVisible();
   expect(await api.leads("seed-alice", mariageId)).toHaveLength(3);
 
-  await page.getByTestId(`lead-delete-${bot}`).click();
+  await page.getByTestId("lead-detail-delete").click();
   await page.getByTestId("lead-delete-confirm").click();
   await expect(page.getByTestId(`lead-row-${bot}`)).toHaveCount(0);
   await expect(page.getByTestId(/^lead-row-/)).toHaveCount(2);
@@ -146,7 +150,7 @@ test("LEA-003 LEA-018 LEA-019 lead detail", async ({ page, api }) => {
   await expect(page.getByTestId(`lead-detail-answer-${WEDDING_PLAN_FIELD}`)).toContainText("FormulePrestige");
   await expect(page.getByTestId(`lead-detail-answer-${WEDDING_BROCHURE_FIELD}`)).toContainText("Recevoir la brochureOui");
   await expect(page.getByTestId("lead-detail-consent")).toContainText(consent);
-  await expect(page.getByTestId("lead-detail-spam-state")).toHaveText("Non marqué comme spam");
+  await expect(page.getByTestId("lead-detail-spam-state")).toHaveCount(0);
   await detail.getByRole("button", { name: "Fermer" }).click();
   await expect(detail).toHaveCount(0);
 
@@ -169,9 +173,11 @@ test("LEA-004 LEA-020 spam and delete from the detail view", async ({ page, api 
 
   await page.getByTestId(`lead-open-${zoe}`).click();
   await page.getByTestId("lead-detail-spam").click();
-  await expect(page.getByTestId("lead-detail-spam-state")).toHaveText("Marqué comme spam");
-  await page.getByTestId("lead-detail").getByRole("button", { name: "Fermer" }).click();
+  await expect(page.getByTestId("lead-detail")).toHaveCount(0);
   await expect(page.getByTestId(`lead-spam-badge-${zoe}`)).toHaveText("Spam");
+  await page.getByTestId(`lead-open-${zoe}`).click();
+  await expect(page.getByTestId("lead-detail-spam-state")).toHaveText("Spam");
+  await page.getByTestId("lead-detail").getByRole("button", { name: "Fermer" }).click();
 
   await page.getByTestId(`lead-open-${bot}`).click();
   await page.getByTestId("lead-detail-delete").click();
@@ -185,7 +191,8 @@ test("LEA-004 LEA-020 spam and delete from the detail view", async ({ page, api 
 test("LEA-005 a deleted lead is gone after reload and from the search", async ({ page, api }) => {
   const bot = await leadId(api, "Bot");
   await page.goto(leadsUrl());
-  await page.getByTestId(`lead-delete-${bot}`).click();
+  await page.getByTestId(`lead-open-${bot}`).click();
+  await page.getByTestId("lead-detail-delete").click();
   await page.getByTestId("lead-delete-confirm").click();
   await expect(page.getByTestId(`lead-row-${bot}`)).toHaveCount(0);
 
