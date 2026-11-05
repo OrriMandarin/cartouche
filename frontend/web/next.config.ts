@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_CARTOUCHE_BUILD_PROFILE: profile,
   },
+  // `next dev` refuses the scripts and the HMR socket of any origin other than localhost (403): a phone on the
+  // local network would stay on the server-rendered "Chargement…" page, never hydrated. Home and office LANs.
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
   experimental: {
     // Next proxies `/api/*` to the API and, by default, keeps only the first 10 MB of a request body: a video
     // upload (25 MB, plus its poster) would reach the API truncated. The API's own limit is 36 MiB.
