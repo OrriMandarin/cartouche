@@ -1,11 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TEMPLATE_TEST_IDS as IDS } from "./contract";
-import { sampleVideoHeader } from "./fixtures";
+import { sampleLegacyVideoHeader, sampleVideoHeader } from "./fixtures";
 import { HeaderMedia } from "./HeaderMedia";
 
 const labels = { pause: "Mettre la vidéo en pause", play: "Lire la vidéo" };
-const framed = { ...sampleVideoHeader, loop: { start: 0.8, end: 8.3 }, crop: { x: 0.25, y: 0, width: 0.5, height: 1 } };
+const legacy = sampleLegacyVideoHeader;
+const framed = sampleVideoHeader;
 
 let play: ReturnType<typeof vi.fn>;
 let pause: ReturnType<typeof vi.fn>;
@@ -16,7 +17,10 @@ beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(play as never);
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(pause as never);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(HTMLMediaElement.prototype, "error");
+});
 
 function video() {
   return screen.getByTestId(IDS.headerVideo) as HTMLVideoElement;
@@ -34,13 +38,21 @@ describe("HeaderMedia", () => {
     expect(screen.getByTestId(IDS.headerEmpty)).toBeInTheDocument();
   });
 
-  test("PUB-005 the video is muted on the element and starts at the loop start", () => {
-    render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+  test("PUB-005 MED-032 the served video loops over its whole file from its start", () => {
+    render(<HeaderMedia media={legacy} labels={labels} reducedMotion={() => false} />);
     expect(video().muted).toBe(true);
-    expect(video().currentTime).toBe(0.8);
+    expect(video().loop).toBe(true);
+    expect(video().currentTime).toBe(0);
+    expect(video().style.left).toBe("");
+    expect(video().style.width).toBe("");
     expect(play).toHaveBeenCalledTimes(1);
-    expect(video().loop).toBe(false);
     expect(video().autoplay).toBe(false);
+  });
+
+  test("MED-033 a video uploaded before plan 7 is shown centred and not cropped", () => {
+    render(<HeaderMedia media={legacy} labels={labels} reducedMotion={() => false} />);
+    expect(video().getAttribute("style")).toBeNull();
+    expect(video().closest(".cc-media")).not.toBeNull();
   });
 
   test("PUB-005 PUB-038 under reduced motion the video does not start", () => {
@@ -63,6 +75,39 @@ describe("HeaderMedia", () => {
     expect(container.querySelector(".cc-shimmer")).toBeNull();
   });
 
+  test("PUB-006 a video that cannot load drops the loader and keeps a sharp placeholder", () => {
+    const { container } = render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    fireEvent(video(), new Event("error"));
+    const media = container.firstElementChild as HTMLElement;
+    expect(media).toHaveAttribute("aria-busy", "false");
+    expect(container.querySelector(".cc-shimmer")).toBeNull();
+    expect(container.querySelector(".is-blur")).toBeNull();
+    expect(container.querySelector("img")).not.toBeNull();
+  });
+
+  test("PUB-041 a video already playable at mount is not shown as loading", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "readyState", "get").mockReturnValue(4);
+    const { container } = render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    expect(container.firstElementChild).toHaveAttribute("aria-busy", "false");
+    expect(container.querySelector(".cc-shimmer")).toBeNull();
+  });
+
+  test("PUB-041 a video that failed before mount is not shown as loading", () => {
+    // jsdom does not define `error`: install it for this test only.
+    Object.defineProperty(HTMLMediaElement.prototype, "error", { value: { code: 4 }, configurable: true });
+    const { container } = render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    expect(container.firstElementChild).toHaveAttribute("aria-busy", "false");
+    expect(container.querySelector(".cc-shimmer")).toBeNull();
+    expect(container.querySelector(".is-blur")).toBeNull();
+  });
+
+  test("PUB-006 PUB-038 under reduced motion the placeholder is sharp and no sheen moves", () => {
+    const { container } = render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => true} />);
+    expect(container.querySelector("img")).not.toBeNull();
+    expect(container.querySelector(".is-blur")).toBeNull();
+    expect(container.querySelector(".cc-shimmer")).toBeNull();
+  });
+
   test("PUB-031 the button pauses and resumes and changes its name", () => {
     render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
     const button = screen.getByTestId("header-video-toggle");
@@ -73,33 +118,6 @@ describe("HeaderMedia", () => {
     fireEvent.click(button);
     expect(play).toHaveBeenCalledTimes(2);
     expect(button).toHaveAccessibleName(labels.pause);
-  });
-
-  test("MED-032 the video loops inside its stored loop", () => {
-    render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
-    Object.defineProperty(video(), "duration", { value: 10, configurable: true });
-    video().currentTime = 8.3;
-    act(() => {
-      fireEvent.timeUpdate(video());
-    });
-    expect(video().currentTime).toBe(0.8);
-  });
-
-  test("MED-033 PUB-031 at the end of the file the video restarts and still reads as playing", () => {
-    render(<HeaderMedia media={{ ...sampleVideoHeader, loop: null }} labels={labels} reducedMotion={() => false} />);
-    video().currentTime = 5;
-    play.mockClear();
-    fireEvent.pause(video());
-    fireEvent.ended(video());
-    expect(video().currentTime).toBe(0);
-    expect(play).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("header-video-toggle")).toHaveAccessibleName(labels.pause);
-  });
-
-  test("MED-032 at the end of the file the video restarts at its loop start", () => {
-    render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
-    fireEvent.ended(video());
-    expect(video().currentTime).toBe(0.8);
   });
 
   test("PUB-031 a refused autoplay leaves the button on play", async () => {

@@ -6,7 +6,6 @@ import {
   formatSeconds,
   frameTimes,
   HEADER_RATIO,
-  loopRestart,
   needsCrop,
   nudge,
   setLoopEnd,
@@ -38,18 +37,6 @@ describe("framing", () => {
       height: "100%",
       objectFit: "cover",
     });
-  });
-
-  test("MED-032 the loop returns to its start at its end", () => {
-    const loop = { start: 0.8, end: 8.3 };
-    expect(loopRestart(8.3, loop, 10)).toBe(0.8);
-    expect(loopRestart(4, loop, 10)).toBeNull();
-    expect(loopRestart(0.1, loop, 10)).toBe(0.8);
-  });
-
-  test("MED-033 without loop the video restarts from zero at its end", () => {
-    expect(loopRestart(9.97, null, 10)).toBe(0);
-    expect(loopRestart(4, null, 10)).toBeNull();
   });
 
   test("EDI-026 percentages become a crop rect", () => {

@@ -2,9 +2,9 @@
 
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { loopRestart, videoCropStyle } from "@/lib/media/framing";
 import { TEMPLATE_TEST_IDS as TEST_IDS, type MediaView } from "./contract";
 import { srcSet } from "./srcset";
+import { useMediaLoad } from "./useMediaLoad";
 
 export interface HeaderMediaLabels {
   pause: string;
@@ -35,8 +35,9 @@ function EmptyBand() {
 }
 
 /**
- * The header video, cropped and looped at display time from its stored framing (MED-032): muted (PUB-005), with
- * its waiting image blurred under a shimmer until it can play (PUB-006), and a button to pause it (PUB-031).
+ * The header video: the served file as is, already cut to its crop and loop by the server, looping over its whole
+ * file (MED-032, MED-033), muted (PUB-005), with its waiting image blurred under a shimmer until it can play
+ * (PUB-006, PUB-041), and a button to pause it (PUB-031).
  * Under reduced motion it does not start by itself (PUB-038).
  */
 function HeaderVideo({
@@ -45,19 +46,17 @@ function HeaderVideo({
   reducedMotion,
 }: { media: MediaView; labels: HeaderMediaLabels } & Pick<HeaderMediaProps, "reducedMotion">) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [ready, setReady] = useState(false);
   // Null until the visitor, or the video, says otherwise: it then follows the motion preference.
   const [playingState, setPlaying] = useState<boolean | null>(null);
   const reduced = useSyncExternalStore(watchReducedMotion, reducedMotion ?? prefersReducedMotion, () => false);
   const playing = playingState ?? !reduced;
   const poster = media.images.at(-1)?.url;
-  const loop = media.loop ?? null;
+  const loadState = useMediaLoad(videoRef, "video");
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
     el.muted = true;
-    if (loop) el.currentTime = loop.start;
     if ((reducedMotion ?? prefersReducedMotion)()) return;
     start(el);
     // Played once on mount: the framing of a media does not change under the page.
@@ -68,22 +67,6 @@ function HeaderVideo({
   // play leaves the video paused and the button must say so.
   function start(el: HTMLVideoElement) {
     Promise.resolve(el.play()).catch(() => setPlaying(false));
-  }
-
-  // At the end of the file the browser pauses and a seek does not resume it: loop by hand (MED-032, MED-033).
-  function onEnded() {
-    const el = videoRef.current;
-    if (!el) return;
-    el.currentTime = loop?.start ?? 0;
-    setPlaying(true);
-    start(el);
-  }
-
-  function onTimeUpdate() {
-    const el = videoRef.current;
-    if (!el) return;
-    const target = loopRestart(el.currentTime, loop, el.duration);
-    if (target !== null) el.currentTime = target;
   }
 
   function toggle() {
@@ -98,8 +81,8 @@ function HeaderVideo({
     }
   }
 
-  const loading = !ready;
-  const showPoster = poster !== undefined && loading;
+  const loading = loadState === "loading";
+  const showPoster = poster !== undefined && loadState !== "loaded";
   return (
     <div className={loading ? "cc-media is-loading" : "cc-media"} aria-busy={loading}>
       {showPoster && (
@@ -113,19 +96,13 @@ function HeaderVideo({
         data-testid={TEST_IDS.headerVideo}
         src={media.video_url ?? undefined}
         poster={poster}
+        loop
+        muted
         playsInline
         preload="auto"
         aria-hidden="true"
-        style={videoCropStyle(media.crop)}
-        onTimeUpdate={onTimeUpdate}
-        onCanPlay={() => setReady(true)}
-        onEnded={onEnded}
-        onPlaying={() => {
-          setReady(true);
-          setPlaying(true);
-        }}
-        // The pause that precedes `ended` is not the visitor's.
-        onPause={(event) => setPlaying(event.currentTarget.ended)}
+        onPlaying={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
       />
       <button
         type="button"
