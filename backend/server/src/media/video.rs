@@ -95,6 +95,13 @@ impl Ffmpeg {
             .await
             .map_err(|error| VideoError::Tool(format!("{}: {error}", program.display())))?;
         if !output.status.success() {
+            if output.status.code().is_none() {
+                return Err(VideoError::Tool(format!(
+                    "{} was killed: {}",
+                    program.display(),
+                    output.status
+                )));
+            }
             let stderr = String::from_utf8_lossy(&output.stderr);
             let lines: Vec<&str> = stderr.lines().collect();
             let tail = lines[lines.len().saturating_sub(LOGGED_STDERR_LINES)..].join("\n");
@@ -140,13 +147,13 @@ impl Ffmpeg {
         let crop = plan.crop;
         let (width, height) = plan.output;
         let served_chain = format!(
-            "trim=start={:.3}:duration={:.3},setpts=PTS-STARTPTS,crop={}:{}:{}:{},scale={width}:{height}",
+            "trim=start={:.3}:duration={:.3},setpts=PTS-STARTPTS,crop={}:{}:{}:{},scale={width}:{height},setsar=1",
             plan.trim_start, plan.trim_length, crop.width, crop.height, crop.x, crop.y
         );
         let filter = if job.edit_copy {
             let (edit_width, edit_height) = plan.edit_copy;
             format!(
-                "[0:v:0]split=2[s][e];[s]{served_chain}[served];[e]scale={edit_width}:{edit_height}[edit]"
+                "[0:v:0]split=2[s][e];[s]{served_chain}[served];[e]scale={edit_width}:{edit_height},setsar=1[edit]"
             )
         } else {
             format!("[0:v:0]{served_chain}[served]")

@@ -7,7 +7,7 @@ use std::process::Command;
 use std::time::Duration;
 
 use cartouche_api::media::video::{Ffmpeg, RenderJob, RenderOutputs, VideoError, VideoProcessor};
-use cartouche_domain::{CropRect, VideoLoop, VideoPlan, plan_video};
+use cartouche_domain::{CropRect, PosterSeek, VideoLoop, VideoPlan, plan_video};
 use serde_json::Value;
 
 fn fixture(name: &str) -> PathBuf {
@@ -297,13 +297,147 @@ async fn a_rotated_video_comes_out_upright() {
     }
 }
 
+/// Plans and renders `name` with the whole video and the default crop, returning the plan too.
+async fn render_with_plan(name: &str, poster_time: f64, edit_copy: bool) -> (VideoPlan, Rendered) {
+    let ffmpeg = adapter();
+    let input = fixture(name);
+    let probe = ffmpeg.probe(&input).await.expect("probe");
+    let duration = number(&inspect(&input)["format"]["duration"]);
+    let (plan, _) = plan_video(
+        &probe,
+        Duration::from_secs_f64(duration),
+        None,
+        VideoLoop {
+            start: 0.0,
+            end: duration,
+        },
+        poster_time,
+    )
+    .expect("plan");
+    let dir = tempfile::tempdir().unwrap();
+    let job = RenderJob {
+        input,
+        out_dir: dir.path().to_path_buf(),
+        plan: plan.clone(),
+        edit_copy,
+    };
+    let outputs = ffmpeg.render(&job).await.expect("render");
+    (plan, Rendered { outputs, _dir: dir })
+}
+
+fn pixels(path: &Path) -> (u32, u32, Vec<u8>) {
+    let image = image::open(path).expect("a PNG").to_rgb8();
+    (image.width(), image.height(), image.into_raw())
+}
+
 // spec: MED-003
 #[tokio::test]
 async fn the_poster_frame_is_the_full_frame_at_the_poster_time() {
-    let at = render("landscape-1080p60-audio-gps.mp4", None, None, 1.0).await;
-    let image = image::open(&at.outputs.poster_frame).expect("a PNG");
-    assert_eq!((image.width(), image.height()), (1920, 1080));
-    let last = render("landscape-1080p60-audio-gps.mp4", None, None, 4.0).await;
-    let image = image::open(&last.outputs.poster_frame).expect("the last frame decodes");
-    assert_eq!((image.width(), image.height()), (1920, 1080));
+    let name = "landscape-1080p60-audio-gps.mp4";
+    let (_, first) = render_with_plan(name, 0.0, false).await;
+    let (_, middle) = render_with_plan(name, 1.0, false).await;
+    let (_, late) = render_with_plan(name, 3.0, false).await;
+    let (plan, last) = render_with_plan(name, 4.0, false).await;
+    assert_eq!(plan.poster, PosterSeek::LastFrame);
+    let first = pixels(&first.outputs.poster_frame);
+    let middle = pixels(&middle.outputs.poster_frame);
+    let late = pixels(&late.outputs.poster_frame);
+    let last = pixels(&last.outputs.poster_frame);
+    for frame in [&first, &middle, &late, &last] {
+        assert_eq!((frame.0, frame.1), (1920, 1080));
+    }
+    assert_ne!(middle.2, first.2, "1.0 s differs from 0 s");
+    assert_ne!(middle.2, late.2, "1.0 s differs from 3.0 s");
+    assert_ne!(last.2, first.2, "the last frame differs from the first");
+}
+
+// spec: MED-003, MED-026
+#[tokio::test]
+async fn the_poster_of_a_rotated_video_is_upright() {
+    let (_, rendered) = render_with_plan("portrait-rotated.mp4", 1.0, false).await;
+    let frame = pixels(&rendered.outputs.poster_frame);
+    assert_eq!((frame.0, frame.1), (1080, 1920));
+}
+
+// spec: MED-037
+#[tokio::test]
+async fn without_an_edit_copy_only_the_served_file_and_poster_are_written() {
+    let (_, rendered) = render_with_plan("landscape-1080p60-audio-gps.mp4", 0.5, false).await;
+    assert!(rendered.outputs.edit_copy.is_none());
+    assert!(rendered.outputs.served.metadata().unwrap().len() > 0);
+    assert!(rendered.outputs.poster_frame.metadata().unwrap().len() > 0);
+    let dir = rendered.outputs.served.parent().unwrap();
+    assert!(!dir.join("edit-copy.mp4").exists());
+    let stream = single_stream(&rendered.outputs.served);
+    assert_eq!(
+        (stream["width"].as_u64(), stream["height"].as_u64()),
+        (Some(1280), Some(960))
+    );
+}
+
+// spec: MED-039
+#[tokio::test]
+async fn rendering_an_unreadable_file_fails_unreadable() {
+    let ffmpeg = adapter();
+    let landscape = ffmpeg
+        .probe(&fixture("landscape-1080p60-audio-gps.mp4"))
+        .await
+        .unwrap();
+    let (plan, _) = plan_video(
+        &landscape,
+        Duration::from_secs(4),
+        None,
+        VideoLoop {
+            start: 0.0,
+            end: 4.0,
+        },
+        0.0,
+    )
+    .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let job = RenderJob {
+        input: fixture("truncated.mp4"),
+        out_dir: dir.path().to_path_buf(),
+        plan,
+        edit_copy: true,
+    };
+    let result = ffmpeg.render(&job).await;
+    assert!(
+        matches!(result, Err(VideoError::Unreadable(_))),
+        "{result:?}"
+    );
+}
+
+// spec: MED-003, MED-039
+#[tokio::test]
+async fn a_poster_past_the_end_that_writes_no_frame_is_unreadable() {
+    let ffmpeg = adapter();
+    let probe = ffmpeg
+        .probe(&fixture("landscape-1080p60-audio-gps.mp4"))
+        .await
+        .unwrap();
+    let (mut plan, _) = plan_video(
+        &probe,
+        Duration::from_secs(4),
+        None,
+        VideoLoop {
+            start: 0.0,
+            end: 4.0,
+        },
+        0.0,
+    )
+    .unwrap();
+    plan.poster = PosterSeek::At(60.0);
+    let dir = tempfile::tempdir().unwrap();
+    let job = RenderJob {
+        input: fixture("landscape-1080p60-audio-gps.mp4"),
+        out_dir: dir.path().to_path_buf(),
+        plan,
+        edit_copy: false,
+    };
+    let result = ffmpeg.render(&job).await;
+    assert!(
+        matches!(result, Err(VideoError::Unreadable(_))),
+        "{result:?}"
+    );
 }

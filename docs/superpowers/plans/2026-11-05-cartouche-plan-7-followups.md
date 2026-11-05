@@ -68,6 +68,8 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 
 (Filled during execution: R-E for the tasks.)
 
+- **R-E-T3 (ffmpeg 5.1)**: every invocation of the T3 adapter was run by hand in `debian:bookworm-slim` with its ffmpeg 5.1.9 (`-fpsmax`, `-sseof`, `-update 1`, `stream_side_data=rotation` in ffprobe, autorotate inside `-filter_complex`, `split`): all accepted; outputs H.264 High at the expected sizes (1280×960 and 960×540; rotated clip 1080×810 and 540×960, upright, no rotation side data), full-frame posters (1920×1080, 1080×1920). Measured there (probably emulated amd64): 25 s for the 4 s 1080p60 clip, 13 s for the 3 s rotated 1080p30 clip; on the Mac with ffmpeg 8.1.2 a whole probe + render + poster takes about 3 s.
+
 ## Review findings deferred
 
 (Filled during execution.)
