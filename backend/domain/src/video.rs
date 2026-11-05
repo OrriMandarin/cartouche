@@ -320,7 +320,9 @@ mod tests {
     fn the_poster_at_or_past_the_end_is_the_last_frame() {
         assert_eq!(poster_seek(2.0, 2.0), PosterSeek::LastFrame);
         assert_eq!(poster_seek(1.96, 2.0), PosterSeek::LastFrame);
+        assert_eq!(poster_seek(1.95, 2.0), PosterSeek::LastFrame);
         assert_eq!(poster_seek(1.9, 2.0), PosterSeek::At(1.9));
+        assert_eq!(poster_seek(0.0, 0.04), PosterSeek::LastFrame);
         assert_eq!(poster_seek(0.0, 2.0), PosterSeek::At(0.0));
     }
 

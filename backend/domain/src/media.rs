@@ -491,6 +491,20 @@ mod tests {
         );
     }
 
+    // spec: MED-002
+    #[test]
+    fn a_video_of_exactly_50_mib_is_accepted_and_one_byte_more_is_too_large() {
+        assert_eq!(MAX_VIDEO_BYTES, 50 << 20);
+        let mut clip = mp4_of(1_000);
+        clip.resize(50 << 20, 0);
+        assert_eq!(classify_upload(&clip, Slot::Header), Ok(MediaKind::Video));
+        clip.push(0);
+        assert_eq!(
+            classify_upload(&clip, Slot::Header),
+            Err(UploadRejection::TooLarge)
+        );
+    }
+
     // spec: MED-002, MED-012
     #[test]
     fn upload_size_limits_depend_on_the_kind() {
