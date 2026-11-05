@@ -49,7 +49,7 @@
 - **MED-043** — In S3 mode, every file of the public bucket is stored with its exact content type (`image/webp`, `image/jpeg` or `video/mp4`), the cache policy of MED-016 and `Content-Disposition: inline`, which the bucket sends back when it serves the file.
 - **MED-044** — In S3 mode, private originals (MED-036) are stored in a second bucket (`MEDIA_S3_PRIVATE_BUCKET`, on the same endpoint, in the same region and with the same keys as the public bucket) that has no public address. In local disk mode, they are stored under `private/` in the media directory, which `/media/*` never serves.
 - **MED-045** — In S3 mode, the public bucket answers cross-origin `GET` and `HEAD` requests from the application's origin (`PUBLIC_BASE_URL`), and from no other origin, so that the dashboard can draw the frames of a video (EDI-034).
-- **MED-046** — In local disk mode, every `/media/*` response carries `X-Content-Type-Options: nosniff`, `Content-Disposition: inline` and `Content-Security-Policy: sandbox; default-src 'none'`, so that a file opened on its own runs nothing in the application's origin.
+- **MED-046** — In local disk mode, every `/media/*` response that serves a file (whole, a part of it, or an unsatisfiable range) carries `X-Content-Type-Options: nosniff`, `Content-Disposition: inline` and `Content-Security-Policy: sandbox; default-src 'none'`, so that a file opened on its own runs nothing in the application's origin.
 
 ## Framing
 
