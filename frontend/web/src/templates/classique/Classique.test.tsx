@@ -1,5 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, expect, test, vi } from "vitest";
+
 import { TEMPLATE_TEST_IDS as IDS } from "../contract";
 import { sampleCard, sampleEvents, sampleLabels, sampleUrls } from "../fixtures";
 import { renderTemplate } from "../registry";
@@ -22,6 +25,8 @@ function documentOrder(elements: Element[]): number[] {
   const all = [...document.querySelectorAll("*")];
   return elements.map((element) => all.indexOf(element));
 }
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("Classique", () => {
   test("PUB-030 the order is header, photo, events, identity, save, contacts, links", () => {
@@ -151,5 +156,46 @@ describe("Classique", () => {
     expect(avatar).toHaveAttribute("alt", "Éloïse D'Aubigné-Müller");
     expect(avatar).toHaveAttribute("src", sampleCard.avatar?.jpeg_url);
     expect(avatar.getAttribute("srcset")).toContain("s256.webp 256w");
+  });
+
+  describe("profile photo loader", () => {
+    function mockImage(complete: boolean, naturalWidth: number) {
+      vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(complete);
+      vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(naturalWidth);
+    }
+    const circle = () => screen.getByTestId(IDS.avatar).parentElement!;
+
+    test("PUB-040 the profile photo shows the sheen in its circle until it loads", () => {
+      mockImage(false, 0);
+      render(classique({}));
+      expect(circle()).toHaveAttribute("aria-busy", "true");
+      expect(circle()).toHaveClass("is-loading");
+      expect(circle().querySelector(".cc-shimmer")).not.toBeNull();
+      fireEvent.load(screen.getByTestId(IDS.avatar));
+      expect(circle()).toHaveAttribute("aria-busy", "false");
+      expect(circle().querySelector(".cc-shimmer")).toBeNull();
+    });
+
+    test("PUB-040 a profile photo that cannot load keeps the surface in its circle", () => {
+      mockImage(false, 0);
+      render(classique({}));
+      fireEvent.error(screen.getByTestId(IDS.avatar));
+      expect(circle()).toHaveAttribute("aria-busy", "false");
+      expect(circle()).toHaveClass("is-failed");
+      expect(circle().querySelector(".cc-shimmer")).toBeNull();
+    });
+
+    test("PUB-041 a profile photo already loaded at mount is not shown as loading", () => {
+      mockImage(true, 224);
+      render(classique({}));
+      expect(circle()).toHaveAttribute("aria-busy", "false");
+      expect(circle().querySelector(".cc-shimmer")).toBeNull();
+    });
+  });
+
+  test("PUB-038 the loading sheen does not move under reduced motion", () => {
+    const css = readFileSync(join(__dirname, "classique.css"), "utf8");
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduced).toMatch(/\.cc-shimmer\s*\{[^}]*animation:\s*none/);
   });
 });

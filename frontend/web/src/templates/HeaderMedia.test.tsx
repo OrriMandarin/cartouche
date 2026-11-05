@@ -125,4 +125,50 @@ describe("HeaderMedia", () => {
     render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
     expect(await screen.findByRole("button", { name: labels.play })).toBeInTheDocument();
   });
+
+  describe("image loader", () => {
+    const imageMedia = { ...sampleVideoHeader, kind: "image" as const, video_url: null };
+
+    function mockImage(complete: boolean, naturalWidth: number) {
+      vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(complete);
+      vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(naturalWidth);
+    }
+
+    test("PUB-039 the header image shows the surface and the sheen until it loads", () => {
+      mockImage(false, 0);
+      const { container } = render(<HeaderMedia media={imageMedia} labels={labels} />);
+      const media = container.querySelector(".cc-media")!;
+      expect(media).toHaveAttribute("aria-busy", "true");
+      expect(media).toHaveClass("is-loading");
+      expect(container.querySelector(".cc-shimmer")).not.toBeNull();
+      fireEvent.load(screen.getByTestId(IDS.headerImage));
+      expect(media).toHaveAttribute("aria-busy", "false");
+      expect(media).not.toHaveClass("is-loading");
+      expect(container.querySelector(".cc-shimmer")).toBeNull();
+    });
+
+    test("PUB-039 a header image that cannot load leaves the surface without sheen", () => {
+      mockImage(false, 0);
+      const { container } = render(<HeaderMedia media={imageMedia} labels={labels} />);
+      fireEvent.error(screen.getByTestId(IDS.headerImage));
+      const media = container.querySelector(".cc-media")!;
+      expect(media).toHaveAttribute("aria-busy", "false");
+      expect(media).toHaveClass("is-failed");
+      expect(container.querySelector(".cc-shimmer")).toBeNull();
+    });
+
+    test("PUB-041 a header image already loaded at mount is not shown as loading", () => {
+      mockImage(true, 640);
+      const { container } = render(<HeaderMedia media={imageMedia} labels={labels} />);
+      expect(container.querySelector(".cc-media")).toHaveAttribute("aria-busy", "false");
+      expect(container.querySelector(".cc-shimmer")).toBeNull();
+    });
+
+    test("PUB-041 a header image that failed before mount is not shown as loading", () => {
+      mockImage(true, 0);
+      const { container } = render(<HeaderMedia media={imageMedia} labels={labels} />);
+      expect(container.querySelector(".cc-media")).toHaveAttribute("aria-busy", "false");
+      expect(container.querySelector(".cc-media")).toHaveClass("is-failed");
+    });
+  });
 });

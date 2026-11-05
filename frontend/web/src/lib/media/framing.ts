@@ -2,8 +2,9 @@ import type { CSSProperties } from "react";
 import type { CropRect, VideoLoop } from "./upload";
 
 /**
- * Places a video in its header so that only the stored crop shows (MED-032): the file is scaled up by the
- * inverse of the crop and shifted. Without a crop (media uploaded before framing existed), it covers (MED-033).
+ * Places a video so that only the chosen crop shows, for the preview of the crop dialogs: the file is scaled up by
+ * the inverse of the crop and shifted. Without a crop, it covers. The public page does not use it: it plays the
+ * served file as is (MED-032, MED-033).
  */
 export function videoCropStyle(crop: CropRect | null | undefined): CSSProperties {
   if (!crop) {

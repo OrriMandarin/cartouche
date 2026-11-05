@@ -124,11 +124,24 @@ export function HeaderMedia({ media, labels, reducedMotion }: HeaderMediaProps) 
   }
   const src = media?.images.at(-1)?.url;
   if (!media || !src) return <EmptyBand />;
+  return <HeaderImage media={media} src={src} />;
+}
+
+/**
+ * The header image: the theme's surface under a sheen until it has loaded (PUB-039); if it cannot load, the
+ * surface stays without sheen or busy mark. A load that ended before hydration is read on mount (PUB-041).
+ */
+function HeaderImage({ media, src }: { media: MediaView; src: string }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const loadState = useMediaLoad(imageRef, "image");
+  const loading = loadState === "loading";
+  const className = loading ? "cc-media is-loading" : loadState === "failed" ? "cc-media is-failed" : "cc-media";
   return (
-    <div className="cc-media">
+    <div className={className} aria-busy={loading}>
       {/* A plain img: media URLs are absolute and external, and next/image would add an optimizer hop. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imageRef}
         className="cc-media-el"
         data-testid={TEST_IDS.headerImage}
         src={src}
@@ -136,6 +149,7 @@ export function HeaderMedia({ media, labels, reducedMotion }: HeaderMediaProps) 
         sizes="(min-width: 40rem) 28rem, 100vw"
         alt=""
       />
+      {loading && <div className="cc-shimmer" aria-hidden="true" />}
     </div>
   );
 }

@@ -76,4 +76,23 @@ describe("useMediaLoad", () => {
     const noSource = render(<Probe kind="video" setup={(el) => define(el, { networkState: 3 })} />);
     expect(stateOf(noSource.container, "video")).toBe("failed");
   });
+
+  test("PUB-041 PUB-006 a video that starts playing is loaded", () => {
+    const { container } = render(<Probe kind="video" />);
+    act(() => {
+      fireEvent(container.querySelector("video")!, new Event("playing"));
+    });
+    expect(stateOf(container, "video")).toBe("loaded");
+  });
+
+  test("PUB-041 PUB-006 a video that errors after it loaded is failed, so its placeholder comes back", () => {
+    const { container } = render(<Probe kind="video" />);
+    act(() => {
+      fireEvent(container.querySelector("video")!, new Event("canplay"));
+    });
+    act(() => {
+      fireEvent(container.querySelector("video")!, new Event("error"));
+    });
+    expect(stateOf(container, "video")).toBe("failed");
+  });
 });
