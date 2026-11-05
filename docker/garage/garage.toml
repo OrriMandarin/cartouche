@@ -1,0 +1,29 @@
+# Single-node Garage for local development (make dev-db) and, with the same keys, the test stack.
+# DEV ONLY: rpc_secret and admin_token are fixed and public on purpose. Every stack that mounts
+# this file is one isolated node that never dials another Garage node. Never use these values
+# anywhere reachable from a network: production uses a managed S3 service (plan 5).
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+# DEV ONLY (64 hex).
+rpc_secret = "5f0c6a3e9b1d4c7a8e2f60b4d93a1c5e7f8b0d2a4c6e91385b7d0f2a4c6e8b13"
+
+[s3_api]
+# The region the API signs for (MEDIA_S3_REGION): Garage refuses any other.
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+
+[s3_web]
+# The web endpoint serves a bucket chosen by the Host header: the init gives the public bucket
+# the global alias `localhost`, so http://localhost:<web port>/ serves it.
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.localhost"
+
+[admin]
+api_bind_addr = "[::]:3903"
+# DEV ONLY.
+admin_token = "cartouche-dev-admin-token"

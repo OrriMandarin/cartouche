@@ -16,8 +16,20 @@ AUTH_JWKS_URL ?= http://localhost:8080/api/test/jwks.json
 PUBLIC_BASE_URL ?= http://localhost:3000
 ADMIN_USER_IDS ?= seed-admin
 BIND_ADDR ?= 127.0.0.1:8080
-# Interim: S3 is the default storage (MED-009), Garage joins compose in a later task.
-MEDIA_STORAGE ?= local
+# Media: S3 on the Garage of `make dev-db` (MED-009). Each worktree gives itself its own ports.
+# The key and secret are the fixed DEV-ONLY ones of compose.dev.yml.
+DEV_S3_PORT ?= 3900
+DEV_S3_WEB_PORT ?= 3902
+DEV_S3_ADMIN_PORT ?= 3903
+MEDIA_STORAGE ?= s3
+MEDIA_S3_BUCKET ?= cartouche-media
+MEDIA_S3_PRIVATE_BUCKET ?= cartouche-media-private
+MEDIA_S3_REGION ?= garage
+MEDIA_S3_ENDPOINT ?= http://localhost:$(DEV_S3_PORT)
+MEDIA_S3_ACCESS_KEY_ID ?= GK26ee770c40b79441cf5dbd98
+MEDIA_S3_SECRET_ACCESS_KEY ?= 1f40d56d775b769e61c9a48d9823a6e552b4a2e658875ef32fd5602a99659ca4
+MEDIA_PUBLIC_BASE_URL ?= http://localhost:$(DEV_S3_WEB_PORT)
+# Local mode (MEDIA_STORAGE=local) only.
 MEDIA_LOCAL_DIR ?= $(CURDIR)/.data/media
 CARTOUCHE_BUILD_PROFILE ?= development
 NEXT_PUBLIC_AUTH_PROVIDER ?= test
@@ -35,6 +47,7 @@ setup:
 	$(PNPM) install && cargo fetch --manifest-path backend/Cargo.toml
 	cargo install sqlx-cli --locked --version $(SQLX_CLI_VERSION) --no-default-features --features postgres,rustls
 
+# Starts Postgres, Garage (S3) and its idempotent init.
 dev-db:
 	docker compose -f compose.dev.yml up -d --wait
 

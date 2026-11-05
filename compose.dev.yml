@@ -15,5 +15,48 @@ services:
       timeout: 3s
       retries: 30
 
+  # Dev-only S3 (MED-009). The key below is public and fixed on purpose: never use it elsewhere.
+  # The image has no shell: the healthcheck runs the garage binary itself.
+  garage:
+    image: dxflrs/garage:v2.5.0
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: GK26ee770c40b79441cf5dbd98
+      GARAGE_DEFAULT_SECRET_KEY: 1f40d56d775b769e61c9a48d9823a6e552b4a2e658875ef32fd5602a99659ca4
+      GARAGE_DEFAULT_BUCKET: cartouche-media
+    ports:
+      - "127.0.0.1:${DEV_S3_PORT:-3900}:3900"
+      - "127.0.0.1:${DEV_S3_WEB_PORT:-3902}:3902"
+      - "127.0.0.1:${DEV_S3_ADMIN_PORT:-3903}:3903"
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - cartouche-dev-garage:/var/lib/garage
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # One-shot, idempotent: private bucket, key rights, public web access, CORS (docker/garage/init.sh).
+  garage-init:
+    image: curlimages/curl:8.11.1
+    entrypoint: ["sh", "/init.sh"]
+    restart: "no"
+    environment:
+      ADMIN_URL: http://garage:3903
+      ADMIN_TOKEN: cartouche-dev-admin-token
+      S3_URL: http://garage:3900
+      S3_ACCESS_KEY: GK26ee770c40b79441cf5dbd98
+      S3_SECRET_KEY: 1f40d56d775b769e61c9a48d9823a6e552b4a2e658875ef32fd5602a99659ca4
+      PUBLIC_BUCKET: cartouche-media
+      PRIVATE_BUCKET: cartouche-media-private
+      APP_ORIGIN: ${PUBLIC_BASE_URL:-http://localhost:3000}
+    volumes:
+      - ./docker/garage/init.sh:/init.sh:ro
+    depends_on:
+      garage:
+        condition: service_healthy
+
 volumes:
   cartouche-dev-db:
+  cartouche-dev-garage:
