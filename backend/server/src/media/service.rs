@@ -19,7 +19,9 @@ use tokio::sync::Semaphore;
 use url::Url;
 use uuid::Uuid;
 
-use super::process::{PrepareError, PreparedImage, ProcessError, prepare_image};
+use super::process::{
+    EncodedVariant, PrepareError, PreparedImage, ProcessError, prepare_image, prepare_variants,
+};
 use super::signing::UrlSigner;
 use crate::config::MediaStorageConfig;
 
@@ -319,6 +321,26 @@ impl MediaService {
     ) -> Result<PreparedImage, PrepareError> {
         match self
             .run_limited(move || prepare_image(&bytes, slot, crop))
+            .await
+        {
+            Ok(result) => result,
+            Err(Panicked) => {
+                tracing::error!("image processing panicked, refusing the file as corrupt");
+                Err(ProcessError::Corrupt.into())
+            }
+        }
+    }
+
+    /// Produces only the variants of an image the server made itself, like
+    /// [`prepare_image`](Self::prepare_image) but keeping no source.
+    pub async fn prepare_variants(
+        &self,
+        bytes: Bytes,
+        slot: Slot,
+        crop: CropRect,
+    ) -> Result<Vec<EncodedVariant>, PrepareError> {
+        match self
+            .run_limited(move || prepare_variants(&bytes, slot, &crop))
             .await
         {
             Ok(result) => result,

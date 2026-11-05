@@ -391,7 +391,7 @@ export interface paths {
         put?: never;
         /**
          * Upload a media
-         * @description Stores an image (or, in the header, a video with its waiting image) and returns the media with the addresses of its files and its framing. The server keeps the whole image (the waiting image, for a video) as the media's source and cuts the files shown along the crop. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar. Refused while support has disabled the card.
+         * @description Stores an image or, in the header, a video, and returns the media with the addresses of its files and its framing. For an image, the server keeps the whole image as the media's source and cuts the files shown along the crop. For a video, the server transcodes the part kept (crop and loop applied) into the file shown, extracts the placeholder image itself, keeps a lighter copy of the whole video as the media's source for the editor and the uploaded file privately, never served. The media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it as header or avatar. Refused while support has disabled the card.
          */
         post: operations["upload_media"];
         delete?: never;
@@ -411,7 +411,7 @@ export interface paths {
         put?: never;
         /**
          * Re-frame a media
-         * @description Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time, with the newly captured frame when the poster time changes). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.
+         * @description Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.
          */
         post: operations["reframe_media"];
         delete?: never;
@@ -1272,12 +1272,6 @@ export interface components {
             /** @description Video only. JSON `{start, end}` in seconds. Default: the whole video. */
             loop?: string | null;
             /**
-             * Format: binary
-             * @description Video only. The newly captured whole frame at `poster_time`, which becomes the new
-             *     source. Without it, the files are cut from the stored source.
-             */
-            poster?: string | null;
-            /**
              * Format: double
              * @description Video only. The time of the waiting image, in seconds, as a decimal. Default: 0.
              */
@@ -1405,27 +1399,22 @@ export interface components {
         /** @description Shape of the multipart form, for the API description only. */
         UploadMediaBody: {
             /**
-             * @description JSON `{x, y, width, height}` in proportions of the image (of the waiting image, for a
+             * @description JSON `{x, y, width, height}` in proportions of the image (of the displayed frame, for a
              *     video): 4:3 for the header, square for the avatar. Default: the largest centred one.
              */
             crop?: string | null;
             /**
              * Format: binary
              * @description A JPEG, PNG or WebP image (10 MB, 40 million pixels at most), or in `header` an MP4
-             *     video (25 MB, 30 s at most). The type is read from the content.
+             *     video (50 MB, 30 s at most). The type is read from the content.
              */
             file: string;
             /** @description Video only. JSON `{start, end}` in seconds. Default: the whole video. */
             loop?: string | null;
             /**
-             * Format: binary
-             * @description The waiting image of a video: the whole frame at `poster_time`, captured in the
-             *     browser. Required for a video.
-             */
-            poster?: string | null;
-            /**
              * Format: double
-             * @description Video only. The time of the waiting image, in seconds, as a decimal. Default: 0.
+             * @description Video only. The time of the placeholder image the server extracts, in seconds, as a
+             *     decimal. Default: 0.
              */
             poster_time?: number | null;
             /** @description Where the media is shown. A video is only accepted in `header`. */
@@ -3241,7 +3230,7 @@ export interface operations {
                     "application/json": components["schemas"]["MediaView"];
                 };
             };
-            /** @description Malformed request or form, a framing field that does not parse, or a loop or poster time sent with an image (`invalid_request`), or refused file or framing (`validation_failed`: `file` is `required`, `image_too_large` or `video_too_long`; `slot` is `required`; `poster` is `poster_required` or `image_too_large`; `crop` is `invalid_crop`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
+            /** @description Malformed request or form, a framing field that does not parse, or a loop or poster time sent with an image, or a `poster` part (`invalid_request`), or refused file or framing (`validation_failed`: `file` is `required`, `image_too_large`, `video_too_long`, `video_unreadable` or `video_too_large`; `slot` is `required`; `crop` is `invalid_crop`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3286,7 +3275,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The file is too heavy: 10 MB for an image, 25 MB for a video (`payload_too_large`). */
+            /** @description The file is too heavy: 10 MB for an image, 50 MB for a video (`payload_too_large`). */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -3295,7 +3284,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The content is not a supported image or video (`unsupported_media_type`). */
+            /** @description The content is not a supported image or video, or the video codec is not supported (`unsupported_media_type`). */
             415: {
                 headers: {
                     [name: string]: unknown;
@@ -3313,7 +3302,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The identity provider is unreachable (`auth_unavailable`). */
+            /** @description The identity provider is unreachable (`auth_unavailable`), or the video could not be processed in time (`video_processing_timeout`). */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -3351,7 +3340,7 @@ export interface operations {
                     "application/json": components["schemas"]["MediaView"];
                 };
             };
-            /** @description Malformed request or form, a framing field that does not parse, or a loop, poster time or new frame sent for an image (`invalid_request`), or refused framing (`validation_failed`: `crop` is `required` or `invalid_crop`; `poster` is `image_too_large`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
+            /** @description Malformed request or form, a framing field that does not parse, or a loop or poster time sent for an image, or a `poster` part (`invalid_request`), or refused framing (`validation_failed`: `crop` is `required` or `invalid_crop`; `loop` is `invalid_loop`; `poster_time` is `invalid_poster_time`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3396,7 +3385,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The new frame is too heavy (`payload_too_large`). */
+            /** @description The request is too heavy (`payload_too_large`). */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -3405,7 +3394,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The new frame is not a supported image (`unsupported_media_type`). */
+            /** @description The source is not a supported image (`unsupported_media_type`). */
             415: {
                 headers: {
                     [name: string]: unknown;

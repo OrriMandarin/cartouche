@@ -1,6 +1,9 @@
 use crate::common;
 
 use axum::http::StatusCode;
+use cartouche_api::media::video::VideoService;
+use cartouche_api::test_support::video::StubVideoProcessor;
+use cartouche_domain::{MAX_VIDEO_BYTES, PosterSeek, VIDEO_PROCESSING_DEADLINE, VideoProbe};
 use common::cards::{cards_app, create_card, put_card, token};
 use common::media_fixtures::{
     header_clip, jpeg, jpeg_with_exif, mp4, mp4_with_brands, png, png_claiming, quadrants_png,
@@ -8,8 +11,18 @@ use common::media_fixtures::{
 use common::{Part, TestApp, TestResponse, test_state_with};
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use std::sync::Arc;
+use std::time::Duration;
 
 const BASE: &str = "http://localhost:3000";
+
+/// An app whose video processor is `stub` and whose deadline is the real one.
+async fn app_with_stub(pool: PgPool, stub: StubVideoProcessor) -> TestApp {
+    let (mut state, clock) =
+        test_state_with(pool, &[("SIGNUP_MODE", "open"), ("ADMIN_USER_IDS", "boss")]);
+    state.video = VideoService::new(Arc::new(stub), 1, VIDEO_PROCESSING_DEADLINE);
+    TestApp::from_state(state, clock)
+}
 
 fn error_code(res: &TestResponse) -> &str {
     res.json["error"]["code"].as_str().unwrap_or_default()
@@ -154,7 +167,6 @@ async fn type_is_checked_from_content(pool: PgPool) {
         &[
             Part::text("slot", "avatar"),
             Part::file("file", "clip.mp4", "video/mp4", mp4(2_000)),
-            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
         ],
     )
     .await;
@@ -170,7 +182,6 @@ async fn type_is_checked_from_content(pool: PgPool) {
         &[
             Part::text("slot", "header"),
             Part::file("file", "photo.heic", "image/heic", heic),
-            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
         ],
     )
     .await;
@@ -188,7 +199,6 @@ async fn quicktime_3gp_and_heic_are_refused(pool: PgPool) {
         [
             Part::text("slot", "header"),
             Part::file("file", "clip.mp4", "video/mp4", bytes),
-            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
         ]
     };
 
@@ -237,68 +247,300 @@ async fn oversized_and_bomb_images_are_refused(pool: PgPool) {
     assert!(app.media_keys().await.is_empty());
 }
 
-// spec: MED-002, MED-004, MED-013
+// spec: MED-002, MED-013
 #[sqlx::test(migrations = "./migrations")]
 async fn video_rules(pool: PgPool) {
-    let app = cards_app(pool).await;
+    let stub = StubVideoProcessor::default();
+    let app = app_with_stub(pool, stub.clone()).await;
     let card = create_card(&app, "alice", "alice-durand").await;
     let id = card_id(&card);
-    let poster = || Part::file("poster", "poster.jpg", "image/jpeg", jpeg(1280, 720));
     let video = |bytes: Vec<u8>| Part::file("file", "clip.mp4", "video/mp4", bytes);
-    let header = Part::text("slot", "header");
 
-    let res = upload(&app, "alice", id, &[header, video(mp4(31_000)), poster()]).await;
+    // MED-013: too long is refused before any processing.
+    let res = upload(
+        &app,
+        "alice",
+        id,
+        &[Part::text("slot", "header"), video(mp4(31_000))],
+    )
+    .await;
     assert_eq!(res.status, StatusCode::BAD_REQUEST);
     assert_eq!(
         res.json["error"]["fields"],
         json!([{ "field": "file", "code": "video_too_long" }])
     );
+    assert!(stub.jobs().is_empty(), "a refused video is never processed");
 
+    // MED-002: 50 MiB are accepted by the size rule, one byte more is too heavy.
+    let mut heavy = mp4(2_000);
+    heavy.resize(MAX_VIDEO_BYTES + 1, 0);
     let res = upload(
         &app,
         "alice",
         id,
-        &[Part::text("slot", "header"), video(mp4(2_000))],
+        &[Part::text("slot", "header"), video(heavy)],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(error_code(&res), "payload_too_large");
+    assert!(
+        app.media_keys().await.is_empty(),
+        "a refused upload stores nothing"
+    );
+    assert!(stub.jobs().is_empty());
+}
+
+// spec: MED-002
+#[sqlx::test(migrations = "./migrations")]
+async fn a_video_of_exactly_50_mib_is_accepted(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let mut clip = mp4(2_000);
+    clip.resize(MAX_VIDEO_BYTES, 0);
+    let res = upload(
+        &app,
+        "alice",
+        card_id(&card),
+        &[
+            Part::text("slot", "header"),
+            Part::file("file", "clip.mp4", "video/mp4", clip),
+        ],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+}
+
+// spec: MED-003
+#[sqlx::test(migrations = "./migrations")]
+async fn a_video_upload_with_a_poster_part_is_refused(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(
+        &app,
+        "alice",
+        card_id(&card),
+        &[
+            Part::text("slot", "header"),
+            Part::file("file", "clip.mp4", "video/mp4", header_clip()),
+            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
+        ],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(&res), "invalid_request");
+    assert!(app.media_keys().await.is_empty());
+    assert!(app.media.list_private_keys().await.is_empty());
+}
+
+// spec: MED-004, MED-034, MED-037
+#[sqlx::test(migrations = "./migrations")]
+async fn a_video_upload_stores_the_transcode_the_edit_copy_and_the_placeholder(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let id = card_id(&card);
+    let parts = video_parts(&[("loop", json!({ "start": 0.25, "end": 1.75 }).to_string())]);
+    let res = upload(&app, "alice", id, &parts).await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let media = res.json;
+    assert_eq!(media["kind"], "video");
+
+    let names: Vec<String> = app
+        .media_keys()
+        .await
+        .iter()
+        .map(|key| key.rsplit('/').next().unwrap().to_string())
+        .collect();
+    let mut sorted = names.clone();
+    sorted.sort();
+    let edit_copy = names
+        .iter()
+        .find(|name| cartouche_domain::is_video_source_name(name))
+        .expect("an edit copy")
+        .clone();
+    let mut expected = vec![
+        "video.mp4".to_string(),
+        edit_copy,
+        "w1125.webp".to_string(),
+        "w1440.webp".to_string(),
+        "w750.webp".to_string(),
+    ];
+    expected.sort();
+    assert_eq!(sorted, expected, "no .webp source is stored for a video");
+
+    let served = app
+        .media
+        .get(&key_of(&media["video_url"]), None)
+        .await
+        .unwrap();
+    assert_eq!(served.bytes.as_ref(), b"served 1280x960 trim 0.250+1.500");
+    let copy = app
+        .media
+        .get(&key_of(&media["source"]["url"]), None)
+        .await
+        .unwrap();
+    assert_eq!(copy.bytes.as_ref(), b"edit copy 960x540");
+    assert_eq!(media["source"]["width"], 960);
+    assert_eq!(media["source"]["height"], 540);
+    assert_eq!(widths(&media), [750, 1125, 1440]);
+    // The video's own duration, not the loop's (R-S31).
+    let duration = media["duration_seconds"].as_f64().unwrap();
+    assert!((duration - clip_seconds()).abs() < 0.05, "{duration}");
+}
+
+// spec: MED-036
+#[sqlx::test(migrations = "./migrations")]
+async fn the_uploaded_file_is_kept_privately_as_is(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let private = app.media.list_private_keys().await;
+    assert_eq!(private.len(), 1, "{private:?}");
+    assert!(
+        private[0].ends_with(&format!(
+            "/{}/original.mp4",
+            res.json["id"].as_str().unwrap()
+        )),
+        "{private:?}"
+    );
+    let original = app.media.get_private(&private[0], None).await.unwrap();
+    assert_eq!(original.bytes.as_ref(), header_clip().as_slice());
+    assert!(
+        !app.media_keys()
+            .await
+            .iter()
+            .any(|key| key.ends_with("original.mp4")),
+        "the original is never in the public store"
+    );
+}
+
+// spec: MED-029, MED-003
+#[sqlx::test(migrations = "./migrations")]
+async fn the_placeholder_is_cut_from_the_frame_at_the_poster_time(pool: PgPool) {
+    let stub = StubVideoProcessor::default();
+    let app = app_with_stub(pool, stub.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let parts = video_parts(&[("poster_time", "1.5".to_string())]);
+    let res = upload(&app, "alice", card_id(&card), &parts).await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let jobs = stub.jobs();
+    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs[0].plan.poster, PosterSeek::At(1.5));
+    assert!(jobs[0].edit_copy);
+    assert_close(&res.json["poster_time"], 1.5, "poster time");
+    // The stub's frame is 1920 x 1080; the default crop is the centred 4:3.
+    assert_crop(&res.json, 0.125, 0.0, 0.75, 1.0);
+    let w1440 = variant(&app, &res.json, 1440).await;
+    assert_eq!((w1440.width(), w1440.height()), (1440, 1080));
+}
+
+// spec: MED-025, MED-031
+#[sqlx::test(migrations = "./migrations")]
+async fn the_owner_view_gives_the_edit_copy_as_source(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let id = card_with_video_header(&app).await;
+    let owner = get_card(&app, &id).await;
+    let url = owner["header"]["source"]["url"].as_str().unwrap();
+    assert!(unsigned(url).ends_with(".mp4"), "{url}");
+    assert!(url.contains('?'), "signed in local mode: {url}");
+    assert_eq!(owner["header"]["source"]["width"], 960);
+
+    let public = app
+        .request("GET", "/api/public/cards/alice-durand", None, None)
+        .await;
+    assert_eq!(public.status, StatusCode::OK, "{}", public.json);
+    assert_no_source(&public.json, "public view");
+}
+
+// spec: MED-039
+#[sqlx::test(migrations = "./migrations")]
+async fn an_unreadable_video_is_refused_on_its_file_field(pool: PgPool) {
+    let stub = StubVideoProcessor::default().with_unreadable("no moov");
+    let app = app_with_stub(pool, stub).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "file", "code": "video_unreadable" }])
+    );
+    assert!(app.media_keys().await.is_empty());
+    assert!(app.media.list_private_keys().await.is_empty());
+}
+
+// spec: MED-039
+#[sqlx::test(migrations = "./migrations")]
+async fn a_video_wider_than_4096_is_refused(pool: PgPool) {
+    let stub = StubVideoProcessor::default().with_probe(VideoProbe {
+        width: 4100,
+        height: 2000,
+        codec: "h264".to_string(),
+    });
+    let app = app_with_stub(pool, stub.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "file", "code": "video_too_large" }])
+    );
+    assert!(stub.jobs().is_empty());
+    assert!(app.media_keys().await.is_empty());
+}
+
+// spec: MED-040
+#[sqlx::test(migrations = "./migrations")]
+async fn an_unsupported_codec_is_refused(pool: PgPool) {
+    let stub = StubVideoProcessor::default().with_probe(VideoProbe {
+        width: 1920,
+        height: 1080,
+        codec: "mpeg4".to_string(),
+    });
+    let app = app_with_stub(pool, stub.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    assert_eq!(error_code(&res), "unsupported_media_type");
+    assert!(stub.jobs().is_empty());
+    assert!(app.media_keys().await.is_empty());
+}
+
+// spec: MED-039
+#[sqlx::test(migrations = "./migrations")]
+async fn a_video_job_past_its_deadline_is_a_503_and_stores_nothing(pool: PgPool) {
+    let (mut state, clock) =
+        test_state_with(pool, &[("SIGNUP_MODE", "open"), ("ADMIN_USER_IDS", "boss")]);
+    let stub = StubVideoProcessor::default().with_delay(Duration::from_millis(500));
+    state.video = VideoService::new(Arc::new(stub), 1, Duration::from_millis(100));
+    let app = TestApp::from_state(state, clock);
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(error_code(&res), "video_processing_timeout");
+    assert!(app.media_keys().await.is_empty());
+    assert!(app.media.list_private_keys().await.is_empty());
+}
+
+// spec: MED-035
+#[sqlx::test(migrations = "./migrations")]
+async fn a_crop_narrower_than_16_pixels_is_refused(pool: PgPool) {
+    let app = cards_app(pool).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    // 4:3 on a 1920 x 1080 frame, 0.005 wide: 9.6 pixels.
+    let crop = json!({ "x": 0.1, "y": 0.0, "width": 0.005, "height": 0.0089 }).to_string();
+    let res = upload(
+        &app,
+        "alice",
+        card_id(&card),
+        &video_parts(&[("crop", crop)]),
     )
     .await;
     assert_eq!(res.status, StatusCode::BAD_REQUEST);
     assert_eq!(
         res.json["error"]["fields"],
-        json!([{ "field": "poster", "code": "poster_required" }])
+        json!([{ "field": "crop", "code": "invalid_crop" }])
     );
-
-    let mut heavy = mp4(2_000);
-    heavy.resize(26 << 20, 0);
-    let res = upload(
-        &app,
-        "alice",
-        id,
-        &[Part::text("slot", "header"), video(heavy), poster()],
-    )
-    .await;
-    assert_eq!(res.status, StatusCode::PAYLOAD_TOO_LARGE);
-    assert!(
-        app.media_keys().await.is_empty(),
-        "a refused upload stores nothing"
-    );
-
-    let clip = mp4(2_000);
-    let res = upload(
-        &app,
-        "alice",
-        id,
-        &[Part::text("slot", "header"), video(clip.clone()), poster()],
-    )
-    .await;
-    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
-    assert_eq!(res.json["kind"], "video");
-    // The poster is the waiting image, cut 4:3 (960 × 720) and never larger than its crop.
-    assert_eq!(widths(&res.json), [750, 960]);
-    let video_url = unsigned(res.json["video_url"].as_str().unwrap());
-    assert!(video_url.ends_with("/video.mp4"), "{video_url}");
-    let key = video_url.strip_prefix(&format!("{BASE}/media/")).unwrap();
-    let stored = app.media.get(key, None).await.unwrap();
-    assert_eq!(stored.bytes.as_ref(), clip.as_slice());
+    assert!(app.media_keys().await.is_empty());
 }
 
 // spec: MED-018, EDI-006, MED-001
@@ -413,7 +655,6 @@ async fn media_of_another_card_is_invalid(pool: PgPool) {
         &[
             Part::text("slot", "header"),
             Part::file("file", "clip.mp4", "video/mp4", mp4(2_000)),
-            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
         ],
     )
     .await;
@@ -640,20 +881,16 @@ async fn media_files_are_served_with_long_cache(pool: PgPool) {
 async fn media_files_honour_range_requests(pool: PgPool) {
     let app = cards_app(pool).await;
     let card = create_card(&app, "alice", "alice-durand").await;
-    let clip = mp4(2_000);
-    let video = upload(
-        &app,
-        "alice",
-        card_id(&card),
-        &[
-            Part::text("slot", "header"),
-            Part::file("file", "clip.mp4", "video/mp4", clip.clone()),
-            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
-        ],
-    )
-    .await;
+    let video = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
     assert_eq!(video.status, StatusCode::CREATED);
     let path = unsigned(media_path(&video.json["video_url"]));
+    let clip = app
+        .media
+        .get(&key_of(&video.json["video_url"]), None)
+        .await
+        .unwrap()
+        .bytes
+        .to_vec();
     let n = clip.len();
 
     let whole = get_file(&app, path, &[]).await;
@@ -969,7 +1206,6 @@ async fn s3_urls_are_never_signed(pool: PgPool) {
         &[
             Part::text("slot", "header"),
             Part::file("file", "clip.mp4", "video/mp4", mp4(2_000)),
-            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
         ],
     )
     .await;
@@ -1232,11 +1468,10 @@ async fn a_bad_crop_is_refused_and_nothing_is_stored(pool: PgPool) {
     assert_eq!(media_rows(&pool).await, 0);
 }
 
-fn video_parts(poster: Vec<u8>, extra: &[(&str, String)]) -> Vec<Part> {
+fn video_parts(extra: &[(&str, String)]) -> Vec<Part> {
     let mut parts = vec![
         Part::text("slot", "header"),
         Part::file("file", "clip.mp4", "video/mp4", header_clip()),
-        Part::file("poster", "poster.jpg", "image/jpeg", poster),
     ];
     for (name, value) in extra {
         parts.push(Part::text(name, value));
@@ -1251,22 +1486,19 @@ fn clip_seconds() -> f64 {
         .as_secs_f64()
 }
 
-// spec: MED-028, MED-029
+// spec: MED-028, MED-026
 #[sqlx::test(migrations = "./migrations")]
-async fn a_video_keeps_its_framing_and_its_poster_is_cut(pool: PgPool) {
+async fn a_video_keeps_its_framing(pool: PgPool) {
     let app = cards_app(pool.clone()).await;
     let card = create_card(&app, "alice", "alice-durand").await;
-    let parts = video_parts(
-        jpeg(1280, 720),
-        &[
-            (
-                "crop",
-                json!({ "x": 0.125, "y": 0.0, "width": 0.75, "height": 1.0 }).to_string(),
-            ),
-            ("loop", json!({ "start": 0.2, "end": 1.8 }).to_string()),
-            ("poster_time", "1".to_string()),
-        ],
-    );
+    let parts = video_parts(&[
+        (
+            "crop",
+            json!({ "x": 0.125, "y": 0.0, "width": 0.75, "height": 1.0 }).to_string(),
+        ),
+        ("loop", json!({ "start": 0.2, "end": 1.8 }).to_string()),
+        ("poster_time", "1".to_string()),
+    ]);
     let res = upload(&app, "alice", card_id(&card), &parts).await;
     assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
     let media = res.json;
@@ -1276,29 +1508,15 @@ async fn a_video_keeps_its_framing_and_its_poster_is_cut(pool: PgPool) {
     assert_close(&media["loop"]["start"], 0.2, "loop start");
     assert_close(&media["loop"]["end"], 1.8, "loop end");
     assert_close(&media["poster_time"], 1.0, "poster time");
-    let duration = media["duration_seconds"].as_f64().unwrap();
-    assert!((duration - 2.0).abs() < 0.05, "{duration}");
     let duration_ms: Option<i32> = sqlx::query_scalar("select duration_ms from media")
         .fetch_one(&pool)
         .await
         .unwrap();
     assert!((duration_ms.unwrap() - 2000).abs() < 50, "{duration_ms:?}");
-
-    // The waiting image is the source; its files are cut 4:3 along the video's crop.
-    assert_eq!(media["source"]["width"], 1280);
-    assert_eq!(media["source"]["height"], 720);
-    assert_eq!(widths(&media), [750, 960]);
-    let w960 = variant(&app, &media, 960).await;
-    assert_eq!((w960.width(), w960.height()), (960, 720));
+    let w1440 = variant(&app, &media, 1440).await;
+    assert_eq!((w1440.width(), w1440.height()), (1440, 1080));
     let w750 = variant(&app, &media, 750).await;
     assert_eq!((w750.width(), w750.height()), (750, 563));
-    // The video is stored as uploaded.
-    let video = app
-        .media
-        .get(&key_of(&media["video_url"]), None)
-        .await
-        .unwrap();
-    assert_eq!(video.bytes.as_ref(), header_clip().as_slice());
 }
 
 // spec: MED-028
@@ -1322,13 +1540,7 @@ async fn video_loop_and_poster_time_are_checked(pool: PgPool) {
         ("poster_time", "3".to_string(), "invalid_poster_time"),
         ("poster_time", "-0.5".to_string(), "invalid_poster_time"),
     ] {
-        let res = upload(
-            &app,
-            "alice",
-            id,
-            &video_parts(jpeg(1280, 720), &[(field, value.clone())]),
-        )
-        .await;
+        let res = upload(&app, "alice", id, &video_parts(&[(field, value.clone())])).await;
         assert_eq!(res.status, StatusCode::BAD_REQUEST, "{field} {value}");
         assert_eq!(
             res.json["error"]["fields"],
@@ -1340,7 +1552,7 @@ async fn video_loop_and_poster_time_are_checked(pool: PgPool) {
         &app,
         "alice",
         id,
-        &video_parts(jpeg(1280, 720), &[("poster_time", "soon".to_string())]),
+        &video_parts(&[("poster_time", "soon".to_string())]),
     )
     .await;
     assert_eq!(error_code(&res), "invalid_request");
@@ -1348,7 +1560,7 @@ async fn video_loop_and_poster_time_are_checked(pool: PgPool) {
     assert_eq!(media_rows(&pool).await, 0);
 
     // Without them: the whole video, and the first frame.
-    let res = upload(&app, "alice", id, &video_parts(jpeg(1280, 720), &[])).await;
+    let res = upload(&app, "alice", id, &video_parts(&[])).await;
     assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
     assert_close(&res.json["loop"]["start"], 0.0, "loop start");
     let end = res.json["loop"]["end"].as_f64().unwrap();
@@ -1363,6 +1575,23 @@ async fn card_with_header(app: &TestApp) -> String {
     let id = card_id(&card).to_string();
     let media = uploaded(app, &id, "header", jpeg(1200, 900)).await;
     let res = put_card(app, "alice", &id, json!({ "header_media_id": media["id"] })).await;
+    assert_eq!(res.status, StatusCode::OK, "{}", res.json);
+    id
+}
+
+/// Uploads the clip fixture as Alice's header, attaches it; returns the card id.
+async fn card_with_video_header(app: &TestApp) -> String {
+    let card = create_card(app, "alice", "alice-durand").await;
+    let id = card_id(&card).to_string();
+    let res = upload(app, "alice", &id, &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let res = put_card(
+        app,
+        "alice",
+        &id,
+        json!({ "header_media_id": res.json["id"] }),
+    )
+    .await;
     assert_eq!(res.status, StatusCode::OK, "{}", res.json);
     id
 }
@@ -1757,92 +1986,9 @@ async fn a_media_without_source_cannot_be_reframed(pool: PgPool) {
     assert!(app.media_keys().await.is_empty());
 }
 
-// spec: MED-030, MED-029
+// spec: MED-026
 #[sqlx::test(migrations = "./migrations")]
-async fn a_video_is_reframed_with_or_without_a_new_frame(pool: PgPool) {
-    let app = cards_app(pool.clone()).await;
-    let card = create_card(&app, "alice", "alice-durand").await;
-    let id = card_id(&card);
-    let res = upload(
-        &app,
-        "alice",
-        id,
-        &video_parts(quadrants_png(1280, 720), &[]),
-    )
-    .await;
-    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
-    let old = res.json;
-    let old_id = old["id"].as_str().unwrap();
-    let old_video = key_of(&old["video_url"]);
-
-    // Without a new frame: the files are cut again from the stored source.
-    let res = reframe(
-        &app,
-        "alice",
-        id,
-        old_id,
-        &[
-            crop_part(0.0, 0.0, 0.75, 1.0),
-            Part::text("loop", &json!({ "start": 0.2, "end": 1.8 }).to_string()),
-            Part::text("poster_time", "1"),
-        ],
-    )
-    .await;
-    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
-    let same_frame = res.json;
-    assert_eq!(same_frame["kind"], "video");
-    assert_ne!(same_frame["id"], old["id"]);
-    assert_crop(&same_frame, 0.0, 0.0, 0.75, 1.0);
-    assert_close(&same_frame["loop"]["end"], 1.8, "loop end");
-    assert_close(&same_frame["poster_time"], 1.0, "poster time");
-    assert_eq!(same_frame["source"]["width"], 1280);
-    assert_ne!(source_file_name(&same_frame), source_file_name(&old));
-    let kept = app.media.get(&old_video, None).await.unwrap();
-    let copied = app
-        .media
-        .get(&key_of(&same_frame["video_url"]), None)
-        .await
-        .unwrap();
-    assert_eq!(copied.bytes, kept.bytes);
-    assert_eq!(copied.bytes.as_ref(), header_clip().as_slice());
-    let duration = same_frame["duration_seconds"].as_f64().unwrap();
-    assert!((duration - 2.0).abs() < 0.05, "{duration}");
-    let w960 = variant(&app, &same_frame, 960).await;
-    assert_eq!((w960.width(), w960.height()), (960, 720));
-
-    // With a new frame: it becomes the source.
-    let res = reframe(
-        &app,
-        "alice",
-        id,
-        old_id,
-        &[
-            crop_part(0.125, 0.0, 0.75, 1.0),
-            Part::text("poster_time", "0.5"),
-            Part::file("poster", "poster.jpg", "image/jpeg", jpeg(640, 360)),
-        ],
-    )
-    .await;
-    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
-    let new_frame = res.json;
-    assert_eq!(new_frame["source"]["width"], 640);
-    assert_close(&new_frame["poster_time"], 0.5, "poster time");
-    // No loop sent: the whole video.
-    assert_close(&new_frame["loop"]["start"], 0.0, "loop start");
-    assert_eq!(media_rows(&pool).await, 3);
-    // The previous media keeps its source and its video.
-    assert!(app.media.get(&old_video, None).await.is_ok());
-    assert!(
-        app.media
-            .get(&key_of(&old["source"]["url"]), None)
-            .await
-            .is_ok()
-    );
-}
-
-// spec: MED-026, MED-028
-#[sqlx::test(migrations = "./migrations")]
-async fn reframing_checks_the_crop_and_the_video_framing(pool: PgPool) {
+async fn reframing_checks_the_crop_of_an_image(pool: PgPool) {
     let app = cards_app(pool.clone()).await;
     let (id, old) = card_with_quadrants_header(&app).await;
     let before = stored_files(&app).await;
@@ -1885,36 +2031,6 @@ async fn reframing_checks_the_crop_and_the_video_framing(pool: PgPool) {
 
     assert_eq!(stored_files(&app).await, before);
     assert_eq!(media_rows(&pool).await, 1);
-
-    // A video with a loop past its end.
-    let card = create_card(&app, "alice", "alice-video").await;
-    let res = upload(
-        &app,
-        "alice",
-        card_id(&card),
-        &video_parts(jpeg(1280, 720), &[]),
-    )
-    .await;
-    let video = res.json;
-    let before = stored_files(&app).await;
-    let res = reframe(
-        &app,
-        "alice",
-        card_id(&card),
-        video["id"].as_str().unwrap(),
-        &[
-            crop_part(0.125, 0.0, 0.75, 1.0),
-            Part::text("loop", &json!({ "start": 0.0, "end": 99.0 }).to_string()),
-        ],
-    )
-    .await;
-    assert_eq!(res.status, StatusCode::BAD_REQUEST);
-    assert_eq!(
-        res.json["error"]["fields"],
-        json!([{ "field": "loop", "code": "invalid_loop" }])
-    );
-    assert_eq!(stored_files(&app).await, before);
-    assert_eq!(media_rows(&pool).await, 2);
 }
 
 // spec: LNK-036

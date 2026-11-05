@@ -93,6 +93,20 @@ pub fn prepare_image(
     })
 }
 
+/// The variants of `slot` cut along `crop` from an image the server produced itself (the
+/// frame extracted from a video, MED-029): no source is kept, since the video's edit copy is
+/// the media's source. The crop is checked against the image like an upload's (MED-026).
+pub fn prepare_variants(
+    bytes: &[u8],
+    slot: Slot,
+    crop: &CropRect,
+) -> Result<Vec<EncodedVariant>, PrepareError> {
+    let source = fit_source(decode(bytes)?);
+    let (width, height) = source.dimensions();
+    check_crop(crop, slot, width, height).map_err(|_| PrepareError::Crop)?;
+    Ok(cut_variants(&source, slot, crop)?)
+}
+
 /// Decodes an uploaded JPEG, PNG or WebP image and turns it the right way up (MED-012,
 /// MED-014). A decompression bomb is refused from its header, before any decoding.
 pub fn decode(bytes: &[u8]) -> Result<DynamicImage, ProcessError> {

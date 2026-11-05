@@ -3,9 +3,10 @@
 pub mod process;
 mod service;
 pub mod signing;
+pub mod transcode;
 pub mod video;
 
-use cartouche_domain::source_name;
+use cartouche_domain::{edit_copy_name, source_name};
 use uuid::Uuid;
 
 pub use service::{
@@ -17,4 +18,9 @@ pub use service::{
 /// characters of a UUID v4, so that it cannot be guessed (MED-031).
 pub fn new_source_name() -> String {
     source_name(&Uuid::new_v4().simple().to_string())
+}
+
+/// A new file name for a video's edit copy, with a token drawn at random (MED-031, MED-037).
+pub fn new_edit_copy_name() -> String {
+    edit_copy_name(&Uuid::new_v4().simple().to_string())
 }
