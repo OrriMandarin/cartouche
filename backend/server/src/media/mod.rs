@@ -8,7 +8,10 @@ pub mod video;
 use cartouche_domain::source_name;
 use uuid::Uuid;
 
-pub use service::{CACHE_CONTROL, MediaError, MediaObject, MediaService, PRIVATE_CACHE_CONTROL};
+pub use service::{
+    CACHE_CONTROL, LOCAL_PRIVATE_PREFIX, MediaError, MediaObject, MediaService,
+    PRIVATE_CACHE_CONTROL,
+};
 
 /// A new file name for a media's source, with a token drawn at random: 32 hexadecimal
 /// characters of a UUID v4, so that it cannot be guessed (MED-031).

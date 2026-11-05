@@ -589,6 +589,7 @@ mod tests {
                     "AUTH_JWKS_URL" => "http://localhost:0/jwks.json",
                     "PUBLIC_BASE_URL" => base,
                     "DATABASE_URL" => "unused",
+                    "MEDIA_STORAGE" => "local",
                     _ => return None,
                 }
                 .to_string(),

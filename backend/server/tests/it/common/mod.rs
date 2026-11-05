@@ -107,6 +107,7 @@ pub fn test_config_with(overrides: &[(&str, &str)]) -> Config {
             "AUTH_JWKS_URL" => "http://localhost:0/jwks.json",
             "PUBLIC_BASE_URL" => "http://localhost:3000",
             "DATABASE_URL" => "unused",
+            "MEDIA_STORAGE" => "local",
             _ => return None,
         };
         Some(value.to_string())

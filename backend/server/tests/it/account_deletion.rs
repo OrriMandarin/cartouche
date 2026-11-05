@@ -267,8 +267,9 @@ async fn a_current_admin_is_refused(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn a_storage_failure_deletes_nothing(pool: PgPool) {
     let (store, failing) = FailingStore::new();
-    let media = MediaService::with_store(
+    let media = MediaService::with_stores(
         Arc::new(store),
+        Arc::new(object_store::memory::InMemory::new()),
         "http://localhost:3000/media/".parse().unwrap(),
         true,
     );

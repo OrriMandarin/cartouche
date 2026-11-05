@@ -151,6 +151,7 @@ fn s3_storage_builds_without_touching_the_network() {
         access_key_id: "key".into(),
         secret_access_key: Secret::new("secret"),
         public_base_url: "https://cdn.example".parse().unwrap(),
+        private_bucket: "cards-private".into(),
     };
     let media =
         MediaService::from_config(&config, &"https://cartouche.example".parse().unwrap()).unwrap();
@@ -185,4 +186,90 @@ async fn deleting_a_media_removes_its_source_too() {
         media.list_keys().await,
         [format!("cards/{card}/{kept}/w750.webp")]
     );
+}
+
+// spec: MED-044
+#[tokio::test]
+async fn private_files_never_reach_the_public_store() {
+    let media = service();
+    let key = "cards/a/b/original.mp4";
+    media
+        .put_private(key, Bytes::from_static(b"upload"))
+        .await
+        .unwrap();
+
+    assert!(media.list_keys().await.is_empty());
+    assert_eq!(media.list_private_keys().await, [key]);
+    assert_eq!(
+        media.get(key, None).await.unwrap_err().to_string(),
+        "media not found"
+    );
+    let part = media.get_private(key, Some(1..4)).await.unwrap();
+    assert_eq!((part.bytes.as_ref(), part.size), (&b"plo"[..], 6));
+
+    media
+        .copy_private(key, "cards/a/c/original.mp4")
+        .await
+        .unwrap();
+    assert_eq!(media.list_private_keys().await.len(), 2);
+    assert!(media.list_keys().await.is_empty());
+}
+
+// spec: MED-044
+#[tokio::test]
+async fn local_private_files_live_under_the_private_directory() {
+    use cartouche_api::config::MediaStorageConfig;
+
+    let dir = std::env::temp_dir().join(format!("cartouche-media-{}", Uuid::now_v7()));
+    let config = MediaStorageConfig::Local { dir: dir.clone() };
+    let media =
+        MediaService::from_config(&config, &"https://cartouche.example".parse().unwrap()).unwrap();
+
+    media
+        .put_private("cards/a/b/original.mp4", Bytes::from_static(b"upload"))
+        .await
+        .unwrap();
+
+    assert_eq!(
+        std::fs::read(dir.join("private/cards/a/b/original.mp4")).unwrap(),
+        b"upload"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+// spec: MED-018, MED-019
+#[tokio::test]
+async fn deleting_a_media_or_a_card_empties_both_stores() {
+    let media = service();
+    let (card, gone, kept) = (Uuid::now_v7(), Uuid::now_v7(), Uuid::now_v7());
+    for id in [gone, kept] {
+        media
+            .put(
+                &format!("cards/{card}/{id}/video.mp4"),
+                Bytes::from_static(b"x"),
+            )
+            .await
+            .unwrap();
+        media
+            .put_private(
+                &format!("cards/{card}/{id}/original.mp4"),
+                Bytes::from_static(b"x"),
+            )
+            .await
+            .unwrap();
+    }
+
+    media.delete_media(card, gone).await.unwrap();
+    assert_eq!(
+        media.list_keys().await,
+        [format!("cards/{card}/{kept}/video.mp4")]
+    );
+    assert_eq!(
+        media.list_private_keys().await,
+        [format!("cards/{card}/{kept}/original.mp4")]
+    );
+
+    media.delete_card(card).await.unwrap();
+    assert!(media.list_keys().await.is_empty());
+    assert!(media.list_private_keys().await.is_empty());
 }

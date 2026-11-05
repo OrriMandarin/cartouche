@@ -38,6 +38,7 @@ docker create --name "$NAME" \
   -e AUTH_JWKS_URL=http://localhost:8080/jwks.json \
   -e DATABASE_URL=postgres://u:p@127.0.0.1:1/db \
   -e PUBLIC_BASE_URL=http://localhost:3000 \
+  -e MEDIA_STORAGE=local \
   "$IMAGE" >/dev/null
 START=$SECONDS
 docker start "$NAME" >/dev/null
@@ -78,6 +79,7 @@ docker run -d --name "$API" --network "$NET" \
   -e AUTH_JWKS_URL=http://localhost:8080/jwks.json \
   -e DATABASE_URL=postgres://cartouche:cartouche@"$PG":5432/cartouche \
   -e PUBLIC_BASE_URL=http://localhost:3000 \
+  -e MEDIA_STORAGE=local \
   "$IMAGE" >/dev/null
 READY=0
 for _ in $(seq 1 30); do
