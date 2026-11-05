@@ -31,3 +31,4 @@ mod public_cards;
 mod public_events;
 mod slugs;
 mod test_support;
+mod video_ffmpeg;

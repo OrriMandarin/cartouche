@@ -62,6 +62,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Format
         run: cargo fmt --all --check
       # The query macros build offline from the committed .sqlx/ cache (backend/.cargo/config.toml).

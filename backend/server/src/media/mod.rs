@@ -3,6 +3,7 @@
 pub mod process;
 mod service;
 pub mod signing;
+pub mod video;
 
 use cartouche_domain::source_name;
 use uuid::Uuid;
