@@ -10,8 +10,8 @@ use axum::http::StatusCode;
 use bytes::{Bytes, BytesMut};
 use cartouche_domain::{
     CropRect, FieldError, Framing, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, MediaKind, Slot,
-    UploadRejection, VariantFormat, VideoLoop, check_video_framing, classify_upload, mp4_duration,
-    storage_key,
+    UploadRejection, VIDEO_FILE, VariantFormat, VideoLoop, check_video_framing, classify_upload,
+    mp4_duration, storage_key,
 };
 use serde::de::DeserializeOwned;
 use utoipa::ToSchema;
@@ -30,9 +30,6 @@ use crate::views::{Audience, MediaView};
 /// Largest request body of the upload route: a video, its waiting image and the framing.
 pub const UPLOAD_BODY_LIMIT: usize = 36 << 20;
 
-/// Name of the stored video file.
-const VIDEO_FILE: &str = "video.mp4";
-
 /// Longest framing field (`crop`, `loop`, `poster_time`), in bytes.
 const FRAMING_FIELD_LIMIT: usize = 512;
 
@@ -43,7 +40,7 @@ pub struct UploadMediaBody {
     /// Where the media is shown. A video is only accepted in `header`.
     slot: Slot,
     /// A JPEG, PNG or WebP image (10 MB, 40 million pixels at most), or in `header` an MP4
-    /// video (25 MB, 30 s at most). The type is read from the content.
+    /// video (50 MB, 30 s at most). The type is read from the content.
     #[schema(value_type = String, format = Binary)]
     file: Vec<u8>,
     /// The waiting image of a video: the whole frame at `poster_time`, captured in the

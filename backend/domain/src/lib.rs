@@ -23,6 +23,7 @@ pub mod theme;
 pub mod user;
 pub mod validation;
 pub mod vcard;
+pub mod video;
 
 pub use access_code::{access_code_matches, fold_access_code};
 pub use card::{
@@ -60,8 +61,9 @@ pub use media::{
     plan_image_variants, sniff, source_size,
 };
 pub use media_files::{
-    ByteRange, MediaCache, RangeNotSatisfiable, card_of_key, is_source_key, is_source_name,
-    media_access, parse_range, served_content_type, source_name, storage_key,
+    ByteRange, MediaCache, ORIGINAL_FILE, RangeNotSatisfiable, VIDEO_FILE, card_of_key,
+    edit_copy_name, is_source_key, is_source_name, is_video_source_name, media_access, parse_range,
+    served_content_type, source_name, storage_key,
 };
 pub use phone::{InvalidPhone, format_international, normalize_phone};
 pub use public_access::{PublicAccess, SlugMatch, public_access};
@@ -81,3 +83,8 @@ pub use user::{
 };
 pub use validation::FieldError;
 pub use vcard::{VCard, render as render_vcard};
+pub use video::{
+    EDIT_COPY_MAX_SIDE, MAX_VIDEO_SIDE, MIN_VIDEO_CROP_WIDTH, PlanError, PosterSeek,
+    ProbeRejection, SERVED_MAX_WIDTH, VIDEO_PROCESSING_DEADLINE, VideoPlan, VideoProbe,
+    check_probe, edit_copy_size, plan_video, poster_seek, served_size,
+};

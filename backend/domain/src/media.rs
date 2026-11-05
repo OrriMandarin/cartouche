@@ -86,7 +86,7 @@ impl FromStr for MediaKind {
 /// Largest accepted image upload, in bytes (MED-012).
 pub const MAX_IMAGE_BYTES: usize = 10 << 20;
 /// Largest accepted video upload, in bytes (MED-002).
-pub const MAX_VIDEO_BYTES: usize = 25 << 20;
+pub const MAX_VIDEO_BYTES: usize = 50 << 20;
 /// Largest accepted image, in pixels (MED-012).
 pub const MAX_IMAGE_PIXELS: u64 = 40_000_000;
 /// Longest accepted video: 30 s plus a 100 ms tolerance for container rounding (MED-002).
