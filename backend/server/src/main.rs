@@ -7,14 +7,18 @@ use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwksKeySource, JwtVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::media::MediaService;
+use cartouche_api::media::video::{Ffmpeg, VideoService};
 use cartouche_api::rate_limit::InMemoryRateLimiter;
 use cartouche_api::startup::{startup_summary, test_routes_enabled, validate};
 use cartouche_api::state::AppState;
 use cartouche_api::{db, telemetry};
-use cartouche_domain::{Clock, OverridableClock, SystemClock};
+use cartouche_domain::{Clock, OverridableClock, SystemClock, VIDEO_PROCESSING_DEADLINE};
 
 /// How long fetched signing keys are trusted before the JWKS is fetched again.
 const JWKS_TTL: Duration = Duration::from_secs(3600);
+
+/// Videos processed at the same time (MED-039).
+const VIDEO_JOBS_AT_ONCE: usize = 1;
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -45,7 +49,17 @@ async fn main() -> ExitCode {
         "starting cartouche-api"
     );
 
-    match run(config).await {
+    // MED-041: no point serving uploads the server cannot process.
+    let ffmpeg = Ffmpeg::new(&config.video.ffmpeg, &config.video.ffprobe);
+    match ffmpeg.check().await {
+        Ok(version) => tracing::info!(ffmpeg = %version, "video tools found"),
+        Err(e) => {
+            tracing::error!(error = %e, "video tools unavailable");
+            return ExitCode::FAILURE;
+        }
+    }
+
+    match run(config, ffmpeg).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             tracing::error!(error = %e, "fatal error");
@@ -54,7 +68,7 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
+async fn run(config: Config, ffmpeg: Ffmpeg) -> Result<(), Box<dyn std::error::Error>> {
     let bind_addr = config.bind_addr;
     let pool = db::connect(&config.database_url).await?;
     db::migrate(&pool).await?;
@@ -69,12 +83,18 @@ async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let keys = JwksKeySource::new(config.auth.jwks_url.clone(), http, JWKS_TTL);
     let verifier = JwtVerifier::new(&config.auth, keys, clock.clone());
     let media = MediaService::from_config(&config.media, &config.public_base_url)?;
+    let video = VideoService::new(
+        Arc::new(ffmpeg),
+        VIDEO_JOBS_AT_ONCE,
+        VIDEO_PROCESSING_DEADLINE,
+    );
     let state = AppState {
         db: pool,
         config: Arc::new(config),
         clock,
         verifier: Arc::new(verifier),
         media,
+        video,
         rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         #[cfg(feature = "test-support")]
         test_clock: _test_clock,

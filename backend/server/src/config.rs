@@ -78,6 +78,13 @@ pub enum MediaStorageConfig {
     },
 }
 
+/// Where the video tools are (MED-041): program names looked up on the `PATH`, or paths.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VideoToolsConfig {
+    pub ffmpeg: PathBuf,
+    pub ffprobe: PathBuf,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     pub app_env: AppEnv,
@@ -89,6 +96,7 @@ pub struct Config {
     pub signup_mode: SignupMode,
     pub sentry_dsn: Option<String>,
     pub media: MediaStorageConfig,
+    pub video: VideoToolsConfig,
     /// Reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted (ABU-008).
     pub trusted_proxy_hops: usize,
     /// Most events of one card that may run at the same instant (EVT-004, EVT-019).
@@ -233,6 +241,12 @@ impl Config {
             signup_mode,
             sentry_dsn: optional("SENTRY_DSN"),
             media,
+            video: VideoToolsConfig {
+                ffmpeg: optional("FFMPEG_PATH")
+                    .map_or_else(|| PathBuf::from("ffmpeg"), PathBuf::from),
+                ffprobe: optional("FFPROBE_PATH")
+                    .map_or_else(|| PathBuf::from("ffprobe"), PathBuf::from),
+            },
             trusted_proxy_hops,
             max_simultaneous_events,
         })
@@ -422,6 +436,21 @@ mod tests {
                 "{bad}: {err:?}"
             );
         }
+    }
+
+    // spec: MED-041
+    #[test]
+    fn ffmpeg_paths_default_to_the_path_and_follow_the_variables() {
+        let c = Config::from_vars(vars(&[])).unwrap();
+        assert_eq!(c.video.ffmpeg, PathBuf::from("ffmpeg"));
+        assert_eq!(c.video.ffprobe, PathBuf::from("ffprobe"));
+        let c = Config::from_vars(vars(&[
+            ("FFMPEG_PATH", "/opt/ff/ffmpeg"),
+            ("FFPROBE_PATH", "/opt/ff/ffprobe"),
+        ]))
+        .unwrap();
+        assert_eq!(c.video.ffmpeg, PathBuf::from("/opt/ff/ffmpeg"));
+        assert_eq!(c.video.ffprobe, PathBuf::from("/opt/ff/ffprobe"));
     }
 
     // spec: EVT-019

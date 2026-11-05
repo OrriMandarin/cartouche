@@ -16,9 +16,11 @@ use cartouche_api::app::build_router;
 use cartouche_api::auth::{JwtVerifier, StaticKeySource, TokenVerifier};
 use cartouche_api::config::Config;
 use cartouche_api::media::MediaService;
+use cartouche_api::media::video::VideoService;
 use cartouche_api::rate_limit::InMemoryRateLimiter;
 use cartouche_api::state::AppState;
-use cartouche_domain::{Clock, ManualClock};
+use cartouche_api::test_support::video::StubVideoProcessor;
+use cartouche_domain::{Clock, ManualClock, VIDEO_PROCESSING_DEADLINE};
 use chrono::{TimeZone, Utc};
 use http_body_util::BodyExt;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header};
@@ -169,6 +171,15 @@ pub fn test_media() -> MediaService {
     )
 }
 
+/// A video service on the stub processor: one job at a time, the real deadline.
+pub fn test_video() -> VideoService {
+    VideoService::new(
+        Arc::new(StubVideoProcessor::default()),
+        1,
+        VIDEO_PROCESSING_DEADLINE,
+    )
+}
+
 /// Application state on a frozen clock. Tasks that add state fields extend this function
 /// (or add a second constructor) and feed the result to `TestApp::from_state`.
 pub fn test_state(pool: PgPool) -> (AppState, Arc<ManualClock>) {
@@ -187,6 +198,7 @@ pub fn test_state_with(pool: PgPool, overrides: &[(&str, &str)]) -> (AppState, A
         config: Arc::new(config),
         clock: clock.clone(),
         media: test_media(),
+        video: test_video(),
         rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         #[cfg(feature = "test-support")]
         test_clock: None,

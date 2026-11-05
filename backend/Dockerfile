@@ -26,8 +26,10 @@ RUN cargo build --release -p cartouche-api ${FEATURES:+--features "$FEATURES"} \
     && case "$FEATURES" in *test-support*) cp target/release/cartouche-seed /out/ ;; esac
 
 FROM debian:bookworm-slim AS runtime
+# ffmpeg (with ffprobe and libx264) processes the header videos; the API refuses to start
+# without it (MED-041).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin cartouche
 COPY --from=builder /out/ /usr/local/bin/

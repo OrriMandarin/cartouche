@@ -6,3 +6,4 @@
 pub mod issuer;
 pub mod routes;
 pub mod seed;
+pub mod video;

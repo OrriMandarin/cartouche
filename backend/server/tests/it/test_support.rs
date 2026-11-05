@@ -269,6 +269,7 @@ async fn clock_controls_token_expiry(pool: PgPool) {
         config: Arc::new(config),
         clock: clock.clone(),
         media: common::test_media(),
+        video: common::test_video(),
         rate_limiter: Arc::new(InMemoryRateLimiter::default()),
         test_clock: Some(clock),
     };

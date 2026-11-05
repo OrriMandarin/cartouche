@@ -11,11 +11,15 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use cartouche_domain::{PosterSeek, VideoPlan, VideoProbe};
+use futures_util::future::BoxFuture;
 use serde_json::Value;
 use tokio::process::Command;
+use tokio::sync::{Semaphore, oneshot};
 
 /// How many trailing lines of a failed program's stderr are logged.
 const LOGGED_STDERR_LINES: usize = 8;
@@ -82,6 +86,44 @@ impl Ffmpeg {
             ffmpeg: ffmpeg.into(),
             ffprobe: ffprobe.into(),
         }
+    }
+
+    /// Checks that both programs run and that ffmpeg has an H.264 encoder (MED-041). The error
+    /// names the variables and says how to install the tools. Returns ffmpeg's version line.
+    pub async fn check(&self) -> Result<String, String> {
+        let advice = "install ffmpeg: brew install ffmpeg (macOS) or apt-get install ffmpeg \
+                      (Debian/Ubuntu), or set FFMPEG_PATH and FFPROBE_PATH";
+        let version = [OsString::from("-version")];
+        let mut ffmpeg_version = String::new();
+        for (variable, program) in [
+            ("FFMPEG_PATH", &self.ffmpeg),
+            ("FFPROBE_PATH", &self.ffprobe),
+        ] {
+            let output = Self::run(program, &version).await.map_err(|error| {
+                format!(
+                    "cannot run {} (${variable}): {error}; {advice}",
+                    program.display()
+                )
+            })?;
+            if ffmpeg_version.is_empty() {
+                ffmpeg_version = String::from_utf8_lossy(&output)
+                    .lines()
+                    .next()
+                    .unwrap_or_default()
+                    .to_string();
+            }
+        }
+        let encoders = ["-hide_banner", "-encoders"].map(OsString::from);
+        let listing = Self::run(&self.ffmpeg, &encoders).await.map_err(|error| {
+            format!("cannot list the encoders of ffmpeg (FFMPEG_PATH): {error}")
+        })?;
+        if !String::from_utf8_lossy(&listing).contains("libx264") {
+            return Err(format!(
+                "{} (FFMPEG_PATH) has no libx264 encoder; {advice}",
+                self.ffmpeg.display()
+            ));
+        }
+        Ok(ffmpeg_version)
     }
 
     /// Runs `program` with `args`; stdout is captured, stderr is logged on failure.
@@ -321,5 +363,167 @@ impl VideoProcessor for Ffmpeg {
             edit_copy,
             poster_frame,
         })
+    }
+}
+
+/// Why a video job produced nothing (MED-039).
+#[derive(Debug, thiserror::Error)]
+pub enum VideoJobError {
+    /// The job, waiting for its turn included, ran past the deadline.
+    #[error("video processing timed out")]
+    Timeout,
+    #[error(transparent)]
+    Video(#[from] VideoError),
+}
+
+/// Runs video jobs one at a time, each under one deadline that starts when the job is
+/// submitted, so waiting for the previous job counts (MED-039).
+#[derive(Clone)]
+pub struct VideoService {
+    processor: Arc<dyn VideoProcessor>,
+    permits: Arc<Semaphore>,
+    deadline: Duration,
+}
+
+impl VideoService {
+    pub fn new(processor: Arc<dyn VideoProcessor>, permits: usize, deadline: Duration) -> Self {
+        Self {
+            processor,
+            permits: Arc::new(Semaphore::new(permits)),
+            deadline,
+        }
+    }
+
+    /// Runs `work` once a permit is free. The work lives in a spawned task that owns the
+    /// permit, so a request that goes away does not cancel it: it ends by itself or at the
+    /// deadline, when the task drops the work, which kills its child processes (they are
+    /// `kill_on_drop`), and only then gives the permit back.
+    pub async fn run<T>(
+        &self,
+        work: impl FnOnce(Arc<dyn VideoProcessor>) -> BoxFuture<'static, Result<T, VideoError>>
+        + Send
+        + 'static,
+    ) -> Result<T, VideoJobError>
+    where
+        T: Send + 'static,
+    {
+        let (sender, receiver) = oneshot::channel();
+        let processor = self.processor.clone();
+        let permits = self.permits.clone();
+        let deadline = self.deadline;
+        tokio::spawn(async move {
+            let job = async {
+                let _permit = permits.acquire_owned().await.expect("never closed");
+                work(processor).await
+            };
+            let outcome = match tokio::time::timeout(deadline, job).await {
+                Ok(result) => result.map_err(VideoJobError::Video),
+                Err(_) => Err(VideoJobError::Timeout),
+            };
+            // The caller may be gone.
+            let _ = sender.send(outcome);
+        });
+        receiver.await.expect("the video task does not panic")
+    }
+
+    #[cfg(test)]
+    fn available_permits(&self) -> usize {
+        self.permits.available_permits()
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod tests {
+    use super::*;
+    use crate::test_support::video::StubVideoProcessor;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    fn service(delay: Duration, deadline: Duration) -> VideoService {
+        let stub = StubVideoProcessor::default().with_delay(delay);
+        VideoService::new(Arc::new(stub), 1, deadline)
+    }
+
+    type Job = Box<
+        dyn FnOnce(
+                Arc<dyn VideoProcessor>,
+            ) -> BoxFuture<'static, Result<(usize, usize), VideoError>>
+            + Send,
+    >;
+
+    /// A job that takes `delay` and notes when it started and ended.
+    fn job(delay: Duration, clock: &Arc<AtomicUsize>) -> Job {
+        let clock = clock.clone();
+        Box::new(move |_| {
+            Box::pin(async move {
+                let started = clock.fetch_add(1, Ordering::SeqCst);
+                tokio::time::sleep(delay).await;
+                let ended = clock.fetch_add(1, Ordering::SeqCst);
+                Ok((started, ended))
+            })
+        })
+    }
+
+    // spec: MED-039
+    #[tokio::test]
+    async fn a_second_job_waits_for_the_first() {
+        let service = service(Duration::ZERO, Duration::from_secs(5));
+        let clock = Arc::new(AtomicUsize::new(0));
+        let (first, second) = tokio::join!(
+            service.run(job(Duration::from_millis(200), &clock)),
+            service.run(job(Duration::from_millis(10), &clock)),
+        );
+        let ((first_start, first_end), (second_start, _)) = (first.unwrap(), second.unwrap());
+        assert_eq!((first_start, first_end), (0, 1), "the first runs alone");
+        assert_eq!(second_start, 2, "the second starts after the first ended");
+    }
+
+    // spec: MED-039
+    #[tokio::test]
+    async fn a_job_past_the_deadline_is_a_timeout_and_frees_its_permit() {
+        let service = service(Duration::ZERO, Duration::from_millis(100));
+        let clock = Arc::new(AtomicUsize::new(0));
+        let result = service.run(job(Duration::from_secs(1), &clock)).await;
+        assert!(matches!(result, Err(VideoJobError::Timeout)), "{result:?}");
+        assert_eq!(service.available_permits(), 1);
+    }
+
+    // spec: MED-039
+    #[tokio::test]
+    async fn the_wait_counts_in_the_deadline() {
+        // Each job fits in the deadline alone; the second does not once it has waited.
+        let service = service(Duration::ZERO, Duration::from_millis(300));
+        let clock = Arc::new(AtomicUsize::new(0));
+        let (first, second) = tokio::join!(
+            service.run(job(Duration::from_millis(200), &clock)),
+            service.run(job(Duration::from_millis(200), &clock)),
+        );
+        assert!(first.is_ok(), "{first:?}");
+        assert!(matches!(second, Err(VideoJobError::Timeout)), "{second:?}");
+        assert_eq!(service.available_permits(), 1);
+    }
+
+    // spec: MED-041
+    #[tokio::test]
+    async fn the_check_names_a_missing_ffmpeg() {
+        let ffmpeg = Ffmpeg::new("/nonexistent/ffmpeg", "ffprobe");
+        let message = ffmpeg.check().await.unwrap_err();
+        assert!(message.contains("FFMPEG_PATH"), "{message}");
+        assert!(message.contains("brew install ffmpeg"), "{message}");
+    }
+
+    // spec: MED-041
+    #[tokio::test]
+    async fn the_check_accepts_the_installed_ffmpeg() {
+        let program = |variable: &str, default: &str| {
+            std::env::var(variable).unwrap_or_else(|_| default.to_string())
+        };
+        let ffmpeg = Ffmpeg::new(
+            program("FFMPEG_PATH", "ffmpeg"),
+            program("FFPROBE_PATH", "ffprobe"),
+        );
+        ffmpeg
+            .check()
+            .await
+            .expect("install ffmpeg with libx264 (brew install ffmpeg / apt-get install ffmpeg)");
     }
 }
