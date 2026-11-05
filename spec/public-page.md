@@ -1,6 +1,6 @@
 # Public page and vCard
 
-> Status: implemented (plans 2, 3 and 6)
+> Status: implemented (plans 2, 3 and 6); amended by plan 7
 
 This page describes the behavior of the public page, whatever the template (see TPL-003). The visuals are those of the "Classique" ("Classic") template, the reference template.
 
@@ -12,9 +12,13 @@ This page describes the behavior of the public page, whatever the template (see 
 
 ## Header and profile
 
-- **PUB-004** — The header is a full-width image or video in the 4:3 format: an image shows the files the server cut along its crop (MED-027), a video is cropped when it is displayed (MED-032).
-- **PUB-005** — The header video is muted (on the video element itself, so that browsers allow it to start), autoplays and loops over its loop (MED-028), with `playsinline` so it never goes fullscreen on iOS. When the visitor prefers reduced motion, it does not start by itself and its placeholder image stays.
-- **PUB-006** — While the header video loads, its placeholder image (MED-029) is shown blurred under a moving sheen, and the header is marked busy (`aria-busy`) until the video can play.
+- **PUB-004** — The header is a full-width image or video in the 4:3 format: an image shows the files the server cut along its crop (MED-027), a video its served file, which the server cut along its crop (MED-034, MED-032).
+- **PUB-005** — The header video is muted (on the video element itself, so that browsers allow it to start), autoplays from its start and loops over its whole file (`loop`: the loop of MED-028 is already cut into it, MED-032), with `playsinline` so it never goes fullscreen on iOS. When the visitor prefers reduced motion, it does not start by itself and its placeholder image stays.
+- **PUB-006** — While the header video loads, its placeholder image (MED-029) is shown blurred under a moving sheen, and the header is marked busy (`aria-busy`) until the video can play. When the visitor prefers reduced motion, the placeholder image is not blurred and no sheen moves over it (PUB-038). If the video cannot be loaded, the sheen and the busy mark go and the placeholder image stays, not blurred.
+- **PUB-039** — While the header image loads, the header shows the theme's surface color under the moving sheen and is marked busy (`aria-busy`); once the image has loaded, it is shown without the sheen or the busy mark. If the image cannot be loaded, the sheen and the busy mark go and the surface color stays.
+- **PUB-040** — While the profile photo loads, its circle shows the theme's surface color under the moving sheen and is marked busy (`aria-busy`); once the photo has loaded, it is shown without the sheen or the busy mark. If the photo cannot be loaded, the sheen and the busy mark go and the circle keeps the surface color.
+- **PUB-041** — A header image, header video or profile photo that finished loading, or failed to load, before the page became interactive (from the browser's cache, for example) leaves its loading state as soon as the page is interactive: no sheen or busy mark stays over a media that has loaded or failed (PUB-006, PUB-039, PUB-040).
+- **PUB-042** — Without JavaScript, no sheen is shown over the header or the profile photo and a video's placeholder image is not blurred: the media are shown as soon as the browser has them.
 - **PUB-007** — The header fades into the content through a mask whose height is the theme's header gradient intensity, as a percentage of the header, so that the fade also works over a gradient background. The round profile photo, 112 pixels wide with a 4-pixel ring of the background color, is centered and straddles the header, which it overlaps by 64 pixels.
 
 ## Event buttons
