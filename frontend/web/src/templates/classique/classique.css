@@ -66,4 +66,6 @@
 @media (prefers-reduced-motion: reduce) {
   .cc-event::after { display: none; animation: none; }
   .cc-shimmer { animation: none; display: none; }
+  /* Before hydration too: the placeholder of a video stays sharp (PUB-006). */
+  .cc-media .is-blur { filter: none; transform: none; }
 }

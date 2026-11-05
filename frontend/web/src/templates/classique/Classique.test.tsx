@@ -198,4 +198,10 @@ describe("Classique", () => {
     const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
     expect(reduced).toMatch(/\.cc-shimmer\s*\{[^}]*animation:\s*none/);
   });
+
+  test("PUB-006 PUB-038 the placeholder is not blurred under reduced motion, even before the page is interactive", () => {
+    const css = readFileSync(join(__dirname, "classique.css"), "utf8");
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduced).toMatch(/\.cc-media \.is-blur\s*\{[^}]*filter:\s*none[^}]*transform:\s*none/);
+  });
 });
