@@ -3,7 +3,10 @@
 Small files for the media end-to-end tests (`tests/media.spec.ts`). They are committed; regenerate them
 with ffmpeg only if one has to change.
 
-The videos are VP9 in an MP4 container: the Chromium bundled with Playwright does not decode H.264.
+The videos are VP9 in an MP4 container, which also checks the codec allow-list of the server (MED-040). The
+server re-encodes them to H.264 for the public page. Measured on macOS (plan 7, T15): the Chromium bundled with
+Playwright (156) and its WebKit both play that H.264 file (`canPlayType` answers "probably", `videoWidth` > 0), so the
+desktop project keeps the bundled Chromium. Not measured on Linux CI (see T17).
 
 ```sh
 # 2 s header video (accepted)

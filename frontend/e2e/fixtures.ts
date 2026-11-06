@@ -181,13 +181,12 @@ export type TestApi = APIRequestContext & {
   leads(subject: string, eventId: string): Promise<LeadView[]>;
   /** The contacts of all the events of a card as its owner sees them, newest first, spam ones included. */
   cardLeads(subject: string, cardId: string): Promise<LeadView[]>;
-  /** Uploads a header or avatar media (with `poster` for a video, and optionally its `framing`); the card shows it once saved with its id. */
+  /** Uploads a header or avatar media (optionally with its `framing`); the card shows it once saved with its id. */
   uploadMedia(
     subject: string,
     cardId: string,
     slot: "header" | "avatar",
     file: UploadFile,
-    poster?: UploadFile,
     framing?: UploadFraming,
   ): Promise<MediaView>;
 };
@@ -306,7 +305,6 @@ async function createApi(): Promise<TestApi> {
       cardId: string,
       slot: "header" | "avatar",
       file: UploadFile,
-      poster?: UploadFile,
       framing: UploadFraming = {},
     ) {
       const response = await context.post(`/api/cards/${cardId}/media`, {
@@ -314,7 +312,6 @@ async function createApi(): Promise<TestApi> {
         multipart: {
           slot,
           file,
-          ...(poster ? { poster } : {}),
           ...(framing.crop ? { crop: JSON.stringify(framing.crop) } : {}),
           ...(framing.loop ? { loop: JSON.stringify(framing.loop) } : {}),
           ...(framing.posterTime !== undefined ? { poster_time: String(framing.posterTime) } : {}),
