@@ -267,6 +267,8 @@ test("PUB-005 the header video loops over its file", async ({ page, api }) => {
   const video = page.getByTestId("card-header-video");
   await expect(video).toHaveJSProperty("loop", true);
   await expect.poll(() => video.evaluate((el: HTMLVideoElement) => !el.paused)).toBe(true);
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => (Number.isFinite(el.duration) ? el.duration : 0))).toBeGreaterThan(0);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.duration)).toBeLessThan(2.5);
   // The served file lasts the 1.3 s loop: after 2.5 s it went through its end and still plays.
   await page.waitForTimeout(2500);
   expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(false);

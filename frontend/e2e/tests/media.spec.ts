@@ -51,13 +51,15 @@ test("MED-003 PUB-005 PUB-006 header video with a server-made placeholder", asyn
   await page.goto("/c/alice-durand");
   const video = page.getByTestId("card-header-video");
   await expect(video).toBeVisible();
-  expect(await video.getAttribute("poster")).toMatch(new RegExp(`^${MEDIA_URL}/.*\\.webp$`));
+  const poster = (await video.getAttribute("poster")) ?? "";
+  expect(poster.startsWith(`${MEDIA_URL}/`)).toBe(true);
+  expect(poster.endsWith(".webp")).toBe(true);
   await expect(video).toHaveJSProperty("muted", true);
   await expect(video).toHaveJSProperty("loop", true);
   await expect(video).toHaveAttribute("playsinline", "");
 });
 
-test("EDI-034 MED-028 framing the header video", async ({ page, api }) => {
+test("EDI-034 MED-028 MED-029 MED-032 MED-045 framing the header video", async ({ page, api }) => {
   await openMedia(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-2s.mp4"));
 
@@ -89,7 +91,10 @@ test("EDI-034 MED-028 framing the header video", async ({ page, api }) => {
   // The server encoded the loop: the served file lasts the 1.3 s of the loop, not the 2 s of the original (MED-032).
   await page.goto("/c/alice-durand");
   const video = page.getByTestId("card-header-video");
-  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.duration)).toBeCloseTo(1.3, 0);
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => (Number.isFinite(el.duration) ? el.duration : 0))).toBeGreaterThan(0);
+  const duration = await video.evaluate((el: HTMLVideoElement) => el.duration);
+  expect(duration).toBeGreaterThan(1.15);
+  expect(duration).toBeLessThan(1.45);
 
   // « Recadrer » starts from the stored loop and draws its strip from the edit copy, across origins (MED-045);
   // the request carries no poster part, the new waiting image is made by the server (MED-029).
@@ -110,7 +115,9 @@ test("EDI-034 MED-028 framing the header video", async ({ page, api }) => {
   await expect(dialog).toBeHidden();
   await expect(page.getByTestId("editor-status")).toHaveText("Modifications non enregistrées");
   await saveCard(page);
-  expect((await reframe).postData() ?? "").not.toContain('name="poster"');
+  const body = (await reframe).postData() ?? "";
+  expect(body).toContain('name="poster_time"');
+  expect(body).not.toContain('name="poster"');
   const reframed = await api.get(`/api/cards/${aliceCardId}`, { headers: await api.authHeaders("seed-alice") });
   const second = ((await reframed.json()) as { header: { id: string; loop: unknown; poster_time: number } }).header;
   expect(second.id).not.toBe(first);
@@ -249,6 +256,7 @@ test("MED-017 the bucket honours Range", async ({ api }) => {
 });
 
 test("MED-002 a 45 MB video passes the web proxy", async ({ api }) => {
+  test.setTimeout(200_000);
   // The video followed by a top-level `free` box of 45 MB: still a valid MP4, above the former 25 MB limit.
   const free = Buffer.alloc(45 * 1024 * 1024);
   free.writeUInt32BE(free.length, 0);
