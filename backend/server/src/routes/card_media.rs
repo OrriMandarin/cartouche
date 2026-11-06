@@ -11,7 +11,7 @@ use bytes::{Bytes, BytesMut};
 use cartouche_domain::{
     CropRect, FieldError, Framing, MAX_VIDEO_BYTES, MediaKind, ORIGINAL_FILE, Slot,
     UploadRejection, VIDEO_FILE, VariantFormat, VideoLoop, check_video_framing, classify_upload,
-    mp4_duration, storage_key,
+    is_video_source_name, mp4_duration, storage_key,
 };
 use serde::de::DeserializeOwned;
 use utoipa::ToSchema;
@@ -25,7 +25,7 @@ use crate::extract::{ApiMultipart, ApiPath};
 use crate::media::process::{EncodedVariant, PrepareError, PreparedImage, ProcessError};
 use crate::media::transcode::{TranscodeError, TranscodeRequest, Transcoded, transcode};
 use crate::media::video::VideoService;
-use crate::media::{MediaService, new_edit_copy_name, new_source_name};
+use crate::media::{MediaError, MediaService, new_edit_copy_name, new_source_name};
 use crate::state::AppState;
 use crate::views::{Audience, MediaView};
 
@@ -178,6 +178,8 @@ struct Prepared {
     /// Files of another media of the card to copy under a name of the new one: (storage key of
     /// the original, name of the copy).
     copies: Vec<(String, String)>,
+    /// Same as `copies`, in the private store (a video's original, MED-036).
+    private_copies: Vec<(String, String)>,
 }
 
 impl Prepared {
@@ -203,6 +205,7 @@ impl Prepared {
             duration_ms: None,
             private_files: Vec::new(),
             copies: Vec::new(),
+            private_copies: Vec::new(),
         }
     }
 
@@ -241,8 +244,45 @@ impl Prepared {
             duration_ms: None,
             private_files: vec![(ORIGINAL_FILE.to_string(), original)],
             copies: Vec::new(),
+            private_copies: Vec::new(),
         };
         Ok(prepared.with_video(duration))
+    }
+
+    /// A re-framed video: the new served file and placeholder variants; the edit copy and the
+    /// original are copied from the previous media, the edit copy under a new name (MED-030,
+    /// MED-031, MED-036).
+    fn of_reframed_video(
+        previous_key: impl Fn(&str) -> String,
+        edit_copy: &SourceFile,
+        served: Bytes,
+        placeholder: Vec<EncodedVariant>,
+        framing: Framing,
+        duration: Duration,
+    ) -> Prepared {
+        let source = SourceFile {
+            name: new_edit_copy_name(),
+            ..edit_copy.clone()
+        };
+        let mut files = vec![(VIDEO_FILE.to_string(), served)];
+        let mut variants = Vec::new();
+        for (name, bytes, variant) in placeholder.into_iter().map(stored) {
+            files.push((name, bytes));
+            variants.push(variant);
+        }
+        let copies = vec![(previous_key(&edit_copy.name), source.name.clone())];
+        let prepared = Prepared {
+            kind: MediaKind::Video,
+            files,
+            variants,
+            source,
+            framing,
+            duration_ms: None,
+            private_files: Vec::new(),
+            copies,
+            private_copies: vec![(previous_key(ORIGINAL_FILE), ORIGINAL_FILE.to_string())],
+        };
+        prepared.with_video(duration)
     }
 
     /// Records the video: its variant and duration. Its file is stored or copied by the caller.
@@ -456,6 +496,14 @@ async fn store(
         }
     }
 
+    for (from, name) in prepared.private_copies {
+        let to = storage_key(card_id, record.id, &name);
+        if let Err(error) = state.media.copy_private(&from, &to).await {
+            discard_files(&state.media, &record).await;
+            return Err(error.into());
+        }
+    }
+
     let inserted = async {
         let mut conn = state.db.acquire().await?;
         media::insert(&mut conn, owner_id, record.clone()).await
@@ -498,9 +546,11 @@ pub struct ReframeMediaBody {
     poster_time: Option<String>,
 }
 
-/// The files of a re-framed media: cut along `framing` from the source of `previous`.
+/// The files of a re-framed media: an image is cut along `framing` from the source of
+/// `previous`, a video is transcoded again from its private original.
 async fn prepare_reframed(
     storage: &MediaService,
+    video: &VideoService,
     previous: &MediaRecord,
     source: &SourceFile,
     framing: FramingFields,
@@ -510,15 +560,24 @@ async fn prepare_reframed(
         video_loop,
         poster_time,
     } = framing;
-    let source_key = storage_key(previous.card_id, previous.id, &source.name);
-    // A video is re-framed from its private original (MED-030).
+    let key_of = |name: &str| storage_key(previous.card_id, previous.id, name);
     if previous.kind == MediaKind::Video {
-        return Err(ApiError::MediaNotReframable);
+        return reframe_video(
+            storage,
+            video,
+            previous,
+            source,
+            crop,
+            video_loop,
+            poster_time,
+        )
+        .await;
     }
     // A loop and a poster time only make sense for a video.
     if video_loop.is_some() || poster_time.is_some() {
         return Err(ApiError::InvalidRequest);
     }
+    let source_key = key_of(&source.name);
     let stored = storage.get(&source_key, None).await?;
     let image = storage
         .prepare_image(stored.bytes, previous.slot, crop)
@@ -534,12 +593,62 @@ async fn prepare_reframed(
     Ok(prepared)
 }
 
+/// Re-frames a video from its private original (MED-030). A video uploaded before plan 7 has
+/// no edit copy, and one whose original is gone cannot be cut again: both are not re-framable.
+async fn reframe_video(
+    storage: &MediaService,
+    video: &VideoService,
+    previous: &MediaRecord,
+    edit_copy: &SourceFile,
+    crop: Option<CropRect>,
+    video_loop: Option<VideoLoop>,
+    poster_time: Option<f64>,
+) -> Result<Prepared, ApiError> {
+    if !is_video_source_name(&edit_copy.name) {
+        return Err(ApiError::MediaNotReframable);
+    }
+    let key_of = |name: &str| storage_key(previous.card_id, previous.id, name);
+    let original = match storage.get_private(&key_of(ORIGINAL_FILE), None).await {
+        Ok(original) => original.bytes,
+        Err(MediaError::NotFound) => return Err(ApiError::MediaNotReframable),
+        Err(error) => return Err(error.into()),
+    };
+    let duration = mp4_duration(&original).map_err(|_| ApiError::MediaNotReframable)?;
+    let (video_loop, poster_time) = video_framing(video_loop, poster_time, duration)?;
+    let request = TranscodeRequest {
+        duration,
+        crop,
+        video_loop,
+        poster_time,
+        edit_copy: false,
+    };
+    let transcoded = transcode(video, original, request).await?;
+    let crop = transcoded.crop;
+    let placeholder = storage
+        .prepare_variants(transcoded.poster_frame, Slot::Header, crop)
+        .await
+        .map_err(|_| field_error("crop", "invalid_crop"))?;
+    let framing = Framing {
+        crop,
+        video_loop: Some(video_loop),
+        poster_time: Some(poster_time),
+    };
+    Ok(Prepared::of_reframed_video(
+        key_of,
+        edit_copy,
+        transcoded.served,
+        placeholder,
+        framing,
+        duration,
+    ))
+}
+
 /// Makes a new media of a card from the source of one of its media, cut along a new crop.
 #[utoipa::path(
     post,
     path = "/api/cards/{id}/media/{media_id}/reframe",
     summary = "Re-frame a media",
-    description = "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.",
+    description = "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time: the server transcodes the video again from the original it keeps privately and extracts the placeholder image itself). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.",
     tag = "cards",
     security(("bearer" = [])),
     params(
@@ -553,10 +662,10 @@ async fn prepare_reframed(
         (status = 401, description = "Missing, invalid or expired token (`token_invalid`, `token_expired`).", body = ErrorBody),
         (status = 403, description = "The caller's account is not approved (`account_pending`, `account_rejected`, `account_suspended`, `signup_closed`).", body = ErrorBody),
         (status = 404, description = "No such card or media of this card for the caller (`not_found`).", body = ErrorBody),
-        (status = 409, description = "Support disabled the card (`card_disabled_by_support`), or the media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`).", body = ErrorBody),
+        (status = 409, description = "Support disabled the card (`card_disabled_by_support`), or the media cannot be re-framed: it was uploaded before plan 6 and has no source, or it is a video uploaded before plan 7 or whose original is gone; it must be replaced (`media_not_reframable`).", body = ErrorBody),
         (status = 413, description = "The request is too heavy (`payload_too_large`).", body = ErrorBody),
-        (status = 415, description = "The source is not a supported image (`unsupported_media_type`).", body = ErrorBody),
-        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`).", body = ErrorBody),
+        (status = 415, description = "The source is not a supported image, or the video codec is not supported (`unsupported_media_type`).", body = ErrorBody),
+        (status = 503, description = "The identity provider is unreachable (`auth_unavailable`), or the video could not be processed in time (`video_processing_timeout`).", body = ErrorBody),
         (status = 500, description = "Unexpected failure (`internal_error`).", body = ErrorBody),
     ),
 )]
@@ -592,7 +701,8 @@ pub async fn reframe_media(
         return Err(field_error("crop", "required"));
     }
 
-    let prepared = prepare_reframed(&state.media, &previous, &source, form.framing).await?;
+    let prepared =
+        prepare_reframed(&state.media, &state.video, &previous, &source, form.framing).await?;
     store(&state, owner_id, card_id, previous.slot, prepared).await
 }
 

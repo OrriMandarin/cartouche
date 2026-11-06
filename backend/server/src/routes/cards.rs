@@ -6,8 +6,9 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use cartouche_domain::{
-    CardInput, ContentInput, FieldError, LinkInput, Slot, Slug, SlugClaim, SlugClaimError, Theme,
-    ValidCard, decide_claim, invalid_media_refs, storage_key, validate_card,
+    CardInput, ContentInput, FieldError, LinkInput, MediaKind, ORIGINAL_FILE, Slot, Slug,
+    SlugClaim, SlugClaimError, Theme, ValidCard, decide_claim, invalid_media_refs,
+    is_video_source_name, storage_key, validate_card,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
@@ -19,7 +20,7 @@ use crate::db::media::{MediaRecord, SourceFile, StoredVariant};
 use crate::db::{blocked_slugs, cards, media, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
-use crate::media::{MediaService, new_source_name};
+use crate::media::{MediaService, new_edit_copy_name, new_source_name};
 use crate::state::AppState;
 use crate::views::{Audience, CardView};
 
@@ -451,7 +452,11 @@ impl MediaCopy {
             id: Uuid::now_v7(),
             card_id,
             source: source.source.clone().map(|file| SourceFile {
-                name: new_source_name(),
+                name: if is_video_source_name(&file.name) {
+                    new_edit_copy_name()
+                } else {
+                    new_source_name()
+                },
                 ..file
             }),
             ..source.clone()
@@ -481,6 +486,25 @@ impl MediaCopy {
     }
 }
 
+impl MediaCopy {
+    /// Storage keys of the private original of a video that has one, and of its copy
+    /// (MED-036). A video uploaded before plan 7 has none.
+    fn original_keys(&self) -> Option<(String, String)> {
+        let has_original = self.source.kind == MediaKind::Video
+            && self
+                .source
+                .source
+                .as_ref()
+                .is_some_and(|file| is_video_source_name(&file.name));
+        has_original.then(|| {
+            (
+                storage_key(self.source.card_id, self.source.id, ORIGINAL_FILE),
+                storage_key(self.copy.card_id, self.copy.id, ORIGINAL_FILE),
+            )
+        })
+    }
+}
+
 /// Copies the files of every media of `copies`; when one fails, removes what was copied.
 async fn copy_files(storage: &MediaService, copies: &[MediaCopy]) -> Result<(), ApiError> {
     for media_copy in copies {
@@ -489,6 +513,12 @@ async fn copy_files(storage: &MediaService, copies: &[MediaCopy]) -> Result<(), 
                 remove_copied_files(storage, copies).await;
                 return Err(error.into());
             }
+        }
+        if let Some((from, to)) = media_copy.original_keys()
+            && let Err(error) = storage.copy_private(&from, &to).await
+        {
+            remove_copied_files(storage, copies).await;
+            return Err(error.into());
         }
     }
     Ok(())

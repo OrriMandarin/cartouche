@@ -201,9 +201,7 @@ impl ApiError {
             ApiError::PayloadTooLarge => "The request body is too large.",
             ApiError::UnsupportedMediaType => "The content type is not supported.",
             ApiError::InvalidTransition => "This status change is not allowed.",
-            ApiError::MediaNotReframable => {
-                "This media has no source and cannot be re-framed: replace it."
-            }
+            ApiError::MediaNotReframable => "This media cannot be re-framed: replace it.",
             ApiError::VideoProcessingTimeout => {
                 "The video could not be processed in time: try again in a moment."
             }

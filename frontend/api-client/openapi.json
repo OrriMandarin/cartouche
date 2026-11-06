@@ -2440,7 +2440,7 @@
           "cards"
         ],
         "summary": "Re-frame a media",
-        "description": "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.",
+        "description": "Creates a new media of the same slot and kind from the source of an existing one, cut along a new crop (and, for a video, a new loop and poster time: the server transcodes the video again from the original it keeps privately and extracts the placeholder image itself). The previous media and its files are not modified. Like an upload, the new media is shown on the card only once a save of the card (`PUT /api/cards/{id}`) names it, which deletes the previous one if it is no longer used. Refused while support has disabled the card.",
         "operationId": "reframe_media",
         "parameters": [
           {
@@ -2526,7 +2526,7 @@
             }
           },
           "409": {
-            "description": "Support disabled the card (`card_disabled_by_support`), or the media was uploaded before plan 6 and has no source: it must be replaced (`media_not_reframable`).",
+            "description": "Support disabled the card (`card_disabled_by_support`), or the media cannot be re-framed: it was uploaded before plan 6 and has no source, or it is a video uploaded before plan 7 or whose original is gone; it must be replaced (`media_not_reframable`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2546,7 +2546,7 @@
             }
           },
           "415": {
-            "description": "The source is not a supported image (`unsupported_media_type`).",
+            "description": "The source is not a supported image, or the video codec is not supported (`unsupported_media_type`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2566,7 +2566,7 @@
             }
           },
           "503": {
-            "description": "The identity provider is unreachable (`auth_unavailable`).",
+            "description": "The identity provider is unreachable (`auth_unavailable`), or the video could not be processed in time (`video_processing_timeout`).",
             "content": {
               "application/json": {
                 "schema": {

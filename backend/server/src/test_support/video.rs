@@ -19,6 +19,7 @@ pub struct StubVideoProcessor {
     probe: Result<VideoProbe, String>,
     delay: Arc<Mutex<Duration>>,
     jobs: Arc<Mutex<Vec<RenderJob>>>,
+    inputs: Arc<Mutex<Vec<Vec<u8>>>>,
 }
 
 impl Default for StubVideoProcessor {
@@ -32,6 +33,7 @@ impl Default for StubVideoProcessor {
             }),
             delay: Arc::default(),
             jobs: Arc::default(),
+            inputs: Arc::default(),
         }
     }
 }
@@ -69,6 +71,11 @@ impl StubVideoProcessor {
         self.jobs.lock().expect("not poisoned").clone()
     }
 
+    /// The bytes of the input file of each job `render` has seen, in order.
+    pub fn inputs(&self) -> Vec<Vec<u8>> {
+        self.inputs.lock().expect("not poisoned").clone()
+    }
+
     fn poster_png(&self) -> Result<Vec<u8>, VideoError> {
         let (width, height) = self
             .probe
@@ -100,6 +107,9 @@ impl VideoProcessor for StubVideoProcessor {
     async fn render(&self, job: &RenderJob) -> Result<RenderOutputs, VideoError> {
         self.wait().await;
         self.jobs.lock().expect("not poisoned").push(job.clone());
+        let input =
+            std::fs::read(&job.input).map_err(|error| VideoError::Tool(error.to_string()))?;
+        self.inputs.lock().expect("not poisoned").push(input);
         let plan = &job.plan;
         let write = |name: &str, bytes: Vec<u8>| {
             let path = job.out_dir.join(name);

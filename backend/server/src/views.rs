@@ -4,7 +4,8 @@ use cartouche_domain::export::{ExportEvent, ExportLead};
 use cartouche_domain::{
     AnswerSnapshot, CardContent, CardStatus, CropRect, CustomField, EventPhase, Link, LinkKind,
     MediaKind, PublicForm, StandardAnswers, StandardField, StandardFields, Theme, VariantFormat,
-    VideoLoop, consent_text, default_consent_text, form_version, format_international, storage_key,
+    VideoLoop, consent_text, default_consent_text, form_version, format_international,
+    is_video_source_name, storage_key,
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -400,11 +401,19 @@ impl MediaView {
             }
         };
         let source = match audience {
-            Audience::Owner(_) => record.source.as_ref().map(|source| SourceView {
-                url: url_of(&source.name),
-                width: source.width,
-                height: source.height,
-            }),
+            // A video uploaded before plan 7 has a still-image source: it cannot be re-framed
+            // (MED-033).
+            Audience::Owner(_) => record
+                .source
+                .as_ref()
+                .filter(|source| {
+                    record.kind != MediaKind::Video || is_video_source_name(&source.name)
+                })
+                .map(|source| SourceView {
+                    url: url_of(&source.name),
+                    width: source.width,
+                    height: source.height,
+                }),
             Audience::Public | Audience::Support(_) => None,
         };
         let framing = record.framing.as_ref();
