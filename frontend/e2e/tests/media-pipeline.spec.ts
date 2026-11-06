@@ -4,7 +4,6 @@ import { MEDIA_URL } from "../env";
 import { expect, saveCard, openEditorSection, test, type TestApi } from "../fixtures";
 
 const fixture = (name: string) => new URL(`../fixtures/${name}`, import.meta.url).pathname;
-const MEDIA_ORIGIN = new RegExp(`^${MEDIA_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/`);
 const IMMUTABLE = "public, max-age=31536000, immutable";
 /** How long the stack's media origin is made to wait in the loader tests. */
 const SLOW_MEDIA_MS = 1500;
@@ -19,29 +18,24 @@ test.beforeEach(async ({ api, loginAs }) => {
   await loginAs("seed-alice");
 });
 
-/** Records how long the media upload of the page takes, from its request to its response. */
-function timeMediaUpload(page: Page): () => Promise<number> {
-  let start = 0;
-  let resolve!: (ms: number) => void;
-  const done = new Promise<number>((r) => (resolve = r));
-  page.on("request", (request) => {
-    if (request.method() === "POST" && /\/api\/cards\/[^/]+\/media$/.test(request.url())) start = Date.now();
-  });
-  page.on("response", (response) => {
-    const request = response.request();
-    if (request.method() === "POST" && /\/api\/cards\/[^/]+\/media$/.test(request.url())) resolve(Date.now() - start);
-  });
-  return () => done;
-}
-
-function report(name: string, ms: number) {
-  console.log(`[timing] ${name}: ${ms} ms`);
-  test.info().annotations.push({ type: "timing", description: `${name}: ${ms} ms` });
-}
-
 async function openMedia(page: Page) {
   await page.goto(`/dashboard/cards/${aliceCardId}`);
   await openEditorSection(page, "media");
+}
+
+/** Loads only the metadata of a video in the page and reads its duration and frame size. */
+function videoMetadata(page: Page, url: string) {
+  return page.evaluate(
+    (src) =>
+      new Promise<{ duration: number; width: number; height: number }>((resolve, reject) => {
+        const el = document.createElement("video");
+        el.preload = "metadata";
+        el.onloadedmetadata = () => resolve({ duration: el.duration, width: el.videoWidth, height: el.videoHeight });
+        el.onerror = () => reject(new Error(`${src} does not load`));
+        el.src = src;
+      }),
+    url,
+  );
 }
 
 async function headerOf(api: TestApi) {
@@ -80,7 +74,6 @@ async function slowMedia(page: Page, ms: number | "abort") {
 test("MED-012 MED-015 EDI-026 a 24-megapixel photo goes through the editor", async ({ page }) => {
   test.setTimeout(90_000);
   await openMedia(page);
-  const uploaded = timeMediaUpload(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("photo-24mpx.jpg"));
 
   // A 3:2 photo is framed before it is sent.
@@ -89,15 +82,14 @@ test("MED-012 MED-015 EDI-026 a 24-megapixel photo goes through the editor", asy
   await dialog.getByRole("button", { name: "Appliquer" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByTestId("media-header-current")).toHaveText("Photo", { timeout: 60_000 });
-  report("24-megapixel photo upload through the web proxy", await uploaded());
   await saveCard(page);
 
   await page.goto("/c/alice-durand");
   const header = page.getByTestId("card-header-image");
   await expect(header).toBeVisible();
   const srcset = (await header.getAttribute("srcset")) ?? "";
-  expect(srcset).toContain("1440w");
-  for (const candidate of srcset.split(",")) expect(candidate.trim()).toMatch(MEDIA_ORIGIN);
+  for (const width of ["750w", "1125w", "1440w"]) expect(srcset).toContain(width);
+  for (const candidate of srcset.split(",")) expect(candidate.trim().startsWith(`${MEDIA_URL}/`)).toBe(true);
   await expect.poll(() => header.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
   const ratio = await header.evaluate((img: HTMLImageElement) => img.naturalWidth / img.naturalHeight);
   expect(Math.abs(ratio / (4 / 3) - 1)).toBeLessThan(0.01);
@@ -106,7 +98,6 @@ test("MED-012 MED-015 EDI-026 a 24-megapixel photo goes through the editor", asy
 test("MED-034 MED-035 a 16:9 video is framed and served 1280 × 960", async ({ page }) => {
   test.setTimeout(90_000);
   await openMedia(page);
-  const uploaded = timeMediaUpload(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-1080p.mp4"));
 
   const dialog = page.getByTestId("video-crop-dialog");
@@ -119,7 +110,6 @@ test("MED-034 MED-035 a 16:9 video is framed and served 1280 × 960", async ({ p
   await dialog.getByRole("button", { name: "Appliquer" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByTestId("media-header-current")).toContainText("Vidéo", { timeout: 60_000 });
-  report("1080p video upload and transcode through the web proxy", await uploaded());
   await saveCard(page);
 
   await page.goto("/c/alice-durand");
@@ -128,9 +118,52 @@ test("MED-034 MED-035 a 16:9 video is framed and served 1280 × 960", async ({ p
   await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.videoWidth)).toBe(1280);
   expect(await video.evaluate((el: HTMLVideoElement) => el.videoHeight)).toBe(960);
   // The loop (2 s of the 4 s video) is in the file (MED-034).
-  expect(await video.evaluate((el: HTMLVideoElement) => el.duration)).toBeCloseTo(2, 0);
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => (Number.isFinite(el.duration) ? el.duration : 0))).toBeGreaterThan(0);
+  const duration = await video.evaluate((el: HTMLVideoElement) => el.duration);
+  expect(duration).toBeGreaterThan(1.85);
+  expect(duration).toBeLessThan(2.15);
   const poster = (await video.getAttribute("poster")) ?? "";
-  expect(poster.startsWith(`${MEDIA_URL}/`) && poster.endsWith(".webp")).toBe(true);
+  expect(poster.startsWith(`${MEDIA_URL}/`)).toBe(true);
+  expect(poster.endsWith(".webp")).toBe(true);
+});
+
+test("MED-038 neither the served file nor the edit copy carries a sound track", async ({ api }) => {
+  const media = await api.uploadMedia("seed-alice", aliceCardId, "header", {
+    name: "header-1080p.mp4",
+    mimeType: "video/mp4",
+    buffer: await readFile(fixture("header-1080p.mp4")),
+  });
+  await api.updateCard("seed-alice", aliceCardId, { header_media_id: media.id });
+  const header = await headerOf(api);
+
+  // The uploaded file has an AAC track; a `soun` handler would be the mark of an audio track in the output.
+  expect((await readFile(fixture("header-1080p.mp4"))).includes("soun")).toBe(true);
+  const served = await api.get(header.video_url!);
+  expect(served.status()).toBe(200);
+  expect((await served.body()).includes("soun")).toBe(false);
+  const source = await api.get(header.source!.url);
+  expect(source.status()).toBe(200);
+  expect((await source.body()).includes("soun")).toBe(false);
+});
+
+test("MED-026 EDI-034 applying the crop as soon as the dialog opens still sends a 4:3 crop", async ({ page }) => {
+  test.setTimeout(90_000);
+  await openMedia(page);
+  await page.getByTestId("media-header-input").setInputFiles(fixture("header-1080p.mp4"));
+
+  // No wait: the crop area react-easy-crop reports before the video's metadata must not be sent.
+  const dialog = page.getByTestId("video-crop-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Appliquer" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("media-header-current")).toContainText("Vidéo", { timeout: 60_000 });
+  await saveCard(page);
+
+  await page.goto("/c/alice-durand");
+  const video = page.getByTestId("card-header-video");
+  await expect(video).toBeVisible();
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.videoWidth)).toBe(1280);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.videoHeight)).toBe(960);
 });
 
 test("MED-043 the served files carry their type, cache and inline disposition", async ({ api }) => {
@@ -151,15 +184,29 @@ test("MED-043 the served files carry their type, cache and inline disposition", 
   expect(videoResponse.headers()["cache-control"]).toBe(IMMUTABLE);
   expect(videoResponse.headers()["content-disposition"]).toBe("inline");
 
+  // Both medias are attached: the owner's card exposes the edit copy, and an unused upload is not kept.
+  await api.updateCard("seed-alice", aliceCardId, { header_media_id: video.id, avatar_media_id: image.id });
+  const sourceResponse = await api.get((await headerOf(api)).source!.url);
+  expect(sourceResponse.status()).toBe(200);
+  expect(sourceResponse.headers()["content-type"]).toBe("video/mp4");
+  expect(sourceResponse.headers()["cache-control"]).toBe(IMMUTABLE);
+  expect(sourceResponse.headers()["content-disposition"]).toBe("inline");
+
   const imageResponse = await api.get(image.images.at(-1)!.url);
   expect(imageResponse.status()).toBe(200);
   expect(imageResponse.headers()["content-type"]).toBe("image/webp");
   expect(imageResponse.headers()["cache-control"]).toBe(IMMUTABLE);
   expect(imageResponse.headers()["content-disposition"]).toBe("inline");
+
+  expect(image.jpeg_url).not.toBeNull();
+  const jpegResponse = await api.get(image.jpeg_url!);
+  expect(jpegResponse.status()).toBe(200);
+  expect(jpegResponse.headers()["content-type"]).toBe("image/jpeg");
+  expect(jpegResponse.headers()["cache-control"]).toBe(IMMUTABLE);
+  expect(jpegResponse.headers()["content-disposition"]).toBe("inline");
 });
 
 test("MED-037 the owner's edit copy is the whole video", async ({ page, api }) => {
-  const started = Date.now();
   const media = await api.uploadMedia(
     "seed-alice",
     aliceCardId,
@@ -167,30 +214,24 @@ test("MED-037 the owner's edit copy is the whole video", async ({ page, api }) =
     { name: "header-1080p.mp4", mimeType: "video/mp4", buffer: await readFile(fixture("header-1080p.mp4")) },
     { loop: { start: 1, end: 3 } },
   );
-  report("1080p video upload and transcode through the API", Date.now() - started);
   await api.updateCard("seed-alice", aliceCardId, { header_media_id: media.id });
 
   const header = await headerOf(api);
-  expect(header.source?.url).toMatch(new RegExp(`^${MEDIA_URL}/.*source-[0-9a-f]{32}\\.mp4$`));
+  const sourceUrl = header.source!.url;
+  expect(sourceUrl.startsWith(`${MEDIA_URL}/`)).toBe(true);
+  expect(sourceUrl).toMatch(/source-[0-9a-f]{32}\.mp4$/);
   const source = await api.get(header.source!.url);
   expect(source.status()).toBe(200);
 
-  // The edit copy keeps the whole video and its 16:9 frame, its longer side cut to 960 pixels; the served file
+  // The edit copy keeps the whole 4 s video and its 16:9 frame, its longer side cut to 960 pixels; the served file
   // keeps the 2 s loop.
   await page.goto("/c/alice-durand");
-  const edit = await page.evaluate(
-    (url) =>
-      new Promise<{ duration: number; width: number; height: number }>((resolve, reject) => {
-        const el = document.createElement("video");
-        el.preload = "metadata";
-        el.onloadedmetadata = () => resolve({ duration: el.duration, width: el.videoWidth, height: el.videoHeight });
-        el.onerror = () => reject(new Error("the edit copy does not load"));
-        el.src = url;
-      }),
-    header.source!.url,
-  );
-  expect(edit.duration).toBeCloseTo(4, 0);
+  const edit = await videoMetadata(page, header.source!.url);
+  expect(edit.duration).toBeGreaterThan(3.5);
   expect([edit.width, edit.height]).toEqual([960, 540]);
+  const served = await videoMetadata(page, header.video_url!);
+  expect(served.duration).toBeGreaterThan(1.85);
+  expect(served.duration).toBeLessThan(2.15);
 
   // The public card never exposes it.
   const publicCard = await api.get("/api/public/cards/alice-durand");
@@ -235,6 +276,7 @@ test("PUB-039 PUB-040 a media that fails to load leaves no loader", async ({ pag
   await slowMedia(page, "abort");
   await page.goto("/c/alice-durand");
   for (const media of [page.locator(".cc-media"), page.locator(".cc-avatar")]) {
+    await expect(media).toHaveClass(/is-failed/);
     await expect(media).toHaveAttribute("aria-busy", "false");
     await expect(media.locator(".cc-shimmer")).toHaveCount(0);
   }
@@ -250,6 +292,8 @@ test("PUB-006 PUB-041 a video that fails to load leaves no loader", async ({ pag
   await expect(header).toHaveAttribute("aria-busy", "false");
   await expect(header.locator(".cc-shimmer")).toHaveCount(0);
   await expect(header.locator(".is-blur")).toHaveCount(0);
+  // The placeholder image stays, sharp.
+  await expect(header.locator("img.cc-media-el")).toHaveCount(1);
 });
 
 test("PUB-041 a cached media is not shown as loading after a reload", async ({ page, api }) => {
@@ -258,9 +302,14 @@ test("PUB-041 a cached media is not shown as loading after a reload", async ({ p
   await expect(page.locator(".cc-media")).toHaveAttribute("aria-busy", "false");
   await expect(page.locator(".cc-avatar")).toHaveAttribute("aria-busy", "false");
 
+  // The images are cached and finish loading before the scripts do: the page must read that on mount.
+  await page.route("**/_next/static/**/*.js", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await route.continue();
+  });
   await page.reload();
   for (const media of [page.locator(".cc-media"), page.locator(".cc-avatar")]) {
-    await expect(media).toHaveAttribute("aria-busy", "false", { timeout: 2_000 });
+    await expect(media).toHaveAttribute("aria-busy", "false");
     await expect(media.locator(".cc-shimmer")).toHaveCount(0);
   }
 });
@@ -273,9 +322,10 @@ test.describe("without JavaScript", () => {
     await slowMedia(page, SLOW_MEDIA_MS);
     await page.goto("/c/alice-durand", { waitUntil: "commit" });
     // The server renders the loading state; the sheen is in the HTML but hidden (and the image keeps loading).
-    await expect(page.locator(".cc-media .cc-shimmer")).toBeHidden();
-    await expect(page.locator(".cc-avatar .cc-shimmer")).toBeHidden();
-    expect(await page.locator(".cc-shimmer").count()).toBeGreaterThan(0);
+    for (const sheen of [page.locator(".cc-media .cc-shimmer"), page.locator(".cc-avatar .cc-shimmer")]) {
+      await expect(sheen).toHaveCount(1);
+      await expect(sheen).toBeHidden();
+    }
   });
 
   test("PUB-042 a video placeholder is not blurred without JavaScript", async ({ page, api }) => {
@@ -284,6 +334,7 @@ test.describe("without JavaScript", () => {
     const placeholder = page.locator(".cc-media-el.is-blur");
     await expect(placeholder).toHaveCount(1);
     expect(await placeholder.evaluate((el) => getComputedStyle(el).filter)).toBe("none");
+    await expect(page.locator(".cc-shimmer")).toHaveCount(1);
     await expect(page.locator(".cc-shimmer")).toBeHidden();
   });
 });
