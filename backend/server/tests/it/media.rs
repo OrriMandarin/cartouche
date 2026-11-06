@@ -2297,27 +2297,175 @@ async fn a_video_uploaded_before_plan_7_cannot_be_re_framed(pool: PgPool) {
     assert_eq!(media_rows(&pool).await, 1);
 }
 
+/// The private key of the original of a video media of `card`.
+fn original_key(card: &str, media: &Value) -> String {
+    format!(
+        "cards/{card}/{}/original.mp4",
+        media["id"].as_str().unwrap()
+    )
+}
+
+/// An app whose private store is `private`.
+fn app_with_private_store(pool: PgPool, private: Arc<dyn object_store::ObjectStore>) -> TestApp {
+    let (mut state, clock) =
+        test_state_with(pool, &[("SIGNUP_MODE", "open"), ("ADMIN_USER_IDS", "boss")]);
+    state.video = VideoService::new(
+        Arc::new(StubVideoProcessor::default()),
+        1,
+        VIDEO_PROCESSING_DEADLINE,
+    );
+    state.media = cartouche_api::media::MediaService::with_stores(
+        Arc::new(object_store::memory::InMemory::new()),
+        private,
+        "http://localhost:3000/media/".parse().unwrap(),
+        true,
+    );
+    TestApp::from_state(state, clock)
+}
+
+/// An app whose private store fails its copies once the returned switch is on.
+fn app_with_failing_private_copies(pool: PgPool) -> (TestApp, Arc<std::sync::atomic::AtomicBool>) {
+    let (private, failing) = FailingStore::failing_copies();
+    (app_with_private_store(pool, Arc::new(private)), failing)
+}
+
+/// Removes the private original of a video media, leaving its other files.
+async fn delete_original(private: &object_store::memory::InMemory, card: &str, media: &Value) {
+    use object_store::ObjectStoreExt;
+    private
+        .delete(&object_store::path::Path::from(original_key(card, media)))
+        .await
+        .unwrap();
+}
+
 // spec: MED-030
 #[sqlx::test(migrations = "./migrations")]
 async fn a_video_whose_original_is_missing_cannot_be_re_framed(pool: PgPool) {
-    let app = app_with_stub(pool.clone(), StubVideoProcessor::default()).await;
+    let private = Arc::new(object_store::memory::InMemory::new());
+    let app = app_with_private_store(pool.clone(), private.clone());
     let (id, old) = card_with_stub_video_header(&app).await;
-    let old_id: uuid::Uuid = old["id"].as_str().unwrap().parse().unwrap();
-    let card: uuid::Uuid = id.parse().unwrap();
-    app.media.delete_media(card, old_id).await.unwrap();
+    delete_original(&private, &id, &old).await;
     assert!(app.media.list_private_keys().await.is_empty());
+    let before = stored_files(&app).await;
 
     let res = reframe(
         &app,
         "alice",
         &id,
-        &old_id.to_string(),
+        old["id"].as_str().unwrap(),
         &[crop_part(0.125, 0.0, 0.75, 1.0)],
     )
     .await;
     assert_eq!(res.status, StatusCode::CONFLICT);
     assert_eq!(error_code(&res), "media_not_reframable");
     assert_eq!(media_rows(&pool).await, 1);
+    assert_eq!(stored_files(&app).await, before, "the served files stay");
+}
+
+// spec: MED-030, MED-036, MED-018
+#[sqlx::test(migrations = "./migrations")]
+async fn a_failed_copy_of_the_original_when_re_framing_leaves_nothing(pool: PgPool) {
+    let (app, failing) = app_with_failing_private_copies(pool.clone());
+    let (id, old) = card_with_stub_video_header(&app).await;
+    let before = stored_files(&app).await;
+    let private_before = app.media.list_private_keys().await;
+    failing.store(true, std::sync::atomic::Ordering::SeqCst);
+
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        old["id"].as_str().unwrap(),
+        &[crop_part(0.125, 0.0, 0.75, 1.0)],
+    )
+    .await;
+    assert_eq!(
+        res.status,
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "{}",
+        res.json
+    );
+    assert_eq!(stored_files(&app).await, before, "public store unchanged");
+    assert_eq!(app.media.list_private_keys().await, private_before);
+    assert_eq!(media_rows(&pool).await, 1);
+}
+
+// spec: MED-036, EDI-014, MED-018
+#[sqlx::test(migrations = "./migrations")]
+async fn a_failed_copy_of_the_original_when_duplicating_removes_the_copied_files(pool: PgPool) {
+    let (app, failing) = app_with_failing_private_copies(pool.clone());
+    let (id, _) = card_with_stub_video_header(&app).await;
+    let before = stored_files(&app).await;
+    let private_before = app.media.list_private_keys().await;
+    failing.store(true, std::sync::atomic::Ordering::SeqCst);
+
+    let res = app
+        .request(
+            "POST",
+            &format!("/api/cards/{id}/duplicate"),
+            Some(&token("alice")),
+            Some(json!({ "slug": "alice-copie" })),
+        )
+        .await;
+    assert_eq!(
+        res.status,
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "{}",
+        res.json
+    );
+    assert_eq!(stored_files(&app).await, before, "public copies removed");
+    assert_eq!(app.media.list_private_keys().await, private_before);
+    assert_eq!(media_rows(&pool).await, 1);
+    let cards: i64 = sqlx::query_scalar("select count(*) from cards")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(cards, 1, "no new card");
+}
+
+// spec: MED-030, MED-036, EDI-014
+#[sqlx::test(migrations = "./migrations")]
+async fn duplicating_a_card_whose_video_lost_its_original_keeps_the_copy_not_re_framable(
+    pool: PgPool,
+) {
+    let private = Arc::new(object_store::memory::InMemory::new());
+    let app = app_with_private_store(pool.clone(), private.clone());
+    let (id, old) = card_with_stub_video_header(&app).await;
+    delete_original(&private, &id, &old).await;
+
+    let res = app
+        .request(
+            "POST",
+            &format!("/api/cards/{id}/duplicate"),
+            Some(&token("alice")),
+            Some(json!({ "slug": "alice-copie" })),
+        )
+        .await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+    let copy = res.json["header"].clone();
+    let new_card = res.json["id"].as_str().unwrap().to_string();
+    assert_ne!(copy["id"], old["id"]);
+    assert!(app.media.list_private_keys().await.is_empty());
+    // The served files and the edit copy were copied.
+    app.media
+        .get(&key_of(&copy["video_url"]), None)
+        .await
+        .unwrap();
+    app.media
+        .get(&key_of(&copy["source"]["url"]), None)
+        .await
+        .unwrap();
+
+    let res = reframe(
+        &app,
+        "alice",
+        &new_card,
+        copy["id"].as_str().unwrap(),
+        &[crop_part(0.125, 0.0, 0.75, 1.0)],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::CONFLICT);
+    assert_eq!(error_code(&res), "media_not_reframable");
 }
 
 // spec: MED-036, EDI-014

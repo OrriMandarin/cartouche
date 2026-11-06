@@ -6,9 +6,8 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use cartouche_domain::{
-    CardInput, ContentInput, FieldError, LinkInput, MediaKind, ORIGINAL_FILE, Slot, Slug,
-    SlugClaim, SlugClaimError, Theme, ValidCard, decide_claim, invalid_media_refs,
-    is_video_source_name, storage_key, validate_card,
+    CardInput, ContentInput, FieldError, LinkInput, ORIGINAL_FILE, Slot, Slug, SlugClaim,
+    SlugClaimError, Theme, ValidCard, decide_claim, invalid_media_refs, storage_key, validate_card,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
@@ -20,7 +19,7 @@ use crate::db::media::{MediaRecord, SourceFile, StoredVariant};
 use crate::db::{blocked_slugs, cards, media, slugs};
 use crate::error::{ApiError, ErrorBody};
 use crate::extract::{ApiJson, ApiPath};
-use crate::media::{MediaService, new_edit_copy_name, new_source_name};
+use crate::media::{MediaError, MediaService, new_edit_copy_name, new_source_name};
 use crate::state::AppState;
 use crate::views::{Audience, CardView};
 
@@ -452,7 +451,7 @@ impl MediaCopy {
             id: Uuid::now_v7(),
             card_id,
             source: source.source.clone().map(|file| SourceFile {
-                name: if is_video_source_name(&file.name) {
+                name: if source.has_video_original() {
                     new_edit_copy_name()
                 } else {
                     new_source_name()
@@ -484,19 +483,11 @@ impl MediaCopy {
             )
         })
     }
-}
 
-impl MediaCopy {
     /// Storage keys of the private original of a video that has one, and of its copy
     /// (MED-036). A video uploaded before plan 7 has none.
     fn original_keys(&self) -> Option<(String, String)> {
-        let has_original = self.source.kind == MediaKind::Video
-            && self
-                .source
-                .source
-                .as_ref()
-                .is_some_and(|file| is_video_source_name(&file.name));
-        has_original.then(|| {
+        self.source.has_video_original().then(|| {
             (
                 storage_key(self.source.card_id, self.source.id, ORIGINAL_FILE),
                 storage_key(self.copy.card_id, self.copy.id, ORIGINAL_FILE),
@@ -514,11 +505,19 @@ async fn copy_files(storage: &MediaService, copies: &[MediaCopy]) -> Result<(), 
                 return Err(error.into());
             }
         }
-        if let Some((from, to)) = media_copy.original_keys()
-            && let Err(error) = storage.copy_private(&from, &to).await
-        {
-            remove_copied_files(storage, copies).await;
-            return Err(error.into());
+        if let Some((from, to)) = media_copy.original_keys() {
+            match storage.copy_private(&from, &to).await {
+                Ok(()) => {}
+                // The original is gone: the copy keeps its served files and edit copy but
+                // cannot be re-framed (MED-030).
+                Err(MediaError::NotFound) => {
+                    tracing::warn!(media_id = %media_copy.source.id, "private original missing, not copied");
+                }
+                Err(error) => {
+                    remove_copied_files(storage, copies).await;
+                    return Err(error.into());
+                }
+            }
         }
     }
     Ok(())

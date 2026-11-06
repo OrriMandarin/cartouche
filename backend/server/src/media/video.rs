@@ -94,7 +94,7 @@ impl Ffmpeg {
         let advice = "install ffmpeg: brew install ffmpeg (macOS) or apt-get install ffmpeg \
                       (Debian/Ubuntu), or set FFMPEG_PATH and FFPROBE_PATH";
         let version = [OsString::from("-version")];
-        let mut ffmpeg_version = String::new();
+        let mut ffmpeg_version = None;
         for (variable, program) in [
             ("FFMPEG_PATH", &self.ffmpeg),
             ("FFPROBE_PATH", &self.ffprobe),
@@ -105,13 +105,13 @@ impl Ffmpeg {
                     program.display()
                 )
             })?;
-            if ffmpeg_version.is_empty() {
-                ffmpeg_version = String::from_utf8_lossy(&output)
+            ffmpeg_version.get_or_insert_with(|| {
+                String::from_utf8_lossy(&output)
                     .lines()
                     .next()
                     .unwrap_or_default()
-                    .to_string();
-            }
+                    .to_string()
+            });
         }
         let encoders = ["-hide_banner", "-encoders"].map(OsString::from);
         let listing = Self::run(&self.ffmpeg, &encoders).await.map_err(|error| {
@@ -123,7 +123,7 @@ impl Ffmpeg {
                 self.ffmpeg.display()
             ));
         }
-        Ok(ffmpeg_version)
+        Ok(ffmpeg_version.unwrap_or_default())
     }
 
     /// Runs `program` with `args`; stdout is captured, stderr is logged on failure.
@@ -395,9 +395,10 @@ impl VideoService {
     }
 
     /// Runs `work` once a permit is free. The work lives in a spawned task that owns the
-    /// permit, so a request that goes away does not cancel it: it ends by itself or at the
-    /// deadline, when the task drops the work, which kills its child processes (they are
-    /// `kill_on_drop`), and only then gives the permit back.
+    /// permit, so a request that goes away does not cancel a running job: it ends by itself
+    /// or at the deadline, when the task drops the work, which kills its child processes
+    /// (they are `kill_on_drop`; tokio reaps them in the background). A job whose caller is
+    /// gone before its turn comes is not started.
     pub async fn run<T>(
         &self,
         work: impl FnOnce(Arc<dyn VideoProcessor>) -> BoxFuture<'static, Result<T, VideoError>>
@@ -414,6 +415,9 @@ impl VideoService {
         tokio::spawn(async move {
             let job = async {
                 let _permit = permits.acquire_owned().await.expect("never closed");
+                if sender.is_closed() {
+                    return Err(VideoError::Tool("the caller is gone".to_string()));
+                }
                 work(processor).await
             };
             let outcome = match tokio::time::timeout(deadline, job).await {
@@ -423,10 +427,15 @@ impl VideoService {
             // The caller may be gone.
             let _ = sender.send(outcome);
         });
-        receiver.await.expect("the video task does not panic")
+        // The sender is dropped without a value only if the task panicked.
+        receiver.await.unwrap_or_else(|_| {
+            Err(VideoJobError::Video(VideoError::Tool(
+                "the video task failed".to_string(),
+            )))
+        })
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "test-support"))]
     fn available_permits(&self) -> usize {
         self.permits.available_permits()
     }
@@ -438,9 +447,8 @@ mod tests {
     use crate::test_support::video::StubVideoProcessor;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    fn service(delay: Duration, deadline: Duration) -> VideoService {
-        let stub = StubVideoProcessor::default().with_delay(delay);
-        VideoService::new(Arc::new(stub), 1, deadline)
+    fn service(deadline: Duration) -> VideoService {
+        VideoService::new(Arc::new(StubVideoProcessor::default()), 1, deadline)
     }
 
     type Job = Box<
@@ -466,7 +474,7 @@ mod tests {
     // spec: MED-039
     #[tokio::test]
     async fn a_second_job_waits_for_the_first() {
-        let service = service(Duration::ZERO, Duration::from_secs(5));
+        let service = service(Duration::from_secs(5));
         let clock = Arc::new(AtomicUsize::new(0));
         let (first, second) = tokio::join!(
             service.run(job(Duration::from_millis(200), &clock)),
@@ -480,7 +488,7 @@ mod tests {
     // spec: MED-039
     #[tokio::test]
     async fn a_job_past_the_deadline_is_a_timeout_and_frees_its_permit() {
-        let service = service(Duration::ZERO, Duration::from_millis(100));
+        let service = service(Duration::from_millis(100));
         let clock = Arc::new(AtomicUsize::new(0));
         let result = service.run(job(Duration::from_secs(1), &clock)).await;
         assert!(matches!(result, Err(VideoJobError::Timeout)), "{result:?}");
@@ -491,7 +499,7 @@ mod tests {
     #[tokio::test]
     async fn the_wait_counts_in_the_deadline() {
         // Each job fits in the deadline alone; the second does not once it has waited.
-        let service = service(Duration::ZERO, Duration::from_millis(300));
+        let service = service(Duration::from_millis(300));
         let clock = Arc::new(AtomicUsize::new(0));
         let (first, second) = tokio::join!(
             service.run(job(Duration::from_millis(200), &clock)),
@@ -499,6 +507,46 @@ mod tests {
         );
         assert!(first.is_ok(), "{first:?}");
         assert!(matches!(second, Err(VideoJobError::Timeout)), "{second:?}");
+        assert_eq!(service.available_permits(), 1);
+    }
+
+    // spec: MED-039
+    #[tokio::test]
+    async fn a_queued_job_whose_caller_is_gone_does_not_run() {
+        let service = service(Duration::from_secs(5));
+        let clock = Arc::new(AtomicUsize::new(0));
+        let ran = Arc::new(AtomicUsize::new(0));
+        let abandoned: Job = {
+            let ran = ran.clone();
+            Box::new(move |_| {
+                Box::pin(async move {
+                    ran.fetch_add(1, Ordering::SeqCst);
+                    Ok((0, 0))
+                })
+            })
+        };
+        let first = service.run(job(Duration::from_millis(200), &clock));
+        // The second request is dropped while it waits for the permit.
+        let second = tokio::time::timeout(Duration::from_millis(50), service.run(abandoned));
+        let (first, second) = tokio::join!(first, second);
+        assert!(first.is_ok(), "{first:?}");
+        assert!(second.is_err(), "the second request was dropped");
+        // Give the queued task its turn.
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert_eq!(ran.load(Ordering::SeqCst), 0, "the abandoned job ran");
+        assert_eq!(service.available_permits(), 1);
+    }
+
+    // spec: MED-039
+    #[tokio::test]
+    async fn a_panicking_job_is_an_error_and_frees_its_permit() {
+        let service = service(Duration::from_secs(5));
+        let panicking: Job = Box::new(|_| Box::pin(async { panic!("the work panics") }));
+        let result = service.run(panicking).await;
+        assert!(
+            matches!(result, Err(VideoJobError::Video(VideoError::Tool(_)))),
+            "{result:?}"
+        );
         assert_eq!(service.available_permits(), 1);
     }
 

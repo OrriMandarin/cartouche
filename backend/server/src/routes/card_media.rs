@@ -11,7 +11,7 @@ use bytes::{Bytes, BytesMut};
 use cartouche_domain::{
     CropRect, FieldError, Framing, MAX_VIDEO_BYTES, MediaKind, ORIGINAL_FILE, Slot,
     UploadRejection, VIDEO_FILE, VariantFormat, VideoLoop, check_video_framing, classify_upload,
-    is_video_source_name, mp4_duration, storage_key,
+    mp4_duration, storage_key,
 };
 use serde::de::DeserializeOwned;
 use utoipa::ToSchema;
@@ -495,7 +495,6 @@ async fn store(
             return Err(error.into());
         }
     }
-
     for (from, name) in prepared.private_copies {
         let to = storage_key(card_id, record.id, &name);
         if let Err(error) = state.media.copy_private(&from, &to).await {
@@ -604,7 +603,7 @@ async fn reframe_video(
     video_loop: Option<VideoLoop>,
     poster_time: Option<f64>,
 ) -> Result<Prepared, ApiError> {
-    if !is_video_source_name(&edit_copy.name) {
+    if !previous.has_video_original() {
         return Err(ApiError::MediaNotReframable);
     }
     let key_of = |name: &str| storage_key(previous.card_id, previous.id, name);

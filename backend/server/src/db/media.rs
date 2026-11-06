@@ -2,7 +2,7 @@
 //! source and their framing. Every function is scoped to the card owner through the `cards`
 //! table.
 
-use cartouche_domain::{Framing, MediaKind, Slot, VariantFormat};
+use cartouche_domain::{Framing, MediaKind, Slot, VariantFormat, is_video_source_name};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgConnection, PgExecutor, PgPool};
 use uuid::Uuid;
@@ -39,6 +39,16 @@ pub struct MediaRecord {
 }
 
 impl MediaRecord {
+    /// `true` for a video that has an edit copy and so a private original (MED-030, MED-036);
+    /// a video uploaded before plan 7 has a still-image source and neither.
+    pub fn has_video_original(&self) -> bool {
+        self.kind == MediaKind::Video
+            && self
+                .source
+                .as_ref()
+                .is_some_and(|file| is_video_source_name(&file.name))
+    }
+
     /// The smallest JPEG file of a profile photo (what the vCard embeds).
     pub fn smallest_jpeg(&self) -> Option<&StoredVariant> {
         self.variants
