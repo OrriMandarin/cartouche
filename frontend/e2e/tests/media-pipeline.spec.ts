@@ -112,10 +112,6 @@ test("MED-034 MED-035 a 16:9 video is framed and served 1280 × 960", async ({ p
   const dialog = page.getByTestId("video-crop-dialog");
   await expect(dialog).toBeVisible();
   const end = dialog.getByRole("slider", { name: "Fin de l’extrait" });
-  // The strip is drawn once the video is decoded and the dialog laid out: framing before that races the layout.
-  await expect
-    .poll(() => dialog.getByTestId("video-crop-frame").evaluateAll((frames) => frames.length === 8 && frames.every((frame) => (frame as HTMLImageElement).src.startsWith("data:image/"))))
-    .toBe(true);
   await end.focus();
   await page.keyboard.press("Shift+ArrowLeft");
   await page.keyboard.press("Shift+ArrowLeft");

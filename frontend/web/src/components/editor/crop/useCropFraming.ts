@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, type KeyboardEvent } from "react";
-import { getInitialCropFromCroppedAreaPercentages, type MediaSize, type Point, type Size } from "react-easy-crop";
+import { getInitialCropFromCroppedAreaPercentages, type Area, type MediaSize, type Point, type Size } from "react-easy-crop";
 import {
   cropFromPercentages,
+  isMeasuredArea,
   MAX_ZOOM,
   MIN_ZOOM,
   nudge,
@@ -42,6 +43,11 @@ export function useCropFraming(source: File | string, initialCrop: CropRect | nu
   const [frameSize, setFrameSize] = useState<Size | null>(null);
   const crop = area ? cropFromPercentages(area) : (initialCrop ?? null);
 
+  /** Keeps the areas measured on the loaded media only: the one measured before is not a crop to apply (MED-026). */
+  function onAreaChange(next: PercentArea, pixels: Area) {
+    if (isMeasuredArea(pixels)) setArea(next);
+  }
+
   function onKey(event: KeyboardEvent) {
     // Ctrl, Cmd and Alt with + or − are the browser's own zoom and shortcuts.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -79,7 +85,7 @@ export function useCropFraming(source: File | string, initialCrop: CropRect | nu
     reset,
     setPosition,
     setZoom,
-    setArea,
+    onAreaChange,
     setMediaSize,
     setFrameSize,
   };

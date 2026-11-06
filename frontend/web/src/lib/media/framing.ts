@@ -42,6 +42,15 @@ export interface PercentArea {
   height: number;
 }
 
+/**
+ * spec: EDI-026, MED-026. Whether an area comes from a loaded media. Until the media is loaded, react-easy-crop
+ * measures the placeholder size of its element (300 × 150 for a video) and reports an area of the wrong shape, with
+ * no pixels since the media has no natural size yet.
+ */
+export function isMeasuredArea(pixels: { width: number; height: number }): boolean {
+  return pixels.width > 0 && pixels.height > 0;
+}
+
 /** Drops the floating-point noise of a sum of fractions, far below a source pixel. */
 function tidy(value: number): number {
   return Math.round(value * 1e6) / 1e6;

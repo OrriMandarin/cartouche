@@ -6,6 +6,7 @@ import {
   formatSeconds,
   frameTimes,
   HEADER_RATIO,
+  isMeasuredArea,
   needsCrop,
   nudge,
   setLoopEnd,
@@ -54,6 +55,12 @@ describe("framing", () => {
     expect(needsCrop(1280, 720, HEADER_RATIO)).toBe(true);
     expect(needsCrop(600, 800, HEADER_RATIO)).toBe(true);
     expect(needsCrop(512, 512, 1)).toBe(false);
+  });
+
+  test("MED-026 an area is measured once the media has a size in pixels", () => {
+    expect(isMeasuredArea({ width: 1440, height: 1080 })).toBe(true);
+    expect(isMeasuredArea({ width: 0, height: 0 })).toBe(false);
+    expect(isMeasuredArea({ width: 0, height: 1080 })).toBe(false);
   });
 
   test("EDI-026 arrows and plus/minus move and zoom within bounds", () => {

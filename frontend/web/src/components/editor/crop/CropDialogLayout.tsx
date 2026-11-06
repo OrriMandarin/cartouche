@@ -125,8 +125,8 @@ export function CropDialogLayout({
                   initialCroppedAreaPercentages={initialCrop ? percentagesFromCrop(initialCrop) : undefined}
                   onCropChange={framing.setPosition}
                   onZoomChange={framing.setZoom}
-                  onCropAreaChange={framing.setArea}
-                  onCropComplete={framing.setArea}
+                  onCropAreaChange={framing.onAreaChange}
+                  onCropComplete={framing.onAreaChange}
                   onCropSizeChange={framing.setFrameSize}
                   onMediaLoaded={framing.setMediaSize}
                   cropperProps={{ tabIndex: -1 }}
