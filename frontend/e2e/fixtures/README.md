@@ -5,8 +5,8 @@ with ffmpeg only if one has to change.
 
 The videos are VP9 in an MP4 container, which also checks the codec allow-list of the server (MED-040). The
 server re-encodes them to H.264 for the public page. Measured on macOS (plan 7, T15) and in the official
-`mcr.microsoft.com/playwright:v1.64.1-noble` image (T17, arm64 container; CI runners are amd64 with the same Playwright
-builds): the Chromium bundled with Playwright and its WebKit both play that H.264 file (`canPlayType` answers "probably",
+`mcr.microsoft.com/playwright:v1.64.1-noble` image (T17, on arm64 and on linux/amd64, the CI
+runners' architecture): the Chromium bundled with Playwright and its WebKit both play that H.264 file (`canPlayType` answers "probably",
 `videoWidth` > 0, `readyState` 4), so the desktop project keeps the bundled Chromium and CI installs `chromium webkit`.
 
 ```sh
