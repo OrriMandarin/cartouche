@@ -25,6 +25,7 @@ mod leads_submit;
 mod media;
 mod media_files;
 mod media_processing;
+mod media_s3;
 mod media_service;
 mod migrations;
 mod openapi;

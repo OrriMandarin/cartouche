@@ -171,6 +171,49 @@ pub fn test_media() -> MediaService {
     )
 }
 
+/// The media service over the development Garage, configured from the same `MEDIA_S3_*`
+/// variables as the API (the Makefile exports them for `make test-api`). It is required, not
+/// optional: a missing variable or an unreachable endpoint fails the test (MED-009).
+pub async fn s3_media_from_env() -> MediaService {
+    const HELP: &str = "start the development storage: make dev-db (and run the tests through `make test-api`, which exports the MEDIA_S3_* variables)";
+    let config = Config::from_vars(|name| {
+        let value = match name {
+            "MEDIA_STORAGE" => return Some("s3".to_string()),
+            "APP_ENV" => "test",
+            "AUTH_ISSUER" => "cartouche-test-issuer",
+            "AUTH_JWKS_URL" => "http://localhost:0/jwks.json",
+            "PUBLIC_BASE_URL" => return Some(s3_app_origin()),
+            "DATABASE_URL" => "unused",
+            _ => return std::env::var(name).ok(),
+        };
+        Some(value.to_string())
+    })
+    .unwrap_or_else(|e| panic!("S3 test configuration: {e}; {HELP}"));
+    let media = MediaService::from_config(&config.media, &config.public_base_url)
+        .unwrap_or_else(|e| panic!("S3 media service: {e}; {HELP}"));
+    // A probe write on both buckets: it fails when Garage is unreachable or not initialised.
+    let probe_card = uuid::Uuid::now_v7();
+    let probe = format!("cards/{probe_card}/probe/probe.webp");
+    media
+        .put(&probe, Bytes::from_static(b"probe"))
+        .await
+        .unwrap_or_else(|e| panic!("the public bucket is unreachable: {e}; {HELP}"));
+    media
+        .put_private(&probe, Bytes::from_static(b"probe"))
+        .await
+        .unwrap_or_else(|e| panic!("the private bucket is unreachable: {e}; {HELP}"));
+    media
+        .delete_card(probe_card)
+        .await
+        .unwrap_or_else(|e| panic!("cannot clean the probe: {e}; {HELP}"));
+    media
+}
+
+/// The app origin the public bucket's CORS allows (the init's `APP_ORIGIN`).
+pub fn s3_app_origin() -> String {
+    std::env::var("PUBLIC_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string())
+}
+
 /// A video service on the stub processor: one job at a time, the real deadline.
 pub fn test_video() -> VideoService {
     VideoService::new(
