@@ -2,7 +2,10 @@
 
 use axum::Json;
 use axum::extract::State;
-use cartouche_domain::{Slug, SlugClaim, SlugClaimError, decide_claim, suggest_base, with_suffix};
+use cartouche_domain::{
+    RANDOM_SUFFIX_LEN, Slug, SlugClaim, SlugClaimError, decide_claim, suggest_base,
+    with_random_suffix, with_suffix,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -13,8 +16,12 @@ use crate::error::{ApiError, ErrorBody};
 use crate::extract::ApiQuery;
 use crate::state::AppState;
 
-/// Highest numeric suffix tried by the suggestion (`base`, `base-2`, ..., `base-100`).
+/// Highest numeric suffix tried for the alternatives (`base-2`, ..., `base-100`).
 const MAX_SUGGESTION_SUFFIX: u32 = 100;
+
+/// Random suffixes drawn by the suggestion until one is claimable: a draw almost never collides,
+/// so a few are plenty.
+const SUGGESTION_DRAWS: usize = 5;
 
 /// Number of alternatives proposed when a slug is taken (LNK-035).
 const ALTERNATIVES: usize = 3;
@@ -32,12 +39,12 @@ pub struct SlugSuggestion {
     pub slug: Option<String>,
 }
 
-/// Suggests the first free slug derived from a name.
+/// Suggests a free slug derived from a name, with a random suffix.
 #[utoipa::path(
     get,
     path = "/api/slugs/suggestion",
     summary = "Suggest a slug",
-    description = "The first free slug among the name's base form, then the base with the suffixes `-2` to `-100`. `null` when the name gives no usable base or all are taken.",
+    description = "The name's base form followed by a hyphen and 6 random characters (lowercase letters and digits), so that the link is hard to guess. `null` when the name gives no usable base.",
     tag = "cards",
     security(("bearer" = [])),
     params(SuggestionQuery),
@@ -62,7 +69,7 @@ pub async fn suggest_slug(
     };
     let first = claimable_candidates(
         &state,
-        std::iter::once(base.clone()).chain(suffixed(&base)),
+        (0..SUGGESTION_DRAWS).map(|_| with_random_suffix(&base, random_suffix_entropy())),
         me.user.id,
         None,
         1,
@@ -106,6 +113,11 @@ pub struct SlugAvailability {
     /// When the slug is taken or reserved: the first three available slugs of `<slug>-2`,
     /// `<slug>-3`, ... (blocked slugs skipped, LNK-035); empty otherwise.
     pub suggestions: Vec<String>,
+}
+
+fn random_suffix_entropy() -> [u8; RANDOM_SUFFIX_LEN] {
+    let random = Uuid::new_v4();
+    std::array::from_fn(|i| random.as_bytes()[i])
 }
 
 /// `<slug>-2` to `<slug>-100`.

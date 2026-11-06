@@ -90,7 +90,25 @@ pub fn suggest_base(first_name: &str, last_name: &str) -> Option<Slug> {
 
 /// Appends `-n` to `base`, shortening the base so the result fits in 64 characters.
 pub fn with_suffix(base: &Slug, n: u32) -> Slug {
-    let suffix = format!("-{n}");
+    append_suffix(base, &format!("-{n}"))
+}
+
+/// Number of random characters appended to a suggested slug (LNK-019).
+pub const RANDOM_SUFFIX_LEN: usize = 6;
+
+const RANDOM_ALPHABET: &[u8; 36] = b"abcdefghijklmnopqrstuvwxyz0123456789";
+
+/// Appends `-` and a random suffix to `base` (LNK-019), shortening the base so the result fits in
+/// 64 characters. Each entropy byte picks one character of the suffix.
+pub fn with_random_suffix(base: &Slug, entropy: [u8; RANDOM_SUFFIX_LEN]) -> Slug {
+    let suffix: String = entropy
+        .iter()
+        .map(|b| char::from(RANDOM_ALPHABET[usize::from(*b) % RANDOM_ALPHABET.len()]))
+        .collect();
+    append_suffix(base, &format!("-{suffix}"))
+}
+
+fn append_suffix(base: &Slug, suffix: &str) -> Slug {
     let mut stem = base.0.clone();
     stem.truncate(MAX_LEN - suffix.len());
     Slug(format!("{}{suffix}", stem.trim_end_matches('-')))
@@ -244,6 +262,31 @@ mod tests {
         let long_first = format!("{}-b", "a".repeat(63));
         let slug = suggest_base(&long_first, "c").unwrap();
         assert_eq!(slug.as_str(), "a".repeat(63));
+    }
+
+    // spec: LNK-019
+    #[test]
+    fn random_suffix_is_six_lowercase_or_digit_characters() {
+        let base = Slug::parse("alice-durand").unwrap();
+        let slug = with_random_suffix(&base, [0, 25, 26, 35, 36, 255]);
+        // 36 and 255 wrap around the 36-character alphabet.
+        assert_eq!(slug.as_str(), "alice-durand-az09ad");
+        assert_eq!(Slug::parse(slug.as_str()).unwrap(), slug);
+    }
+
+    // spec: LNK-019
+    #[test]
+    fn random_suffix_fits_in_64() {
+        let base = Slug::parse(&"a".repeat(64)).unwrap();
+        let slug = with_random_suffix(&base, [1; RANDOM_SUFFIX_LEN]);
+        assert_eq!(slug.as_str().len(), 64);
+        assert!(slug.as_str().ends_with("-bbbbbb"));
+        // A hyphen left at the cut is dropped.
+        let cut = Slug::parse(&format!("{}-bcdef", "a".repeat(56))).unwrap();
+        assert_eq!(
+            with_random_suffix(&cut, [1; RANDOM_SUFFIX_LEN]).as_str(),
+            format!("{}-bbbbbb", "a".repeat(56))
+        );
     }
 
     // spec: LNK-019

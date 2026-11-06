@@ -18,13 +18,15 @@ test("EDI-013 LNK-001 LNK-019 create a card from a suggested slug", async ({ pag
 
   await page.getByTestId("new-card-first-name").fill("Alice");
   await page.getByTestId("new-card-last-name").fill("Durand");
-  // alice-durand is taken: the proposal is the first free suffix.
-  await expect(page.getByTestId("slug-input")).toHaveValue("alice-durand-2");
+  // The proposal carries 6 random characters, so that the link is hard to guess.
+  const slugInput = page.getByTestId("slug-input");
+  await expect(slugInput).toHaveValue(/^alice-durand-[a-z0-9]{6}$/);
+  const slug = await slugInput.inputValue();
   await expect(page.getByTestId("slug-status")).toHaveText("Ce lien est disponible.");
   await page.getByTestId("new-card-submit").click();
 
   await expect(page).toHaveURL(/\/dashboard\/cards\/[0-9a-f-]{36}$/);
-  await page.goto("/c/alice-durand-2");
+  await page.goto(`/c/${slug}`);
   await expect(page.getByTestId("card-name")).toHaveText("Alice Durand");
 });
 

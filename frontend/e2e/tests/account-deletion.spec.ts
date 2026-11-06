@@ -97,7 +97,7 @@ test("LNK-032 a blocked slug cannot be taken by anyone", async ({ page, api, log
   // The suggestion skips the blocked slug (LNK-019)...
   await page.getByTestId("new-card-first-name").fill("Bob");
   await page.getByTestId("new-card-last-name").fill("Martin");
-  await expect(page.getByTestId("slug-input")).toHaveValue("bob-martin-2");
+  await expect(page.getByTestId("slug-input")).toHaveValue(/^bob-martin-[a-z0-9]{6}$/);
   await expect(page.getByTestId("slug-status")).toHaveText("Ce lien est disponible.");
 
   // ...the availability check says it is taken (LNK-020)...

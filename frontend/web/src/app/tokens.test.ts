@@ -18,7 +18,7 @@ const FAMILIES = [
 describe("fonts and tokens", () => {
   test("TPL-012 fonts.css imports the eight self-hosted families and nothing remote", () => {
     const css = read("../lib/theme/fonts.css");
-    const imported = [...css.matchAll(/@import "@fontsource-variable\/([a-z0-9-]+)\/(?:wght|index)\.css";/g)].map(
+    const imported = [...css.matchAll(/@import "@fontsource-variable\/([a-z0-9-]+)\/(?:wght|opsz|index)\.css";/g)].map(
       (m) => m[1],
     );
     expect(imported).toEqual(FAMILIES);

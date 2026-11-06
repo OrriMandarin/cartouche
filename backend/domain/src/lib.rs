@@ -70,8 +70,8 @@ pub use rate_limit::{
     RateLimit, SlidingWindow, failed_access_codes_per_ip, lead_submissions_per_ip, rate_limit_key,
 };
 pub use slug::{
-    InvalidSlug, Slug, SlugClaim, SlugClaimError, SlugRecord, decide_claim, suggest_base,
-    with_suffix,
+    InvalidSlug, RANDOM_SUFFIX_LEN, Slug, SlugClaim, SlugClaimError, SlugRecord, decide_claim,
+    suggest_base, with_random_suffix, with_suffix,
 };
 pub use text::normalize;
 pub use theme::{Background, ButtonShape, Color, InvalidTheme, Theme};
