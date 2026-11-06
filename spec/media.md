@@ -1,6 +1,6 @@
 # Media
 
-> Status: implemented (plans 2, 3 and 6); amended by plan 7
+> Status: implemented (plans 2, 3, 6 and 7)
 
 ## Header backgrounds and profile photo
 

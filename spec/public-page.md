@@ -1,6 +1,6 @@
 # Public page and vCard
 
-> Status: implemented (plans 2, 3 and 6); amended by plan 7
+> Status: implemented (plans 2, 3, 6 and 7)
 
 This page describes the behavior of the public page, whatever the template (see TPL-003). The visuals are those of the "Classique" ("Classic") template, the reference template.
 

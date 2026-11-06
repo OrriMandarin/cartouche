@@ -1,6 +1,6 @@
 # Dashboard and card editor
 
-> Status: implemented (plans 2, 3, 4 and 6); amended by plan 7
+> Status: implemented (plans 2, 3, 4, 6 and 7)
 
 ## Cards
 
