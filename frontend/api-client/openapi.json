@@ -5512,7 +5512,7 @@
             "items": {
               "$ref": "#/components/schemas/ImageVariantView"
             },
-            "description": "The WebP variants, narrowest first, cut along the crop; for a video, the waiting image."
+            "description": "The WebP variants, narrowest first, cut along the crop; for a video, the placeholder\nimage the server extracts from the video at the poster time (MED-029)."
           },
           "jpeg_url": {
             "type": [
@@ -5541,7 +5541,7 @@
               "null"
             ],
             "format": "double",
-            "description": "When, in seconds, the waiting image of a video was captured (MED-028)."
+            "description": "The time, in seconds, at which the placeholder frame of a video was extracted (MED-028)."
           },
           "source": {
             "oneOf": [
@@ -5550,7 +5550,7 @@
               },
               {
                 "$ref": "#/components/schemas/SourceView",
-                "description": "The whole image the files are cut from, to re-frame the media. Only in the owner's\nviews, and only for a media uploaded since plan 6 (MED-025, MED-031)."
+                "description": "The whole image the files are cut from, to re-frame the media; for a video, its edit\ncopy (MED-037). Only in the owner's views, and only for a media uploaded since plan 6\n(a video uploaded before plan 7 has none) (MED-025, MED-031)."
               }
             ]
           },
@@ -5559,7 +5559,7 @@
               "string",
               "null"
             ],
-            "description": "The MP4 file, for a video, as uploaded."
+            "description": "The MP4 file, for a video: the transcode the server made, with the crop and the loop\napplied. The uploaded file is never served (MED-004)."
           }
         }
       },

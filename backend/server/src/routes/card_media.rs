@@ -1,6 +1,6 @@
 //! Media upload for a card (MED-001 to MED-008, MED-012, MED-013, MED-015, MED-018, MED-020,
-//! MED-025 to MED-029, MED-034 to MED-040). An upload only creates the media and its files; the card shows it once
-//! a save attaches it.
+//! MED-025 to MED-029, MED-034 to MED-040). An upload only creates the media and its files;
+//! the card shows it once a save attaches it.
 
 use std::time::Duration;
 
@@ -332,7 +332,9 @@ async fn prepare(
             let placeholder = storage
                 .prepare_variants(transcoded.poster_frame.clone(), Slot::Header, crop)
                 .await
-                .map_err(|error| ApiError::Internal(format!("placeholder: {error}")))?;
+                // The frame came out of the video: one the image pipeline cannot read means the
+                // video is not one we can use, not a server fault.
+                .map_err(|_| field_error("file", "video_unreadable"))?;
             let framing = Framing {
                 crop,
                 video_loop: Some(video_loop),

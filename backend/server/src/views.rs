@@ -337,9 +337,11 @@ pub struct LinkView {
 pub struct MediaView {
     pub id: Uuid,
     pub kind: MediaKind,
-    /// The WebP variants, narrowest first, cut along the crop; for a video, the waiting image.
+    /// The WebP variants, narrowest first, cut along the crop; for a video, the placeholder
+    /// image the server extracts from the video at the poster time (MED-029).
     pub images: Vec<ImageVariantView>,
-    /// The MP4 file, for a video, as uploaded.
+    /// The MP4 file, for a video: the transcode the server made, with the crop and the loop
+    /// applied. The uploaded file is never served (MED-004).
     pub video_url: Option<String>,
     /// The largest JPEG variant, for a profile photo (vCard and link previews).
     pub jpeg_url: Option<String>,
@@ -349,12 +351,13 @@ pub struct MediaView {
     /// The part of a header video that plays in a loop, in seconds (MED-028).
     #[serde(rename = "loop")]
     pub video_loop: Option<VideoLoop>,
-    /// When, in seconds, the waiting image of a video was captured (MED-028).
+    /// The time, in seconds, at which the placeholder frame of a video was extracted (MED-028).
     pub poster_time: Option<f64>,
     /// The duration of a video, as the server read it (MED-013).
     pub duration_seconds: Option<f64>,
-    /// The whole image the files are cut from, to re-frame the media. Only in the owner's
-    /// views, and only for a media uploaded since plan 6 (MED-025, MED-031).
+    /// The whole image the files are cut from, to re-frame the media; for a video, its edit
+    /// copy (MED-037). Only in the owner's views, and only for a media uploaded since plan 6
+    /// (a video uploaded before plan 7 has none) (MED-025, MED-031).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<SourceView>,
 }

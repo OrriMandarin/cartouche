@@ -1,5 +1,6 @@
 //! An object store that behaves like `InMemory` until its switch is turned on; while it is on,
-//! every deletion fails, so a test can check what happens when the storage is down.
+//! every deletion fails (or, for [`FailingStore::failing_puts`], every write), so a test can
+//! check what happens when the storage is down.
 
 use std::fmt;
 use std::ops::Range;
@@ -18,11 +19,13 @@ use object_store::{
 };
 
 /// Delegates to an `InMemory` store. While `failing` is true, `delete_stream` yields a
-/// `Generic` error (never `NotFound`, which the media service ignores) for every path.
+/// `Generic` error (never `NotFound`, which the media service ignores) for every path; for a
+/// store made by [`FailingStore::failing_puts`], `put_opts` fails instead.
 #[derive(Debug)]
 pub struct FailingStore {
     inner: InMemory,
     failing: Arc<AtomicBool>,
+    fail_puts: bool,
 }
 
 impl FailingStore {
@@ -32,8 +35,21 @@ impl FailingStore {
         let store = FailingStore {
             inner: InMemory::new(),
             failing: Arc::clone(&failing),
+            fail_puts: false,
         };
         (store, failing)
+    }
+
+    /// Like [`FailingStore::new`], but the switch makes writes fail and deletions work.
+    pub fn failing_puts() -> (FailingStore, Arc<AtomicBool>) {
+        let (store, failing) = FailingStore::new();
+        (
+            FailingStore {
+                fail_puts: true,
+                ..store
+            },
+            failing,
+        )
     }
 }
 
@@ -51,6 +67,12 @@ impl ObjectStore for FailingStore {
         payload: PutPayload,
         opts: PutOptions,
     ) -> Result<PutResult> {
+        if self.fail_puts && self.failing.load(Ordering::SeqCst) {
+            return Err(object_store::Error::Generic {
+                store: "FailingStore",
+                source: "storage is down".into(),
+            });
+        }
         self.inner.put_opts(location, payload, opts).await
     }
 

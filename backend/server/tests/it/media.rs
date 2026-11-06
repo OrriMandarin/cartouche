@@ -5,6 +5,7 @@ use cartouche_api::media::video::VideoService;
 use cartouche_api::test_support::video::StubVideoProcessor;
 use cartouche_domain::{MAX_VIDEO_BYTES, PosterSeek, VIDEO_PROCESSING_DEADLINE, VideoProbe};
 use common::cards::{cards_app, create_card, put_card, token};
+use common::failing_store::FailingStore;
 use common::media_fixtures::{
     header_clip, jpeg, jpeg_with_exif, mp4, mp4_with_brands, png, png_claiming, quadrants_png,
 };
@@ -510,8 +511,8 @@ async fn an_unsupported_codec_is_refused(pool: PgPool) {
 async fn a_video_job_past_its_deadline_is_a_503_and_stores_nothing(pool: PgPool) {
     let (mut state, clock) =
         test_state_with(pool, &[("SIGNUP_MODE", "open"), ("ADMIN_USER_IDS", "boss")]);
-    let stub = StubVideoProcessor::default().with_delay(Duration::from_millis(500));
-    state.video = VideoService::new(Arc::new(stub), 1, Duration::from_millis(100));
+    let stub = StubVideoProcessor::default().with_delay(Duration::from_secs(5));
+    state.video = VideoService::new(Arc::new(stub.clone()), 1, Duration::from_secs(2));
     let app = TestApp::from_state(state, clock);
     let card = create_card(&app, "alice", "alice-durand").await;
     let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
@@ -519,6 +520,44 @@ async fn a_video_job_past_its_deadline_is_a_503_and_stores_nothing(pool: PgPool)
     assert_eq!(error_code(&res), "video_processing_timeout");
     assert!(app.media_keys().await.is_empty());
     assert!(app.media.list_private_keys().await.is_empty());
+
+    // The permit is free again: the next upload goes through.
+    stub.set_delay(Duration::ZERO);
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::CREATED, "{}", res.json);
+}
+
+// spec: MED-036, MED-018
+#[sqlx::test(migrations = "./migrations")]
+async fn a_failed_private_write_leaves_nothing_in_either_store(pool: PgPool) {
+    let (private, failing) = FailingStore::failing_puts();
+    let (mut state, clock) = test_state_with(
+        pool.clone(),
+        &[("SIGNUP_MODE", "open"), ("ADMIN_USER_IDS", "boss")],
+    );
+    state.media = cartouche_api::media::MediaService::with_stores(
+        Arc::new(object_store::memory::InMemory::new()),
+        Arc::new(private),
+        "http://localhost:3000/media/".parse().unwrap(),
+        true,
+    );
+    let app = TestApp::from_state(state, clock);
+    let card = create_card(&app, "alice", "alice-durand").await;
+    failing.store(true, std::sync::atomic::Ordering::SeqCst);
+
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(
+        res.status,
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "{}",
+        res.json
+    );
+    assert!(
+        app.media_keys().await.is_empty(),
+        "public files were removed"
+    );
+    assert!(app.media.list_private_keys().await.is_empty());
+    assert_eq!(media_rows(&pool).await, 0);
 }
 
 // spec: MED-035

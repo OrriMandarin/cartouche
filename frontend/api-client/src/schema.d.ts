@@ -1164,7 +1164,10 @@ export interface components {
             duration_seconds?: number | null;
             /** Format: uuid */
             id: string;
-            /** @description The WebP variants, narrowest first, cut along the crop; for a video, the waiting image. */
+            /**
+             * @description The WebP variants, narrowest first, cut along the crop; for a video, the placeholder
+             *     image the server extracts from the video at the poster time (MED-029).
+             */
             images: components["schemas"]["ImageVariantView"][];
             /** @description The largest JPEG variant, for a profile photo (vCard and link previews). */
             jpeg_url?: string | null;
@@ -1172,11 +1175,14 @@ export interface components {
             loop?: null | components["schemas"]["VideoLoop"];
             /**
              * Format: double
-             * @description When, in seconds, the waiting image of a video was captured (MED-028).
+             * @description The time, in seconds, at which the placeholder frame of a video was extracted (MED-028).
              */
             poster_time?: number | null;
             source?: null | components["schemas"]["SourceView"];
-            /** @description The MP4 file, for a video, as uploaded. */
+            /**
+             * @description The MP4 file, for a video: the transcode the server made, with the crop and the loop
+             *     applied. The uploaded file is never served (MED-004).
+             */
             video_url?: string | null;
         };
         /**

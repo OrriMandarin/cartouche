@@ -17,7 +17,7 @@ use crate::media::video::{RenderJob, RenderOutputs, VideoError, VideoProcessor};
 #[derive(Clone)]
 pub struct StubVideoProcessor {
     probe: Result<VideoProbe, String>,
-    delay: Duration,
+    delay: Arc<Mutex<Duration>>,
     jobs: Arc<Mutex<Vec<RenderJob>>>,
 }
 
@@ -30,7 +30,7 @@ impl Default for StubVideoProcessor {
                 height: 1080,
                 codec: "h264".to_string(),
             }),
-            delay: Duration::ZERO,
+            delay: Arc::default(),
             jobs: Arc::default(),
         }
     }
@@ -49,9 +49,19 @@ impl StubVideoProcessor {
     }
 
     /// Each `probe` and `render` call sleeps this long first.
-    pub fn with_delay(mut self, delay: Duration) -> Self {
-        self.delay = delay;
+    pub fn with_delay(self, delay: Duration) -> Self {
+        self.set_delay(delay);
         self
+    }
+
+    /// Changes the delay of every clone, for the calls that follow.
+    pub fn set_delay(&self, delay: Duration) {
+        *self.delay.lock().expect("not poisoned") = delay;
+    }
+
+    async fn wait(&self) {
+        let delay = *self.delay.lock().expect("not poisoned");
+        tokio::time::sleep(delay).await;
     }
 
     /// The jobs `render` has seen, in order.
@@ -83,12 +93,12 @@ impl StubVideoProcessor {
 #[async_trait]
 impl VideoProcessor for StubVideoProcessor {
     async fn probe(&self, _input: &Path) -> Result<VideoProbe, VideoError> {
-        tokio::time::sleep(self.delay).await;
+        self.wait().await;
         self.probe.clone().map_err(VideoError::Unreadable)
     }
 
     async fn render(&self, job: &RenderJob) -> Result<RenderOutputs, VideoError> {
-        tokio::time::sleep(self.delay).await;
+        self.wait().await;
         self.jobs.lock().expect("not poisoned").push(job.clone());
         let plan = &job.plan;
         let write = |name: &str, bytes: Vec<u8>| {
