@@ -203,10 +203,11 @@ describe("mediaErrorKey", () => {
       expect(messages.editor.media.errors).toHaveProperty(key);
     }
     expect(messages.editor.media.errors).not.toHaveProperty("poster_required");
+    expect(messages.fieldErrors).not.toHaveProperty("poster_required");
   });
 
   test("EDI-037 the too-heavy message says 50 Mo for a video", () => {
-    const expected = "Ce fichier est trop lourd (10 Mo pour une image, 50 Mo pour une vidéo)";
+    const expected = "Ce fichier est trop lourd (10\u00a0Mo pour une image, 50\u00a0Mo pour une vidéo)";
     expect(messages.editor.media.errors.too_large).toBe(expected);
     expect(messages.editor.media.errors.payload_too_large).toBe(expected);
     expect(messages.editor.media.errors.video_too_large).toBe(
