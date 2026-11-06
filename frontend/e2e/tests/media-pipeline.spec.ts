@@ -268,6 +268,12 @@ test("PUB-006 the video placeholder shows the loader until the video can play", 
   const header = page.locator(".cc-media");
   await expect(header).toHaveAttribute("aria-busy", "true");
   await expect(header.locator(".cc-shimmer")).toHaveCount(1);
+  // The sheen and the blurred placeholder paint over the video: its own poster never shows through.
+  const topElementClass = await header.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.className;
+  });
+  expect(topElementClass).toBe("cc-shimmer");
   await expect(header).toHaveAttribute("aria-busy", "false");
   await expect(header.locator(".cc-shimmer")).toHaveCount(0);
 });

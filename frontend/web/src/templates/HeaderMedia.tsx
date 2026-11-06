@@ -52,6 +52,8 @@ function HeaderVideo({
   const playing = playingState ?? !reduced;
   const poster = media.images.at(-1)?.url;
   const loadState = useMediaLoad(videoRef, "video");
+  // A browser that refuses the autoplay may never load the video: the loader then ends (PUB-006).
+  const [autoplayRefused, setAutoplayRefused] = useState(false);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -64,9 +66,12 @@ function HeaderVideo({
   }, []);
 
   // jsdom's play() returns undefined and a browser may refuse an autoplay: neither is an error, but a refused
-  // play leaves the video paused and the button must say so.
+  // play leaves the video paused, on its placeholder, and the button must say so.
   function start(el: HTMLVideoElement) {
-    Promise.resolve(el.play()).catch(() => setPlaying(false));
+    Promise.resolve(el.play()).catch(() => {
+      setPlaying(false);
+      setAutoplayRefused(true);
+    });
   }
 
   function toggle() {
@@ -81,16 +86,11 @@ function HeaderVideo({
     }
   }
 
-  const loading = loadState === "loading";
+  const loading = loadState === "loading" && !autoplayRefused;
   const showPoster = poster !== undefined && loadState !== "loaded";
   return (
     <div className={loading ? "cc-media is-loading" : "cc-media"} aria-busy={loading}>
-      {showPoster && (
-        // A plain img, like the header image below.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className={loading && !reduced ? "cc-media-el is-blur" : "cc-media-el"} src={poster} alt="" />
-      )}
-      {loading && !reduced && <div className="cc-shimmer" aria-hidden="true" />}
+      {/* The video comes first so that the placeholder and the sheen, its later siblings, paint over its own poster. */}
       <video
         ref={videoRef}
         data-testid={TEST_IDS.headerVideo}
@@ -104,6 +104,12 @@ function HeaderVideo({
         onPlaying={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
       />
+      {showPoster && (
+        // A plain img, like the header image below.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className={loading && !reduced ? "cc-media-el is-blur" : "cc-media-el"} src={poster} alt="" />
+      )}
+      {loading && !reduced && <div className="cc-shimmer" aria-hidden="true" />}
       <button
         type="button"
         className="cc-pause"

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TEMPLATE_TEST_IDS as IDS } from "./contract";
 import { sampleLegacyVideoHeader, sampleVideoHeader } from "./fixtures";
@@ -106,6 +106,33 @@ describe("HeaderMedia", () => {
     expect(container.querySelector("img")).not.toBeNull();
     expect(container.querySelector(".is-blur")).toBeNull();
     expect(container.querySelector(".cc-shimmer")).toBeNull();
+  });
+
+  test("PUB-006 the video comes first in the header, so the placeholder and the sheen paint over it", () => {
+    const { container } = render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    const order = Array.from(container.firstElementChild!.children).map((el) => el.tagName + "." + el.className);
+    expect(order).toEqual(["VIDEO.", "IMG.cc-media-el is-blur", "DIV.cc-shimmer", "BUTTON.cc-pause"]);
+  });
+
+  test("PUB-006 a refused autoplay drops the loader and leaves a sharp placeholder over the paused video", async () => {
+    play.mockRejectedValue(new Error("NotAllowedError"));
+    const { container } = render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    await waitFor(() => expect(container.firstElementChild).toHaveAttribute("aria-busy", "false"));
+    expect(container.firstElementChild).not.toHaveClass("is-loading");
+    expect(container.querySelector(".cc-shimmer")).toBeNull();
+    expect(container.querySelector(".is-blur")).toBeNull();
+    expect(container.querySelector("img.cc-media-el")).not.toBeNull();
+    expect(screen.getByTestId("header-video-toggle")).toHaveAccessibleName(labels.play);
+  });
+
+  test("PUB-006 PUB-031 after a refused autoplay the placeholder goes once the visitor starts the video", async () => {
+    play.mockRejectedValueOnce(new Error("NotAllowedError")).mockResolvedValue(undefined);
+    const { container } = render(<HeaderMedia media={framed} labels={labels} reducedMotion={() => false} />);
+    await waitFor(() => expect(screen.getByTestId("header-video-toggle")).toHaveAccessibleName(labels.play));
+    fireEvent.click(screen.getByTestId("header-video-toggle"));
+    fireEvent(video(), new Event("playing"));
+    expect(container.querySelector("img.cc-media-el")).toBeNull();
+    expect(container.firstElementChild).toHaveAttribute("aria-busy", "false");
   });
 
   test("PUB-031 the button pauses and resumes and changes its name", () => {
