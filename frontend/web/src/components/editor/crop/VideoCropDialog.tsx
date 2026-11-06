@@ -32,12 +32,10 @@ export interface VideoFraming {
   crop: CropRect;
   loop: VideoLoop;
   posterTime: number;
-  /** The poster time is the playhead's: its frame must be captured and sent (MED-003). */
-  newPoster: boolean;
 }
 
 export interface VideoCropDialogProps {
-  /** The video to frame: the file chosen, or the address of the media's video when re-framing it (MED-030). */
+  /** The video to frame: the file chosen, or the address of the media's edit copy when re-framing it (MED-030). */
   video: File | string;
   /** In seconds, as read by the browser for a file, by the server for a stored video. */
   duration: number;
@@ -59,7 +57,7 @@ type Drag = "start" | "end" | "playhead";
 /**
  * spec: EDI-026, EDI-034, MED-028, MED-030. « Recadrer la vidéo d’en-tête »: the header dialog over the video, with a
  * strip of frames under it. Two handles set the loop (at least a second, MED-028) and show their frame; the playhead
- * picks the frame shown, which the box makes the waiting image. « Lire l’extrait » plays the loop once; nothing
+ * picks the frame shown, whose time the box makes the poster time. « Lire l’extrait » plays the loop once; nothing
  * plays by itself.
  */
 export function VideoCropDialog({
@@ -199,7 +197,7 @@ export function VideoCropDialog({
       testId="video-crop-dialog"
       applyTestId="video-crop-apply"
       onApply={(crop) =>
-        onApply({ crop, loop, posterTime: newPoster ? clampTime(playhead, duration) : keptPosterTime, newPoster })
+        onApply({ crop, loop, posterTime: newPoster ? clampTime(playhead, duration) : keptPosterTime })
       }
       onCancel={onCancel}
       frameOverlay={<HeaderFrameOverlay theme={theme} showZones={showZones} />}

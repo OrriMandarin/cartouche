@@ -43,13 +43,12 @@ describe("checkBeforeUpload", () => {
 });
 
 describe("uploadMedia", () => {
-  test("MED-003 upload sends slot, file and poster", async () => {
+  test("MED-003 a video is uploaded without any image", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     const video = new Blob(["video"], { type: "video/mp4" });
-    const poster = new Blob(["poster"], { type: "image/jpeg" });
 
-    const result = await uploadMedia(async () => "tok-1", "card-1", "header", video, poster);
+    const result = await uploadMedia(async () => "tok-1", "card-1", "header", video);
 
     expect(result).toEqual(mediaView);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -59,7 +58,7 @@ describe("uploadMedia", () => {
     const form = init.body as FormData;
     expect(form.get("slot")).toBe("header");
     expect((form.get("file") as File).size).toBe(5);
-    expect((form.get("poster") as File).size).toBe(6);
+    expect(form.has("poster")).toBe(false);
   });
 
   test("MED-003 an image goes without poster and without a token when signed out", async () => {
@@ -79,9 +78,8 @@ describe("uploadMedia", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     const video = new Blob(["video"], { type: "video/mp4" });
-    const poster = new Blob(["poster"], { type: "image/jpeg" });
 
-    await uploadMedia(async () => "t", "card-1", "header", video, poster, {
+    await uploadMedia(async () => "t", "card-1", "header", video, {
       crop: { x: 0.125, y: 0, width: 0.75, height: 1 },
       loop: { start: 0.5, end: 7.5 },
       posterTime: 0.1,
@@ -97,7 +95,7 @@ describe("uploadMedia", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await uploadMedia(async () => "t", "card-1", "header", new Blob(["img"], { type: "image/png" }), undefined, { posterTime: 0 });
+    await uploadMedia(async () => "t", "card-1", "header", new Blob(["img"], { type: "image/png" }), { posterTime: 0 });
 
     const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
     expect(form.has("crop")).toBe(false);
@@ -127,17 +125,15 @@ describe("uploadMedia", () => {
 describe("reframeMedia", () => {
   const crop = { x: 0.125, y: 0, width: 0.75, height: 1 };
 
-  test("MED-030 sends the framing and the new frame to the reframe route", async () => {
+  test("MED-030 sends the framing, and no image, to the reframe route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
-    const poster = new Blob(["poster"], { type: "image/jpeg" });
 
     const result = await reframeMedia(
       async () => "tok-1",
       "card-1",
       "media-1",
       { crop, loop: { start: 0.5, end: 7.5 }, posterTime: 1.5 },
-      poster,
     );
 
     expect(result).toEqual(mediaView);
@@ -149,7 +145,7 @@ describe("reframeMedia", () => {
     expect(JSON.parse(form.get("crop") as string)).toEqual(crop);
     expect(JSON.parse(form.get("loop") as string)).toEqual({ start: 0.5, end: 7.5 });
     expect(form.get("poster_time")).toBe("1.5");
-    expect((form.get("poster") as File).size).toBe(6);
+    expect(form.has("poster")).toBe(false);
     expect(form.has("slot")).toBe(false);
     expect(form.has("file")).toBe(false);
   });

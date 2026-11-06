@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { captureFrames, capturePoster, readVideoInfo, VIDEO_LOAD_TIMEOUT_MS, VideoLoadTimeout } from "./video";
+import { captureFrames, readVideoInfo, VIDEO_LOAD_TIMEOUT_MS, VideoLoadTimeout } from "./video";
 
 const revokeObjectURL = vi.fn();
 let element: HTMLVideoElement;
@@ -31,7 +31,6 @@ beforeEach(() => {
     const canvas = realCreateElement("canvas");
     Object.defineProperty(canvas, "getContext", { value: () => ({ drawImage: vi.fn() }) });
     Object.defineProperty(canvas, "toDataURL", { value: () => `data:image/jpeg;base64,frame${seeks.length}` });
-    Object.defineProperty(canvas, "toBlob", { value: (done: BlobCallback) => done(new Blob([`frame${seeks.length}`])) });
     return canvas;
   });
 });
@@ -69,9 +68,9 @@ describe("video", () => {
     expect(revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 
-  test("MED-021 capturing the waiting image gives up when seeking takes over 15 seconds", async () => {
+  test("MED-021 capturing the strip frames gives up when seeking takes over 15 seconds", async () => {
     answerSeeks = false;
-    const outcome = capturePoster(mp4()).catch((error: unknown) => error);
+    const outcome = captureFrames(mp4(), 4).catch((error: unknown) => error);
     element.dispatchEvent(new Event("loadeddata"));
 
     await vi.advanceTimersByTimeAsync(VIDEO_LOAD_TIMEOUT_MS - 1);
@@ -91,35 +90,15 @@ describe("video", () => {
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:video");
   });
 
-  test("MED-003 EDI-034 a frame of a stored video is captured at the time asked, read across origins", async () => {
-    const outcome = capturePoster("https://media.example.test/video.mp4", 2.9);
+  test("EDI-034 MED-045 the frames of a stored video are read across origins", async () => {
+    const outcome = captureFrames("https://media.example.test/source.mp4", 1);
     expect(element.crossOrigin).toBe("anonymous");
-    expect(element.src).toBe("https://media.example.test/video.mp4");
+    expect(element.src).toBe("https://media.example.test/source.mp4");
     element.dispatchEvent(new Event("loadeddata"));
 
-    expect(await (await outcome).text()).toBe("frame1");
-    expect(seeks).toEqual([2.9]);
+    await outcome;
+    expect(seeks).toEqual([3.75]);
     // The address is the stored video's: nothing to release.
     expect(revokeObjectURL).not.toHaveBeenCalled();
-  });
-
-  test("MED-003 MED-029 a waiting image at the video's end is its last frame, not its first", async () => {
-    const outcome = capturePoster(mp4(), 7.5);
-    element.dispatchEvent(new Event("loadeddata"));
-    await outcome;
-
-    // Just before the end, where the last frame still shows.
-    expect(seeks).toEqual([7.45]);
-  });
-
-  test("MED-003 a time past the end gives the last frame, a time that is not a number the first", async () => {
-    const late = capturePoster(mp4(), 9);
-    element.dispatchEvent(new Event("loadeddata"));
-    await late;
-    const odd = capturePoster(mp4(), Number.NaN);
-    element.dispatchEvent(new Event("loadeddata"));
-    await odd;
-
-    expect(seeks).toEqual([7.45, 0]);
   });
 });

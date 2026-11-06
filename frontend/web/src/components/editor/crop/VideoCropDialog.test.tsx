@@ -105,22 +105,22 @@ describe("VideoCropDialog", () => {
     expect(screen.getByRole("checkbox", { name: /Utiliser l’image à 0:02,9 comme image d’attente/ })).not.toBeChecked();
   });
 
-  test("EDI-034 the poster box sends the frame at the playhead", () => {
+  test("MED-003 EDI-034 the poster box only sets the poster time", () => {
     const { onApply } = renderDialog({ initialPosterTime: 2.9 });
-    // The waiting image stays as it is unless the box is ticked.
+    // The poster time stays as it is unless the box is ticked.
     apply();
     expect(onApply.mock.lastCall![0]).toEqual({
       crop: { x: 0.125, y: 0, width: 0.75, height: 1 },
       loop: { start: 0, end: 10 },
       posterTime: 2.9,
-      newPoster: false,
     });
 
     press(playhead(), "ArrowRight", 3);
     expect(screen.getByText("tête de lecture à 0:03,2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: /Utiliser l’image à 0:03,2 comme image d’attente/ }));
     apply();
-    expect(onApply.mock.lastCall![0]).toMatchObject({ posterTime: 3.2, newPoster: true });
+    expect(onApply.mock.lastCall![0]).toMatchObject({ posterTime: 3.2 });
+    expect(onApply.mock.lastCall![0]).not.toHaveProperty("newPoster");
   });
 
   test("EDI-034 moving a handle shows its frame: the playhead follows it", () => {
