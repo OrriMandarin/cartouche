@@ -5,9 +5,25 @@ use common::cards::{cards_app, create_card, put_card, token};
 use serde_json::json;
 use sqlx::PgPool;
 
+/// Checks that the suggestion is `<prefix>-` followed by 6 lowercase letters or digits (LNK-019).
+fn suggested<'a>(slug: &'a serde_json::Value, prefix: &str) -> &'a str {
+    let slug = slug.as_str().expect("a suggestion");
+    let suffix = slug
+        .strip_prefix(&format!("{prefix}-"))
+        .unwrap_or_else(|| panic!("{slug} does not start with {prefix}-"));
+    assert_eq!(suffix.len(), 6, "{slug}");
+    assert!(
+        suffix
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()),
+        "{slug}"
+    );
+    slug
+}
+
 // spec: LNK-019
 #[sqlx::test(migrations = "./migrations")]
-async fn suggestion_skips_taken_slugs(pool: PgPool) {
+async fn suggestion_adds_a_random_suffix(pool: PgPool) {
     let app = cards_app(pool).await;
     create_card(&app, "alice", "alice-durand").await;
 
@@ -20,9 +36,21 @@ async fn suggestion_skips_taken_slugs(pool: PgPool) {
         )
         .await;
     assert_eq!(res.status, StatusCode::OK);
-    assert_eq!(res.json, json!({ "slug": "alice-durand-2" }));
+    let slug = suggested(&res.json["slug"], "alice-durand");
+    assert_ne!(slug, "alice-durand");
 
-    // Free as is, accents folded.
+    // Two suggestions for the same name differ.
+    let again = app
+        .request(
+            "GET",
+            "/api/slugs/suggestion?first_name=Alice&last_name=Durand",
+            Some(&token("bob")),
+            None,
+        )
+        .await;
+    assert_ne!(suggested(&again.json["slug"], "alice-durand"), slug);
+
+    // Accents folded.
     let free = app
         .request(
             "GET",
@@ -31,7 +59,7 @@ async fn suggestion_skips_taken_slugs(pool: PgPool) {
             None,
         )
         .await;
-    assert_eq!(free.json, json!({ "slug": "eloise-martin" }));
+    suggested(&free.json["slug"], "eloise-martin");
 
     // Nothing usable in the name: no suggestion.
     let none = app

@@ -171,7 +171,10 @@ async fn a_blocked_slug_cannot_be_claimed(pool: PgPool) {
             None,
         )
         .await;
-    assert_eq!(suggestion.json, json!({ "slug": "bob-martin-2" }));
+    // The blocked slug itself is never suggested: the suggestion always carries a random suffix.
+    let slug = suggestion.json["slug"].as_str().unwrap();
+    assert!(slug.starts_with("bob-martin-"), "{slug}");
+    assert_eq!(slug.len(), "bob-martin-".len() + 6, "{slug}");
 }
 
 // spec: LNK-032

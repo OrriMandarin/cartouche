@@ -721,7 +721,7 @@ export interface paths {
         };
         /**
          * Suggest a slug
-         * @description The first free slug among the name's base form, then the base with the suffixes `-2` to `-100`. `null` when the name gives no usable base or all are taken.
+         * @description The name's base form followed by a hyphen and 6 random characters (lowercase letters and digits), so that the link is hard to guess. `null` when the name gives no usable base.
          */
         get: operations["suggest_slug"];
         put?: never;
