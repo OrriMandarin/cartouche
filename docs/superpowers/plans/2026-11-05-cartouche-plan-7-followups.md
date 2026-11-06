@@ -62,7 +62,17 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 
 ## Measurements
 
-(Filled in by T19: machine, build, median seconds of the 24-megapixel photo, the 4 s 1080p60 clip and a 30 s 1080p clip uploaded through `localhost:3000`, with and without `[profile.dev.package."*"] opt-level = 3`.)
+Measured on 2026-11-07 (T19): Apple M1, 16 GB, macOS, ffmpeg 8.1.2. The API was a `make api` debug build with `test-support`, in S3 mode (the worktree's Garage), and the site ran under `next dev`. Each file was uploaded three times as Alice's header with `curl` through the web origin (the Next proxy, `POST /api/cards/<id>/media`). The table gives the median wall time of the request, and every run answered 201.
+
+| File | Dependencies at `opt-level = 3` (the branch) | Without the `[profile.dev.package."*"]` block | Gain |
+|---|---|---|---|
+| `photo-24mpx.jpg` (6,000 × 4,000, 5.9 MB) | 4.0 s (3.7 / 4.0 / 4.3) | 78.3 s (78.3 / 80.1 / 73.1) | × 20 |
+| `landscape-1080p60-audio-gps.mp4` (4 s, 1080p60, sound) | 2.0 s (2.1 / 1.8 / 2.0) | 8.0 s (7.7 / 8.0 / 10.7) | × 4 |
+| 30 s 1080p30 H.264 + AAC clip, 41 MB, generated locally | 18.5 s (18.5 / 19.2 / 18.1) | 30.5 s (34.3 / 30.5 / 30.4) | × 1.6 |
+
+- The 30 s clip stays well under the 120 s deadline (MED-041) in both builds. Most of its time is the ffmpeg encode, which the Rust profile does not change. The remaining gap is the Rust side: decoding the extracted frame, and encoding the three WebP widths of the placeholder and the source.
+- A clean `cargo build` of the API takes 8 min 36 s with the block. Switching the dependencies back to `opt-level = 0` takes 1 min 53 s. Day-to-day rebuilds touch only the workspace crates and are unchanged.
+- The 30 s clip was generated with `ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30:d=29.5,noise=alls=12:allf=t" -f lavfi -i "sine=frequency=440:duration=29.5" -c:v libx264 -preset veryfast -b:v 11M -maxrate 12M -bufsize 24M -pix_fmt yuv420p -c:a aac -b:a 128k -shortest phone-30s-1080p.mp4` (not committed).
 
 ## Rulings taken during execution
 
@@ -74,4 +84,5 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 
 ## Review findings deferred
 
-(Filled during execution.)
+- **T16, MED-038**: the e2e test checks that the sound track is dropped; the dropped metadata (location, dates, device) is covered by the Rust tests of the ffmpeg adapter (`tests/it/video_ffmpeg.rs`, with the GPS-tagged fixture), not end to end.
+- **T16, MED-026 EDI-034**: the "Apply right away" regression test checks a 1,280 × 960 result, which any 4:3 crop gives; it guards the race (a non-4:3 crop is refused) but not the position of the default centred crop, which `CropDialogLayout.test.tsx` and `framing.ts` tests cover.

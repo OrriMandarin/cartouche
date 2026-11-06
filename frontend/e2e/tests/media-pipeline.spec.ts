@@ -228,6 +228,7 @@ test("MED-037 the owner's edit copy is the whole video", async ({ page, api }) =
   await page.goto("/c/alice-durand");
   const edit = await videoMetadata(page, header.source!.url);
   expect(edit.duration).toBeGreaterThan(3.5);
+  expect(edit.duration).toBeLessThan(4.5);
   expect([edit.width, edit.height]).toEqual([960, 540]);
   const served = await videoMetadata(page, header.video_url!);
   expect(served.duration).toBeGreaterThan(1.85);
