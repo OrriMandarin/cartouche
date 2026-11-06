@@ -21,7 +21,13 @@ vi.mock("react-easy-crop", async (importOriginal) => {
       props.onCropAreaChange?.(area, area);
       // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the video loads
     }, []);
-    return <div data-testid="fake-cropper" data-video={String(props.video)} />;
+    return (
+      <div
+        data-testid="fake-cropper"
+        data-video={String(props.video)}
+        data-cross-origin={String(props.mediaProps?.crossOrigin)}
+      />
+    );
   }
   return { ...actual, default: FakeCropper };
 });
@@ -74,6 +80,13 @@ describe("VideoCropDialog", () => {
     expect(await screen.findAllByTestId("video-crop-frame")).toHaveLength(8);
     expect(screen.getByRole("switch", { name: "Afficher les zones couvertes" })).toBeChecked();
     expect(screen.getByRole("heading", { name: "Sur ta carte" })).toBeInTheDocument();
+  });
+
+  test("EDI-034 MED-045 every element playing the video asks for it across origins, as the strip does", () => {
+    renderDialog();
+    // A cached response fetched without CORS would otherwise be reused for the strip's frames, which then cannot be drawn.
+    expect(screen.getByTestId("fake-cropper")).toHaveAttribute("data-cross-origin", "anonymous");
+    for (const element of document.querySelectorAll("video")) expect(element.crossOrigin).toBe("anonymous");
   });
 
   test("EDI-034 the handles keep a loop of at least one second", () => {

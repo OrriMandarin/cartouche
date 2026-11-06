@@ -102,8 +102,16 @@ export function CropDialogLayout({
                   {...(video
                     ? {
                         video: url,
-                        // Paused on its first frame: the owner plays the extract (EDI-034).
-                        mediaProps: { autoPlay: false, loop: false, muted: true, playsInline: true, preload: "auto" },
+                        // Paused on its first frame: the owner plays the extract (EDI-034). Asked for across origins like
+                        // the strip's frames, so that the browser never reuses a response it cannot draw (MED-045).
+                        mediaProps: {
+                          autoPlay: false,
+                          loop: false,
+                          muted: true,
+                          playsInline: true,
+                          preload: "auto",
+                          crossOrigin: "anonymous",
+                        },
                         setVideoRef,
                       }
                     : { image: url })}

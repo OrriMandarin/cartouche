@@ -284,6 +284,7 @@ export function VideoCropDialog({
             <video
               ref={previewVideo}
               src={framing.url}
+              crossOrigin="anonymous"
               muted
               playsInline
               preload="auto"
