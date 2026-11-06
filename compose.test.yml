@@ -1,4 +1,4 @@
-# Containerised stack for end-to-end tests: Postgres 15432, API 18080, web 13000.
+# Containerised stack for end-to-end tests: Postgres 15432, Garage S3 13900 and public media 13902, API 18080, web 13000.
 # Every value is hardcoded on purpose (no ${VAR} interpolation): the dev defaults exported
 # by the Makefile and any local .env must never leak into this stack.
 name: cartouche-test

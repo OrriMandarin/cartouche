@@ -23,7 +23,7 @@ cartouche/
 ├── docs/               initial design and implementation plans (historical, in French)
 ├── scripts/            spec linter, production image guard
 ├── Makefile            single entry point for every command
-├── docker/garage/     configuration and init script of Garage, the S3 storage of the dev and test stacks
+├── docker/garage/      configuration and init script of Garage, the S3 storage of the dev and test stacks
 ├── compose.dev.yml     development Postgres and Garage (S3 media storage)
 └── compose.test.yml    full stack (Postgres, Garage, API, web) for the e2e tests
 ```

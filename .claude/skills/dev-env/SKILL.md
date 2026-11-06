@@ -22,7 +22,7 @@ Local machine: `export PATH="$HOME/.local/bin:$PATH"` (pnpm) and `source ~/.carg
 
 ```bash
 make setup     # once: pnpm install (frontend/), cargo fetch, sqlx-cli
-make dev-db    # dev PostgreSQL, port 54320 (or DEV_DB_PORT, one server per worktree that runs Rust tests)
+make dev-db    # dev PostgreSQL, port 54320 (or DEV_DB_PORT, one server per worktree that runs Rust tests), plus Garage (S3) and its init
 make api       # API on :8080, feature test-support, migrations applied at startup
 make web       # site on :3000
 ```
@@ -33,9 +33,8 @@ Check: `curl -s localhost:8080/api/health` must answer `{"status":"ok","db":"ok"
 
 By default (`MEDIA_STORAGE=s3`), card media go to the Garage S3 storage started by `make dev-db` (with its idempotent `garage-init`: buckets, key rights, public web access, CORS). The `Makefile` gives the S3 variables their dev defaults (the fixed dev-only key of `compose.dev.yml`).
 
-- Ports: S3 `3900` (`DEV_S3_PORT`), public media `3902` (`DEV_S3_WEB_PORT`, `MEDIA_PUBLIC_BASE_URL=http://localhost:3902`, an origin different from the site's), admin `3903` (`DEV_S3_ADMIN_PORT`). A worktree running alongside others sets its own ports in `.env`, with the matching `MEDIA_S3_ENDPOINT` and `MEDIA_PUBLIC_BASE_URL`.
+- Ports: S3 `3900` (`DEV_S3_PORT`), public media `3902` (`DEV_S3_WEB_PORT`, `MEDIA_PUBLIC_BASE_URL=http://localhost:3902`, an origin different from the site's), admin `3903` (`DEV_S3_ADMIN_PORT`). A worktree running alongside others sets its own ports in `.env`; through `make`, `MEDIA_S3_ENDPOINT` and `MEDIA_PUBLIC_BASE_URL` follow them automatically (matching values are only needed when running `cargo` directly without `make`).
 - Inspect the buckets: `docker compose -f compose.dev.yml exec garage /garage bucket list` (public `cartouche-media`, private `cartouche-media-private` for the uploaded originals); a public file is fetched at the URL the API returns, under `http://localhost:3902/cards/...`.
-- Reset the media: `docker compose -f compose.dev.yml down -v && make dev-db` (also empties the database).
 - Videos are transcoded by the API with `ffmpeg` and `ffprobe` from the `PATH` (`brew install ffmpeg`; `FFMPEG_PATH`, `FFPROBE_PATH` to change).
 - Phone on the LAN: `localhost:3902` is not reachable from the phone, so set `MEDIA_STORAGE=local` in `.env` (the API then writes to `MEDIA_LOCAL_DIR`, `.data/media/` at the repository root, ignored by git, and serves `/media/*` itself; delete the folder to start over).
 - `make e2e` has its own Garage in the test stack (S3 `13900`, public media `13902`), lost on `make e2e-down`.
@@ -52,7 +51,7 @@ curl -s -X POST localhost:8080/api/test/reset              # same thing, through
 ```
 
 The seed binary refuses to run if `APP_ENV` is not `development` or `test`.
-Start from scratch: `docker compose -f compose.dev.yml down -v && make dev-db`.
+Start from scratch (database and media): `docker compose -f compose.dev.yml down -v && make dev-db`. `seed reset` and `/api/test/reset` empty the tables but not the S3 objects.
 
 ### Events locally
 
@@ -133,6 +132,6 @@ A `CARTOUCHE_BUILD_PROFILE=production` build refuses the `test` adapter (ACC-008
 
 The web contact points (`NEXT_PUBLIC_SUPPORT_EMAIL`, `NEXT_PUBLIC_TERMS_URL`, `NEXT_PUBLIC_PRIVACY_URL`) default to placeholders; set them in `.env` to see real ones.
 
-Dev: Postgres 54320 (`DEV_DB_PORT`), API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000. Both can run together.
+Dev: Postgres 54320 (`DEV_DB_PORT`), Garage S3 3900 (`DEV_S3_PORT`), public media 3902 (`DEV_S3_WEB_PORT`), admin 3903 (`DEV_S3_ADMIN_PORT`), API 8080, web 3000. Test stack (`make e2e`): 15432, 18080, 13000, Garage S3 13900, public media 13902. Both can run together.
 
 **The test stack is shared by every worktree of the machine**: `compose.test.yml` is the docker compose project `cartouche-test` with fixed ports, so two worktrees running `make e2e` at the same time tear down each other's containers (and database). Run `make e2e` from one worktree at a time.
