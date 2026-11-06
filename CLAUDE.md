@@ -16,14 +16,15 @@ Cartouche is an open-source digital business card application (Rust backend, Nex
 | `scripts/` | `spec-lint.mjs` (spec linter), `check-prod-guard.sh`. |
 | `.claude/agents/` | Project agents. `.claude/skills/`: project skills. |
 | `compose.dev.yml`, `compose.test.yml` | Development database; full stack (db, api, web) for the e2e tests. |
-| `.data/media/` | Local card media (`MEDIA_STORAGE=local`, `MEDIA_LOCAL_DIR`), ignored by git; in production, S3-compatible storage. |
+| `docker/garage/` | `garage.toml` and `init.sh` (buckets, key rights, public web access, CORS) of the Garage S3 storage started by `compose.dev.yml` and `compose.test.yml`. |
+| `.data/media/` | Card media in local mode only (`MEDIA_STORAGE=local`, `MEDIA_LOCAL_DIR`), ignored by git. Media go to S3 by default (Garage in dev and test, S3-compatible storage in production). |
 
 ## Commands (`make`)
 
 | Command | Effect |
 |---|---|
 | `make setup` | Installs the dependencies (pnpm, `cargo fetch`, `sqlx-cli`). |
-| `make dev-db` | Starts the development PostgreSQL (port 54320, or `DEV_DB_PORT`). The Rust `#[sqlx::test]` databases are named after the test path only, so two worktrees running Rust tests at the same time on the same server destroy each other's databases (flaky `404`s and `testing/mod.rs` panics): each worktree that runs tests gives itself its own server with `DEV_DB_PORT` and a matching `DATABASE_URL` in its `.env`. |
+| `make dev-db` | Starts the development PostgreSQL (port 54320, or `DEV_DB_PORT`) and Garage, the S3 media storage, with its idempotent init (S3 3900, public media 3902, admin 3903, or `DEV_S3_PORT`, `DEV_S3_WEB_PORT`, `DEV_S3_ADMIN_PORT`: give each worktree its own, like `DEV_DB_PORT`). `make test` needs it and `ffmpeg`/`ffprobe` (`brew install ffmpeg`). The Rust `#[sqlx::test]` databases are named after the test path only, so two worktrees running Rust tests at the same time on the same server destroy each other's databases (flaky `404`s and `testing/mod.rs` panics): each worktree that runs tests gives itself its own server with `DEV_DB_PORT` and a matching `DATABASE_URL` in its `.env`. |
 | `make api` / `make web` | Runs the API (8080, with `test-support`) / the site (3000). |
 | `make seed [SCENARIO=base]` | Fills the database with a data scenario. `cards` extends `base` and `events` extends `cards`: load `base`, then `cards`, then `events` (see the `dev-env` skill). |
 | `make test` | `test-api` + `sqlx-check` + `test-web` + `spec-lint-test` (linter tests) + `spec-lint`. |
@@ -34,6 +35,8 @@ Cartouche is an open-source digital business card application (Rust backend, Nex
 | `make e2e [ARGS="-g ACC-004"]` | Starts the test stack and runs Playwright. `make e2e-down` stops it. The stack (docker compose project `cartouche-test`, fixed ports) is shared by every worktree of the machine: run `make e2e` from one worktree at a time. |
 
 The instance's contact points are three web variables with placeholder defaults: `NEXT_PUBLIC_SUPPORT_EMAIL`, `NEXT_PUBLIC_TERMS_URL` and `NEXT_PUBLIC_PRIVACY_URL` (ADM-021, read through `src/lib/instance-links.ts`).
+
+Media: `MEDIA_STORAGE` is `s3` by default (the Garage of `make dev-db`; `make e2e` has its own in the test stack); `MEDIA_STORAGE=local` writes to `.data/media/` instead, needed to open the dev site from a phone on the LAN (the bucket address is `localhost`). The `MEDIA_*` and `FFMPEG_PATH` variables are in `.env.example`.
 
 Without a `.env` file, everything works locally **without Clerk** (test authentication provider, JWKS served by the API). See `.env.example`, which also documents `MAX_SIMULTANEOUS_EVENTS` (concurrent events per card, 3 by default) and `TRUSTED_PROXY_HOPS` (trusted reverse proxies for the per-IP limit, 1 by default).
 

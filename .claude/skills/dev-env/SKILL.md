@@ -31,7 +31,14 @@ Check: `curl -s localhost:8080/api/health` must answer `{"status":"ok","db":"ok"
 
 ## Media
 
-By default (`MEDIA_STORAGE=local`), the API writes card media to `MEDIA_LOCAL_DIR` and serves it itself under `/media/*`. The `Makefile` sets `MEDIA_LOCAL_DIR` to `.data/media` at the repository root (ignored by git): delete that folder to start over without media. `make e2e` writes to `/data/media` in the API container (lost on `make e2e-down`). The `s3` mode (`MEDIA_S3_*`, `MEDIA_PUBLIC_BASE_URL`) is documented in `.env.example`.
+By default (`MEDIA_STORAGE=s3`), card media go to the Garage S3 storage started by `make dev-db` (with its idempotent `garage-init`: buckets, key rights, public web access, CORS). The `Makefile` gives the S3 variables their dev defaults (the fixed dev-only key of `compose.dev.yml`).
+
+- Ports: S3 `3900` (`DEV_S3_PORT`), public media `3902` (`DEV_S3_WEB_PORT`, `MEDIA_PUBLIC_BASE_URL=http://localhost:3902`, an origin different from the site's), admin `3903` (`DEV_S3_ADMIN_PORT`). A worktree running alongside others sets its own ports in `.env`, with the matching `MEDIA_S3_ENDPOINT` and `MEDIA_PUBLIC_BASE_URL`.
+- Inspect the buckets: `docker compose -f compose.dev.yml exec garage /garage bucket list` (public `cartouche-media`, private `cartouche-media-private` for the uploaded originals); a public file is fetched at the URL the API returns, under `http://localhost:3902/cards/...`.
+- Reset the media: `docker compose -f compose.dev.yml down -v && make dev-db` (also empties the database).
+- Videos are transcoded by the API with `ffmpeg` and `ffprobe` from the `PATH` (`brew install ffmpeg`; `FFMPEG_PATH`, `FFPROBE_PATH` to change).
+- Phone on the LAN: `localhost:3902` is not reachable from the phone, so set `MEDIA_STORAGE=local` in `.env` (the API then writes to `MEDIA_LOCAL_DIR`, `.data/media/` at the repository root, ignored by git, and serves `/media/*` itself; delete the folder to start over).
+- `make e2e` has its own Garage in the test stack (S3 `13900`, public media `13902`), lost on `make e2e-down`.
 
 ## Data
 

@@ -178,6 +178,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
+      # Postgres, Garage (and its one-shot init, which `--wait` accepts once exited), API and web.
       - name: Start the test stack
         run: docker compose -f compose.test.yml up -d --build --wait
       # The projects in frontend/e2e/playwright.config.ts use Desktop Chrome (chromium) and iPhone 14 (webkit).

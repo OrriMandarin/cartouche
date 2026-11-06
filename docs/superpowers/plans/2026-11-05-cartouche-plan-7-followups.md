@@ -70,6 +70,8 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 
 - **R-E-T3 (ffmpeg 5.1)**: every invocation of the T3 adapter was run by hand in `debian:bookworm-slim` with its ffmpeg 5.1.9 (`-fpsmax`, `-sseof`, `-update 1`, `stream_side_data=rotation` in ffprobe, autorotate inside `-filter_complex`, `split`): all accepted; outputs H.264 High at the expected sizes (1280×960 and 960×540; rotated clip 1080×810 and 540×960, upright, no rotation side data), full-frame posters (1920×1080, 1080×1920). Measured there (probably emulated amd64): 25 s for the 4 s 1080p60 clip, 13 s for the 3 s rotated 1080p30 clip; on the Mac with ffmpeg 8.1.2 a whole probe + render + poster takes about 3 s.
 
+- **R-E-T17 (browser decision, R-S24)**: Playwright 1.64.1's bundled Chromium and WebKit decode and play H.264 on macOS and on Linux (checked in `mcr.microsoft.com/playwright:v1.64.1-noble`: `canPlayType` "probably", `videoWidth` 640, `readyState` 4, playing). R-S24's Chrome fallback does not apply: no `channel: "chrome"`, CI keeps `playwright install --with-deps chromium webkit`. The probe ran on an arm64 container; CI runners are amd64 and use the same Playwright builds. `compose.test.yml` brings `garage` and the one-shot `garage-init`, which `docker compose up -d --build --wait` accepts once exited, so the e2e job's stack step is unchanged; its failure dump (`docker compose logs`) includes Garage.
+
 ## Review findings deferred
 
 (Filled during execution.)
