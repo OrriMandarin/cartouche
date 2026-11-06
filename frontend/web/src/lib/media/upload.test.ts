@@ -1,5 +1,6 @@
 import { ApiError } from "@cartouche/api-client";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import messages from "../../../messages/fr.json";
 import { checkBeforeUpload, mediaErrorKey, reframeMedia, uploadMedia } from "./upload";
 
 const MB = 1024 * 1024;
@@ -26,8 +27,9 @@ describe("checkBeforeUpload", () => {
     expect(checkBeforeUpload(fileOf("image/gif"), "header")).toBe("unsupported");
     expect(checkBeforeUpload(fileOf("image/jpeg", 11 * MB), "header")).toBe("too_large");
     expect(checkBeforeUpload(fileOf("image/jpeg", 10 * MB), "header")).toBeNull();
-    expect(checkBeforeUpload(fileOf("video/mp4", 26 * MB), "header")).toBe("too_large");
-    expect(checkBeforeUpload(fileOf("video/mp4", 25 * MB), "header")).toBeNull();
+    expect(checkBeforeUpload(fileOf("video/mp4", 26 * MB), "header")).toBeNull();
+    expect(checkBeforeUpload(fileOf("video/mp4", 50 * MB + 1), "header")).toBe("too_large");
+    expect(checkBeforeUpload(fileOf("video/mp4", 50 * MB), "header")).toBeNull();
     expect(checkBeforeUpload(fileOf("video/mp4"), "avatar")).toBe("unsupported");
     for (const type of ["image/jpeg", "image/png", "image/webp"]) {
       expect(checkBeforeUpload(fileOf(type), "avatar")).toBeNull();
@@ -180,18 +182,36 @@ describe("mediaErrorKey", () => {
     new ApiError({ status, code, message: "m", requestId: null, fields });
 
   test("MED-013 MED-012 every server code has its message", () => {
-    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "poster", code: "poster_required" }]))).toBe(
-      "editor.media.errors.poster_required",
-    );
     expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "file", code: "image_too_large" }]))).toBe(
-      "editor.media.errors.image_too_large",
-    );
-    // An image too large as a waiting image is still a too large image.
-    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "poster", code: "image_too_large" }]))).toBe(
       "editor.media.errors.image_too_large",
     );
     expect(mediaErrorKey(apiError(413, "payload_too_large"))).toBe("editor.media.errors.payload_too_large");
     expect(mediaErrorKey(apiError(415, "unsupported_media_type"))).toBe("editor.media.errors.unsupported_media_type");
+  });
+
+  test("EDI-037 video_unreadable, video_too_large and video_processing_timeout have their own message", () => {
+    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "file", code: "video_unreadable" }]))).toBe(
+      "editor.media.errors.video_unreadable",
+    );
+    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "file", code: "video_too_large" }]))).toBe(
+      "editor.media.errors.video_too_large",
+    );
+    expect(mediaErrorKey(apiError(503, "video_processing_timeout"))).toBe(
+      "editor.media.errors.video_processing_timeout",
+    );
+    for (const key of ["video_unreadable", "video_too_large", "video_processing_timeout"]) {
+      expect(messages.editor.media.errors).toHaveProperty(key);
+    }
+    expect(messages.editor.media.errors).not.toHaveProperty("poster_required");
+  });
+
+  test("EDI-037 the too-heavy message says 50 Mo for a video", () => {
+    const expected = "Ce fichier est trop lourd (10 Mo pour une image, 50 Mo pour une vidéo)";
+    expect(messages.editor.media.errors.too_large).toBe(expected);
+    expect(messages.editor.media.errors.payload_too_large).toBe(expected);
+    expect(messages.editor.media.errors.video_too_large).toBe(
+      "Cette vidéo est trop grande (4\u00a0096 pixels de côté au plus)",
+    );
   });
 
   test("MED-030 MED-033 a media without source and a refused crop have their message", () => {

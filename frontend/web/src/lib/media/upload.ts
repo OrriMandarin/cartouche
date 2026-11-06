@@ -21,7 +21,7 @@ export type UploadMedia = (slot: MediaSlot, file: Blob, poster?: Blob, framing?:
 
 /** Limits of the server (MED-002, MED-012), mirrored here to answer before sending; the server stays the arbiter. */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 /** The server accepts up to 30.1 s: containers often report a few hundredths over 30 s for a 30 s video. */
 export const MAX_VIDEO_SECONDS = 30.1;
 
@@ -120,15 +120,20 @@ export async function reframeMedia(
 
 const ERROR_PREFIX = "editor.media.errors.";
 
-/** Message key of a failed upload or re-framing (MED-012, MED-013, MED-030): one message per code the server answers with. */
+/** Message key of a failed upload or re-framing (MED-012, MED-013, MED-030, MED-039): one message per code the server answers with. */
 export function mediaErrorKey(error: unknown): string {
   if (error instanceof ApiError) {
-    if (["payload_too_large", "unsupported_media_type", "media_not_reframable"].includes(error.code)) {
+    if ([
+        "payload_too_large",
+        "unsupported_media_type",
+        "media_not_reframable",
+        "video_processing_timeout",
+      ].includes(error.code)) {
       return ERROR_PREFIX + error.code;
     }
-    const known = ["video_too_long", "poster_required", "image_too_large", "invalid_crop"];
+    const known = ["video_too_long", "video_unreadable", "video_too_large", "image_too_large", "invalid_crop"];
     const refused = error.fields.find(
-      ({ field, code }) => (field === "file" || field === "poster" || field === "crop") && known.includes(code),
+      ({ field, code }) => (field === "file" || field === "crop") && known.includes(code),
     );
     if (refused) return ERROR_PREFIX + refused.code;
   }
