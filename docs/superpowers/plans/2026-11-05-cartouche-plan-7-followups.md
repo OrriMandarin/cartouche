@@ -58,6 +58,9 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 - **A message while the server prepares the video**: the field shows « Envoi en cours… » for the transfer and the transcode together (up to two minutes); a distinct « Préparation de la vidéo… » would need upload progress events.
 - **The badge « Vidéo · {seconds} s »** shows the original's duration, not the loop's (R-S31).
 - **Developing from a phone on the LAN** in S3 mode: the bucket's `http://localhost:<port>` address is not reachable from the phone (and Garage picks the bucket from the `Host` header); `MEDIA_STORAGE=local` is the documented workaround (T9, T18).
+- **The editor's message for a refused codec** (MED-040, `415`): it is the generic « ni une vidéo MP4, ou il est abîmé », which misleads for a valid MP4 in another codec; a dedicated message would need an EDI-037 change.
+- **A duplicated video whose original is missing** (a copy made while the source card's original was already gone) still gets a `source-*.mp4` edit copy, so the editor offers « Recadrer », which then answers `409 media_not_reframable`. Rare; the fix is to drop the copy's `source` when no original was copied.
+- **Videos with non-square pixels** (anamorphic) would come out stretched: the crop works on storage pixels and the encode sets `setsar=1`. Phones do not record them.
 - **Videos uploaded before plan 7** keep their uncropped files (R-S12); a one-off script could re-encode them from their stored file and framing if production data ever exists before this ships.
 
 ## Measurements
