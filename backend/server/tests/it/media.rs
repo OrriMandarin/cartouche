@@ -471,6 +471,89 @@ async fn an_unreadable_video_is_refused_on_its_file_field(pool: PgPool) {
 
 // spec: MED-039
 #[sqlx::test(migrations = "./migrations")]
+async fn a_video_with_no_size_is_refused_unreadable(pool: PgPool) {
+    let stub = StubVideoProcessor::default().with_probe(VideoProbe {
+        width: 0,
+        height: 0,
+        codec: "h264".to_string(),
+    });
+    let app = app_with_stub(pool, stub.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "file", "code": "video_unreadable" }])
+    );
+    assert!(stub.jobs().is_empty());
+    assert!(app.media_keys().await.is_empty());
+}
+
+// spec: MED-039, MED-040
+#[sqlx::test(migrations = "./migrations")]
+async fn a_codec_the_tool_refuses_is_unsupported_even_with_no_size(pool: PgPool) {
+    // The headers of an mpeg4 video carry no size: the codec check comes first.
+    let stub = StubVideoProcessor::default().with_probe(VideoProbe {
+        width: 0,
+        height: 0,
+        codec: "mpeg4".to_string(),
+    });
+    let app = app_with_stub(pool, stub.clone()).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    assert_eq!(error_code(&res), "unsupported_media_type");
+    assert!(stub.jobs().is_empty());
+}
+
+// spec: MED-039
+#[sqlx::test(migrations = "./migrations")]
+async fn an_undecodable_placeholder_refuses_the_upload_and_stores_nothing(pool: PgPool) {
+    let stub = StubVideoProcessor::default();
+    stub.set_undecodable_poster(true);
+    let app = app_with_stub(pool.clone(), stub).await;
+    let card = create_card(&app, "alice", "alice-durand").await;
+    let res = upload(&app, "alice", card_id(&card), &video_parts(&[])).await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "file", "code": "video_unreadable" }])
+    );
+    assert!(app.media_keys().await.is_empty());
+    assert!(app.media.list_private_keys().await.is_empty());
+    assert_eq!(media_rows(&pool).await, 0);
+}
+
+// spec: MED-039, MED-030
+#[sqlx::test(migrations = "./migrations")]
+async fn an_undecodable_placeholder_refuses_the_re_frame_and_stores_nothing(pool: PgPool) {
+    let stub = StubVideoProcessor::default();
+    let app = app_with_stub(pool.clone(), stub.clone()).await;
+    let (id, old) = card_with_stub_video_header(&app).await;
+    let public_before = stored_files(&app).await;
+    let private_before = app.media.list_private_keys().await;
+    stub.set_undecodable_poster(true);
+
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        old["id"].as_str().unwrap(),
+        &[crop_part(0.125, 0.0, 0.75, 1.0)],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST, "{}", res.json);
+    assert_eq!(
+        res.json["error"]["fields"],
+        json!([{ "field": "file", "code": "video_unreadable" }])
+    );
+    assert_eq!(stored_files(&app).await, public_before);
+    assert_eq!(app.media.list_private_keys().await, private_before);
+    assert_eq!(media_rows(&pool).await, 1);
+}
+
+// spec: MED-039
+#[sqlx::test(migrations = "./migrations")]
 async fn a_video_wider_than_4096_is_refused(pool: PgPool) {
     let stub = StubVideoProcessor::default().with_probe(VideoProbe {
         width: 4100,

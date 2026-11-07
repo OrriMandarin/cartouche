@@ -3,6 +3,7 @@
 
 use std::io::Cursor;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -13,11 +14,13 @@ use image::{ImageFormat, Rgb, RgbImage};
 use crate::media::video::{RenderJob, RenderOutputs, VideoError, VideoProcessor};
 
 /// Answers `probe` with a configured result and `render` with files whose bytes name the
-/// plan, e.g. `served 1280x960 trim 1.000+2.000`. Cloning shares the recorded jobs.
+/// plan, e.g. `served 1280x960 trim 1.000+2.000`. Cloning shares the recorded jobs, the delay
+/// and the poster option.
 #[derive(Clone)]
 pub struct StubVideoProcessor {
     probe: Result<VideoProbe, String>,
     delay: Arc<Mutex<Duration>>,
+    undecodable_poster: Arc<AtomicBool>,
     jobs: Arc<Mutex<Vec<RenderJob>>>,
     inputs: Arc<Mutex<Vec<Vec<u8>>>>,
 }
@@ -32,6 +35,7 @@ impl Default for StubVideoProcessor {
                 codec: "h264".to_string(),
             }),
             delay: Arc::default(),
+            undecodable_poster: Arc::default(),
             jobs: Arc::default(),
             inputs: Arc::default(),
         }
@@ -61,6 +65,12 @@ impl StubVideoProcessor {
         *self.delay.lock().expect("not poisoned") = delay;
     }
 
+    /// When set, the poster frame `render` writes is not a decodable image. Applies to every
+    /// clone, for the calls that follow.
+    pub fn set_undecodable_poster(&self, undecodable: bool) {
+        self.undecodable_poster.store(undecodable, Ordering::SeqCst);
+    }
+
     async fn wait(&self) {
         let delay = *self.delay.lock().expect("not poisoned");
         tokio::time::sleep(delay).await;
@@ -77,6 +87,9 @@ impl StubVideoProcessor {
     }
 
     fn poster_png(&self) -> Result<Vec<u8>, VideoError> {
+        if self.undecodable_poster.load(Ordering::SeqCst) {
+            return Ok(b"not an image".to_vec());
+        }
         let (width, height) = self
             .probe
             .as_ref()
