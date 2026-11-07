@@ -476,3 +476,38 @@ async fn a_sound_track_does_not_stop_the_probe_nor_the_render() {
     let rendered = render("landscape-1080p60-audio-gps.mp4", None, None, 0.0).await;
     assert!(rendered.outputs.served.exists());
 }
+
+// spec: MED-040
+#[tokio::test]
+async fn an_hevc_video_is_probed_and_transcoded() {
+    assert_accepted_codec("hevc-320x180.mp4", "hevc").await;
+}
+
+// spec: MED-040
+#[tokio::test]
+async fn an_av1_video_is_probed_and_transcoded() {
+    assert_accepted_codec("av1-320x180.mp4", "av1").await;
+}
+
+/// The fixture is probed under its codec name and transcoded to the served H.264 file.
+async fn assert_accepted_codec(name: &str, codec: &str) {
+    let probe = adapter().probe(&fixture(name)).await.unwrap();
+    assert_eq!(
+        (probe.width, probe.height, probe.codec.as_str()),
+        (320, 180, codec)
+    );
+    let service = VideoService::new(Arc::new(adapter()), 1, Duration::from_secs(60));
+    let request = TranscodeRequest {
+        duration: Duration::from_secs(1),
+        crop: None,
+        video_loop: VideoLoop {
+            start: 0.0,
+            end: 1.0,
+        },
+        poster_time: 0.0,
+        edit_copy: true,
+    };
+    let bytes = Bytes::from(std::fs::read(fixture(name)).unwrap());
+    let transcoded = transcode(&service, bytes, request).await;
+    assert!(transcoded.is_ok(), "{:?}", transcoded.err());
+}

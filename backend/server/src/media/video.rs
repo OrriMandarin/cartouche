@@ -23,8 +23,10 @@ use tokio::sync::{Semaphore, oneshot};
 
 /// How many trailing lines of a failed program's stderr are logged.
 const LOGGED_STDERR_LINES: usize = 8;
-/// The formats the video tool decodes, as ffmpeg's `-codec_whitelist` lists them (MED-040).
-const CODEC_WHITELIST: &str = "h264,hevc,vp9,av1";
+/// The decoders the video tool may open, for ffmpeg's `-codec_whitelist` (MED-040). The list
+/// holds decoder names, not codec ids: the software AV1 decoder is `libdav1d` (or `libaom-av1`,
+/// the native `av1` needs hardware), and a build may prefer `libvpx-vp9` to the native `vp9`.
+const CODEC_WHITELIST: &str = "h264,hevc,vp9,libvpx-vp9,av1,libdav1d,libaom-av1";
 /// The highest frame rate of a served file or edit copy (MED-034).
 const MAX_FRAME_RATE: &str = "30";
 
@@ -557,10 +559,14 @@ mod tests {
 
     // spec: MED-040
     #[test]
-    fn every_ffmpeg_run_decodes_the_four_accepted_codecs_only() {
+    fn every_ffmpeg_run_opens_the_decoders_of_the_four_accepted_codecs_only() {
         let input = Path::new("input.mp4");
         let args = Ffmpeg::base_args(&[], input);
-        assert!(has_pair(&args, "-codec_whitelist", "h264,hevc,vp9,av1"));
+        assert!(has_pair(
+            &args,
+            "-codec_whitelist",
+            "h264,hevc,vp9,libvpx-vp9,av1,libdav1d,libaom-av1"
+        ));
         // An input option, so before the input.
         let whitelist = args.iter().position(|arg| arg == "-codec_whitelist");
         let file = args.iter().position(|arg| arg == "-i");

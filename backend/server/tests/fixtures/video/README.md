@@ -12,6 +12,8 @@ regenerate them casually: the tests depend on their size, length, codec and meta
 | `no-video-stream.mp4` | AAC only, `isom` brand |
 | `truncated.mp4` | the first 4 KB of the landscape clip |
 | `mpeg4-320x180.mp4` | 320 × 180, 24 fps, 1 s, MPEG-4 part 2 (a codec the server refuses, MED-040) |
+| `hevc-320x180.mp4` | 320 × 180, 24 fps, 1 s, HEVC (libx265), accepted by MED-040 |
+| `av1-320x180.mp4` | 320 × 180, 24 fps, 1 s, AV1 (libsvtav1), accepted by MED-040; its software decoder is `libdav1d` or `libaom-av1`, which the codec whitelist must name |
 
 ```sh
 F=ffmpeg
@@ -32,6 +34,12 @@ $F -y -f lavfi -i "sine=frequency=440:duration=2:sample_rate=44100" \
    -c:a aac -b:a 32k -brand isom no-video-stream.mp4
 
 $F -y -f lavfi -i "testsrc=size=320x180:rate=24:duration=1" -c:v mpeg4 -q:v 20 mpeg4-320x180.mp4
+
+$F -y -f lavfi -i "testsrc=size=320x180:rate=24:duration=1" \
+   -c:v libx265 -preset ultrafast -crf 40 -tag:v hvc1 hevc-320x180.mp4
+
+$F -y -f lavfi -i "testsrc=size=320x180:rate=24:duration=1" \
+   -c:v libsvtav1 -crf 50 -preset 10 av1-320x180.mp4
 
 head -c 4096 landscape-1080p60-audio-gps.mp4 > truncated.mp4
 ```
