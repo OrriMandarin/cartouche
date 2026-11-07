@@ -4,9 +4,14 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 use std::time::Duration;
 
-use cartouche_api::media::video::{Ffmpeg, RenderJob, RenderOutputs, VideoError, VideoProcessor};
+use bytes::Bytes;
+use cartouche_api::media::transcode::{TranscodeError, TranscodeRequest, transcode};
+use cartouche_api::media::video::{
+    Ffmpeg, RenderJob, RenderOutputs, VideoError, VideoProcessor, VideoService,
+};
 use cartouche_domain::{CropRect, PosterSeek, VideoLoop, VideoPlan, plan_video};
 use serde_json::Value;
 
@@ -440,4 +445,34 @@ async fn a_poster_past_the_end_that_writes_no_frame_is_unreadable() {
         matches!(result, Err(VideoError::Unreadable(_))),
         "{result:?}"
     );
+}
+
+// spec: MED-040
+#[tokio::test]
+async fn a_video_in_another_codec_is_refused_unsupported() {
+    let service = VideoService::new(Arc::new(adapter()), 1, Duration::from_secs(60));
+    let bytes = std::fs::read(fixture("mpeg4-320x180.mp4")).unwrap();
+    let request = TranscodeRequest {
+        duration: Duration::from_secs(1),
+        crop: None,
+        video_loop: VideoLoop {
+            start: 0.0,
+            end: 1.0,
+        },
+        poster_time: 0.0,
+        edit_copy: true,
+    };
+    let result = transcode(&service, Bytes::from(bytes), request).await;
+    assert!(
+        matches!(result, Err(TranscodeError::UnsupportedCodec)),
+        "{result:?}"
+    );
+}
+
+// spec: MED-040
+#[tokio::test]
+async fn a_sound_track_does_not_stop_the_probe_nor_the_render() {
+    // The landscape clip carries AAC, which the tool never decodes.
+    let rendered = render("landscape-1080p60-audio-gps.mp4", None, None, 0.0).await;
+    assert!(rendered.outputs.served.exists());
 }

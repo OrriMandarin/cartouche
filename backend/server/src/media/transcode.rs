@@ -129,6 +129,9 @@ async fn run_job(
             ProbeRejection::TooLarge => Refusal::TooLarge,
         }));
     }
+    if probe.width == 0 || probe.height == 0 {
+        return Err(VideoError::Unreadable("the video has no size".to_string()));
+    }
     let planned = plan_video(
         &probe,
         request.duration,

@@ -23,6 +23,8 @@ use tokio::sync::{Semaphore, oneshot};
 
 /// How many trailing lines of a failed program's stderr are logged.
 const LOGGED_STDERR_LINES: usize = 8;
+/// The formats the video tool decodes, as ffmpeg's `-codec_whitelist` lists them (MED-040).
+const CODEC_WHITELIST: &str = "h264,hevc,vp9,av1";
 /// The highest frame rate of a served file or edit copy (MED-034).
 const MAX_FRAME_RATE: &str = "30";
 
@@ -158,7 +160,8 @@ impl Ffmpeg {
     }
 
     /// The options every ffmpeg run starts with, up to the input file: no stdin, the `file`
-    /// protocol alone, the container forced to MP4, then `input_options` (applied to the
+    /// protocol alone, the four accepted codecs alone (no other stream of the file is ever
+    /// decoded, MED-040), the container forced to MP4, then `input_options` (applied to the
     /// input) and the input itself.
     fn base_args(input_options: &[OsString], input: &Path) -> Vec<OsString> {
         let mut args: Vec<OsString> = [
@@ -169,6 +172,8 @@ impl Ffmpeg {
             "-y",
             "-protocol_whitelist",
             "file",
+            "-codec_whitelist",
+            CODEC_WHITELIST,
         ]
         .map(OsString::from)
         .into();
@@ -176,6 +181,34 @@ impl Ffmpeg {
         args.extend(["-f", "mp4", "-i"].map(OsString::from));
         let mut file = OsString::from("file:");
         file.push(input);
+        args.push(file);
+        args
+    }
+
+    /// ffprobe reads the container's headers alone (`-nofind_stream_info`): it opens no
+    /// decoder, so no stream of the file is decoded, whatever its codec (MED-040). The
+    /// codec, the size and the rotation of the first video stream are in those headers.
+    fn probe_args(input: &Path) -> Vec<OsString> {
+        let mut file = OsString::from("file:");
+        file.push(input);
+        let mut args: Vec<OsString> = [
+            "-v",
+            "error",
+            "-hide_banner",
+            "-protocol_whitelist",
+            "file",
+            "-nofind_stream_info",
+            "-f",
+            "mp4",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_name,width,height:stream_side_data=rotation",
+            "-of",
+            "json",
+        ]
+        .map(OsString::from)
+        .into();
         args.push(file);
         args
     }
@@ -295,10 +328,9 @@ fn parse_probe(stdout: &[u8]) -> Result<VideoProbe, VideoError> {
         .get(0)
         .ok_or_else(|| unreadable("no video stream"))?;
     let side = |key: &str| stream[key].as_u64().and_then(|n| u32::try_from(n).ok());
-    let (width, height) = side("width")
-        .zip(side("height"))
-        .filter(|(width, height)| *width > 0 && *height > 0)
-        .ok_or_else(|| unreadable("the video has no size"))?;
+    // A codec the tool does not decode has no size in the headers (MED-040): its size is 0
+    // here and the codec check refuses it before anything reads the size.
+    let (width, height) = (side("width").unwrap_or(0), side("height").unwrap_or(0));
     let codec = stream["codec_name"]
         .as_str()
         .ok_or_else(|| unreadable("the video has no codec"))?
@@ -318,26 +350,7 @@ fn parse_probe(stdout: &[u8]) -> Result<VideoProbe, VideoError> {
 #[async_trait]
 impl VideoProcessor for Ffmpeg {
     async fn probe(&self, input: &Path) -> Result<VideoProbe, VideoError> {
-        let mut file = OsString::from("file:");
-        file.push(input);
-        let mut args: Vec<OsString> = [
-            "-v",
-            "error",
-            "-hide_banner",
-            "-protocol_whitelist",
-            "file",
-            "-f",
-            "mp4",
-            "-select_streams",
-            "v:0",
-            "-show_entries",
-            "stream=codec_name,width,height:stream_side_data=rotation",
-            "-of",
-            "json",
-        ]
-        .map(OsString::from)
-        .into();
-        args.push(file);
+        let args = Self::probe_args(input);
         parse_probe(&Self::run(&self.ffprobe, &args).await?)
     }
 
@@ -535,6 +548,33 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(100)).await;
         assert_eq!(ran.load(Ordering::SeqCst), 0, "the abandoned job ran");
         assert_eq!(service.available_permits(), 1);
+    }
+
+    fn has_pair(args: &[OsString], option: &str, value: &str) -> bool {
+        args.windows(2)
+            .any(|pair| pair[0] == option && pair[1] == value)
+    }
+
+    // spec: MED-040
+    #[test]
+    fn every_ffmpeg_run_decodes_the_four_accepted_codecs_only() {
+        let input = Path::new("input.mp4");
+        let args = Ffmpeg::base_args(&[], input);
+        assert!(has_pair(&args, "-codec_whitelist", "h264,hevc,vp9,av1"));
+        // An input option, so before the input.
+        let whitelist = args.iter().position(|arg| arg == "-codec_whitelist");
+        let file = args.iter().position(|arg| arg == "-i");
+        assert!(whitelist < file, "{args:?}");
+    }
+
+    // spec: MED-040
+    #[test]
+    fn ffprobe_opens_no_decoder() {
+        let args = Ffmpeg::probe_args(Path::new("input.mp4"));
+        assert!(
+            args.iter().any(|arg| arg == "-nofind_stream_info"),
+            "{args:?}"
+        );
     }
 
     // spec: MED-039

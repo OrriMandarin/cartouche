@@ -11,6 +11,7 @@ regenerate them casually: the tests depend on their size, length, codec and meta
 | `small-640x360-24fps.mp4` | 640 × 360, 24 fps, 2 s, VP9 in MP4 |
 | `no-video-stream.mp4` | AAC only, `isom` brand |
 | `truncated.mp4` | the first 4 KB of the landscape clip |
+| `mpeg4-320x180.mp4` | 320 × 180, 24 fps, 1 s, MPEG-4 part 2 (a codec the server refuses, MED-040) |
 
 ```sh
 F=ffmpeg
@@ -29,6 +30,8 @@ $F -y -f lavfi -i "testsrc=size=640x360:rate=24:duration=2" \
 
 $F -y -f lavfi -i "sine=frequency=440:duration=2:sample_rate=44100" \
    -c:a aac -b:a 32k -brand isom no-video-stream.mp4
+
+$F -y -f lavfi -i "testsrc=size=320x180:rate=24:duration=1" -c:v mpeg4 -q:v 20 mpeg4-320x180.mp4
 
 head -c 4096 landscape-1080p60-audio-gps.mp4 > truncated.mp4
 ```
