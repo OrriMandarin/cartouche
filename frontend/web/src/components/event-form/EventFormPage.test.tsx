@@ -303,7 +303,8 @@ describe("EventFormPage", () => {
     send();
     expect((await screen.findByTestId("event-form-summary")).textContent).toContain("Vos coordonnées n’ont pas été envoyées\u00a0: 2 champs sont à corriger.");
     expect(screen.getByTestId("field-error-answers.first_name")).toHaveTextContent("Ce texte est trop long.");
-    expect(field("answers.first_name")).toHaveFocus();
+    // The refusal arrives outside a React event, so the focus effect may run after the summary is shown.
+    await waitFor(() => expect(field("answers.first_name")).toHaveFocus());
     expect(screen.queryByTestId("event-form-message")).toBeNull();
   });
 
