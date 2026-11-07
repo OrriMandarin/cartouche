@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { editorSaveButton, expect, openEditorSection, saveCard, showEditorView, test, type TestApi } from "../fixtures";
-import { WEB_URL } from "../env";
+import { MEDIA_URL, WEB_URL } from "../env";
 
 let aliceCardId: string;
 
@@ -40,7 +40,7 @@ test("MED-005 MED-006 PUB-014 avatar is cropped, published as WebP and in the vC
   expect(await vcard.text()).toContain("PHOTO;ENCODING=b;TYPE=JPEG:");
 });
 
-test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page }) => {
+test("MED-003 PUB-005 PUB-006 header video with a server-made placeholder", async ({ page }) => {
   await openMedia(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-2s.mp4"));
   // A 16:9 video is framed first (EDI-034).
@@ -51,13 +51,15 @@ test("MED-003 PUB-005 PUB-006 header video with captured poster", async ({ page 
   await page.goto("/c/alice-durand");
   const video = page.getByTestId("card-header-video");
   await expect(video).toBeVisible();
-  expect(await video.getAttribute("poster")).toMatch(/\.webp$/);
+  const poster = (await video.getAttribute("poster")) ?? "";
+  expect(poster.startsWith(`${MEDIA_URL}/`)).toBe(true);
+  expect(poster.endsWith(".webp")).toBe(true);
   await expect(video).toHaveJSProperty("muted", true);
-  await expect(video).toHaveJSProperty("loop", false);
+  await expect(video).toHaveJSProperty("loop", true);
   await expect(video).toHaveAttribute("playsinline", "");
 });
 
-test("EDI-034 MED-028 framing the header video", async ({ page, api }) => {
+test("EDI-034 MED-028 MED-029 MED-032 MED-045 framing the header video", async ({ page, api }) => {
   await openMedia(page);
   await page.getByTestId("media-header-input").setInputFiles(fixture("header-2s.mp4"));
 
@@ -86,14 +88,24 @@ test("EDI-034 MED-028 framing the header video", async ({ page, api }) => {
   // The playhead followed the end handle: its frame is the waiting image.
   expect(header.poster_time).toBeCloseTo(1.8);
 
+  // The server encoded the loop: the served file lasts the 1.3 s of the loop, not the 2 s of the original (MED-032).
   await page.goto("/c/alice-durand");
   const video = page.getByTestId("card-header-video");
-  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime >= 0.5 && !el.paused)).toBe(true);
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => (Number.isFinite(el.duration) ? el.duration : 0))).toBeGreaterThan(0);
+  const duration = await video.evaluate((el: HTMLVideoElement) => el.duration);
+  expect(duration).toBeGreaterThan(1.15);
+  expect(duration).toBeLessThan(1.45);
 
-  // « Recadrer » starts from the stored loop; a new waiting image is captured from the stored video (MED-030).
+  // « Recadrer » starts from the stored loop and draws its strip from the edit copy, across origins (MED-045);
+  // the request carries no poster part, the new waiting image is made by the server (MED-029).
   const first = await storedHeaderId(api);
   await openMedia(page);
+  const reframe = page.waitForRequest((request) => request.method() === "POST" && /\/media\/[^/]+\/reframe$/.test(request.url()));
   await page.getByTestId("media-header-crop").click();
+  await expect(dialog.getByTestId("video-crop-frame")).toHaveCount(8);
+  await expect
+    .poll(() => dialog.getByTestId("video-crop-frame").evaluateAll((frames) => frames.every((frame) => (frame as HTMLImageElement).src.startsWith("data:image/"))))
+    .toBe(true);
   await expect(start).toHaveAttribute("aria-valuetext", "0,5\u00a0s");
   await expect(end).toHaveAttribute("aria-valuetext", "1,8\u00a0s");
   await start.focus();
@@ -103,6 +115,9 @@ test("EDI-034 MED-028 framing the header video", async ({ page, api }) => {
   await expect(dialog).toBeHidden();
   await expect(page.getByTestId("editor-status")).toHaveText("Modifications non enregistrées");
   await saveCard(page);
+  const body = (await reframe).postData() ?? "";
+  expect(body).toContain('name="poster_time"');
+  expect(body).not.toContain('name="poster"');
   const reframed = await api.get(`/api/cards/${aliceCardId}`, { headers: await api.authHeaders("seed-alice") });
   const second = ((await reframed.json()) as { header: { id: string; loop: unknown; poster_time: number } }).header;
   expect(second.id).not.toBe(first);
@@ -226,37 +241,35 @@ test("MED-013 too long video is refused before upload", async ({ page }) => {
   await expect(editorSaveButton(page)).toBeDisabled();
 });
 
-test("MED-017 media served through the web origin honours Range", async ({ api }) => {
-  const media = await api.uploadMedia(
-    "seed-alice",
-    aliceCardId,
-    "header",
-    { name: "header-2s.mp4", mimeType: "video/mp4", buffer: await readFile(fixture("header-2s.mp4")) },
-    { name: "poster.jpg", mimeType: "image/jpeg", buffer: await readFile(fixture("avatar.jpg")) },
-  );
+test("MED-017 the bucket honours Range", async ({ api }) => {
+  const media = await api.uploadMedia("seed-alice", aliceCardId, "header", {
+    name: "header-2s.mp4",
+    mimeType: "video/mp4",
+    buffer: await readFile(fixture("header-2s.mp4")),
+  });
   expect(media.video_url).toBeTruthy();
-  const url = new URL(media.video_url!);
-  const response = await api.get(`${WEB_URL}${url.pathname}`, { headers: { range: "bytes=0-99" } });
+  expect(media.video_url!.startsWith(`${MEDIA_URL}/`)).toBe(true);
+  const response = await api.get(media.video_url!, { headers: { range: "bytes=0-99" } });
   expect(response.status()).toBe(206);
   expect(response.headers()["content-range"]).toMatch(/^bytes 0-99\//);
   expect((await response.body()).length).toBe(100);
 });
 
-test("MED-012 uploads above 10 MB pass the web rewrite", async ({ api }) => {
-  // The video followed by a top-level `free` box of 11 MB: still a valid MP4, but a body above 10 MB.
-  const free = Buffer.alloc(11 * 1024 * 1024);
+test("MED-002 a 45 MB video passes the web proxy", async ({ api }) => {
+  test.setTimeout(200_000);
+  // The video followed by a top-level `free` box of 45 MB: still a valid MP4, above the former 25 MB limit.
+  const free = Buffer.alloc(45 * 1024 * 1024);
   free.writeUInt32BE(free.length, 0);
   free.write("free", 4, "ascii");
   const video = Buffer.concat([await readFile(fixture("header-2s.mp4")), free]);
-  expect(video.length).toBeGreaterThan(10 * 1024 * 1024);
 
   const response = await api.post(`${WEB_URL}/api/cards/${aliceCardId}/media`, {
     headers: await api.authHeaders("seed-alice"),
     multipart: {
       slot: "header",
-      file: { name: "header-11mb.mp4", mimeType: "video/mp4", buffer: video },
-      poster: { name: "poster.jpg", mimeType: "image/jpeg", buffer: await readFile(fixture("avatar.jpg")) },
+      file: { name: "header-45mb.mp4", mimeType: "video/mp4", buffer: video },
     },
+    timeout: 180_000,
   });
   expect(response.status(), await response.text()).toBe(201);
 });

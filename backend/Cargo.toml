@@ -17,3 +17,9 @@ unicode-normalization = "0.1"
 url = "2"
 uuid = { version = "1.29.0", features = ["v4", "v7"] }
 cartouche-domain = { path = "domain" }
+
+# `make api` runs a debug build: unoptimised image decoding and WebP encoding took about 118 s on a
+# 24-megapixel photo. Dependencies are compiled optimised; the workspace crates stay in debug for
+# fast rebuilds and full debug info.
+[profile.dev.package."*"]
+opt-level = 3

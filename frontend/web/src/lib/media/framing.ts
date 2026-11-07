@@ -1,12 +1,10 @@
 import type { CSSProperties } from "react";
 import type { CropRect, VideoLoop } from "./upload";
 
-/** Tolerance, in seconds, around the loop bounds: `timeupdate` fires a few times per second. */
-const LOOP_MARGIN = 0.05;
-
 /**
- * Places a video in its header so that only the stored crop shows (MED-032): the file is scaled up by the
- * inverse of the crop and shifted. Without a crop (media uploaded before framing existed), it covers (MED-033).
+ * Places a video so that only the chosen crop shows, for the preview of the crop dialogs: the file is scaled up by
+ * the inverse of the crop and shifted. Without a crop, it covers. The public page does not use it: it plays the
+ * served file as is (MED-032, MED-033).
  */
 export function videoCropStyle(crop: CropRect | null | undefined): CSSProperties {
   if (!crop) {
@@ -21,13 +19,6 @@ export function videoCropStyle(crop: CropRect | null | undefined): CSSProperties
     maxWidth: "none",
     objectFit: "fill",
   };
-}
-
-/** The time to seek to for the video to stay in its loop (MED-032), or null to let it play on. */
-export function loopRestart(currentTime: number, loop: VideoLoop | null | undefined, duration: number): number | null {
-  if (!loop) return currentTime >= duration - LOOP_MARGIN ? 0 : null;
-  if (currentTime >= loop.end - LOOP_MARGIN || currentTime < loop.start - LOOP_MARGIN) return loop.start;
-  return null;
 }
 
 /** The header is 4:3 (MED-015); the profile photo is square (MED-026). */
@@ -49,6 +40,15 @@ export interface PercentArea {
   y: number;
   width: number;
   height: number;
+}
+
+/**
+ * spec: EDI-026, MED-026. Whether an area comes from a loaded media. Until the media is loaded, react-easy-crop
+ * measures the placeholder size of its element (300 × 150 for a video) and reports an area of the wrong shape, with
+ * no pixels since the media has no natural size yet.
+ */
+export function isMeasuredArea(pixels: { width: number; height: number }): boolean {
+  return pixels.width > 0 && pixels.height > 0;
 }
 
 /** Drops the floating-point noise of a sum of fractions, far below a source pixel. */

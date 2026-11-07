@@ -85,11 +85,11 @@ export function CardEditor({ card }: { card: CardView }) {
     }
   }, []);
   const uploadMedia = useCallback<UploadMedia>(
-    (slot, file, poster, framing) => inFlight(() => sendMedia(slot, file, poster, framing)),
+    (slot, file, framing) => inFlight(() => sendMedia(slot, file, framing)),
     [inFlight, sendMedia],
   );
   const reframeMedia = useCallback<ReframeMedia>(
-    (mediaId, framing, poster) => inFlight(() => sendReframe(mediaId, framing, poster)),
+    (mediaId, framing) => inFlight(() => sendReframe(mediaId, framing)),
     [inFlight, sendReframe],
   );
   const [saved, setSaved] = useState(() => draftFromCard(card));

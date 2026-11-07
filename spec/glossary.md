@@ -29,7 +29,10 @@ Domain concepts, as the spec uses them.
 | **Submission window** | The period during which an event's form is open: from its start until 15 minutes after its end (see EVT-008 and EVT-026). |
 | **Ready-made theme** | One of the eight themes a card starts from (`craie`, `ivoire`, `terracotta`, `sauge`, `bonbon`, `lagon`, `encre`, `minuit`), adjusted by the owner's own settings (see TPL-009 and TPL-010). |
 | **Contrast checks** | The four contrast ratios a theme must reach to be saved: text, muted text, text on the accent, accent (see TPL-018 and TPL-023). |
-| **Source** | The whole image kept by the server for a media, from which its displayed files are cut, so that it can be re-framed (see MED-025). |
+| **Source** | What the server keeps of a media so that it can be re-framed: for an image, its whole image, from which its displayed files are cut (see MED-025); for a video, its edit copy (see MED-037). |
+| **Original** | The file uploaded for a header video, kept in private storage and never served: the input of every re-framing of the video (see MED-036). |
+| **Served file** | The file of a header video that the public page plays, transcoded by the server along the video's crop and loop (see MED-034). |
+| **Edit copy** | A smaller copy of a header video, whole frame and whole length, that the dashboard plays and draws frames from to re-frame the video; it is the video's source (see MED-037). |
 | **Crop** | The rectangle of the source shown on the card, in proportions of the source: 4:3 for the header, square for the profile photo (see MED-026). |
 | **Framing** | A media's crop and, for a video, its loop and its poster time (see MED-028 and MED-030). |
 | **Device identifier** | A random identifier kept by the prospect's browser, used for the per-device submission limit (see EVT-028). |

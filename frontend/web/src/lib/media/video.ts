@@ -1,4 +1,3 @@
-import { canvasToJpeg } from "./canvas";
 import { frameTimes } from "./framing";
 
 /** How long a video may take to become readable before the upload is given up (MED-021). */
@@ -37,7 +36,7 @@ async function waitFor(
 
 /**
  * spec: MED-021. A `<video>` outside the page, loaded within the time limit, and the means to release it. A file is
- * read through an object URL; a stored video through its address, asking for CORS so that its frames can be drawn.
+ * read through an object URL; a stored video (its edit copy) through its address, asking for CORS so that its frames can be drawn (MED-045).
  */
 async function loadVideo(source: File | string): Promise<{ video: HTMLVideoElement; release: () => void }> {
   const url = typeof source === "string" ? source : URL.createObjectURL(source);
@@ -80,23 +79,10 @@ export async function readVideoInfo(file: File): Promise<VideoInfo> {
   }
 }
 
-/** How far before its end a video is sought to show its last frame: browsers may show nothing exactly at the end. */
-const LAST_FRAME_MARGIN = 0.05;
-
-/**
- * spec: MED-003, MED-029. Where to seek for the frame at `seconds`: that time, or just before the end for a time at
- * or past it (the last frame); the start for a time that is not a number or is negative.
- */
-function seekTime(seconds: number, duration: number): number {
-  if (!Number.isFinite(seconds) || seconds < 0) return 0;
-  if (!Number.isFinite(duration) || seconds < duration - LAST_FRAME_MARGIN) return seconds;
-  return Math.max(0, duration - LAST_FRAME_MARGIN);
-}
-
 /** Seeks `video` to the frame at `seconds` and draws it, `maxWidth` wide at most. */
 async function drawFrame(video: HTMLVideoElement, seconds: number, maxWidth: number): Promise<HTMLCanvasElement> {
   await waitFor(video, "seeked", () => {
-    video.currentTime = seekTime(seconds, video.duration);
+    video.currentTime = seconds;
   });
   const scale = Math.min(1, maxWidth / video.videoWidth);
   const canvas = document.createElement("canvas");
@@ -108,25 +94,8 @@ async function drawFrame(video: HTMLVideoElement, seconds: number, maxWidth: num
   return canvas;
 }
 
-/** Widest waiting image worth sending: the server never makes one wider than 1 920 px (MED-015). */
-const POSTER_MAX_WIDTH = 1920;
-
-/** When the waiting image of an uploaded video is captured, in seconds; sent as its poster time (MED-028). */
+/** When the waiting image of a video is taken when none was chosen, in seconds; sent as its poster time (MED-028). */
 export const POSTER_SECONDS = 0.1;
-
-/**
- * spec: MED-003, MED-021, MED-029. A still of the video, as a JPEG, to be shown while the video loads: the whole
- * frame at `atSeconds` (the last one for a time at or past the end), drawn in a canvas. Loading and seeking each
- * have the time limit.
- */
-export async function capturePoster(source: File | string, atSeconds = POSTER_SECONDS): Promise<Blob> {
-  const { video, release } = await loadVideo(source);
-  try {
-    return await canvasToJpeg(await drawFrame(video, atSeconds, POSTER_MAX_WIDTH));
-  } finally {
-    release();
-  }
-}
 
 /** A frame of the strip is drawn twice as wide as it shows, for sharp screens. */
 const FRAME_MAX_WIDTH = 240;

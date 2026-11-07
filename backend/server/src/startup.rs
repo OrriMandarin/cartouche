@@ -58,7 +58,12 @@ pub fn startup_summary(config: &Config) -> StartupSummary {
 fn describe_media_storage(media: &MediaStorageConfig) -> String {
     match media {
         MediaStorageConfig::Local { dir } => format!("local:{}", dir.display()),
-        MediaStorageConfig::S3 { bucket, region, .. } => format!("s3:{bucket}@{region}"),
+        MediaStorageConfig::S3 {
+            bucket,
+            private_bucket,
+            region,
+            ..
+        } => format!("s3:{bucket}+{private_bucket}@{region}"),
     }
 }
 
@@ -75,6 +80,7 @@ mod tests {
             ("AUTH_ISSUER", issuer),
             ("AUTH_JWKS_URL", "https://issuer.example.com/jwks.json"),
             ("PUBLIC_BASE_URL", "https://cartouche.example.com"),
+            ("MEDIA_STORAGE", "local"),
         ]);
         Config::from_vars(|k| m.get(k).map(|v| (*v).to_string())).unwrap()
     }

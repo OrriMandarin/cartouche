@@ -10,6 +10,7 @@ use object_store::local::LocalFileSystem;
 #[cfg(any(test, feature = "test-support"))]
 use object_store::memory::InMemory;
 use object_store::path::Path;
+use object_store::prefix::PrefixStore;
 use object_store::{
     Attribute, Attributes, GetOptions, GetRange, ObjectStore, ObjectStoreExt, PutOptions,
 };
@@ -18,7 +19,9 @@ use tokio::sync::Semaphore;
 use url::Url;
 use uuid::Uuid;
 
-use super::process::{PrepareError, PreparedImage, ProcessError, prepare_image};
+use super::process::{
+    EncodedVariant, PrepareError, PreparedImage, ProcessError, prepare_image, prepare_variants,
+};
 use super::signing::UrlSigner;
 use crate::config::MediaStorageConfig;
 
@@ -27,6 +30,9 @@ pub const CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 
 /// Files read through a signed address of the dashboard or the support page (MED-023).
 pub const PRIVATE_CACHE_CONTROL: &str = "private, max-age=86400";
+
+/// Where private originals live in local mode, under the media directory (MED-044).
+pub const LOCAL_PRIVATE_PREFIX: &str = "private";
 
 /// How long a signed address stays valid at least (MED-023).
 const SIGNATURE_LIFETIME_SECONDS: i64 = 24 * 3600;
@@ -72,11 +78,14 @@ pub struct MediaObject {
 /// Stores media files (local disk or S3-compatible) behind one interface.
 #[derive(Clone)]
 pub struct MediaService {
-    store: Arc<dyn ObjectStore>,
+    /// Files served to visitors (MED-011).
+    public: Arc<dyn ObjectStore>,
+    /// Private originals, which no address serves (MED-036, MED-044).
+    private: Arc<dyn ObjectStore>,
     /// Public address of the storage root, without a trailing slash.
     base_url: String,
     serves_locally: bool,
-    /// Whether `put` stores a content type and a cache policy with each file. A bucket serves
+    /// Whether `put` stores a content type, a cache policy and a disposition with each file. A bucket serves
     /// them itself (S3 mode); the local file system cannot store them, the API sets them when
     /// it serves the file.
     stores_headers: bool,
@@ -97,31 +106,36 @@ impl MediaService {
                 std::fs::create_dir_all(dir).map_err(|e| {
                     MediaError::Storage(format!("cannot create {}: {e}", dir.display()))
                 })?;
-                let store = LocalFileSystem::new_with_prefix(dir)?;
+                let store: Arc<dyn ObjectStore> = Arc::new(LocalFileSystem::new_with_prefix(dir)?);
+                let private = Arc::new(PrefixStore::new(Arc::clone(&store), LOCAL_PRIVATE_PREFIX));
                 let base = format!("{}/media", public_base_url.as_str().trim_end_matches('/'));
-                Ok(MediaService::new(Arc::new(store), &base, true))
+                Ok(MediaService::new(store, private, &base, true))
             }
             MediaStorageConfig::S3 {
                 bucket,
+                private_bucket,
                 region,
                 endpoint,
                 access_key_id,
                 secret_access_key,
                 public_base_url,
             } => {
-                let mut builder = AmazonS3Builder::new()
-                    .with_bucket_name(bucket)
-                    .with_region(region)
-                    .with_access_key_id(access_key_id)
-                    .with_secret_access_key(secret_access_key.expose());
-                if let Some(endpoint) = endpoint {
-                    builder = builder
-                        .with_endpoint(endpoint.as_str())
-                        .with_allow_http(endpoint.scheme() == "http");
-                }
-                let store = builder.build()?;
+                let bucket_store = |name: &str| -> Result<Arc<dyn ObjectStore>, MediaError> {
+                    let mut builder = AmazonS3Builder::new()
+                        .with_bucket_name(name)
+                        .with_region(region)
+                        .with_access_key_id(access_key_id)
+                        .with_secret_access_key(secret_access_key.expose());
+                    if let Some(endpoint) = endpoint {
+                        builder = builder
+                            .with_endpoint(endpoint.as_str())
+                            .with_allow_http(endpoint.scheme() == "http");
+                    }
+                    Ok(Arc::new(builder.build()?))
+                };
                 Ok(MediaService::new(
-                    Arc::new(store),
+                    bucket_store(bucket)?,
+                    bucket_store(private_bucket)?,
                     public_base_url.as_str(),
                     false,
                 ))
@@ -133,28 +147,45 @@ impl MediaService {
     /// `public_base` is the address keys are appended to (e.g. `http://localhost:3000/media/`).
     #[cfg(any(test, feature = "test-support"))]
     pub fn in_memory(public_base: Url) -> MediaService {
-        MediaService::new(Arc::new(InMemory::new()), public_base.as_str(), true)
+        MediaService::new(
+            Arc::new(InMemory::new()),
+            Arc::new(InMemory::new()),
+            public_base.as_str(),
+            true,
+        )
     }
 
     /// An in-memory store that behaves like S3 mode: files are served from `public_base`.
     #[cfg(any(test, feature = "test-support"))]
     pub fn in_memory_remote(public_base: Url) -> MediaService {
-        MediaService::new(Arc::new(InMemory::new()), public_base.as_str(), false)
+        MediaService::new(
+            Arc::new(InMemory::new()),
+            Arc::new(InMemory::new()),
+            public_base.as_str(),
+            false,
+        )
     }
 
-    /// A service over any store, for tests that need a store of their own (e.g. one that fails).
+    /// A service over any stores, for tests that need stores of their own (e.g. one that fails).
     #[cfg(any(test, feature = "test-support"))]
-    pub fn with_store(
-        store: Arc<dyn ObjectStore>,
+    pub fn with_stores(
+        public: Arc<dyn ObjectStore>,
+        private: Arc<dyn ObjectStore>,
         public_base: Url,
         serves_locally: bool,
     ) -> MediaService {
-        MediaService::new(store, public_base.as_str(), serves_locally)
+        MediaService::new(public, private, public_base.as_str(), serves_locally)
     }
 
-    fn new(store: Arc<dyn ObjectStore>, base_url: &str, serves_locally: bool) -> MediaService {
+    fn new(
+        public: Arc<dyn ObjectStore>,
+        private: Arc<dyn ObjectStore>,
+        base_url: &str,
+        serves_locally: bool,
+    ) -> MediaService {
         MediaService {
-            store,
+            public,
+            private,
             base_url: base_url.trim_end_matches('/').to_string(),
             serves_locally,
             stores_headers: !serves_locally,
@@ -206,15 +237,22 @@ impl MediaService {
         } else {
             PutOptions::default()
         };
-        self.store
+        self.public
             .put_opts(&Path::parse(key)?, bytes.into(), options)
             .await?;
         Ok(())
     }
 
+    /// Stores a private original under `key` (MED-036, MED-044). Nothing serves it, so it
+    /// carries no headers.
+    pub async fn put_private(&self, key: &str, bytes: Bytes) -> Result<(), MediaError> {
+        self.private.put(&Path::parse(key)?, bytes.into()).await?;
+        Ok(())
+    }
+
     /// Size in bytes of the file stored under `key`.
     pub async fn size(&self, key: &str) -> Result<u64, MediaError> {
-        Ok(self.store.head(&Path::parse(key)?).await?.size)
+        Ok(self.public.head(&Path::parse(key)?).await?.size)
     }
 
     /// The whole file, or the bytes of `range` when given (an end past the file is cut short).
@@ -223,15 +261,28 @@ impl MediaService {
         key: &str,
         range: Option<Range<u64>>,
     ) -> Result<MediaObject, MediaError> {
-        let options = GetOptions::default().with_range(range.map(GetRange::Bounded));
-        let result = self.store.get_opts(&Path::parse(key)?, options).await?;
-        let size = result.meta.size;
-        let bytes = result.bytes().await?;
-        Ok(MediaObject { bytes, size })
+        read(&self.public, key, range).await
+    }
+
+    /// Same as [`MediaService::get`], on a private original.
+    pub async fn get_private(
+        &self,
+        key: &str,
+        range: Option<Range<u64>>,
+    ) -> Result<MediaObject, MediaError> {
+        read(&self.private, key, range).await
     }
 
     pub async fn copy(&self, from: &str, to: &str) -> Result<(), MediaError> {
-        self.store
+        self.public
+            .copy(&Path::parse(from)?, &Path::parse(to)?)
+            .await?;
+        Ok(())
+    }
+
+    /// Copies a private original to another key of the private store.
+    pub async fn copy_private(&self, from: &str, to: &str) -> Result<(), MediaError> {
+        self.private
             .copy(&Path::parse(from)?, &Path::parse(to)?)
             .await?;
         Ok(())
@@ -248,16 +299,16 @@ impl MediaService {
         self.delete_prefix(&format!("cards/{card_id}")).await
     }
 
-    /// Every stored key, in no particular order. For tests.
+    /// Every key of the public store, in no particular order. For tests.
     #[cfg(any(test, feature = "test-support"))]
     pub async fn list_keys(&self) -> Vec<String> {
-        let metas: Vec<_> = self
-            .store
-            .list(None)
-            .try_collect()
-            .await
-            .expect("listable store");
-        metas.into_iter().map(|m| m.location.to_string()).collect()
+        list_all(&self.public).await
+    }
+
+    /// Every key of the private store, in no particular order. For tests.
+    #[cfg(any(test, feature = "test-support"))]
+    pub async fn list_private_keys(&self) -> Vec<String> {
+        list_all(&self.private).await
     }
 
     /// Produces the source and the variants of an uploaded image, cut along `crop`, on a
@@ -270,6 +321,26 @@ impl MediaService {
     ) -> Result<PreparedImage, PrepareError> {
         match self
             .run_limited(move || prepare_image(&bytes, slot, crop))
+            .await
+        {
+            Ok(result) => result,
+            Err(Panicked) => {
+                tracing::error!("image processing panicked, refusing the file as corrupt");
+                Err(ProcessError::Corrupt.into())
+            }
+        }
+    }
+
+    /// Produces only the variants of an image the server made itself, like
+    /// [`prepare_image`](Self::prepare_image) but keeping no source.
+    pub async fn prepare_variants(
+        &self,
+        bytes: Bytes,
+        slot: Slot,
+        crop: CropRect,
+    ) -> Result<Vec<EncodedVariant>, PrepareError> {
+        match self
+            .run_limited(move || prepare_variants(&bytes, slot, &crop))
             .await
         {
             Ok(result) => result,
@@ -303,15 +374,39 @@ impl MediaService {
 
     async fn delete_prefix(&self, prefix: &str) -> Result<(), MediaError> {
         let prefix = Path::parse(prefix)?;
-        let metas: Vec<_> = self.store.list(Some(&prefix)).try_collect().await?;
-        for meta in metas {
-            match self.store.delete(&meta.location).await {
-                Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
-                Err(e) => return Err(e.into()),
+        for store in [&self.public, &self.private] {
+            let metas: Vec<_> = store.list(Some(&prefix)).try_collect().await?;
+            for meta in metas {
+                match store.delete(&meta.location).await {
+                    Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
+                    Err(e) => return Err(e.into()),
+                }
             }
         }
         Ok(())
     }
+}
+
+async fn read(
+    store: &Arc<dyn ObjectStore>,
+    key: &str,
+    range: Option<Range<u64>>,
+) -> Result<MediaObject, MediaError> {
+    let options = GetOptions::default().with_range(range.map(GetRange::Bounded));
+    let result = store.get_opts(&Path::parse(key)?, options).await?;
+    let size = result.meta.size;
+    let bytes = result.bytes().await?;
+    Ok(MediaObject { bytes, size })
+}
+
+#[cfg(any(test, feature = "test-support"))]
+async fn list_all(store: &Arc<dyn ObjectStore>) -> Vec<String> {
+    let metas: Vec<_> = store
+        .list(None)
+        .try_collect()
+        .await
+        .expect("listable store");
+    metas.into_iter().map(|m| m.location.to_string()).collect()
 }
 
 /// What a bucket must send when it serves the file under `key`: its content type (iOS refuses
@@ -323,6 +418,7 @@ fn object_attributes(key: &str) -> Attributes {
         attributes.insert(Attribute::ContentType, content_type.into());
     }
     attributes.insert(Attribute::CacheControl, CACHE_CONTROL.into());
+    attributes.insert(Attribute::ContentDisposition, "inline".into());
     attributes
 }
 
@@ -418,6 +514,20 @@ mod tests {
         }
     }
 
+    // spec: MED-043
+    #[test]
+    fn s3_files_are_stored_inline_with_their_type_and_cache() {
+        let attributes = object_attributes(&format!("cards/{CARD}/{MEDIA}/video.mp4"));
+        assert_eq!(
+            attributes
+                .get(&Attribute::ContentDisposition)
+                .map(|v| v.as_ref()),
+            Some("inline")
+        );
+        assert!(attributes.get(&Attribute::ContentType).is_some());
+        assert!(attributes.get(&Attribute::CacheControl).is_some());
+    }
+
     // spec: MED-016
     #[tokio::test]
     async fn remote_mode_stores_the_attributes_and_local_mode_does_not() {
@@ -425,7 +535,7 @@ mod tests {
         let remote = MediaService::in_memory_remote("https://cdn.example".parse().unwrap());
         remote.put(&key, Bytes::from_static(b"mp4")).await.unwrap();
         let stored = remote
-            .store
+            .public
             .get_opts(&Path::parse(&key).unwrap(), GetOptions::default())
             .await
             .unwrap();
@@ -441,7 +551,7 @@ mod tests {
         let local = service();
         local.put(&key, Bytes::from_static(b"mp4")).await.unwrap();
         let stored = local
-            .store
+            .public
             .get_opts(&Path::parse(&key).unwrap(), GetOptions::default())
             .await
             .unwrap();

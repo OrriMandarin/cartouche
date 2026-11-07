@@ -19,8 +19,8 @@ import {
   splitLinksForIcons,
   type Indexed,
 } from "../link-display";
+import { AvatarPhoto } from "../AvatarPhoto";
 import { HeaderMedia } from "../HeaderMedia";
-import { srcSet } from "../srcset";
 import "./classique.css";
 import type { ClassiqueSettings } from "./settings";
 
@@ -110,16 +110,7 @@ export function Classique({ card, theme, settings, events, urls, labels, mode }:
       <header className="cc-head">
         <HeaderMedia media={card.header} labels={{ pause: labels.pauseVideo, play: labels.playVideo }} />
         {card.avatar && avatarSrc ? (
-          <div className="cc-avatar">
-            {/* eslint-disable-next-line @next/next/no-img-element -- see the header image */}
-            <img
-              data-testid={TEST_IDS.avatar}
-              src={avatarSrc}
-              srcSet={srcSet(card.avatar)}
-              sizes="112px"
-              alt={name}
-            />
-          </div>
+          <AvatarPhoto avatar={card.avatar} src={avatarSrc} name={name} />
         ) : (
           avatarInitials && (
             <div className="cc-avatar is-initials" data-testid={TEST_IDS.initials} aria-hidden="true">

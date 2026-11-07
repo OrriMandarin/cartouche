@@ -1,5 +1,5 @@
 //! `GET /media/*`: the stored media files, in local storage mode (MED-010, MED-016, MED-017,
-//! MED-023). Not part of the OpenAPI document: files are addressed by the URLs the API hands
+//! MED-023, MED-046). Not part of the OpenAPI document: files are addressed by the URLs the API hands
 //! out. A plain address is read only while its card is served; a signed one, handed to the
 //! dashboard and the support page, whatever the card's state. A media's source is only read
 //! through a signed address (MED-031).
@@ -28,6 +28,9 @@ pub struct MediaQuery {
     sig: Option<String>,
 }
 
+/// Makes a file opened on its own run nothing in the application's origin (MED-046).
+const SANDBOX_POLICY: &str = "sandbox; default-src 'none'";
+
 fn response(
     status: StatusCode,
     content_type: &'static str,
@@ -42,6 +45,8 @@ fn response(
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CACHE_CONTROL, cache_control)
         .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
+        .header(header::CONTENT_DISPOSITION, "inline")
+        .header(header::CONTENT_SECURITY_POLICY, SANDBOX_POLICY)
         .header(header::ACCEPT_RANGES, "bytes")
 }
 

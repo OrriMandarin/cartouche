@@ -2,9 +2,9 @@
 
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { loopRestart, videoCropStyle } from "@/lib/media/framing";
 import { TEMPLATE_TEST_IDS as TEST_IDS, type MediaView } from "./contract";
 import { srcSet } from "./srcset";
+import { useMediaLoad } from "./useMediaLoad";
 
 export interface HeaderMediaLabels {
   pause: string;
@@ -35,8 +35,9 @@ function EmptyBand() {
 }
 
 /**
- * The header video, cropped and looped at display time from its stored framing (MED-032): muted (PUB-005), with
- * its waiting image blurred under a shimmer until it can play (PUB-006), and a button to pause it (PUB-031).
+ * The header video: the served file as is, already cut to its crop and loop by the server, looping over its whole
+ * file (MED-032, MED-033), muted (PUB-005), with its waiting image blurred under a shimmer until it can play
+ * (PUB-006, PUB-041), and a button to pause it (PUB-031).
  * Under reduced motion it does not start by itself (PUB-038).
  */
 function HeaderVideo({
@@ -45,19 +46,19 @@ function HeaderVideo({
   reducedMotion,
 }: { media: MediaView; labels: HeaderMediaLabels } & Pick<HeaderMediaProps, "reducedMotion">) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [ready, setReady] = useState(false);
   // Null until the visitor, or the video, says otherwise: it then follows the motion preference.
   const [playingState, setPlaying] = useState<boolean | null>(null);
   const reduced = useSyncExternalStore(watchReducedMotion, reducedMotion ?? prefersReducedMotion, () => false);
   const playing = playingState ?? !reduced;
   const poster = media.images.at(-1)?.url;
-  const loop = media.loop ?? null;
+  const loadState = useMediaLoad(videoRef, "video");
+  // A browser that refuses the autoplay may never load the video: the loader then ends (PUB-006).
+  const [autoplayRefused, setAutoplayRefused] = useState(false);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
     el.muted = true;
-    if (loop) el.currentTime = loop.start;
     if ((reducedMotion ?? prefersReducedMotion)()) return;
     start(el);
     // Played once on mount: the framing of a media does not change under the page.
@@ -65,25 +66,12 @@ function HeaderVideo({
   }, []);
 
   // jsdom's play() returns undefined and a browser may refuse an autoplay: neither is an error, but a refused
-  // play leaves the video paused and the button must say so.
+  // play leaves the video paused, on its placeholder, and the button must say so.
   function start(el: HTMLVideoElement) {
-    Promise.resolve(el.play()).catch(() => setPlaying(false));
-  }
-
-  // At the end of the file the browser pauses and a seek does not resume it: loop by hand (MED-032, MED-033).
-  function onEnded() {
-    const el = videoRef.current;
-    if (!el) return;
-    el.currentTime = loop?.start ?? 0;
-    setPlaying(true);
-    start(el);
-  }
-
-  function onTimeUpdate() {
-    const el = videoRef.current;
-    if (!el) return;
-    const target = loopRestart(el.currentTime, loop, el.duration);
-    if (target !== null) el.currentTime = target;
+    Promise.resolve(el.play()).catch(() => {
+      setPlaying(false);
+      setAutoplayRefused(true);
+    });
   }
 
   function toggle() {
@@ -98,35 +86,30 @@ function HeaderVideo({
     }
   }
 
-  const loading = !ready;
-  const showPoster = poster !== undefined && loading;
+  const loading = loadState === "loading" && !autoplayRefused;
+  const showPoster = poster !== undefined && loadState !== "loaded";
   return (
     <div className={loading ? "cc-media is-loading" : "cc-media"} aria-busy={loading}>
+      {/* The video comes first so that the placeholder and the sheen, its later siblings, paint over its own poster. */}
+      <video
+        ref={videoRef}
+        data-testid={TEST_IDS.headerVideo}
+        src={media.video_url ?? undefined}
+        poster={poster}
+        loop
+        muted
+        playsInline
+        preload="auto"
+        aria-hidden="true"
+        onPlaying={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+      />
       {showPoster && (
         // A plain img, like the header image below.
         // eslint-disable-next-line @next/next/no-img-element
         <img className={loading && !reduced ? "cc-media-el is-blur" : "cc-media-el"} src={poster} alt="" />
       )}
       {loading && !reduced && <div className="cc-shimmer" aria-hidden="true" />}
-      <video
-        ref={videoRef}
-        data-testid={TEST_IDS.headerVideo}
-        src={media.video_url ?? undefined}
-        poster={poster}
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-        style={videoCropStyle(media.crop)}
-        onTimeUpdate={onTimeUpdate}
-        onCanPlay={() => setReady(true)}
-        onEnded={onEnded}
-        onPlaying={() => {
-          setReady(true);
-          setPlaying(true);
-        }}
-        // The pause that precedes `ended` is not the visitor's.
-        onPause={(event) => setPlaying(event.currentTarget.ended)}
-      />
       <button
         type="button"
         className="cc-pause"
@@ -147,11 +130,24 @@ export function HeaderMedia({ media, labels, reducedMotion }: HeaderMediaProps) 
   }
   const src = media?.images.at(-1)?.url;
   if (!media || !src) return <EmptyBand />;
+  return <HeaderImage media={media} src={src} />;
+}
+
+/**
+ * The header image: the theme's surface under a sheen until it has loaded (PUB-039); if it cannot load, the
+ * surface stays without sheen or busy mark. A load that ended before hydration is read on mount (PUB-041).
+ */
+function HeaderImage({ media, src }: { media: MediaView; src: string }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const loadState = useMediaLoad(imageRef, "image");
+  const loading = loadState === "loading";
+  const className = loading ? "cc-media is-loading" : loadState === "failed" ? "cc-media is-failed" : "cc-media";
   return (
-    <div className="cc-media">
+    <div className={className} aria-busy={loading}>
       {/* A plain img: media URLs are absolute and external, and next/image would add an optimizer hop. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imageRef}
         className="cc-media-el"
         data-testid={TEST_IDS.headerImage}
         src={src}
@@ -159,6 +155,7 @@ export function HeaderMedia({ media, labels, reducedMotion }: HeaderMediaProps) 
         sizes="(min-width: 40rem) 28rem, 100vw"
         alt=""
       />
+      {loading && <div className="cc-shimmer" aria-hidden="true" />}
     </div>
   );
 }

@@ -47,9 +47,9 @@ export function useApi(): ApiClient {
 export function useUploadMedia(cardId: string): UploadMedia {
   const { getToken } = useAuth();
   return useCallback(
-    async (slot, file, poster, framing) => {
+    async (slot, file, framing) => {
       try {
-        return await uploadMedia(getToken, cardId, slot, file, poster, framing);
+        return await uploadMedia(getToken, cardId, slot, file, framing);
       } catch (error) {
         report(error);
         throw error;
@@ -63,9 +63,9 @@ export function useUploadMedia(cardId: string): UploadMedia {
 export function useReframeMedia(cardId: string): ReframeMedia {
   const { getToken } = useAuth();
   return useCallback(
-    async (mediaId, framing, poster) => {
+    async (mediaId, framing) => {
       try {
-        return await reframeMedia(getToken, cardId, mediaId, framing, poster);
+        return await reframeMedia(getToken, cardId, mediaId, framing);
       } catch (error) {
         report(error);
         throw error;

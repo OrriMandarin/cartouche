@@ -67,6 +67,8 @@ pub enum MediaStorageConfig {
     /// An S3-compatible bucket, served from `public_base_url` (MED-011).
     S3 {
         bucket: String,
+        /// Bucket of the private originals, without a public address (MED-044).
+        private_bucket: String,
         region: String,
         /// Custom endpoint for S3-compatible services (MinIO, R2...); AWS when absent.
         endpoint: Option<Url>,
@@ -74,6 +76,13 @@ pub enum MediaStorageConfig {
         secret_access_key: Secret,
         public_base_url: Url,
     },
+}
+
+/// Where the video tools are (MED-041): program names looked up on the `PATH`, or paths.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VideoToolsConfig {
+    pub ffmpeg: PathBuf,
+    pub ffprobe: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,6 +96,7 @@ pub struct Config {
     pub signup_mode: SignupMode,
     pub sentry_dsn: Option<String>,
     pub media: MediaStorageConfig,
+    pub video: VideoToolsConfig,
     /// Reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted (ABU-008).
     pub trusted_proxy_hops: usize,
     /// Most events of one card that may run at the same instant (EVT-004, EVT-019).
@@ -172,25 +182,43 @@ impl Config {
         };
 
         let media = match optional("MEDIA_STORAGE").as_deref().map(str::trim) {
-            None | Some("local") => MediaStorageConfig::Local {
+            Some("local") => MediaStorageConfig::Local {
                 dir: optional("MEDIA_LOCAL_DIR")
                     .map_or_else(|| PathBuf::from("./data/media"), PathBuf::from),
             },
-            Some("s3") => MediaStorageConfig::S3 {
-                bucket: required("MEDIA_S3_BUCKET")?,
-                region: required("MEDIA_S3_REGION")?,
-                endpoint: optional("MEDIA_S3_ENDPOINT")
-                    .map(|v| {
-                        v.parse::<Url>()
-                            .map_err(|e| invalid("MEDIA_S3_ENDPOINT", e))
-                    })
-                    .transpose()?,
-                access_key_id: required("MEDIA_S3_ACCESS_KEY_ID")?,
-                secret_access_key: Secret::new(required("MEDIA_S3_SECRET_ACCESS_KEY")?),
-                public_base_url: required("MEDIA_PUBLIC_BASE_URL")?
+            None | Some("s3") => {
+                let bucket = required("MEDIA_S3_BUCKET")?;
+                let private_bucket = required("MEDIA_S3_PRIVATE_BUCKET")?;
+                if private_bucket == bucket {
+                    return Err(invalid(
+                        "MEDIA_S3_PRIVATE_BUCKET",
+                        "must differ from MEDIA_S3_BUCKET",
+                    ));
+                }
+                let media_public_base_url = required("MEDIA_PUBLIC_BASE_URL")?
                     .parse::<Url>()
-                    .map_err(|e| invalid("MEDIA_PUBLIC_BASE_URL", e))?,
-            },
+                    .map_err(|e| invalid("MEDIA_PUBLIC_BASE_URL", e))?;
+                if media_public_base_url.origin() == public_base_url.origin() {
+                    return Err(invalid(
+                        "MEDIA_PUBLIC_BASE_URL",
+                        "must be served from another origin than PUBLIC_BASE_URL",
+                    ));
+                }
+                MediaStorageConfig::S3 {
+                    bucket,
+                    private_bucket,
+                    region: required("MEDIA_S3_REGION")?,
+                    endpoint: optional("MEDIA_S3_ENDPOINT")
+                        .map(|v| {
+                            v.parse::<Url>()
+                                .map_err(|e| invalid("MEDIA_S3_ENDPOINT", e))
+                        })
+                        .transpose()?,
+                    access_key_id: required("MEDIA_S3_ACCESS_KEY_ID")?,
+                    secret_access_key: Secret::new(required("MEDIA_S3_SECRET_ACCESS_KEY")?),
+                    public_base_url: media_public_base_url,
+                }
+            }
             Some(other) => {
                 return Err(invalid(
                     "MEDIA_STORAGE",
@@ -213,6 +241,12 @@ impl Config {
             signup_mode,
             sentry_dsn: optional("SENTRY_DSN"),
             media,
+            video: VideoToolsConfig {
+                ffmpeg: optional("FFMPEG_PATH")
+                    .map_or_else(|| PathBuf::from("ffmpeg"), PathBuf::from),
+                ffprobe: optional("FFPROBE_PATH")
+                    .map_or_else(|| PathBuf::from("ffprobe"), PathBuf::from),
+            },
             trusted_proxy_hops,
             max_simultaneous_events,
         })
@@ -224,7 +258,7 @@ mod tests {
     use super::*;
     use std::collections::{HashMap, HashSet};
 
-    fn vars(extra: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
+    fn vars(extra: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> + use<> {
         let mut m: HashMap<String, String> = [
             ("DATABASE_URL", "postgres://u:p@localhost/db"),
             ("AUTH_ISSUER", "https://issuer.example.com"),
@@ -233,6 +267,7 @@ mod tests {
                 "https://issuer.example.com/.well-known/jwks.json",
             ),
             ("PUBLIC_BASE_URL", "https://cartouche.example.com"),
+            ("MEDIA_STORAGE", "local"),
         ]
         .into_iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -241,6 +276,14 @@ mod tests {
             m.insert((*k).to_string(), (*v).to_string());
         }
         move |k| m.get(k).cloned()
+    }
+
+    /// The variables of S3 storage, with `MEDIA_STORAGE` left unset (S3 is the default).
+    fn s3_vars(extra: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> + use<> {
+        let mut given = S3_VARS.to_vec();
+        given.extend_from_slice(extra);
+        let inner = vars(&given);
+        move |k| if k == "MEDIA_STORAGE" { None } else { inner(k) }
     }
 
     fn vars_without(missing: &str) -> impl Fn(&str) -> Option<String> {
@@ -395,6 +438,21 @@ mod tests {
         }
     }
 
+    // spec: MED-041
+    #[test]
+    fn ffmpeg_paths_default_to_the_path_and_follow_the_variables() {
+        let c = Config::from_vars(vars(&[])).unwrap();
+        assert_eq!(c.video.ffmpeg, PathBuf::from("ffmpeg"));
+        assert_eq!(c.video.ffprobe, PathBuf::from("ffprobe"));
+        let c = Config::from_vars(vars(&[
+            ("FFMPEG_PATH", "/opt/ff/ffmpeg"),
+            ("FFPROBE_PATH", "/opt/ff/ffprobe"),
+        ]))
+        .unwrap();
+        assert_eq!(c.video.ffmpeg, PathBuf::from("/opt/ff/ffmpeg"));
+        assert_eq!(c.video.ffprobe, PathBuf::from("/opt/ff/ffprobe"));
+    }
+
     // spec: EVT-019
     #[test]
     fn max_simultaneous_events_configuration() {
@@ -417,52 +475,75 @@ mod tests {
         }
     }
 
+    const S3_VARS: [(&str, &str); 6] = [
+        ("MEDIA_S3_BUCKET", "cards"),
+        ("MEDIA_S3_PRIVATE_BUCKET", "cards-private"),
+        ("MEDIA_S3_REGION", "eu-west-3"),
+        ("MEDIA_S3_ACCESS_KEY_ID", "AKIAEXAMPLE"),
+        ("MEDIA_S3_SECRET_ACCESS_KEY", "s3cr3t-value"),
+        ("MEDIA_PUBLIC_BASE_URL", "https://cdn.example"),
+    ];
+
     // spec: MED-009, MED-011
     #[test]
-    fn media_config_local_by_default_and_s3_on_demand() {
-        let c = Config::from_vars(vars(&[])).unwrap();
+    fn media_storage_is_s3_by_default_and_local_on_demand() {
+        assert_eq!(
+            Config::from_vars(vars_without("MEDIA_STORAGE")).unwrap_err(),
+            ConfigError::Missing("MEDIA_S3_BUCKET".into())
+        );
+
+        let c = Config::from_vars(vars(&[("MEDIA_STORAGE", "local")])).unwrap();
         assert_eq!(
             c.media,
             MediaStorageConfig::Local {
                 dir: PathBuf::from("./data/media")
             }
         );
-        let c = Config::from_vars(vars(&[("MEDIA_LOCAL_DIR", "/var/lib/cartouche")])).unwrap();
+        let c = Config::from_vars(vars(&[
+            ("MEDIA_STORAGE", "local"),
+            ("MEDIA_LOCAL_DIR", "/var/lib/cartouche"),
+        ]))
+        .unwrap();
         assert_eq!(
             c.media,
             MediaStorageConfig::Local {
                 dir: PathBuf::from("/var/lib/cartouche")
             }
         );
-        let c = Config::from_vars(vars(&[("MEDIA_STORAGE", "local")])).unwrap();
-        assert!(matches!(c.media, MediaStorageConfig::Local { .. }));
 
-        let s3 = [
-            ("MEDIA_STORAGE", "s3"),
-            ("MEDIA_S3_BUCKET", "cards"),
-            ("MEDIA_S3_REGION", "eu-west-3"),
-            ("MEDIA_S3_ACCESS_KEY_ID", "AKIAEXAMPLE"),
-            ("MEDIA_S3_SECRET_ACCESS_KEY", "s3cr3t-value"),
-            ("MEDIA_PUBLIC_BASE_URL", "https://cdn.example"),
-        ];
-        let c = Config::from_vars(vars(&s3)).unwrap();
-        let MediaStorageConfig::S3 {
-            bucket,
-            region,
-            endpoint,
-            public_base_url,
-            ..
-        } = &c.media
-        else {
-            panic!("expected S3, got {:?}", c.media);
-        };
-        assert_eq!((bucket.as_str(), region.as_str()), ("cards", "eu-west-3"));
-        assert_eq!(*endpoint, None);
-        assert_eq!(public_base_url.as_str(), "https://cdn.example/");
+        for explicit in [true, false] {
+            let c = if explicit {
+                Config::from_vars(vars(
+                    &[("MEDIA_STORAGE", "s3")]
+                        .into_iter()
+                        .chain(S3_VARS)
+                        .collect::<Vec<_>>(),
+                ))
+            } else {
+                Config::from_vars(s3_vars(&[]))
+            }
+            .unwrap();
+            let MediaStorageConfig::S3 {
+                bucket,
+                private_bucket,
+                region,
+                endpoint,
+                public_base_url,
+                ..
+            } = &c.media
+            else {
+                panic!("expected S3, got {:?}", c.media);
+            };
+            assert_eq!(
+                (bucket.as_str(), private_bucket.as_str(), region.as_str()),
+                ("cards", "cards-private", "eu-west-3")
+            );
+            assert_eq!(*endpoint, None);
+            assert_eq!(public_base_url.as_str(), "https://cdn.example/");
+        }
 
-        let mut with_endpoint = s3.to_vec();
-        with_endpoint.push(("MEDIA_S3_ENDPOINT", "http://localhost:9000"));
-        let c = Config::from_vars(vars(&with_endpoint)).unwrap();
+        let c =
+            Config::from_vars(s3_vars(&[("MEDIA_S3_ENDPOINT", "http://localhost:9000")])).unwrap();
         assert!(matches!(
             c.media,
             MediaStorageConfig::S3 { endpoint: Some(ref e), .. } if e.as_str() == "http://localhost:9000/"
@@ -474,32 +555,68 @@ mod tests {
         assert!(printed.contains("***"));
     }
 
-    // spec: MED-009, MED-011
+    // spec: MED-009, MED-011, MED-044
     #[test]
     fn s3_requires_its_variables() {
-        let full = [
-            ("MEDIA_STORAGE", "s3"),
-            ("MEDIA_S3_BUCKET", "cards"),
-            ("MEDIA_S3_REGION", "eu-west-3"),
-            ("MEDIA_S3_ACCESS_KEY_ID", "AKIAEXAMPLE"),
-            ("MEDIA_S3_SECRET_ACCESS_KEY", "s3cr3t-value"),
-            ("MEDIA_PUBLIC_BASE_URL", "https://cdn.example"),
-        ];
-        for (missing, _) in &full[1..] {
-            let given: Vec<_> = full.iter().filter(|(n, _)| n != missing).copied().collect();
+        for (missing, _) in &S3_VARS {
+            let given: Vec<_> = S3_VARS
+                .iter()
+                .filter(|(n, _)| n != missing)
+                .copied()
+                .collect();
+            let given = vars(&given);
             assert_eq!(
-                Config::from_vars(vars(&given)).unwrap_err(),
+                Config::from_vars(move |k| if k == "MEDIA_STORAGE" { None } else { given(k) })
+                    .unwrap_err(),
                 ConfigError::Missing((*missing).to_string()),
                 "without {missing}"
             );
         }
         // Blank counts as absent.
-        let mut blank = full.to_vec();
-        blank.push(("MEDIA_PUBLIC_BASE_URL", "  "));
         assert_eq!(
-            Config::from_vars(vars(&blank)).unwrap_err(),
+            Config::from_vars(s3_vars(&[("MEDIA_PUBLIC_BASE_URL", "  ")])).unwrap_err(),
             ConfigError::Missing("MEDIA_PUBLIC_BASE_URL".into())
         );
+    }
+
+    // spec: MED-044
+    #[test]
+    fn s3_requires_a_private_bucket_distinct_from_the_public_one() {
+        let err = Config::from_vars(s3_vars(&[("MEDIA_S3_PRIVATE_BUCKET", "cards")])).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::Invalid(ref n, _) if n == "MEDIA_S3_PRIVATE_BUCKET"),
+            "{err:?}"
+        );
+    }
+
+    // spec: MED-042
+    #[test]
+    fn the_media_origin_must_differ_from_the_app_origin() {
+        let with = |app: &'static str, media: &'static str| {
+            Config::from_vars(s3_vars(&[
+                ("PUBLIC_BASE_URL", app),
+                ("MEDIA_PUBLIC_BASE_URL", media),
+            ]))
+        };
+        for media in [
+            "https://cartes.example/media",
+            "https://cartes.example:443/",
+            "https://CARTES.example",
+        ] {
+            let err = with("https://cartes.example", media).unwrap_err();
+            assert!(
+                matches!(err, ConfigError::Invalid(ref n, ref m)
+                    if n == "MEDIA_PUBLIC_BASE_URL" && m.contains("another origin")),
+                "{media}: {err:?}"
+            );
+        }
+        for media in [
+            "https://cartes.example:8443",
+            "https://media.cartes.example",
+            "http://cartes.example",
+        ] {
+            assert!(with("https://cartes.example", media).is_ok(), "{media}");
+        }
     }
 
     // spec: MED-009
@@ -512,15 +629,8 @@ mod tests {
                 "{value}: {err:?}"
             );
         }
-        let err = Config::from_vars(vars(&[
-            ("MEDIA_STORAGE", "s3"),
-            ("MEDIA_S3_BUCKET", "cards"),
-            ("MEDIA_S3_REGION", "eu-west-3"),
-            ("MEDIA_S3_ACCESS_KEY_ID", "k"),
-            ("MEDIA_S3_SECRET_ACCESS_KEY", "s"),
-            ("MEDIA_PUBLIC_BASE_URL", "not a url"),
-        ]))
-        .unwrap_err();
+        let err =
+            Config::from_vars(s3_vars(&[("MEDIA_PUBLIC_BASE_URL", "not a url")])).unwrap_err();
         assert!(matches!(err, ConfigError::Invalid(ref n, _) if n == "MEDIA_PUBLIC_BASE_URL"));
     }
 }

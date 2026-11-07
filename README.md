@@ -23,8 +23,9 @@ cartouche/
 ├── docs/               initial design and implementation plans (historical, in French)
 ├── scripts/            spec linter, production image guard
 ├── Makefile            single entry point for every command
-├── compose.dev.yml     development Postgres
-└── compose.test.yml    full stack (Postgres, API, web) for the e2e tests
+├── docker/garage/      configuration and init script of Garage, the S3 storage of the dev and test stacks
+├── compose.dev.yml     development Postgres and Garage (S3 media storage)
+└── compose.test.yml    full stack (Postgres, Garage, API, web) for the e2e tests
 ```
 
 OpenAPI is the contract between the two sides: the API publishes it, `frontend/api-client` generates the TypeScript types from it, and CI fails if the two diverge.
@@ -34,12 +35,13 @@ OpenAPI is the contract between the two sides: the API publishes it, `frontend/a
 - Docker (with Docker Compose)
 - Stable Rust, installed through [rustup](https://rustup.rs) (the version is pinned by `backend/rust-toolchain.toml`)
 - Node.js ≥ 24 and pnpm (`corepack enable`, or a direct pnpm install)
+- ffmpeg and ffprobe (header videos are transcoded by the API): `brew install ffmpeg` on macOS, `apt install ffmpeg` on Debian or Ubuntu
 
 ## Quick start
 
 ```bash
 make setup    # dependencies: pnpm (frontend/), cargo fetch, sqlx-cli
-make dev-db   # local PostgreSQL (port 54320, or DEV_DB_PORT)
+make dev-db   # local PostgreSQL (port 54320, or DEV_DB_PORT) and Garage, the S3 media storage (ports 3900, 3902, 3903)
 make api      # Rust API on http://localhost:8080
 make web      # Next.js site on http://localhost:3000
 make seed     # demo data (one administrator and one user per status)

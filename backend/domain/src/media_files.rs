@@ -6,6 +6,11 @@ use std::ops::Range;
 
 use uuid::Uuid;
 
+/// File name of a video's served file (MED-034).
+pub const VIDEO_FILE: &str = "video.mp4";
+/// File name of a video's private original (MED-036). It is not a served name.
+pub const ORIGINAL_FILE: &str = "original.mp4";
+
 /// Storage key of one file of a media: `cards/{card_id}/{media_id}/{name}`.
 pub fn storage_key(card_id: Uuid, media_id: Uuid, name: &str) -> String {
     format!("cards/{card_id}/{media_id}/{name}")
@@ -17,17 +22,34 @@ pub fn source_name(token: &str) -> String {
     format!("source-{token}.webp")
 }
 
+/// File name of a video's edit copy (MED-037, MED-031): `source-<token>.mp4`.
+pub fn edit_copy_name(token: &str) -> String {
+    format!("source-{token}.mp4")
+}
+
 /// Whether `name` is the file name of a source: `source-`, 32 lowercase hexadecimal
-/// characters, `.webp` (MED-031).
+/// characters, then `.webp` (an image's source) or `.mp4` (a video's edit copy) (MED-031).
 pub fn is_source_name(name: &str) -> bool {
-    name.strip_prefix("source-")
-        .and_then(|rest| rest.strip_suffix(".webp"))
-        .is_some_and(|token| {
-            token.len() == 32
-                && token
-                    .bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        })
+    source_extension(name).is_some()
+}
+
+/// Whether `name` is the file name of a video's edit copy (MED-037).
+pub fn is_video_source_name(name: &str) -> bool {
+    source_extension(name) == Some("mp4")
+}
+
+/// The extension of a source name, when `name` is one.
+fn source_extension(name: &str) -> Option<&'static str> {
+    let rest = name.strip_prefix("source-")?;
+    let (token, extension) = rest.split_at_checked(32)?;
+    let is_token = token
+        .bytes()
+        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+    match extension {
+        ".webp" if is_token => Some("webp"),
+        ".mp4" if is_token => Some("mp4"),
+        _ => None,
+    }
 }
 
 /// Whether `key` is the storage key of a media's source (MED-031).
@@ -51,7 +73,7 @@ pub fn served_content_type(key: &str) -> Option<&'static str> {
     {
         return None;
     }
-    if name == "video.mp4" {
+    if name == VIDEO_FILE || is_video_source_name(name) {
         return Some("video/mp4");
     }
     if is_source_name(name) {
@@ -219,6 +241,36 @@ mod tests {
     }
 
     const TOKEN: &str = "0123456789abcdef0123456789abcdef";
+
+    // spec: MED-031
+    #[test]
+    fn an_edit_copy_name_is_a_source_name_served_as_mp4() {
+        assert_eq!(edit_copy_name(TOKEN), format!("source-{TOKEN}.mp4"));
+        assert!(is_source_name(&edit_copy_name(TOKEN)));
+        assert!(is_video_source_name(&edit_copy_name(TOKEN)));
+        assert!(!is_video_source_name(&source_name(TOKEN)));
+        assert_eq!(
+            served_content_type(&key(&edit_copy_name(TOKEN))),
+            Some("video/mp4")
+        );
+        assert!(is_source_key(&key(&edit_copy_name(TOKEN))));
+        for bad in [
+            format!("source-{TOKEN}.mov"),
+            format!("source-{}.mp4", &TOKEN[1..]),
+            format!("source-{}.mp4", TOKEN.to_uppercase()),
+            format!("source-{TOKEN}0.mp4"),
+        ] {
+            assert_eq!(served_content_type(&key(&bad)), None, "{bad}");
+        }
+    }
+
+    // spec: MED-036
+    #[test]
+    fn the_original_is_never_a_served_name() {
+        assert_eq!(ORIGINAL_FILE, "original.mp4");
+        assert_eq!(served_content_type(&key(ORIGINAL_FILE)), None);
+        assert!(!is_source_name(ORIGINAL_FILE));
+    }
 
     // spec: MED-031
     #[test]

@@ -68,6 +68,8 @@ pub enum ApiError {
     InvalidTransition,
     /// The media has no source (uploaded before plan 6) and cannot be re-framed (MED-030).
     MediaNotReframable,
+    /// A video job, waiting for its turn included, ran past its deadline (MED-039).
+    VideoProcessingTimeout,
     /// The slug belongs to someone else (LNK-022).
     SlugTaken,
     /// The slug is an old slug of another card of the same owner (LNK-025).
@@ -121,6 +123,7 @@ impl ApiError {
             ApiError::UnsupportedMediaType => "unsupported_media_type",
             ApiError::InvalidTransition => "invalid_transition",
             ApiError::MediaNotReframable => "media_not_reframable",
+            ApiError::VideoProcessingTimeout => "video_processing_timeout",
             ApiError::SlugTaken => "slug_taken",
             ApiError::SlugReserved => "slug_reserved",
             ApiError::CardDisabledBySupport => "card_disabled_by_support",
@@ -145,7 +148,9 @@ impl ApiError {
             ApiError::UnknownScenario => StatusCode::NOT_FOUND,
             ApiError::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             ApiError::TokenInvalid | ApiError::TokenExpired => StatusCode::UNAUTHORIZED,
-            ApiError::AuthUnavailable => StatusCode::SERVICE_UNAVAILABLE,
+            ApiError::AuthUnavailable | ApiError::VideoProcessingTimeout => {
+                StatusCode::SERVICE_UNAVAILABLE
+            }
             ApiError::SignupClosed
             | ApiError::AccountPending
             | ApiError::AccountRejected
@@ -196,8 +201,9 @@ impl ApiError {
             ApiError::PayloadTooLarge => "The request body is too large.",
             ApiError::UnsupportedMediaType => "The content type is not supported.",
             ApiError::InvalidTransition => "This status change is not allowed.",
-            ApiError::MediaNotReframable => {
-                "This media has no source and cannot be re-framed: replace it."
+            ApiError::MediaNotReframable => "This media cannot be re-framed: replace it.",
+            ApiError::VideoProcessingTimeout => {
+                "The video could not be processed in time: try again in a moment."
             }
             ApiError::SlugTaken => "This link is already taken.",
             ApiError::SlugReserved => "This link was used by another of your cards.",
@@ -318,6 +324,19 @@ mod tests {
         assert_eq!(ApiError::InvalidTransition.status(), StatusCode::CONFLICT);
         assert_eq!(ApiError::MediaNotReframable.code(), "media_not_reframable");
         assert_eq!(ApiError::MediaNotReframable.status(), StatusCode::CONFLICT);
+    }
+
+    // spec: MED-039
+    #[test]
+    fn a_video_processing_timeout_is_a_503() {
+        assert_eq!(
+            ApiError::VideoProcessingTimeout.code(),
+            "video_processing_timeout"
+        );
+        assert_eq!(
+            ApiError::VideoProcessingTimeout.status(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
     }
 
     async fn body_json(error: ApiError) -> (StatusCode, serde_json::Value) {

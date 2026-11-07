@@ -1,5 +1,7 @@
 //! An object store that behaves like `InMemory` until its switch is turned on; while it is on,
-//! every deletion fails, so a test can check what happens when the storage is down.
+//! every deletion fails (or, for [`FailingStore::failing_puts`], every write, and for
+//! [`FailingStore::failing_copies`], every copy), so a test can check what happens when the
+//! storage is down.
 
 use std::fmt;
 use std::ops::Range;
@@ -18,11 +20,15 @@ use object_store::{
 };
 
 /// Delegates to an `InMemory` store. While `failing` is true, `delete_stream` yields a
-/// `Generic` error (never `NotFound`, which the media service ignores) for every path.
+/// `Generic` error (never `NotFound`, which the media service ignores) for every path; for a
+/// store made by [`FailingStore::failing_puts`], `put_opts` fails instead, and for one made by
+/// [`FailingStore::failing_copies`], `copy_opts`.
 #[derive(Debug)]
 pub struct FailingStore {
     inner: InMemory,
     failing: Arc<AtomicBool>,
+    fail_puts: bool,
+    fail_copies: bool,
 }
 
 impl FailingStore {
@@ -32,8 +38,36 @@ impl FailingStore {
         let store = FailingStore {
             inner: InMemory::new(),
             failing: Arc::clone(&failing),
+            fail_puts: false,
+            fail_copies: false,
         };
         (store, failing)
+    }
+
+    /// Like [`FailingStore::new`], but the switch makes writes fail and deletions work.
+    pub fn failing_puts() -> (FailingStore, Arc<AtomicBool>) {
+        let (store, failing) = FailingStore::new();
+        (
+            FailingStore {
+                fail_puts: true,
+                ..store
+            },
+            failing,
+        )
+    }
+}
+
+impl FailingStore {
+    /// Like [`FailingStore::new`], but the switch makes copies fail and deletions work.
+    pub fn failing_copies() -> (FailingStore, Arc<AtomicBool>) {
+        let (store, failing) = FailingStore::new();
+        (
+            FailingStore {
+                fail_copies: true,
+                ..store
+            },
+            failing,
+        )
     }
 }
 
@@ -51,6 +85,12 @@ impl ObjectStore for FailingStore {
         payload: PutPayload,
         opts: PutOptions,
     ) -> Result<PutResult> {
+        if self.fail_puts && self.failing.load(Ordering::SeqCst) {
+            return Err(object_store::Error::Generic {
+                store: "FailingStore",
+                source: "storage is down".into(),
+            });
+        }
         self.inner.put_opts(location, payload, opts).await
     }
 
@@ -74,7 +114,7 @@ impl ObjectStore for FailingStore {
         &self,
         locations: BoxStream<'static, Result<Path>>,
     ) -> BoxStream<'static, Result<Path>> {
-        if self.failing.load(Ordering::SeqCst) {
+        if self.failing.load(Ordering::SeqCst) && !self.fail_puts && !self.fail_copies {
             return locations
                 .map(|location| {
                     location.and_then(|_| {
@@ -106,6 +146,12 @@ impl ObjectStore for FailingStore {
     }
 
     async fn copy_opts(&self, from: &Path, to: &Path, options: CopyOptions) -> Result<()> {
+        if self.fail_copies && self.failing.load(Ordering::SeqCst) {
+            return Err(object_store::Error::Generic {
+                store: "FailingStore",
+                source: "storage is down".into(),
+            });
+        }
         self.inner.copy_opts(from, to, options).await
     }
 }

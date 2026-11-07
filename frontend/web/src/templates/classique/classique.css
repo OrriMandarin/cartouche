@@ -10,7 +10,8 @@
           mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade) * 1%), transparent 100%); }
 .cc-media > img, .cc-media > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .cc-media.is-empty { aspect-ratio: auto; height: 128px; background: color-mix(in oklab, var(--c-accent) 24%, transparent); }
-.cc-media.is-loading { background: var(--c-surface); }
+.cc-media.is-loading, .cc-media.is-failed, .cc-avatar.is-loading, .cc-avatar.is-failed { background: var(--c-surface); }
+.cc-media.is-failed > img, .cc-avatar.is-failed > img { visibility: hidden; }
 .cc-media .is-blur { filter: blur(16px) saturate(.8); transform: scale(1.2); }
 .cc-shimmer { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--c-bg) 50%, transparent) 50%, transparent 70%); background-size: 220% 100%; animation: cc-shimmer 1.6s linear infinite; }
 @keyframes cc-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
@@ -64,5 +65,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cc-event::after { display: none; animation: none; }
-  .cc-shimmer { animation: none; }
+  .cc-shimmer { animation: none; display: none; }
+  /* Before hydration too: the placeholder of a video stays sharp (PUB-006). */
+  .cc-media .is-blur { filter: none; transform: none; }
 }

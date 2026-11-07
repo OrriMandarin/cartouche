@@ -21,8 +21,11 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
   experimental: {
     // Next proxies `/api/*` to the API and, by default, keeps only the first 10 MB of a request body: a video
-    // upload (25 MB, plus its poster) would reach the API truncated. The API's own limit is 36 MiB.
-    proxyClientMaxBodySize: "40mb",
+    // upload (50 MB, MED-002) would reach the API truncated. The API's own limit is 52 MiB.
+    proxyClientMaxBodySize: "56mb",
+    // A video upload waits for its transcode (up to 120 s, MED-039) as well as for its transfer; the default
+    // proxy timeout (30 s) would cut the request first.
+    proxyTimeout: 180_000,
   },
   async rewrites() {
     return [

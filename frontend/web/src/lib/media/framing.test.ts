@@ -6,7 +6,7 @@ import {
   formatSeconds,
   frameTimes,
   HEADER_RATIO,
-  loopRestart,
+  isMeasuredArea,
   needsCrop,
   nudge,
   setLoopEnd,
@@ -40,18 +40,6 @@ describe("framing", () => {
     });
   });
 
-  test("MED-032 the loop returns to its start at its end", () => {
-    const loop = { start: 0.8, end: 8.3 };
-    expect(loopRestart(8.3, loop, 10)).toBe(0.8);
-    expect(loopRestart(4, loop, 10)).toBeNull();
-    expect(loopRestart(0.1, loop, 10)).toBe(0.8);
-  });
-
-  test("MED-033 without loop the video restarts from zero at its end", () => {
-    expect(loopRestart(9.97, null, 10)).toBe(0);
-    expect(loopRestart(4, null, 10)).toBeNull();
-  });
-
   test("EDI-026 percentages become a crop rect", () => {
     expect(cropFromPercentages({ x: 12.5, y: 0, width: 75, height: 100 })).toEqual({ x: 0.125, y: 0, width: 0.75, height: 1 });
     // react-easy-crop may report a few hundredths outside the media: the rect stays within the source.
@@ -67,6 +55,12 @@ describe("framing", () => {
     expect(needsCrop(1280, 720, HEADER_RATIO)).toBe(true);
     expect(needsCrop(600, 800, HEADER_RATIO)).toBe(true);
     expect(needsCrop(512, 512, 1)).toBe(false);
+  });
+
+  test("MED-026 an area is measured once the media has a size in pixels", () => {
+    expect(isMeasuredArea({ width: 1440, height: 1080 })).toBe(true);
+    expect(isMeasuredArea({ width: 0, height: 0 })).toBe(false);
+    expect(isMeasuredArea({ width: 0, height: 1080 })).toBe(false);
   });
 
   test("EDI-026 arrows and plus/minus move and zoom within bounds", () => {

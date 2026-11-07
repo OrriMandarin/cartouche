@@ -1,5 +1,6 @@
 import { ApiError } from "@cartouche/api-client";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import messages from "../../../messages/fr.json";
 import { checkBeforeUpload, mediaErrorKey, reframeMedia, uploadMedia } from "./upload";
 
 const MB = 1024 * 1024;
@@ -26,8 +27,9 @@ describe("checkBeforeUpload", () => {
     expect(checkBeforeUpload(fileOf("image/gif"), "header")).toBe("unsupported");
     expect(checkBeforeUpload(fileOf("image/jpeg", 11 * MB), "header")).toBe("too_large");
     expect(checkBeforeUpload(fileOf("image/jpeg", 10 * MB), "header")).toBeNull();
-    expect(checkBeforeUpload(fileOf("video/mp4", 26 * MB), "header")).toBe("too_large");
-    expect(checkBeforeUpload(fileOf("video/mp4", 25 * MB), "header")).toBeNull();
+    expect(checkBeforeUpload(fileOf("video/mp4", 26 * MB), "header")).toBeNull();
+    expect(checkBeforeUpload(fileOf("video/mp4", 50 * MB + 1), "header")).toBe("too_large");
+    expect(checkBeforeUpload(fileOf("video/mp4", 50 * MB), "header")).toBeNull();
     expect(checkBeforeUpload(fileOf("video/mp4"), "avatar")).toBe("unsupported");
     for (const type of ["image/jpeg", "image/png", "image/webp"]) {
       expect(checkBeforeUpload(fileOf(type), "avatar")).toBeNull();
@@ -41,13 +43,12 @@ describe("checkBeforeUpload", () => {
 });
 
 describe("uploadMedia", () => {
-  test("MED-003 upload sends slot, file and poster", async () => {
+  test("MED-003 a video is uploaded without any image", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     const video = new Blob(["video"], { type: "video/mp4" });
-    const poster = new Blob(["poster"], { type: "image/jpeg" });
 
-    const result = await uploadMedia(async () => "tok-1", "card-1", "header", video, poster);
+    const result = await uploadMedia(async () => "tok-1", "card-1", "header", video);
 
     expect(result).toEqual(mediaView);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -57,7 +58,7 @@ describe("uploadMedia", () => {
     const form = init.body as FormData;
     expect(form.get("slot")).toBe("header");
     expect((form.get("file") as File).size).toBe(5);
-    expect((form.get("poster") as File).size).toBe(6);
+    expect(form.has("poster")).toBe(false);
   });
 
   test("MED-003 an image goes without poster and without a token when signed out", async () => {
@@ -77,9 +78,8 @@ describe("uploadMedia", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     const video = new Blob(["video"], { type: "video/mp4" });
-    const poster = new Blob(["poster"], { type: "image/jpeg" });
 
-    await uploadMedia(async () => "t", "card-1", "header", video, poster, {
+    await uploadMedia(async () => "t", "card-1", "header", video, {
       crop: { x: 0.125, y: 0, width: 0.75, height: 1 },
       loop: { start: 0.5, end: 7.5 },
       posterTime: 0.1,
@@ -95,7 +95,7 @@ describe("uploadMedia", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await uploadMedia(async () => "t", "card-1", "header", new Blob(["img"], { type: "image/png" }), undefined, { posterTime: 0 });
+    await uploadMedia(async () => "t", "card-1", "header", new Blob(["img"], { type: "image/png" }), { posterTime: 0 });
 
     const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
     expect(form.has("crop")).toBe(false);
@@ -125,17 +125,15 @@ describe("uploadMedia", () => {
 describe("reframeMedia", () => {
   const crop = { x: 0.125, y: 0, width: 0.75, height: 1 };
 
-  test("MED-030 sends the framing and the new frame to the reframe route", async () => {
+  test("MED-030 sends the framing, and no image, to the reframe route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mediaView), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
-    const poster = new Blob(["poster"], { type: "image/jpeg" });
 
     const result = await reframeMedia(
       async () => "tok-1",
       "card-1",
       "media-1",
       { crop, loop: { start: 0.5, end: 7.5 }, posterTime: 1.5 },
-      poster,
     );
 
     expect(result).toEqual(mediaView);
@@ -147,7 +145,7 @@ describe("reframeMedia", () => {
     expect(JSON.parse(form.get("crop") as string)).toEqual(crop);
     expect(JSON.parse(form.get("loop") as string)).toEqual({ start: 0.5, end: 7.5 });
     expect(form.get("poster_time")).toBe("1.5");
-    expect((form.get("poster") as File).size).toBe(6);
+    expect(form.has("poster")).toBe(false);
     expect(form.has("slot")).toBe(false);
     expect(form.has("file")).toBe(false);
   });
@@ -180,18 +178,37 @@ describe("mediaErrorKey", () => {
     new ApiError({ status, code, message: "m", requestId: null, fields });
 
   test("MED-013 MED-012 every server code has its message", () => {
-    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "poster", code: "poster_required" }]))).toBe(
-      "editor.media.errors.poster_required",
-    );
     expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "file", code: "image_too_large" }]))).toBe(
-      "editor.media.errors.image_too_large",
-    );
-    // An image too large as a waiting image is still a too large image.
-    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "poster", code: "image_too_large" }]))).toBe(
       "editor.media.errors.image_too_large",
     );
     expect(mediaErrorKey(apiError(413, "payload_too_large"))).toBe("editor.media.errors.payload_too_large");
     expect(mediaErrorKey(apiError(415, "unsupported_media_type"))).toBe("editor.media.errors.unsupported_media_type");
+  });
+
+  test("EDI-037 video_unreadable, video_too_large and video_processing_timeout have their own message", () => {
+    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "file", code: "video_unreadable" }]))).toBe(
+      "editor.media.errors.video_unreadable",
+    );
+    expect(mediaErrorKey(apiError(400, "validation_failed", [{ field: "file", code: "video_too_large" }]))).toBe(
+      "editor.media.errors.video_too_large",
+    );
+    expect(mediaErrorKey(apiError(503, "video_processing_timeout"))).toBe(
+      "editor.media.errors.video_processing_timeout",
+    );
+    for (const key of ["video_unreadable", "video_too_large", "video_processing_timeout"]) {
+      expect(messages.editor.media.errors).toHaveProperty(key);
+    }
+    expect(messages.editor.media.errors).not.toHaveProperty("poster_required");
+    expect(messages.fieldErrors).not.toHaveProperty("poster_required");
+  });
+
+  test("EDI-037 the too-heavy message says 50 Mo for a video", () => {
+    const expected = "Ce fichier est trop lourd (10\u00a0Mo pour une image, 50\u00a0Mo pour une vidéo)";
+    expect(messages.editor.media.errors.too_large).toBe(expected);
+    expect(messages.editor.media.errors.payload_too_large).toBe(expected);
+    expect(messages.editor.media.errors.video_too_large).toBe(
+      "Cette vidéo est trop grande (4\u00a0096 pixels de côté au plus)",
+    );
   });
 
   test("MED-030 MED-033 a media without source and a refused crop have their message", () => {

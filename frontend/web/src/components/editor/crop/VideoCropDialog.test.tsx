@@ -21,7 +21,13 @@ vi.mock("react-easy-crop", async (importOriginal) => {
       props.onCropAreaChange?.(area, area);
       // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the video loads
     }, []);
-    return <div data-testid="fake-cropper" data-video={String(props.video)} />;
+    return (
+      <div
+        data-testid="fake-cropper"
+        data-video={String(props.video)}
+        data-cross-origin={String(props.mediaProps?.crossOrigin)}
+      />
+    );
   }
   return { ...actual, default: FakeCropper };
 });
@@ -76,6 +82,13 @@ describe("VideoCropDialog", () => {
     expect(screen.getByRole("heading", { name: "Sur ta carte" })).toBeInTheDocument();
   });
 
+  test("EDI-034 MED-045 every element playing the video asks for it across origins, as the strip does", () => {
+    renderDialog();
+    // A cached response fetched without CORS would otherwise be reused for the strip's frames, which then cannot be drawn.
+    expect(screen.getByTestId("fake-cropper")).toHaveAttribute("data-cross-origin", "anonymous");
+    for (const element of document.querySelectorAll("video")) expect(element.crossOrigin).toBe("anonymous");
+  });
+
   test("EDI-034 the handles keep a loop of at least one second", () => {
     const { onApply } = renderDialog({ duration: 7.5 });
     // By default, the whole video.
@@ -105,22 +118,22 @@ describe("VideoCropDialog", () => {
     expect(screen.getByRole("checkbox", { name: /Utiliser l’image à 0:02,9 comme image d’attente/ })).not.toBeChecked();
   });
 
-  test("EDI-034 the poster box sends the frame at the playhead", () => {
+  test("MED-003 EDI-034 the poster box only sets the poster time", () => {
     const { onApply } = renderDialog({ initialPosterTime: 2.9 });
-    // The waiting image stays as it is unless the box is ticked.
+    // The poster time stays as it is unless the box is ticked.
     apply();
     expect(onApply.mock.lastCall![0]).toEqual({
       crop: { x: 0.125, y: 0, width: 0.75, height: 1 },
       loop: { start: 0, end: 10 },
       posterTime: 2.9,
-      newPoster: false,
     });
 
     press(playhead(), "ArrowRight", 3);
     expect(screen.getByText("tête de lecture à 0:03,2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: /Utiliser l’image à 0:03,2 comme image d’attente/ }));
     apply();
-    expect(onApply.mock.lastCall![0]).toMatchObject({ posterTime: 3.2, newPoster: true });
+    expect(onApply.mock.lastCall![0]).toMatchObject({ posterTime: 3.2 });
+    expect(onApply.mock.lastCall![0]).not.toHaveProperty("newPoster");
   });
 
   test("EDI-034 moving a handle shows its frame: the playhead follows it", () => {

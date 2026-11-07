@@ -86,7 +86,7 @@ impl FromStr for MediaKind {
 /// Largest accepted image upload, in bytes (MED-012).
 pub const MAX_IMAGE_BYTES: usize = 10 << 20;
 /// Largest accepted video upload, in bytes (MED-002).
-pub const MAX_VIDEO_BYTES: usize = 25 << 20;
+pub const MAX_VIDEO_BYTES: usize = 50 << 20;
 /// Largest accepted image, in pixels (MED-012).
 pub const MAX_IMAGE_PIXELS: u64 = 40_000_000;
 /// Longest accepted video: 30 s plus a 100 ms tolerance for container rounding (MED-002).
@@ -488,6 +488,20 @@ mod tests {
         assert_eq!(
             classify_upload(&heic, Slot::Header),
             Err(UploadRejection::Unsupported)
+        );
+    }
+
+    // spec: MED-002
+    #[test]
+    fn a_video_of_exactly_50_mib_is_accepted_and_one_byte_more_is_too_large() {
+        assert_eq!(MAX_VIDEO_BYTES, 50 << 20);
+        let mut clip = mp4_of(1_000);
+        clip.resize(50 << 20, 0);
+        assert_eq!(classify_upload(&clip, Slot::Header), Ok(MediaKind::Video));
+        clip.push(0);
+        assert_eq!(
+            classify_upload(&clip, Slot::Header),
+            Err(UploadRejection::TooLarge)
         );
     }
 

@@ -20,7 +20,7 @@ import {
   type UploadMedia,
   VIDEO_TYPE,
 } from "@/lib/media/upload";
-import { capturePoster, POSTER_SECONDS, readVideoInfo } from "@/lib/media/video";
+import { POSTER_SECONDS, readVideoInfo } from "@/lib/media/video";
 import type { ResolvedTheme } from "@/lib/theme/resolve";
 import type { MediaView, TemplateDefinition } from "@/templates/contract";
 import { AvatarCropDialog } from "./crop/AvatarCropDialog";
@@ -43,7 +43,7 @@ interface MediaFieldProps {
 
 /**
  * What a crop dialog frames: a file chosen, before its upload, or the current media (re-framed from the source of a
- * photo, from the file of a video). A video also has its duration.
+ * photo, from the edit copy of a video). A video also has its duration.
  */
 type Framing =
   | { file: File; videoDuration?: number }
@@ -78,8 +78,8 @@ function SlotField({
   const cropHintId = `media-${slot}-crop-hint`;
   const canOfferCrop = value !== null;
   const ratio = slot === "avatar" ? AVATAR_RATIO : HEADER_RATIO;
-  // A video is re-framed from its file, over its duration (EDI-034).
-  const reframable = Boolean(value?.source) && (value?.kind === "image" || Boolean(value?.video_url && value.duration_seconds));
+  // A video is re-framed from its edit copy, over its duration; a video from before plan 7 has no source (EDI-034).
+  const reframable = Boolean(value?.source) && (value?.kind === "image" || Boolean(value?.duration_seconds));
 
   /** Runs an upload or a re-framing; its media replaces the draft's, a refusal is shown. */
   async function store(request: () => Promise<MediaView>) {
@@ -93,21 +93,7 @@ function SlotField({
     }
   }
 
-  const send = (file: Blob, poster?: Blob, framing?: UploadFraming) => store(() => upload(slot, file, poster, framing));
-
-  /** spec: MED-003. Sends a video with its waiting image, captured at its poster time. */
-  async function sendVideo(file: File, framing: UploadFraming & { posterTime: number }) {
-    setBusy(true);
-    let poster: Blob;
-    try {
-      poster = await capturePoster(file, framing.posterTime);
-    } catch {
-      setErrorKey("editor.media.errors.unreadable");
-      setBusy(false);
-      return;
-    }
-    await send(file, poster, framing);
-  }
+  const send = (file: Blob, framing?: UploadFraming) => store(() => upload(slot, file, framing));
 
   /** spec: MED-002, EDI-026, EDI-034. A video off the 4:3 shape is framed before it is sent; a 4:3 one goes as it is. */
   async function chooseVideo(file: File) {
@@ -124,7 +110,7 @@ function SlotField({
     // The server reads the duration again; this only spares the upload of a video it will refuse (MED-002).
     if (info.duration > MAX_VIDEO_SECONDS) setErrorKey("editor.media.errors.video_too_long");
     else if (needsCrop(info.width, info.height, HEADER_RATIO)) setFraming({ file, videoDuration: info.duration });
-    else void sendVideo(file, { posterTime: Math.min(POSTER_SECONDS, info.duration) });
+    else void send(file, { posterTime: Math.min(POSTER_SECONDS, info.duration) });
   }
 
   /** spec: EDI-026, EDI-035. A photo off the slot's shape (4:3 header, square profile photo) is framed before it is sent. */
@@ -160,44 +146,30 @@ function SlotField({
     if (!framing) return;
     setFraming(null);
     setErrorKey(null);
-    if ("file" in framing) void send(framing.file, undefined, { crop });
+    if ("file" in framing) void send(framing.file, { crop });
     else void store(() => reframe(framing.media.id, { crop }));
   }
 
   /**
-   * spec: EDI-034, MED-028, MED-030. A new video is uploaded with its framing and its waiting image; the current one
-   * is re-framed, with the frame at the new poster time when the owner chose one. The loop is always sent.
+   * spec: EDI-034, MED-028, MED-030. A new video is uploaded with its framing; the current one is re-framed from its
+   * edit copy. The loop and the poster time are always sent; the server makes the waiting image.
    */
-  async function applyVideo({ newPoster, ...framed }: VideoFraming) {
+  function applyVideo(framed: VideoFraming) {
     if (!framing) return;
     setFraming(null);
     setErrorKey(null);
-    if ("file" in framing) {
-      await sendVideo(framing.file, framed);
-      return;
-    }
-    let poster: Blob | undefined;
-    if (newPoster) {
-      setBusy(true);
-      try {
-        poster = await capturePoster(framing.source, framed.posterTime);
-      } catch {
-        setErrorKey("editor.media.errors.unreadable");
-        setBusy(false);
-        return;
-      }
-    }
-    await store(() => reframe(framing.media.id, framed, poster));
+    if ("file" in framing) void send(framing.file, framed);
+    else void store(() => reframe(framing.media.id, framed));
   }
 
   function recrop() {
     if (!value?.source) return;
     setErrorKey(null);
-    if (value.kind === "video" && value.video_url && value.duration_seconds) {
-      setFraming({ media: value, source: value.video_url, videoDuration: value.duration_seconds });
-    } else {
-      setFraming({ media: value, source: value.source.url });
-    }
+    setFraming({
+      media: value,
+      source: value.source.url,
+      videoDuration: value.kind === "video" ? (value.duration_seconds ?? undefined) : undefined,
+    });
   }
 
   return (
@@ -310,7 +282,7 @@ function SlotField({
           theme={preview.theme}
           name={preview.name}
           avatarUrl={preview.avatarUrl}
-          onApply={(framed) => void applyVideo(framed)}
+          onApply={applyVideo}
           onCancel={() => setFraming(null)}
         />
       ) : null}

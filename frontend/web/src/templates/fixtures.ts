@@ -78,3 +78,10 @@ export const sampleLabels = buildTemplateLabels((key) => {
   if (typeof value !== "string") throw new Error(`missing message ${key}`);
   return value;
 });
+
+/** A video header uploaded before plan 7: it still carries its stored crop and loop, which are no longer applied (MED-033). */
+export const sampleLegacyVideoHeader: NonNullable<PublicCard["header"]> = {
+  ...sampleVideoHeader,
+  loop: { start: 0.8, end: 8.3 },
+  crop: { x: 0.25, y: 0, width: 0.5, height: 1 },
+};
