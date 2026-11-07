@@ -40,7 +40,7 @@ Each ruling line: decision — reason — cost if wrong. Rulings marked **(chang
 
 ## Points for plan 5 (production)
 
-- **Buckets on OVH Object Storage**: two containers in the same region, one public-read (`MEDIA_S3_BUCKET`) and one private (`MEDIA_S3_PRIVATE_BUCKET`, no public access, no static website); `MEDIA_S3_ENDPOINT` (`https://s3.<region>.io.cloud.ovh.net`) and `MEDIA_S3_REGION` (e.g. `gra`) to confirm against OVH's documentation; versioning and lifecycle rules off (files never change, MED-016); a backup policy for the private bucket (originals are the only re-frame input).
+- **Buckets on OVH Object Storage**: two containers in the same region, one whose objects are public-read but whose listing is not (`MEDIA_S3_BUCKET`: anonymous `GetObject` only, no anonymous `ListBucket`, since MED-031 relies on file names nobody can guess) and one private (`MEDIA_S3_PRIVATE_BUCKET`, no public access, no static website); `MEDIA_S3_ENDPOINT` (`https://s3.<region>.io.cloud.ovh.net`) and `MEDIA_S3_REGION` (e.g. `gra`) to confirm against OVH's documentation; versioning and lifecycle rules off (files never change, MED-016); a backup policy for the private bucket (originals are the only re-frame input).
 - **Public URL and custom domain**: `MEDIA_PUBLIC_BASE_URL` on its own origin (e.g. `https://media.<domain>`), HTTPS, never the app's origin (the API refuses it, MED-042); check that the provider serves the stored `Content-Type`, `Cache-Control` and `Content-Disposition` and honours `Range` (MED-017).
 - **CORS** on the public bucket: `GET` and `HEAD` from `PUBLIC_BASE_URL` only, exposing `Content-Length`, `Content-Range`, `Accept-Ranges` (MED-045); the dev init script (`docker/garage/init.sh`) holds the exact XML.
 - **Keys**: one access key with read and write on both buckets for the API, nothing else; never the account's root key; rotation procedure.
@@ -70,7 +70,7 @@ Measured on 2026-11-07 (T19): Apple M1, 16 GB, macOS, ffmpeg 8.1.2. The API was 
 | `landscape-1080p60-audio-gps.mp4` (4 s, 1080p60, sound) | 2.0 s (2.1 / 1.8 / 2.0) | 8.0 s (7.7 / 8.0 / 10.7) | × 4 |
 | 30 s 1080p30 H.264 + AAC clip, 41 MB, generated locally | 18.5 s (18.5 / 19.2 / 18.1) | 30.5 s (34.3 / 30.5 / 30.4) | × 1.6 |
 
-- The 30 s clip stays well under the 120 s deadline (MED-041) in both builds. Most of its time is the ffmpeg encode, which the Rust profile does not change. The remaining gap is the Rust side: decoding the extracted frame, and encoding the three WebP widths of the placeholder and the source.
+- The 30 s clip stays well under the 120 s deadline (MED-039) in both builds. Most of its time is the ffmpeg encode, which the Rust profile does not change. The remaining gap is the Rust side: decoding the extracted frame, and encoding the three WebP widths of the placeholder and the source.
 - A clean `cargo build` of the API takes 8 min 36 s with the block. Switching the dependencies back to `opt-level = 0` takes 1 min 53 s. Day-to-day rebuilds touch only the workspace crates and are unchanged.
 - The 30 s clip was generated with `ffmpeg -f lavfi -i "testsrc2=s=1920x1080:r=30:d=29.5,noise=alls=12:allf=t" -f lavfi -i "sine=frequency=440:duration=29.5" -c:v libx264 -preset veryfast -b:v 11M -maxrate 12M -bufsize 24M -pix_fmt yuv420p -c:a aac -b:a 128k -shortest phone-30s-1080p.mp4` (not committed).
 
