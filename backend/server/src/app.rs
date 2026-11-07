@@ -24,7 +24,9 @@ use crate::routes::admin_leads::{
     list_event_leads as support_list_event_leads,
 };
 use crate::routes::admin_users::{list_users, set_user_status};
-use crate::routes::card_media::{UPLOAD_BODY_LIMIT, reframe_media, upload_media};
+use crate::routes::card_media::{
+    REFRAME_BODY_LIMIT, UPLOAD_BODY_LIMIT, reframe_media, upload_media,
+};
 use crate::routes::cards::{
     create_card, delete_card, disable_card, duplicate_card, enable_card, get_card, list_cards,
     update_card,
@@ -61,7 +63,7 @@ pub fn build_router(state: AppState) -> Router {
         )
         .route(
             "/api/cards/{id}/media/{media_id}/reframe",
-            post(reframe_media).layer(DefaultBodyLimit::max(UPLOAD_BODY_LIMIT)),
+            post(reframe_media).layer(DefaultBodyLimit::max(REFRAME_BODY_LIMIT)),
         )
         .route(
             "/api/cards/{id}/events",

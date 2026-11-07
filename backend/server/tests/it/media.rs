@@ -2053,6 +2053,43 @@ fn media_files_of(files: &[String], media: &Value) -> Vec<String> {
         .collect()
 }
 
+// spec: MED-030
+#[sqlx::test(migrations = "./migrations")]
+async fn a_reframe_carries_no_file_and_no_heavy_body(pool: PgPool) {
+    let app = cards_app(pool.clone()).await;
+    let (id, old) = card_with_quadrants_header(&app).await;
+    let media = old["id"].as_str().unwrap();
+
+    // Its body is the framing fields alone: 64 KiB at most.
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        media,
+        &[
+            crop_part(0.0, 0.0, 0.5, 0.5),
+            Part::text("loop", &"1".repeat(70 << 10)),
+        ],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(error_code(&res), "payload_too_large");
+
+    // A file part is refused, however small.
+    let part = Part::file("file", "a.jpg", "image/jpeg", jpeg(64, 64));
+    let res = reframe(
+        &app,
+        "alice",
+        &id,
+        media,
+        &[crop_part(0.0, 0.0, 0.5, 0.5), part],
+    )
+    .await;
+    assert_eq!(res.status, StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(&res), "invalid_request");
+    assert_eq!(media_rows(&pool).await, 1);
+}
+
 // spec: MED-030, MED-036
 #[sqlx::test(migrations = "./migrations")]
 async fn re_framing_a_video_transcodes_its_original_again(pool: PgPool) {

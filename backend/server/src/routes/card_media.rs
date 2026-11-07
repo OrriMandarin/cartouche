@@ -32,6 +32,9 @@ use crate::views::{Audience, MediaView};
 /// Largest request body of the upload route: a video and the framing.
 pub const UPLOAD_BODY_LIMIT: usize = 52 << 20;
 
+/// Largest request body of the re-frame route: the framing fields alone, no file (MED-030).
+pub const REFRAME_BODY_LIMIT: usize = 64 << 10;
+
 /// Longest framing field (`crop`, `loop`, `poster_time`), in bytes.
 const FRAMING_FIELD_LIMIT: usize = 512;
 
@@ -74,14 +77,15 @@ struct Form {
     framing: FramingFields,
 }
 
-/// Reads the form, refusing a field heavier than its limit as soon as it is seen to be.
-async fn read_form(multipart: &mut Multipart) -> Result<Form, ApiError> {
+/// Reads the form, refusing a field heavier than its limit as soon as it is seen to be, and a
+/// `file` part at once when the route takes none (`accepts_file` is false).
+async fn read_form(multipart: &mut Multipart, accepts_file: bool) -> Result<Form, ApiError> {
     let mut form = Form::default();
     while let Some(mut field) = multipart.next_field().await? {
         let name = field.name().unwrap_or_default().to_string();
         let limit = match name.as_str() {
             "slot" => 16,
-            "file" => MAX_VIDEO_BYTES,
+            "file" if accepts_file => MAX_VIDEO_BYTES,
             "crop" | "loop" | "poster_time" => FRAMING_FIELD_LIMIT,
             _ => return Err(ApiError::InvalidRequest),
         };
@@ -439,7 +443,7 @@ pub async fn upload_media(
         return Err(ApiError::CardDisabledBySupport);
     }
 
-    let form = read_form(&mut multipart).await?;
+    let form = read_form(&mut multipart, true).await?;
     let mut missing = Vec::new();
     if form.slot.is_none() {
         missing.push(FieldError::new("slot", "required"));
@@ -626,7 +630,7 @@ async fn reframe_video(
     let placeholder = storage
         .prepare_variants(transcoded.poster_frame, Slot::Header, crop)
         .await
-        .map_err(|_| field_error("crop", "invalid_crop"))?;
+        .map_err(|_| field_error("file", "video_unreadable"))?;
     let framing = Framing {
         crop,
         video_loop: Some(video_loop),
@@ -691,9 +695,9 @@ pub async fn reframe_media(
         .clone()
         .ok_or(ApiError::MediaNotReframable)?;
 
-    let form = read_form(&mut multipart).await?;
+    let form = read_form(&mut multipart, false).await?;
     // The slot and the kind are those of the previous media.
-    if form.slot.is_some() || form.file.is_some() {
+    if form.slot.is_some() {
         return Err(ApiError::InvalidRequest);
     }
     if form.framing.crop.is_none() {
